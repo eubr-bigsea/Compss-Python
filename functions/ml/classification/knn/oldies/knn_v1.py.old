@@ -1,0 +1,157 @@
+#!/usr/bin/python
+# -*- coding: utf-8 -*-
+
+
+from pycompss.api.task import task
+from pycompss.api.parameter import *
+from pycompss.functions.reduce import mergeReduce
+
+
+import math
+import numpy as np
+
+def chunks(l, n, balanced=False):
+    if not balanced or not len(l) % n:
+        for i in xrange(0, len(l), n):
+            yield l[i:i + n]
+    else:
+        rest = len(l) % n
+        start = 0
+        while rest:
+            yield l[start: start+n+1]
+            rest -= 1
+            start += n+1
+        for i in xrange(start, len(l), n):
+            yield l[i:i + n]
+
+
+@task(returns=list, priority=True)
+def reduceCentersTask(a, b):
+    #return [a,b]
+    return [a[0]+b[0],a[1]+b[1]]
+
+
+def distance(feature1,feature2):
+    distance = 0
+    for i,j in zip(feature1,feature2):
+        distance += (i-j)*(i-j)
+
+    return  math.sqrt(distance)
+
+def insertionSort(A):
+    i=len(A)-1
+    x_l = A[i][0]
+    x_d = A[i][1]
+    j = i-1
+    while j>=0 and x_d<A[j][1]:
+        A[j+1][1] = A[j][1]
+        A[j+1][0] = A[j][0]
+        j=j-1
+    A[j+1][1] = x_d
+    A[j+1][0] = x_l
+
+    return A
+
+@task(returns=list)
+def classifyBlock(test_data,train_data,K):
+    result_partial=[]
+
+    for feature1 in test_data:
+        bestKPoints= [[-1,99999999999] for i in range(K+1)] #label,dist
+        for feature2 in train_data:
+            dist = distance(feature1[1],feature2[1])
+            bestKPoints[K] = [feature2[0], dist]
+            bestKPoints = insertionSort(bestKPoints)
+        labels = [i[0] for i in bestKPoints[0:K]]
+        result_partial.append(max(labels, key = labels.count))
+
+    return result_partial
+
+@task(returns=list)
+def evaluate(partialResult,test_data):
+
+    correct=0
+    total = len(test_data)
+
+    for p,t in zip(partialResult, test_data):
+        if p == t[0]:
+            correct+=1
+
+    return [correct, total]
+
+
+
+def knn(train_data,test_data, K, numFrag):
+    """ Knn:
+
+    :param data: data
+    :param K: num of K nearest neighborhood to take in count
+    :param numFrag: num fragments, if -1 data is considered chunked
+    :return: list of labels predicted
+    """
+
+
+    # Data is already fragmented
+    # if numFrag == -1:
+    #     numFrag = len(train_data)
+    # else:
+    #     # fragment data
+    #     train_data = [d for d in chunks(train_data, len(train_data)/numFrag)]
+
+    # Data is already fragmented
+    result=[]
+
+    if numFrag == -1:
+        numFrag = len(test_data)
+    else:
+        # fragment data
+        test_data = [d for d in chunks(test_data, len(test_data)/numFrag)]
+
+    from pycompss.api.api import compss_wait_on
+
+
+    partialResult = [classifyBlock(test_data[i],train_data,K)  for i in range(numFrag)]
+    numcorrects   = [evaluate(partialResult[i],test_data[i])   for i in range(numFrag)]
+
+    result =  mergeReduce(reduceCentersTask, numcorrects)
+    result = compss_wait_on(result)
+
+
+
+
+    return result
+
+def read_file_vector(name,separator):
+    row = []
+
+    for line in open(name,"r"):
+        col = line.split(separator)
+        label = -1
+        features =[]
+
+        for i in xrange(0,len(col)):
+            if i is 0:
+                label = float(col[i])
+            else:
+                features.append( float(col[i]))
+        row.append([label,features])
+
+    return row
+
+
+
+
+if __name__ == "__main__":
+
+    separator = ","
+    train_data = read_file_vector("higgs-train-0.0001m.csv",separator)
+    test_data = read_file_vector("higgs-train-0.0001m.csv",separator)
+
+    k=3
+    numFrag=2
+
+    result_labels = knn(train_data,test_data, k, numFrag)
+
+    print result_labels
+
+    print "Acurracy: {}".format(float(result_labels[0])/result_labels[1])

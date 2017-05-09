@@ -1,0 +1,98 @@
+digraph {
+  rankdir=TB;
+  labeljust="l";
+  subgraph dependence_graph {
+    ranksep=0.20;
+    node[height=0.75];
+
+1[shape=circle, style=filled fillcolor="#0000ff" fontcolor="#ffffff"];
+2[shape=circle, style=filled fillcolor="#0000ff" fontcolor="#ffffff"];
+3[shape=circle, style=filled fillcolor="#0000ff" fontcolor="#ffffff"];
+4[shape=circle, style=filled fillcolor="#0000ff" fontcolor="#ffffff"];
+5[shape=circle, style=filled fillcolor="#ffffff" fontcolor="#000000"];
+1 -> 5[ label="d2" ];
+2 -> 5[ label="d4" ];
+6[shape=circle, style=filled fillcolor="#ffffff" fontcolor="#000000"];
+3 -> 6[ label="d6" ];
+4 -> 6[ label="d8" ];
+7[shape=circle, style=filled fillcolor="#ffffff" fontcolor="#000000"];
+5 -> 7[ label="d9" ];
+6 -> 7[ label="d10" ];
+8[shape=circle, style=filled fillcolor="#ff0000" fontcolor="#000000"];
+7 -> 8[ label="d11" ];
+9[shape=circle, style=filled fillcolor="#ff0000" fontcolor="#000000"];
+7 -> 9[ label="d11" ];
+10[shape=circle, style=filled fillcolor="#ff0000" fontcolor="#000000"];
+7 -> 10[ label="d11" ];
+11[shape=circle, style=filled fillcolor="#ff0000" fontcolor="#000000"];
+7 -> 11[ label="d11" ];
+12[shape=circle, style=filled fillcolor="#ff00ae" fontcolor="#000000"];
+8 -> 12[ label="d12" ];
+9 -> 12[ label="d13" ];
+13[shape=circle, style=filled fillcolor="#ff00ae" fontcolor="#000000"];
+10 -> 13[ label="d14" ];
+11 -> 13[ label="d15" ];
+14[shape=circle, style=filled fillcolor="#ff00ae" fontcolor="#000000"];
+12 -> 14[ label="d16" ];
+13 -> 14[ label="d17" ];
+Synchro1[label="sync", shape=octagon, style=filled fillcolor="#ff0000" fontcolor="#FFFFFF"];
+14 -> Synchro1[ label="d18" ];
+Synchro0 -> Synchro1[ label="d18" ];
+15[shape=circle, style=filled fillcolor="#b30000" fontcolor="#ffffff"];
+Synchro1 -> 15;
+16[shape=circle, style=filled fillcolor="#b30000" fontcolor="#ffffff"];
+Synchro1 -> 16;
+17[shape=circle, style=filled fillcolor="#b30000" fontcolor="#ffffff"];
+Synchro1 -> 17;
+18[shape=circle, style=filled fillcolor="#b30000" fontcolor="#ffffff"];
+Synchro1 -> 18;
+19[shape=circle, style=filled fillcolor="#00ff00" fontcolor="#000000"];
+Synchro1 -> 19;
+15 -> 19[ label="d21" ];
+16 -> 19[ label="d23" ];
+20[shape=circle, style=filled fillcolor="#00ff00" fontcolor="#000000"];
+Synchro1 -> 20;
+17 -> 20[ label="d25" ];
+18 -> 20[ label="d27" ];
+21[shape=circle, style=filled fillcolor="#00ff00" fontcolor="#000000"];
+Synchro1 -> 21;
+19 -> 21[ label="d28" ];
+20 -> 21[ label="d29" ];
+Synchro2[label="sync", shape=octagon, style=filled fillcolor="#ff0000" fontcolor="#FFFFFF"];
+21 -> Synchro2[ label="d30" ];
+Synchro1 -> Synchro2[ label="d30" ];  }
+  subgraph legend {
+    rank=sink;
+    node [shape=plaintext, height=0.75];
+    ranksep=0.20;
+    label = "Legend";
+    key [label=<
+      <table border="0" cellpadding="2" cellspacing="0" cellborder="0">
+<tr>
+<td align="right">partial_fit</td>
+<td bgcolor="#0000ff">&nbsp;</td>
+</tr>
+<tr>
+<td align="right">merge_summaries1</td>
+<td bgcolor="#ffffff">&nbsp;</td>
+</tr>
+<tr>
+<td align="right">addVar</td>
+<td bgcolor="#ff0000">&nbsp;</td>
+</tr>
+<tr>
+<td align="right">merge_summaries2</td>
+<td bgcolor="#ff00ae">&nbsp;</td>
+</tr>
+<tr>
+<td align="right">predict_chunck</td>
+<td bgcolor="#b30000">&nbsp;</td>
+</tr>
+<tr>
+<td align="right">merge_lists</td>
+<td bgcolor="#00ff00">&nbsp;</td>
+</tr>
+      </table>
+    >]
+  }
+}
