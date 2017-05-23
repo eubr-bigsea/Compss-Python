@@ -1,4 +1,4 @@
-#COMPSs-Python
+# COMPSs-Python
 
 A list of COMPS's operations supported by Lemonade. 
 
