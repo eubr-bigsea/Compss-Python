@@ -177,24 +177,22 @@ class SVM(object):
             :return: A list with the labels
         """
 
-        error =0
+        error = 0
         values = []
         w = settings['model']
         features = settings['features']
         label = "_".join(i for i in settings['labels'])
         #print label
 
-        test_data = [[] for i in range(numFrag)]
-        for i in range(numFrag):
-            test_data[i] = np.array(data[i][features].values)
-
+        test_data  = [self.format_data(data[i],features) for i in range(numFrag)]
         #print test_data
-        from pycompss.api.api import compss_wait_on
+        #from pycompss.api.api import compss_wait_on
         result_p = [ self.predict_partial(test_data[f],w,data[f],label)  for f in range(numFrag) ]
         #result   = [ mergeReduce(self.accumulate_prediction, result_p) ]
         #result   =  compss_wait_on(result)
         #print result
         return result_p
+
 
     @task(returns=list, isModifier = False)
     def predict_partial(self,test_data,w,data,label):

@@ -12,7 +12,7 @@ import math
 import pickle
 import pandas as pd
 
-@task(returns=list)
+#@task(returns=list)
 def Partitionize(data,numFrag):
     """
         Partitionize:
@@ -26,12 +26,14 @@ def Partitionize(data,numFrag):
     """
 
     PartitionSize = int(math.ceil(float(len(data))/numFrag))
-    data = [d for d in chunks(data, PartitionSize )]
+    Ds = [d for d in chunks(data, PartitionSize )]
+    partitions = [pd.DataFrame() for _ in range(numFrag)]
+    for d in range(len(Ds)):
+        partitions[d] = Ds[d]
 
-    q = numFrag - len(data)
-    r = [[] for i in range(q)]
-    data = data + r
-    return data
+    return partitions
+
+
 
 
 #------------------------------------------------------------------------------
@@ -66,10 +68,12 @@ def SaveToFile(filename,data,mode,header):
         mode = 'w'
 
     print data
+    if len(data)==0:
+        data = pd.DataFrame()
     if header:
-        data.to_csv(filename,sep=',',mode=mode, header=True)
+        data.to_csv(filename,sep=',',mode=mode, header=True,index=False)
     else:
-        data.to_csv(filename,sep=',',mode=mode, header=False)
+        data.to_csv(filename,sep=',',mode=mode, header=False,index=False)
 
     return None
 
@@ -117,6 +121,7 @@ def ReadFromPickle(infile):
 
     return b
 
+#@task(returns=list)
 def ReadFromFile(filename,separator,header,infer,na_values):
     """
         ReadFromFile:

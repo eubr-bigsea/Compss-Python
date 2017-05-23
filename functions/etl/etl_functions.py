@@ -25,7 +25,8 @@ def AddColumns(list1,list2,numFrag):
                     splitted in numFrags.
         :return: Returns a new np.array.
     """
-
+        #The columns has to be in the same number of fragments and have the same len.
+        #
 
     result = [AddColumns_part(list1[f], list2[f]) for f in range(numFrag)]
     #result = mergeReduce(Union_part,result)
@@ -35,9 +36,10 @@ def AddColumns(list1,list2,numFrag):
 @task(returns=list)
 def AddColumns_part(a,b):
     print "\nAddColumns_part\n---\n{}\n---\n{}\n---\n".format(a,b)
+
     if len(a)>0:
         if len(b)>0:
-            return pd.concat([a, b], axis=1) #np.concatenate((a, b), axis=1)
+            return pd.concat([a, b], axis=1, ignore_index=True) #np.concatenate((a, b), axis=1)
         else:
             return a
     else:
@@ -58,6 +60,7 @@ def Drop(data, columns,numFrag):
         :param columns: A list with the indexs which will be removed.
         :return: Returns a np.array without the columns choosed.
     """
+
 
     from pycompss.api.api import compss_wait_on
 
@@ -89,13 +92,14 @@ def Select(data,columns,numFrag):
     """
 
     from pycompss.api.api import compss_wait_on
-    data = compss_wait_on(data)
+    #data = compss_wait_on(data)
     data_result = [Select_part(data[f],columns) for f in range(numFrag)]
     #data_result = mergeReduce(Union_part,data_result)
     #data_result = compss_wait_on(data_result)
 
     return data_result
 
+@task(returns=list)
 def Select_part(list1,fields):
     return list1[fields]
     #return np.array(list1)[:,fields]
@@ -114,10 +118,12 @@ def Union(data1, data2,numFrag):
         :param data2: Other np.array with already splited in numFrags.
         :return: Returns a new np.arrays.
     """
-    data1 = compss_wait_on(data1, to_write=False)
-    data2 = compss_wait_on(data2, to_write=False)
+    #data1 = compss_wait_on(data1, to_write=False)
+    #data2 = compss_wait_on(data2, to_write=False)
 
-
+    # data_result = [[] for _ in range(numFrag)]
+    # for f in range(numFrag):
+    #     data_result[f] = Union_part(data1[f], data2[f])
     data_result = [Union_part(data1[f], data2[f]) for f in range(numFrag)]
     #data_result = mergeReduce(Union_part,data_result)
     #data_result = compss_wait_on(data_result)
@@ -236,7 +242,7 @@ def Difference(data1,data2,numFrag):
     """
     from pycompss.api.api import compss_wait_on
 
-    data_result = [[] for i in range(len(data1))]
+    data_result = [pd.DataFrame() for i in range(len(data1))]
 
     for f1 in range(len(data1)):
         data_partial      = [ Difference_part(data1[f1], data2[f2]) for f2 in range(numFrag) ]
@@ -264,7 +270,7 @@ def Difference_part(df1,df2):
         else:
             return df2
     else:
-        return []
+        return pd.DataFrame()
 
 #-------------------------------------------------------------------------------
 #   Join
@@ -541,7 +547,7 @@ def Split(data,settings,numFrag):
     percentage = settings['percentage']
     seed = settings['seed']
     from pycompss.api.api import compss_wait_on
-    data = compss_wait_on(data,to_write = False)
+    #data = compss_wait_on(data,to_write = False)
     partial_counts = [CountRecord(data[i]) for i in range(numFrag)]
     total = mergeReduce(mergeCount,partial_counts)
     indexes = DefineSplit(total,percentage,seed,numFrag)
@@ -602,7 +608,7 @@ def Sample(data,params,numFrag):
 
         partial_counts  = [CountRecord(data[i]) for i in range(numFrag)] #Remove in the future
         total           = mergeReduce(mergeCount,partial_counts)
-        indexes         = DefineSample(total,percentage,seed,numFrag)
+        indexes         = DefineSample(total,percentage,seed,numFrag)  # can be improved
         indexes = compss_wait_on(indexes,to_write = False)
         sample = [GetSample(data[i],indexes[i]) for i in range(numFrag)]
         return sample

@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 
 import numpy as np
+import pandas as pd
 import math
 from pycompss.api.task import task
 from pycompss.api.parameter import *
@@ -67,7 +68,7 @@ class Kmeans(object):
         mu = self.init(data, k, initMode)
         oldmu = []
         n = 0
-        size = int(len(data) / numFrag) #size of each part
+        size = len(data[0])#int(len(data) / numFrag) #size of each part
 
         while not self.has_converged(mu, oldmu, epsilon, n, maxIterations):
             oldmu = list(mu)
@@ -78,7 +79,25 @@ class Kmeans(object):
             mu = compss_wait_on(mu)
             mu = [mu[c][1] / mu[c][0] for c in mu]
             n += 1
-        return mu
+
+        Data = [self.assigment_cluster(data[f], mu,Data[f]) for f in range(numFrag)]
+        #Data = compss_wait_on(Data)
+        #print Data
+        return Data
+
+
+    @task(returns=dict,isModifier = False)
+    def assigment_cluster(self,XP, mu, data):
+        XP = np.array(XP)
+        values = []
+        new_column = "Cluster_predited"
+        for x in enumerate(XP):
+            bestmukey = min([(i[0], np.linalg.norm(x[1] - mu[i[0]]))
+                             for i in enumerate(mu)], key=lambda t: t[1])[0]
+            values.append(bestmukey)
+        data[new_column] =  pd.Series(values).values
+        return data
+
 
     @task(returns=dict,isModifier = False)
     def cluster_points_partial(self,XP, mu, ind):
@@ -161,7 +180,7 @@ class Kmeans(object):
         numFrag = len(X)
         ind = random.randint(0, numFrag-1)
         XP  = X[ind]
-        print XP
+        #print XP
         C = random.sample(XP, 1)
         phi = sum([self.cost(x, C) for x in X])
 

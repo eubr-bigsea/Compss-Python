@@ -33,17 +33,6 @@ from pycompss.api.api import compss_wait_on
 #     return wrap
 # #=========================================
 
-
-def splitDataset(dataset, splitRatio):
-	trainSize = int(len(dataset) * splitRatio)
-	trainSet = []
-	copy = list(dataset)
-	while len(trainSet) < trainSize:
-		index = random.randrange(len(copy))
-		trainSet.append(copy.pop(index))
-	return [trainSet, copy]
-
-
 #-------------------------------------------------------------------------
 #   Naive Bayes
 #

@@ -31,14 +31,20 @@ class KNN(object):
             :return A model
         """
 
-        columns = settings['labels']+settings['features']
-        data = compss_wait_on(data)
-        partial = [self.format_data(data[i],columns) for i in range(numFrag)]
-        train_data = mergeReduce(self.merge_lists, partial)
-        train_data  = compss_wait_on(train_data)
-        #train_data =
+        labels   = settings['labels']
+        features = settings['features']
+        columns  = labels+features
 
-        return [train_data,settings]
+        partial  = [self.format_data(data[i],columns) for i in range(numFrag)]
+        train_data = mergeReduce(self.merge_lists, partial)
+        #columns = settings['labels']+settings['features']
+        #data = compss_wait_on(data)
+        #partial = [self.format_data(data[i],columns) for i in range(numFrag)]
+        #train_data = mergeReduce(self.merge_lists, partial)
+        #train_data  = compss_wait_on(train_data)
+
+
+        return train_data
 
     @task(returns=list, isModifier = False)
     def format_data(self,data,columns):
@@ -58,8 +64,15 @@ class KNN(object):
                                 if you don't want to write the output in a file.
             :return A list of labels predicted.
         """
+        labels   = settings['labels']
+        features = settings['features']
+        columns  = labels+features
+        train_data = settings['model']
+        K = int(settings['K'])
 
-        partialResult = [ self.classifyBlock(test_data[i], settings)  for i in range(numFrag) ]
+
+        partialResult = [ self.classifyBlock(test_data[i], train_data,
+                                             features, labels,K)  for i in range(numFrag) ]
 
         #result = [ mergeReduce(self.merge_lists, partialResult)]
         #result  = compss_wait_on(result)
@@ -83,13 +96,9 @@ class KNN(object):
         return result
 
     @task(returns=list, isModifier = False)
-    def classifyBlock(self,data,settings):
-        print settings
+    def classifyBlock(self,data,train_data, features, label,K):
+
         start=time.time()
-        train_data = settings['model'][0]
-        features = settings['features']
-        label = "_".join(i for i in settings['labels'])
-        K = int(settings['K'])
 
         test_data = np.array(data[features].values)
         numDim = len(test_data[0])
@@ -107,8 +116,8 @@ class KNN(object):
 
         for i_test in range(sizeTest):
             for i_train in range(sizeTrain):
-                print train_data[i_train][1:numDim].astype(np.float_)
-                print test_data[i_test].astype(np.float_)
+                #print train_data[i_train][1:numDim].astype(np.float_)
+                #print test_data[i_test].astype(np.float_)
 
                 semi_dist  [i_test][K] = functions_knn.distance(train_data[i_train][1:numDim].astype(np.float_), test_data[i_test].astype(np.float_), numDim)
                 semi_labels[i_test][K] = train_data[i_train][0]
@@ -127,7 +136,7 @@ class KNN(object):
 
 
         values= self.getKNN(semi_labels,K)
-        new_column = label +"_predited"
+        new_column = "_".join(i for i in label) +"_predited"
         data[new_column] =  pd.Series(values).values
 
 
