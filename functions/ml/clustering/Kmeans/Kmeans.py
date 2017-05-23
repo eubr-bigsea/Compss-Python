@@ -9,26 +9,37 @@ from pycompss.functions.reduce import mergeReduce
 
 
 class Kmeans(object):
-    def fit(self, settings):
-        """
-            Kmeans.fit():
-                Setting up the model.
+    # def fit(self, settings):
+    #     """
+    #         Kmeans.fit():
+    #             Setting up the model.
+    #
+    #
+    #         :param k: A number of centroids
+    #         :param maxIterations: max iterations
+    #         :param epsilon: error threshold
+    #         :return A model
+    #     """
+    #     k = settings['k']
+    #     maxIterations = settings['maxIterations']
+    #     epsilon = settings['epsilon']
+    #     initMode = settings['initMode']
+    #
+    #     return [k,maxIterations,epsilon,initMode]
 
 
-            :param k: A number of centroids
-            :param maxIterations: max iterations
-            :param epsilon: error threshold
-            :return A model
-        """
-        k = settings['k']
-        maxIterations = settings['maxIterations']
-        epsilon = settings['epsilon']
-        initMode = settings['initMode']
+    @task(returns=list, isModifier = False)
+    def format_data(self,data,columns):
+        train_data = []
+        tmp = np.array(data[columns].values)
 
-        return [k,maxIterations,epsilon,initMode]
+        for j in range(len(tmp)):
+            train_data.append([tmp[j][0],tmp[j][1:,]])
 
 
-    def transform(self,data,model,numFrag):
+        return train_data
+
+    def transform(self,Data,settings,numFrag):
         """
             kmeans: starting with a set of randomly chosen initial centers,
             one repeatedly assigns each imput point to its nearest center, and
@@ -42,15 +53,21 @@ class Kmeans(object):
         """
         from pycompss.api.api import compss_wait_on
 
-        k             = int(model[0])
-        maxIterations = int(model[1])
-        epsilon       = float(model[2])
-        initMode      = model[3]
+
+        #format data
+
+        columns = settings['features']
+        data = [self.format_data(Data[i],columns) for i in range(numFrag)]
+        data = compss_wait_on(data)
+        k             = int(settings['k'])
+        maxIterations = int(settings['maxIterations'])
+        epsilon       = float(settings['epsilon'])
+        initMode      = settings['initMode']
 
         mu = self.init(data, k, initMode)
         oldmu = []
         n = 0
-        size = int(len(data) / numFrag)
+        size = int(len(data) / numFrag) #size of each part
 
         while not self.has_converged(mu, oldmu, epsilon, n, maxIterations):
             oldmu = list(mu)
@@ -144,6 +161,7 @@ class Kmeans(object):
         numFrag = len(X)
         ind = random.randint(0, numFrag-1)
         XP  = X[ind]
+        print XP
         C = random.sample(XP, 1)
         phi = sum([self.cost(x, C) for x in X])
 

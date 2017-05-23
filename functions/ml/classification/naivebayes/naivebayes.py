@@ -8,13 +8,14 @@ __email__  = "lucasmsp@gmail.com"
 import random
 import math
 import numpy as np
+import pandas as pd
 import time
 
 from pycompss.api.task          import task
 from pycompss.api.parameter     import *
 from pycompss.functions.reduce  import mergeReduce
 from pycompss.functions.data    import chunks
-
+from pycompss.api.api import compss_wait_on
 
 
 
@@ -51,7 +52,7 @@ def splitDataset(dataset, splitRatio):
 
 class GaussianNB(object):
 
-    def fit(self,train_data,numFrag):
+    def fit(self,data,settings,numFrag):
         """
             Gaussian Naive Bayes:
 
@@ -75,20 +76,28 @@ class GaussianNB(object):
             :return The model (np.array)
         """
 
+		#Data format:  label,f1,f2,f3...
+        columns = settings['labels']+settings['features']
 
-        from pycompss.api.api import compss_wait_on
+
+        train_data		= [ self.format_data(data[i],columns) for i in range(numFrag)]
         separated       = [ self.separateByClass(train_data[i]) for i in range(numFrag)]   # separa as classes
         partial_fitted  = [ self.partial_fit(separated[i]) for i in range(numFrag)]
-        merged_fitted   = [ mergeReduce(self.merge_summaries1, partial_fitted)] #result: mean and len
-        merged_fitted   = merged_fitted[0]
+        merged_fitted   = mergeReduce(self.merge_summaries1, partial_fitted) #result: mean and len
+
         partial_result  = [ self.addVar(merged_fitted,separated[i])  for i in range(numFrag)]
-        merged_fitted   = [ mergeReduce(self.merge_summaries2, partial_result)]
+        merged_fitted   = mergeReduce(self.merge_summaries2, partial_result)
 
         merged_fitted = compss_wait_on(merged_fitted)
         summaries = self.calcSTDEV(merged_fitted)
 
         #self.summaries = summaries
         return summaries
+
+    @task(returns=list, isModifier = False)
+    def format_data(self,data,columns):
+        return  data[columns].values
+
 
     @task(returns=dict, isModifier = False)
     def addVar(self,merged_fitted, separated):
@@ -113,7 +122,7 @@ class GaussianNB(object):
 
 
     def calcSTDEV(self,summaries):
-        summaries = summaries[0]
+        #summaries = summaries[0]
         new_summaries = {}
         for att in summaries:
             tupla = summaries[att]
@@ -157,7 +166,7 @@ class GaussianNB(object):
 
 
 
-
+    @task(returns=list, isModifier = False)
     def separateByClass(self,train_data):
     	separated = {}
 
@@ -185,7 +194,7 @@ class GaussianNB(object):
     #   predictions
     #-------------------------------------------------------------------------
 
-    def transform(self,testSet,model, numFrag):
+    def transform(self,data,settings, numFrag):
         """
             Gaussian Naive Bayes:
 
@@ -199,24 +208,35 @@ class GaussianNB(object):
             :return: list with the predictions.
         """
 
-        from pycompss.api.api import compss_wait_on
-        partialResult = [ self.predict_chunck(model, testSet[i])  for i in range(numFrag) ]
-        result = mergeReduce(self.merge_lists, partialResult)
-        result = compss_wait_on(result)
 
-        return result
+
+        partialResult = [ self.predict_chunck(settings, data[i])  for i in range(numFrag) ]
+        #result = mergeReduce(self.merge_lists, partialResult)
+        #result = compss_wait_on(result)
+
+        return partialResult
 
     @task(returns=list, isModifier = False)
     def merge_lists(self,list1,list2):
         return list1+list2
 
     @task(returns=list, isModifier = False)
-    def predict_chunck(self,summaries, testSet):
+    def predict_chunck(self,settings, data):
+        summaries =  settings['model']
+        #print summaries
+        features = settings['features']
+        label = "_".join(i for i in settings['labels'])
+        testSet = np.array(data[features].values)
+
         predictions = []
         for i in range(len(testSet)):
          	result = self.predict(summaries, testSet[i])
          	predictions.append(result)
-        return predictions
+
+
+		new_column = label +"_predited"
+        data[new_column] =  pd.Series(predictions).values
+        return data
 
     def predict(self,summaries, inputVector):
     	probabilities = self.calculateClassProbabilities(summaries, inputVector)

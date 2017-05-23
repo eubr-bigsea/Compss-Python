@@ -10,6 +10,7 @@ from pycompss.functions.reduce import mergeReduce
 import numpy as np
 import math
 import pickle
+import pandas as pd
 
 @task(returns=list)
 def Partitionize(data,numFrag):
@@ -23,23 +24,6 @@ def Partitionize(data,numFrag):
         :param numFrags: A number of partitions
         :return The array splitted.
     """
-
-            # #Wrong:
-            # data = np.arange(299)
-            # numFrag = 3
-            # PartitionSize = len(data)/numFrag
-            # ndata = [d for d in chunks(data, PartitionSize )]
-            # print "Total Len ({}): ".format(len(ndata))
-            # for d in ndata:
-            #     print "Len ({})".format(len(d))
-            #
-            # #Right:
-            # PartitionSize = int(math.ceil(float(len(data))/numFrag))
-            # ndata = [d for d in chunks(data, PartitionSize )]
-            # print "Total Len ({}): ".format(len(ndata))
-            # for d in ndata:
-            #     print "Len ({})".format(len(d))
-
 
     PartitionSize = int(math.ceil(float(len(data))/numFrag))
     data = [d for d in chunks(data, PartitionSize )]
@@ -71,7 +55,7 @@ def SaveToFile(filename,data,mode,header):
 
 
     if mode is 'append':
-        f_handle = open(filename, mode='a+')
+        mode = 'a'
     elif mode is 'ignore':
         if os.path.exists(filename):
             return None
@@ -79,30 +63,15 @@ def SaveToFile(filename,data,mode,header):
         if os.path.exists(filename):
             return None    # !   TO DO: RAISE SOME ERROR
     else:
-        f_handle = open(filename, mode='w')
+        mode = 'w'
 
-
-
+    print data
     if header:
-        title = ";".join([i for i in data.dtype.names])
-        np.savetxt(f_handle,data, delimiter=';',header=title, fmt='%s')
+        data.to_csv(filename,sep=',',mode=mode, header=True)
     else:
-        np.savetxt(f_handle,data, delimiter=';', fmt='%s')
+        data.to_csv(filename,sep=',',mode=mode, header=False)
 
-    f_handle.close()
     return None
-
-
-
-@task(returns=list)
-def Union_part(list1,list2):
-    if len(list1) == 0:
-        result = list2
-    elif len(list2) == 0:
-        result = list1
-    else:
-        result = np.concatenate((list1,list2), axis=0)
-    return  result
 
 
 def SaveToPickle(outfile,data):
@@ -148,7 +117,7 @@ def ReadFromPickle(infile):
 
     return b
 
-def ReadFromFile(filename,separator,header,infer):
+def ReadFromFile(filename,separator,header,infer,na_values):
     """
         ReadFromFile:
 
@@ -163,26 +132,17 @@ def ReadFromFile(filename,separator,header,infer):
 
     if infer =="NO":
         if header:
-            data = np.genfromtxt(filename,dtype='str', names = None,
-                                     delimiter='\n',skip_header=1)
+            df = pd.read_csv(filename,sep=separator,na_values=na_values,dtype='str');
         else:
-            data = np.genfromtxt(filename,dtype='str', names = None,
-                                     delimiter='\n',skip_header=0,comments=None)
+            df = pd.read_csv(filename,sep=separator,na_values=na_values,header=0,dtype='str');
 
-    #     #https://docs.scipy.org/doc/numpy/reference/generated/numpy.genfromtxt.html#numpy.genfromtxt
-    #     if header:
-    #         data = np.genfromtxt(filename, dtype=None, names = None,
-    #                                 delimiter=separator,skip_header=1)
-    #     else:
-    #         data = np.genfromtxt(filename, dtype=None, names = None,
-    #                                 delimiter=separator,skip_header=0,comments=None)
     elif infer == "FROM_VALUES":
         if header:
-            data = np.loadtxt(filename, delimiter=separator, skiprows=1,comments=None)
+            df = pd.read_csv(filename,sep=separator,na_values=na_values);
         else:
-            data = np.loadtxt(filename, delimiter=separator, skiprows=0,comments=None)
+            df = pd.read_csv(filename,sep=separator,na_values=na_values,header=0);
 
-    return data
+    return df
 
 
 
@@ -211,160 +171,3 @@ def VectorAssemble(data, col):
 
     i = np.argsort(order)
     return data[:,i]
-
-#-------------------------------------------------------------------------------
-#   Split
-
-@task(returns=list)
-def CountRecord(data):
-    size = len(data)
-    return [size,[size]]
-
-@task(returns=list)
-def mergeCount(data1,data2):
-    return [data1[0]+data2[0],np.concatenate((data1[1], data2[1]), axis=0)]
-
-
-@task(returns=list)
-def DefineSplit (total,percentage,seed,numFrag):
-
-    size_split1 = math.ceil(total[0]*percentage)
-
-    np.random.seed(seed)
-    ids = sorted(np.random.choice(total[0], size_split1, replace=False))
-
-    list_ids = [[] for i in range(numFrag)]
-    frag = 0
-    maxIdFrag = total[1][frag]
-    oldmax = 0
-    for i in ids:
-        while i >= maxIdFrag:
-            frag+=1
-            oldmax = maxIdFrag
-            maxIdFrag+= total[1][frag]
-        list_ids[frag].append(i-oldmax)
-
-    #print "Total: {} |\nsize_split1: {} |\nids: {} |\nlist_ids:{}".format(total,size_split1,ids,list_ids)
-
-    return list_ids
-
-@task(returns=list)
-def GetSplit1(data,indexes_split1):
-    split1 = []
-
-    pos= 0
-    if len(indexes_split1)>0:
-        for i  in range(len(data)):
-            if i == indexes_split1[pos]:
-                split1.append(data[i])
-                if pos < (len(indexes_split1)-1):
-                    pos+=1
-
-
-    return split1
-
-@task(returns=list)
-def GetSplit2(data,indexes_split1):
-    split2 = []
-    pos= 0
-    if len(indexes_split1)>0:
-        for i  in range(len(data)):
-            if i == indexes_split1[pos]:
-                if pos < (len(indexes_split1)-1):
-                    pos+=1
-            else:
-                split2.append(data[i])
-    else:
-        split2 = data
-
-    return split2
-
-
-def Split(data,percentage,seed,numFrag):
-    from pycompss.api.api import compss_wait_on
-    partial_counts = [CountRecord(data[i]) for i in range(numFrag)]
-    total = mergeReduce(mergeCount,partial_counts)
-    indexes_split1 = DefineSplit(total,percentage,seed,numFrag)
-    indexes_split1 = compss_wait_on(indexes_split1,to_write = False)
-    splits1 = [GetSplit1(data[i],indexes_split1[i]) for i in range(numFrag)]
-    splits2 = [GetSplit2(data[i],indexes_split1[i]) for i in range(numFrag)]
-    return  [splits1,splits2]
-
-
-#-------------------------------------------------------------------------------
-#   Sample
-
-def GetHeadSample(data, total,i,head):
-    others_workers = sum([total[1][j] for j in range(i)])
-    #print others
-    head -= others_workers
-    if head>0:
-        return data[0:head]
-    return []
-
-
-@task(returns=list)
-def DefineNSample (total,value,seed,numFrag):
-
-    if total[0] < value:
-        value = total[0]
-    np.random.seed(seed)
-    ids = sorted(np.random.choice(total[0], value, replace=False))
-
-    list_ids = [[] for i in range(numFrag)]
-
-    frag = 0
-    maxIdFrag = total[1][frag]
-    oldmax = 0
-    for i in ids:
-
-        while i >= maxIdFrag:
-            frag+=1
-            oldmax = maxIdFrag
-            maxIdFrag+= total[1][frag]
-
-        list_ids[frag].append(i-oldmax)
-
-    print "Total: {} |\nsize_split1: {} |\nids: {} |\nlist_ids:{}".format(total,value,ids,list_ids)
-
-    return list_ids
-
-def Sample(data,params,numFrag):
-    """
-    Returns a sampled subset of this DataFrame.
-    Parameters:
-    - withReplacement -> can elements be sampled multiple times
-                        (replaced when sampled out)
-    - fraction -> fraction of the data frame to be sampled.
-        without replacement: probability that each element is chosen;
-            fraction must be [0, 1]
-        with replacement: expected number of times each element is chosen;
-            fraction must be >= 0
-    - seed -> seed for random operation.
-    """
-    from pycompss.api.api import compss_wait_on
-    if params["type"] == 'percent':
-        percentage = params['percent']
-        seed = params['seed']
-        partial_counts = [CountRecord(data[i]) for i in range(numFrag)]
-        total = mergeReduce(mergeCount,partial_counts)
-        indexes_split1 = DefineSplit(total,percentage,seed,numFrag)
-        indexes_split1 = compss_wait_on(indexes_split1,to_write = False)
-        splits1 = [GetSplit1(data[i],indexes_split1[i]) for i in range(numFrag)]
-        return splits1
-    elif params["type"] == 'value':
-        value = params['value']
-        seed = params['seed']
-        partial_counts = [CountRecord(data[i]) for i in range(numFrag)]
-        total = mergeReduce(mergeCount,partial_counts)
-        indexes_split1 = DefineNSample(total,value,seed,numFrag)
-        indexes_split1 = compss_wait_on(indexes_split1,to_write = False)
-        splits1 = [GetSplit1(data[i],indexes_split1[i]) for i in range(numFrag)]
-        return splits1
-    elif params['type'] == 'head':
-        head = params['value']
-        partial_counts = [CountRecord(data[i]) for i in range(numFrag)]
-        total = mergeReduce(mergeCount,partial_counts)
-        total = compss_wait_on(total,to_write = False)
-        sample = [GetHeadSample(data[i], total,i,head) for i in range(numFrag)]
-        return sample

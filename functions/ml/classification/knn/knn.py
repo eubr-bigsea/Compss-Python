@@ -7,16 +7,17 @@ __email__  = "lucasmsp@gmail.com"
 import time
 import math
 import numpy as np
+import pandas as pd
 
 from pycompss.api.task          import task
 from pycompss.api.parameter     import *
 from pycompss.functions.reduce  import mergeReduce
 from pycompss.functions.data    import chunks
-
+from pycompss.api.api import compss_wait_on
 
 class KNN(object):
 
-    def fit(self,train_data,K):
+    def fit(self,data,settings,numFrag):
         """
             K-Nearest Neighbor is an non parametric lazy learning algorithm.
             What this means is that it does not use the training data points to
@@ -30,10 +31,20 @@ class KNN(object):
             :return A model
         """
 
-        return [train_data,K]
+        columns = settings['labels']+settings['features']
+        data = compss_wait_on(data)
+        partial = [self.format_data(data[i],columns) for i in range(numFrag)]
+        train_data = mergeReduce(self.merge_lists, partial)
+        train_data  = compss_wait_on(train_data)
+        #train_data =
 
+        return [train_data,settings]
 
-    def transform(self,test_data,model, numFrag, output_file):
+    @task(returns=list, isModifier = False)
+    def format_data(self,data,columns):
+        return  data[columns].values
+
+    def transform(self,test_data,settings, numFrag):
         """
             K-Nearest Neighbor: The Classification is computed from a simple
             majority vote of the nearest neighbors of each point present in the
@@ -48,22 +59,11 @@ class KNN(object):
             :return A list of labels predicted.
         """
 
-        from pycompss.api.api import compss_wait_on
+        partialResult = [ self.classifyBlock(test_data[i], settings)  for i in range(numFrag) ]
 
-        partialResult = [ self.classifyBlock(test_data[i],model[0],
-                                        model[1])  for i in range(numFrag) ]
-
-        if len(output_file) > 1:
-            for p in range(len(partialResult)):
-                filename= output_file+"_part"+str(p)
-                f = open(filename,"w")
-                f.close()
-                savePredictionToFile(partialResult[p], filename)
-            return []
-        else:
-            result = [ mergeReduce(self.merge_lists, partialResult)]
-            result  = compss_wait_on(result)
-            return result[0]
+        #result = [ mergeReduce(self.merge_lists, partialResult)]
+        #result  = compss_wait_on(result)
+        return partialResult#result[0]
 
 
     def getPopularElement(self,labels,K):
@@ -83,12 +83,21 @@ class KNN(object):
         return result
 
     @task(returns=list, isModifier = False)
-    def classifyBlock(self,test_data,train_data,K):
-
+    def classifyBlock(self,data,settings):
+        print settings
         start=time.time()
+        train_data = settings['model'][0]
+        features = settings['features']
+        label = "_".join(i for i in settings['labels'])
+        K = int(settings['K'])
 
-        numDim = len(train_data[0])-1
+        test_data = np.array(data[features].values)
+        numDim = len(test_data[0])
 
+        print numDim
+        print train_data
+        print test_data
+        print "----"
         #initalizing variables
         sizeTest    = len(test_data)
         sizeTrain   = len(train_data)
@@ -98,6 +107,8 @@ class KNN(object):
 
         for i_test in range(sizeTest):
             for i_train in range(sizeTrain):
+                print train_data[i_train][1:numDim].astype(np.float_)
+                print test_data[i_test].astype(np.float_)
 
                 semi_dist  [i_test][K] = functions_knn.distance(train_data[i_train][1:numDim].astype(np.float_), test_data[i_test].astype(np.float_), numDim)
                 semi_labels[i_test][K] = train_data[i_train][0]
@@ -115,13 +126,24 @@ class KNN(object):
                     j-=1
 
 
-        result_partial= self.getKNN(semi_labels,K)
+        values= self.getKNN(semi_labels,K)
+        new_column = label +"_predited"
+        data[new_column] =  pd.Series(values).values
+
 
         end = time.time()
         print "\n[INFO] - ClassifierBlock -> Time elapsed: %.2f seconds\n" % (end-start)
 
-        return result_partial
+        return data
 
     @task(returns=list, isModifier = False)
     def merge_lists(self,list1,list2):
-        return list1+list2
+        print "\nmerge_lists\n---\n{}\n---\n{}\n---\n".format(list1,list2)
+
+        if len(list1) == 0:
+            result = list2
+        elif len(list2) == 0:
+            result = list1
+        else:
+            result = np.concatenate((list1, list1), axis=0)
+        return  result
