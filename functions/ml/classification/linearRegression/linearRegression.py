@@ -83,11 +83,6 @@ class linearRegression(object):
 
             parameters = self.gradientDescent(data, features, label, alpha, iters, numFrag)
 
-
-            #parameters = compss_wait_on(parameters)
-            #print parameters
-
-
         return parameters
 
 
