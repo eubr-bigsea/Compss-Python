@@ -66,26 +66,35 @@ class GaussianNB(object):
         """
 
 		#Data format:  label,f1,f2,f3...
-        columns = settings['labels']+settings['features']
+        label = settings['label']
+        features = settings['features']
 
 
-        train_data		= [ self.format_data(data[i],columns) for i in range(numFrag)]
-        separated       = [ self.separateByClass(train_data[i]) for i in range(numFrag)]   # separa as classes
-        partial_fitted  = [ self.partial_fit(separated[i]) for i in range(numFrag)]
-        merged_fitted   = mergeReduce(self.merge_summaries1, partial_fitted) #result: mean and len
+
+        separated       = [ self.separateByClass(data[i],label,features) for i in range(numFrag)]   # separa as classes
+        merged_fitted   = mergeReduce(self.merge_summaries1, separated ) #result: mean and len
 
         partial_result  = [ self.addVar(merged_fitted,separated[i])  for i in range(numFrag)]
         merged_fitted   = mergeReduce(self.merge_summaries2, partial_result)
 
-        merged_fitted = compss_wait_on(merged_fitted)
         summaries = self.calcSTDEV(merged_fitted)
 
-        #self.summaries = summaries
         return summaries
 
     @task(returns=list, isModifier = False)
-    def format_data(self,data,columns):
-        return  data[columns].values
+    def separateByClass(self,train_data,label,features):
+        separated = {}
+        for i in range(len(train_data)):
+            l = train_data.iloc[i][label]
+            if (l not in separated):
+                separated[l] = []
+            separated[l].append(train_data.iloc[i][features])
+
+        summaries = {}
+        for classValue, instances in separated.iteritems():
+            summaries[classValue] = self.summarize(instances)
+
+        return summaries
 
 
     @task(returns=dict, isModifier = False)
@@ -95,7 +104,7 @@ class GaussianNB(object):
         for att in separated:
             summaries = []
             nums = separated[att]
-            print "nums: ",nums
+            #print "nums: ",nums
             d = 0
             nums2 = merged_fitted[att]
             #print "nums2: ",nums2
@@ -109,7 +118,7 @@ class GaussianNB(object):
 
         return summary
 
-
+    @task(returns=dict, isModifier = False)
     def calcSTDEV(self,summaries):
         #summaries = summaries[0]
         new_summaries = {}
@@ -120,13 +129,7 @@ class GaussianNB(object):
                 new_summaries[att].append((t[0], math.sqrt(t[1]/t[2])))
         return new_summaries
 
-    @task(returns=dict, isModifier = False)
-    def partial_fit(self,separated):
-        summaries = {}
-        for classValue, instances in separated.iteritems():
-            summaries[classValue] = self.summarize(instances)
 
-        return summaries
 
     @task(returns=list, isModifier = False)
     def merge_summaries2(self,summaries1,summaries2):
@@ -155,16 +158,7 @@ class GaussianNB(object):
 
 
 
-    @task(returns=list, isModifier = False)
-    def separateByClass(self,train_data):
-    	separated = {}
 
-    	for i in range(len(train_data)):
-    	 	if (train_data[i][0] not in separated):
-    	 		separated[train_data[i][0]] = []
-    	 	separated[train_data[i][0]].append(train_data[i][1:,])
-
-    	return separated
 
     def summarize(self,features):
         summaries = []
@@ -192,16 +186,12 @@ class GaussianNB(object):
             probability.
 
             :param TestSet:  A np.array (splitted) with the data
-            :param model: A summaries, a np.array with the probabilities.
+            :param settings: Thats includes a np.array with the probabilities (model).
             :param numFrag: num fragments, if -1 data is considered chunked
             :return: list with the predictions.
         """
-
-
-
-        partialResult = [ self.predict_chunck(settings, data[i])  for i in range(numFrag) ]
-        #result = mergeReduce(self.merge_lists, partialResult)
-        #result = compss_wait_on(result)
+        model = settings['model']
+        partialResult = [ self.predict_chunck(data[i],model,settings) for i in range(numFrag) ]
 
         return partialResult
 
@@ -210,21 +200,18 @@ class GaussianNB(object):
         return list1+list2
 
     @task(returns=list, isModifier = False)
-    def predict_chunck(self,settings, data):
-        summaries =  settings['model']
+    def predict_chunck(self, data,summaries,settings):
         #print summaries
         features = settings['features']
-        label = "_".join(i for i in settings['labels'])
-        testSet = np.array(data[features].values)
+        predictedLabel = settings['new_name'] if 'new_name' in settings else "{}_predited".format(label)
 
         predictions = []
-        for i in range(len(testSet)):
-         	result = self.predict(summaries, testSet[i])
+        for i in range(len(data)):
+         	result = self.predict(summaries, data.iloc[i][features])
          	predictions.append(result)
 
 
-		new_column = label +"_predited"
-        data[new_column] =  pd.Series(predictions).values
+        data[predictedLabel] =  pd.Series(predictions).values
         return data
 
     def predict(self,summaries, inputVector):

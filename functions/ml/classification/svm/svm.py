@@ -11,14 +11,15 @@ from pycompss.api.task import task
 from pycompss.api.parameter import *
 from pycompss.functions.reduce import mergeReduce
 from pycompss.functions.data import chunks
-
-import numpy as np
+from pycompss.api.api import compss_wait_on
 import pandas as pd
+import numpy as np
+
 #-------------------------
 #   Training
 #
 class SVM(object):
-
+    #OBS.: Senao for usar o COST, tem como otimizar o codigo
     def fit(self,data, settings, numFrag):
 
         """
@@ -48,79 +49,71 @@ class SVM(object):
             :return A model (a np.array)
         """
 
+
         coef_lambda     = float(settings['coef_lambda'])
         coef_lr         = float(settings['coef_lr'])
         coef_threshold  = float(settings['coef_threshold'])
         coef_maxIters   =   int(settings['coef_maxIters'])
 
-        columns = settings['labels']+settings['features']
-        train_data = [self.format_data(data[i],columns) for i in range(numFrag)]
-
-        numDim = len(settings['features'])
-        w = [0 for i in range(numDim)]
+        label    = settings['label']
+        features = settings['features']
+        w = [0 for i in range(1)] #initial
 
         for it in range(coef_maxIters):
-            from pycompss.api.api import compss_wait_on
-            yp          = [ self.calc_yp(train_data[f],w,numDim)  for f in range(numFrag) ]
-            cost_grad_p = [ self.calc_CostAndGrad(yp[f],train_data[f],f,numDim,coef_lambda,w)  for f in range(numFrag) ]
-            cost_grad   = [ mergeReduce(self.accumulate_CostAndGrad, cost_grad_p) ]
-            cost_grad   =  compss_wait_on(cost_grad)
+            cost_grad_p = [self.calc_CostAndGrad(data[f], f, coef_lambda,
+                                                 w,label,features)
+                                                 for f in range(numFrag)]
+            cost_grad   =  mergeReduce(self.accumulate_CostAndGrad, cost_grad_p)
+            #cost_grad   =  compss_wait_on(cost_grad)
 
-            grad = cost_grad[0][1]
-            cost = cost_grad[0][0][0]
-            print "[INFO] - Current Cost %.4f" % (cost)
-            if cost < coef_threshold:
-                print "[INFO] - Cost %.4f" % (cost)
-                break
+            #grad = cost_grad[0][1]
+            #cost = cost_grad[0][0][0]
+            #print "[INFO] - Current Cost %.4f" % (cost)
+            #if cost < coef_threshold:
+            #    print "[INFO] - Cost %.4f" % (cost)
+            #    break
 
-            w = self.updateWeight(coef_lr,grad,w)
+            w = self.updateWeight(coef_lr,cost_grad,w)
 
         return w
-
-
-    @task(returns=list, isModifier = False)
-    def format_data(self,data,columns):
-        train_data = []
-        tmp = np.array(data[columns].values)
-
-        for j in range(len(tmp)):
-            train_data.append([tmp[j][0],tmp[j][1:,]])
-
-
-        return train_data
 
     @task(returns=list, isModifier = False)
     def updateWeight(self,coef_lr,grad,w):
+        dim = len(grad[1])
+        if(dim!=len(w)):
+            w = [0 for i in range(dim)]
+
         for i in xrange(len(w)):
-            w[i] -=coef_lr*grad[i]
+            w[i] -=coef_lr*grad[1][i]
         return w
 
-    @task(returns=list, isModifier = False)
-    def calc_yp(self,train_data,w,numDim):
-        ypp  = [0 for i in range(len(train_data))]
+    def get_dimension(self,row):
+        if isinstance(row, list):
+            numDim = len(row)
+        else:
+            numDim = 1
+        return numDim
 
-        for i in range(len(train_data)):
-            print train_data[i]
-            ypp[i]=0
-            for d in xrange(0,numDim):
-                ypp[i]+=train_data[i][1][d]*w[d]
-
-        print ypp
-        return ypp
 
     @task(returns=list, isModifier = False)
-    def calc_CostAndGrad(self,ypp,train_data,f,numDim,coef_lambda,w):
+    def calc_CostAndGrad(self,train_data,f,coef_lambda,w,label,features):
+        numDim = self.get_dimension(data.iloc[0][X])
+
+        ypp   = [0 for i in range(len(train_data))]
         cost  = [0,0]
         grad  = [0 for i in range(numDim)]
 
+        if numDim != len(w):
+            w = [0 for i in range(numDim)] #initial
+
         if (len(train_data)):
             for i in range(len(train_data)):
-                print "---"
-                print train_data[i][0]
-                print ypp[i]
-                print "---"
-                if (train_data[i][0] * ypp[i] -1) < 0:
-                    cost[0]+=(1 - train_data[i][0]*ypp[i])
+                ypp[i]=0
+                for d in xrange(0,numDim):
+                    ypp[i]+=train_data.iloc[i][features][d]*w[d]
+
+                if (train_data.iloc[i][label] * ypp[i] -1) < 0:
+                    cost[0]+=(1 - train_data.iloc[i][label] * ypp[i])
 
 
             for d in range(numDim):
@@ -129,8 +122,8 @@ class SVM(object):
                     grad[d]+=abs(coef_lambda * w[d])
 
                 for i in range(len(train_data)):
-                    if (train_data[i][0]*ypp[i]-1) < 0:
-                        grad[d] -= train_data[i][0]*train_data[i][1][d]
+                    if (train_data.iloc[i][label]*ypp[i]-1) < 0:
+                        grad[d] -= train_data.iloc[i][label]*train_data.iloc[i][features][d]
 
         return [cost,grad]
 
@@ -149,9 +142,6 @@ class SVM(object):
         return [cost_p1, grad_p1]
 
     #------------------------------------------------------------------------
-    #   Testing
-    #
-
 
     def transform(self,data, settings, numFrag):
         """
@@ -177,42 +167,31 @@ class SVM(object):
             :return: A list with the labels
         """
 
-        error = 0
-        values = []
         w = settings['model']
         features = settings['features']
-        label = "_".join(i for i in settings['labels'])
-        #print label
+        predictedLabel = settings['new_name'] if 'new_name' in settings else "{}_predited".format(label)
 
-        test_data  = [self.format_data(data[i],features) for i in range(numFrag)]
-        #print test_data
-        #from pycompss.api.api import compss_wait_on
-        result_p = [ self.predict_partial(test_data[f],w,data[f],label)  for f in range(numFrag) ]
-        #result   = [ mergeReduce(self.accumulate_prediction, result_p) ]
-        #result   =  compss_wait_on(result)
-        #print result
+        result_p   = [ self.predict_partial(data[f],w,predictedLabel,features)  for f in range(numFrag) ]
+
         return result_p
 
 
     @task(returns=list, isModifier = False)
-    def predict_partial(self,test_data,w,data,label):
-        values = [0 for i in range(len(test_data))]
+    def predict_partial(self,data,w,predictedLabel,features):
 
-        new_column = label +"_predited"
-        if len(test_data)>0:
-            for i in range(len(test_data)):
-                values[i] = self.predict_one(test_data[i],w)
+        if len(data)>0:
+            values = [0 for i in range(len(data))]
+            for i in range(len(data)):
+                values[i] = self.predict_one(data.iloc[i][features],w)
 
-            data[new_column] =  pd.Series(values).values
-            print data
+            data[predictedLabel] =  pd.Series(values).values
+
             return data
         else:
             return []
 
     def predict_one(self,test_xi, w):
         pre = 0
-        print test_xi
-        print w
         for i in range(len(test_xi)):
 
             pre+=test_xi[i]*w[i]

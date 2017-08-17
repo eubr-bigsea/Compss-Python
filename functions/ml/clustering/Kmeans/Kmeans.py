@@ -10,24 +10,6 @@ from pycompss.functions.reduce import mergeReduce
 
 
 class Kmeans(object):
-    # def fit(self, settings):
-    #     """
-    #         Kmeans.fit():
-    #             Setting up the model.
-    #
-    #
-    #         :param k: A number of centroids
-    #         :param maxIterations: max iterations
-    #         :param epsilon: error threshold
-    #         :return A model
-    #     """
-    #     k = settings['k']
-    #     maxIterations = settings['maxIterations']
-    #     epsilon = settings['epsilon']
-    #     initMode = settings['initMode']
-    #
-    #     return [k,maxIterations,epsilon,initMode]
-
 
     @task(returns=list, isModifier = False)
     def format_data(self,data,columns):
@@ -55,7 +37,6 @@ class Kmeans(object):
         from pycompss.api.api import compss_wait_on
 
 
-        #format data
 
         columns = settings['features']
         data = [self.format_data(Data[i],columns) for i in range(numFrag)]

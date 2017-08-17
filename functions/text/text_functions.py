@@ -8,12 +8,14 @@ from pycompss.functions.reduce import mergeReduce
 from pycompss.functions.data import chunks
 from pycompss.api.api import compss_wait_on
 
+import pandas as pd
 import numpy as np
 import re
 
 
 def filter_accents(s):
-    return ''.join((c for c in unicodedata.normalize('NFD', s.decode('UTF-8')) if unicodedata.category(c) != 'Mn'))
+    return ''.join((c for c in unicodedata.normalize(\
+                'NFD', s.decode('UTF-8')) if unicodedata.category(c) != 'Mn'))
 
 def filter_punct (ent):
     regex = re.compile('[%s]' % re.escape(string.punctuation))
@@ -30,7 +32,7 @@ def RemoveStopWords(data,settings,stopwords,numFrag):
         typically because the words appear frequently and don’t carry
         as much meaning.
 
-        :param data: A input (np.array)
+        :param data: A input (pandas's dataframe)
         :param settings: A dictionary with:
                             - ['news-stops-words']: A list with some stopwords
                                                         (wrote in Citron)
@@ -45,23 +47,34 @@ def RemoveStopWords(data,settings,stopwords,numFrag):
 @task(returns=list)
 def RemoveStopWords_part( data, settings, stopwords):
     new_data = []
-
+    columns = settings['attribute']
+    alias   = settings['alias']
     #stopwords must be in 1-D
-    stopwords = np.reshape(stopwords, -1, order='C')
-    new_stops = np.reshape(settings['news-stops-words'], -1, order='C')
-    stopwords = np.concatenate((stopwords,new_stops), axis=0)
+    stopwords  = np.reshape(pd.concat(stopwords).values , -1, order='C')
+    new_stops  = np.reshape(settings['news-stops-words'], -1, order='C')
+    stopwords  = np.concatenate((stopwords,new_stops), axis=0)
 
     if settings['case-sensitive']:
-        for row in data:
-            new_data.append([tok for tok in row if tok not in stopwords])
+        for index, row in data.iterrows():
+            col =[]
+            for entry in row[columns]:
+                col.append([tok for tok in tmp if tok not in stopwords])
+            new_data.append(col)
 
     else:
         stopwords = [tok.lower() for tok in stopwords]
-        for entry in data:
-            new_data.append([tok for tok in entry if tok.lower() not in stopwords])
+        print data
+        for index, row in data.iterrows():
+            col =[]
+            for entry in row[columns]:
+                tmp = [tok.lower() for tok in entry]
+                col.append([tok for tok in tmp if tok not in stopwords])
+            new_data.append(col)
 
+    tmp = pd.DataFrame(new_data, columns=alias)
+    result = pd.concat([data.reset_index(drop=True), tmp], axis=1)
 
-    return new_data
+    return result
 
 
 #-------------------------------------------------------------------------------
@@ -81,46 +94,54 @@ def Tokenizer(data,settings,numFrag):
 
         :return A new list
     """
-
+    columns = settings['attributes']
+    alias   = settings['alias']
 
     if settings['type'] == "simple":
-        min_token_length = int(settings['min_token_length']) if int(settings['min_token_length'])>0 else 0
-        result = [Tokenizer_part(data[i],min_token_length) for i in range(numFrag)]
+        min_token_length = int(settings['min_token_length'])
+        result = [Tokenizer_part(data[i],min_token_length,columns,alias) for i in range(numFrag)]
 
         return result
 
 @task(returns=list)
-def Tokenizer_part(data,min_token_length):
+def Tokenizer_part(data,min_token_length,columns,alias):
 
-    tokens = [ re.split('[?!:;\s]|(?<!\d)[,.]|[,.](?!\d)', d) for d in data ]
     result = []
-    for tok in tokens:
+    for line in data[columns].values:
         row = []
-        for t in tok:
-            if len(t)>min_token_length:
-                row.append(t)
+        for column in line:
+            toks = re.split('[?!:;\s]|(?<!\d)[,.]|[,.](?!\d)', column)
+            col = []
+            for t in toks:
+                if len(t)>min_token_length:
+                    col.append(t)
+            row.append(col)
         result.append(row)
+
+    tmp = pd.DataFrame(result, columns=alias)
+
+    result = pd.concat([data.reset_index(drop=True), tmp], axis=1)
+
     return result
 
 
 #-------------------------------------------------------------------------------
 #
 @task(returns=dict)
-def wordCount(data):
+def wordCount(data,params):
     partialResult = {}
-
+    columns = params['attributes']
     i_line = 0
-    for tokens in data:
-
-        tokens = [tok for tok in tokens if tok != ""]
-        for token in tokens:
-            token = token.lower()
-            if token not in partialResult:
-                partialResult[token] = [1, 1, i_line]
-            else:
-                partialResult[token][0] += 1
-                if partialResult[token][2] != i_line:
-                    partialResult[token][1] += 1
+    for lines in data[columns].values:
+        for col in lines:
+            for token in col:
+                    token = token.lower()
+                    if token not in partialResult:
+                        partialResult[token] = [1, 1, i_line]
+                    else:
+                        partialResult[token][0] += 1
+                        if partialResult[token][2] != i_line:
+                            partialResult[token][1] += 1
         i_line+=1
     return partialResult
 
@@ -193,7 +214,7 @@ class Bag_of_Words(object):
         return word_dic, vocabulary
 
 
-    def transform(self,train_set, vocabulary, numFrag):
+    def transform(self,train_set, vocabulary,params, numFrag):
         """
             :param train_set: A np.array with the documents to transform.
             :param numFrag: num of fragments
@@ -206,7 +227,7 @@ class Bag_of_Words(object):
             :return A np.array with the features transformed.
         """
 
-        partial_result = [self.transform_BoW(train_set[f], vocabulary) for f in range(numFrag)]
+        partial_result = [self.transform_BoW(train_set[f], vocabulary, params['attributes']) for f in range(numFrag)]
         #partial_result = compss_wait_on(partial_result)
 
         return  partial_result
@@ -218,19 +239,25 @@ class Bag_of_Words(object):
 
     @task(returns = list,isModifier = False)
     def create_vocabulary(self,word_dic):
-        return np.asarray(word_dic)[:,0]
+        #print pd.DataFrame(data=word_dic,columns=['vocabulary','count_doc','count_all'])
+        return pd.DataFrame(data=word_dic[:,0],columns=['vocabulary'])# np.asarray(word_dic)[:,0]
+
+
+    #Duvida conceitual: Cada attributo sera considerado individualmente ou farà parte de algo maior
 
 
     @task(returns=list,isModifier = False)
-    def transform_BoW(self, data, word_list):
+    def transform_BoW(self, data, word_list,columns):
         table = []
-        for tokens in data:
-            row = []
-            for f in range(len(word_list)):
-                if word_list[f][0] in tokens:
-                    row.append(tokens.count(word_list[f][0]))
-                else:
-                    row.append(0)
-            table.append(row)
+
+        for row in data[columns].values:
+            new_columns = []
+            for col in row:
+                for w in col:
+            #     if word_list[f][0] in tokens:
+            #         row.append(tokens.count(word_list[f][0]))
+            #     else:
+            #         row.append(0)
+            # table.append(row)
 
         return np.asarray(table)
