@@ -8,13 +8,14 @@ __email__  = "lucasmsp@gmail.com"
 import random
 import math
 import numpy as np
+import pandas as pd
 import time
 
 from pycompss.api.task          import task
 from pycompss.api.parameter     import *
 from pycompss.functions.reduce  import mergeReduce
 from pycompss.functions.data    import chunks
-
+from pycompss.api.api import compss_wait_on
 
 
 
@@ -32,17 +33,6 @@ from pycompss.functions.data    import chunks
 #     return wrap
 # #=========================================
 
-
-def splitDataset(dataset, splitRatio):
-	trainSize = int(len(dataset) * splitRatio)
-	trainSet = []
-	copy = list(dataset)
-	while len(trainSet) < trainSize:
-		index = random.randrange(len(copy))
-		trainSet.append(copy.pop(index))
-	return [trainSet, copy]
-
-
 #-------------------------------------------------------------------------
 #   Naive Bayes
 #
@@ -51,7 +41,7 @@ def splitDataset(dataset, splitRatio):
 
 class GaussianNB(object):
 
-    def fit(self,train_data,numFrag):
+    def fit(self,data,settings,numFrag):
         """
             Gaussian Naive Bayes:
 
@@ -75,20 +65,37 @@ class GaussianNB(object):
             :return The model (np.array)
         """
 
+		#Data format:  label,f1,f2,f3...
+        label = settings['label']
+        features = settings['features']
 
-        from pycompss.api.api import compss_wait_on
-        separated       = [ self.separateByClass(train_data[i]) for i in range(numFrag)]   # separa as classes
-        partial_fitted  = [ self.partial_fit(separated[i]) for i in range(numFrag)]
-        merged_fitted   = [ mergeReduce(self.merge_summaries1, partial_fitted)] #result: mean and len
-        merged_fitted   = merged_fitted[0]
+
+
+        separated       = [ self.separateByClass(data[i],label,features) for i in range(numFrag)]   # separa as classes
+        merged_fitted   = mergeReduce(self.merge_summaries1, separated ) #result: mean and len
+
         partial_result  = [ self.addVar(merged_fitted,separated[i])  for i in range(numFrag)]
-        merged_fitted   = [ mergeReduce(self.merge_summaries2, partial_result)]
+        merged_fitted   = mergeReduce(self.merge_summaries2, partial_result)
 
-        merged_fitted = compss_wait_on(merged_fitted)
         summaries = self.calcSTDEV(merged_fitted)
 
-        #self.summaries = summaries
         return summaries
+
+    @task(returns=list, isModifier = False)
+    def separateByClass(self,train_data,label,features):
+        separated = {}
+        for i in range(len(train_data)):
+            l = train_data.iloc[i][label]
+            if (l not in separated):
+                separated[l] = []
+            separated[l].append(train_data.iloc[i][features])
+
+        summaries = {}
+        for classValue, instances in separated.iteritems():
+            summaries[classValue] = self.summarize(instances)
+
+        return summaries
+
 
     @task(returns=dict, isModifier = False)
     def addVar(self,merged_fitted, separated):
@@ -97,7 +104,7 @@ class GaussianNB(object):
         for att in separated:
             summaries = []
             nums = separated[att]
-            print "nums: ",nums
+            #print "nums: ",nums
             d = 0
             nums2 = merged_fitted[att]
             #print "nums2: ",nums2
@@ -111,9 +118,9 @@ class GaussianNB(object):
 
         return summary
 
-
+    @task(returns=dict, isModifier = False)
     def calcSTDEV(self,summaries):
-        summaries = summaries[0]
+        #summaries = summaries[0]
         new_summaries = {}
         for att in summaries:
             tupla = summaries[att]
@@ -122,13 +129,7 @@ class GaussianNB(object):
                 new_summaries[att].append((t[0], math.sqrt(t[1]/t[2])))
         return new_summaries
 
-    @task(returns=dict, isModifier = False)
-    def partial_fit(self,separated):
-        summaries = {}
-        for classValue, instances in separated.iteritems():
-            summaries[classValue] = self.summarize(instances)
 
-        return summaries
 
     @task(returns=list, isModifier = False)
     def merge_summaries2(self,summaries1,summaries2):
@@ -158,15 +159,6 @@ class GaussianNB(object):
 
 
 
-    def separateByClass(self,train_data):
-    	separated = {}
-
-    	for i in range(len(train_data)):
-    	 	if (train_data[i][0] not in separated):
-    	 		separated[train_data[i][0]] = []
-    	 	separated[train_data[i][0]].append(train_data[i][1:,])
-
-    	return separated
 
     def summarize(self,features):
         summaries = []
@@ -185,7 +177,7 @@ class GaussianNB(object):
     #   predictions
     #-------------------------------------------------------------------------
 
-    def transform(self,testSet,model, numFrag):
+    def transform(self,data,settings, numFrag):
         """
             Gaussian Naive Bayes:
 
@@ -194,29 +186,33 @@ class GaussianNB(object):
             probability.
 
             :param TestSet:  A np.array (splitted) with the data
-            :param model: A summaries, a np.array with the probabilities.
+            :param settings: Thats includes a np.array with the probabilities (model).
             :param numFrag: num fragments, if -1 data is considered chunked
             :return: list with the predictions.
         """
+        model = settings['model']
+        partialResult = [ self.predict_chunck(data[i],model,settings) for i in range(numFrag) ]
 
-        from pycompss.api.api import compss_wait_on
-        partialResult = [ self.predict_chunck(model, testSet[i])  for i in range(numFrag) ]
-        result = mergeReduce(self.merge_lists, partialResult)
-        result = compss_wait_on(result)
-
-        return result
+        return partialResult
 
     @task(returns=list, isModifier = False)
     def merge_lists(self,list1,list2):
         return list1+list2
 
     @task(returns=list, isModifier = False)
-    def predict_chunck(self,summaries, testSet):
+    def predict_chunck(self, data,summaries,settings):
+        #print summaries
+        features = settings['features']
+        predictedLabel = settings['new_name'] if 'new_name' in settings else "{}_predited".format(label)
+
         predictions = []
-        for i in range(len(testSet)):
-         	result = self.predict(summaries, testSet[i])
+        for i in range(len(data)):
+         	result = self.predict(summaries, data.iloc[i][features])
          	predictions.append(result)
-        return predictions
+
+
+        data[predictedLabel] =  pd.Series(predictions).values
+        return data
 
     def predict(self,summaries, inputVector):
     	probabilities = self.calculateClassProbabilities(summaries, inputVector)

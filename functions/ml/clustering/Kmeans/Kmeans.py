@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 
 import numpy as np
+import pandas as pd
 import math
 from pycompss.api.task import task
 from pycompss.api.parameter import *
@@ -9,26 +10,19 @@ from pycompss.functions.reduce import mergeReduce
 
 
 class Kmeans(object):
-    def fit(self, settings):
-        """
-            Kmeans.fit():
-                Setting up the model.
+
+    @task(returns=list, isModifier = False)
+    def format_data(self,data,columns):
+        train_data = []
+        tmp = np.array(data[columns].values)
+
+        for j in range(len(tmp)):
+            train_data.append([tmp[j][0],tmp[j][1:,]])
 
 
-            :param k: A number of centroids
-            :param maxIterations: max iterations
-            :param epsilon: error threshold
-            :return A model
-        """
-        k = settings['k']
-        maxIterations = settings['maxIterations']
-        epsilon = settings['epsilon']
-        initMode = settings['initMode']
+        return train_data
 
-        return [k,maxIterations,epsilon,initMode]
-
-
-    def transform(self,data,model,numFrag):
+    def transform(self,Data,settings,numFrag):
         """
             kmeans: starting with a set of randomly chosen initial centers,
             one repeatedly assigns each imput point to its nearest center, and
@@ -42,15 +36,20 @@ class Kmeans(object):
         """
         from pycompss.api.api import compss_wait_on
 
-        k             = int(model[0])
-        maxIterations = int(model[1])
-        epsilon       = float(model[2])
-        initMode      = model[3]
+
+
+        columns = settings['features']
+        data = [self.format_data(Data[i],columns) for i in range(numFrag)]
+        data = compss_wait_on(data)
+        k             = int(settings['k'])
+        maxIterations = int(settings['maxIterations'])
+        epsilon       = float(settings['epsilon'])
+        initMode      = settings['initMode']
 
         mu = self.init(data, k, initMode)
         oldmu = []
         n = 0
-        size = int(len(data) / numFrag)
+        size = len(data[0])#int(len(data) / numFrag) #size of each part
 
         while not self.has_converged(mu, oldmu, epsilon, n, maxIterations):
             oldmu = list(mu)
@@ -61,7 +60,25 @@ class Kmeans(object):
             mu = compss_wait_on(mu)
             mu = [mu[c][1] / mu[c][0] for c in mu]
             n += 1
-        return mu
+
+        Data = [self.assigment_cluster(data[f], mu,Data[f]) for f in range(numFrag)]
+        #Data = compss_wait_on(Data)
+        #print Data
+        return Data
+
+
+    @task(returns=dict,isModifier = False)
+    def assigment_cluster(self,XP, mu, data):
+        XP = np.array(XP)
+        values = []
+        new_column = "Cluster_predited"
+        for x in enumerate(XP):
+            bestmukey = min([(i[0], np.linalg.norm(x[1] - mu[i[0]]))
+                             for i in enumerate(mu)], key=lambda t: t[1])[0]
+            values.append(bestmukey)
+        data[new_column] =  pd.Series(values).values
+        return data
+
 
     @task(returns=dict,isModifier = False)
     def cluster_points_partial(self,XP, mu, ind):
@@ -144,6 +161,7 @@ class Kmeans(object):
         numFrag = len(X)
         ind = random.randint(0, numFrag-1)
         XP  = X[ind]
+        #print XP
         C = random.sample(XP, 1)
         phi = sum([self.cost(x, C) for x in X])
 
