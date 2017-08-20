@@ -16,14 +16,20 @@ Data operations:
 ETL Operations:
 
 * Add Columns
-* Add Rows
+* Aggregation
+* Clean Missing
 * Difference
-* Remove Duplicated Rows
 * Drop
 * Intersection
-* Projection
-* Split
+* Join
+* Remove Duplicated Rows
+* Replace Values
 * Sample
+* Select
+* Sort
+* Split
+* Transform
+* Union
 
 Machine Learning Operations:
 
@@ -32,12 +38,26 @@ Machine Learning Operations:
 * Naive Bayes Classifier
 * Svm Classification
 * Linear Regression
+* Logistic Regression
+* Apriori
+* PageRank
+
 
 Text Operations:
 
 * Tokenizer  (BoW, TF-IDF)
 * Remove Stopwords
+* StringIndexer
 
+Metrics:
+
+* Classification Model Evaluation
+* Regression Model Evaluation
+
+Geografic  Operations:
+
+* Read Shapefile
+* Geo Within
 
 
 

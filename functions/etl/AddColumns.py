@@ -5,7 +5,6 @@
 from pycompss.api.task import task
 from pycompss.api.parameter import *
 from pycompss.functions.reduce import mergeReduce
-from pycompss.functions.data import chunks
 from pycompss.api.api import compss_wait_on
 
 import numpy as np
