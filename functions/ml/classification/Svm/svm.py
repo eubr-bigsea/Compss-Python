@@ -97,53 +97,68 @@ class SVM(object):
 
     @task(returns=list, isModifier = False)
     def calc_CostAndGrad(self,train_data,f,coef_lambda,w,label,features):
-        numDim = self.get_dimension(data.iloc[0][X])
+		if len(train_data)>0:
+		    numDim = self.get_dimension(train_data.iloc[0][features])
 
-        ypp   = [0 for i in range(len(train_data))]
-        cost  = [0,0]
-        grad  = [0 for i in range(numDim)]
+		    ypp   = [0 for i in range(len(train_data))]
+		    cost  = [0,0]
+		    grad  = [0 for i in range(numDim)]
 
-        if numDim != len(w):
-            w = [0 for i in range(numDim)] #initial
+		    if numDim != len(w):
+		        w = [0 for i in range(numDim)] #initial
 
-        if (len(train_data)):
-            for i in range(len(train_data)):
-                ypp[i]=0
-                for d in xrange(0,numDim):
-                    ypp[i]+=train_data.iloc[i][features][d]*w[d]
+		    if (len(train_data)):
+		        for i in range(len(train_data)):
+		            ypp[i]=0
+		            for d in xrange(0,numDim):
+		                ypp[i]+=train_data.iloc[i][features][d]*w[d]
 
-                if (train_data.iloc[i][label] * ypp[i] -1) < 0:
-                    cost[0]+=(1 - train_data.iloc[i][label] * ypp[i])
+		            if (train_data.iloc[i][label] * ypp[i] -1) < 0:
+		                cost[0]+=(1 - train_data.iloc[i][label] * ypp[i])
 
 
-            for d in range(numDim):
-                grad[d]=0
-                if f is 0:
-                    grad[d]+=abs(coef_lambda * w[d])
+		        for d in range(numDim):
+		            grad[d]=0
+		            if f is 0:
+		                grad[d]+=abs(coef_lambda * w[d])
 
-                for i in range(len(train_data)):
-                    if (train_data.iloc[i][label]*ypp[i]-1) < 0:
-                        grad[d] -= train_data.iloc[i][label]*train_data.iloc[i][features][d]
+		            for i in range(len(train_data)):
+		                if (train_data.iloc[i][label]*ypp[i]-1) < 0:
+		                    grad[d] -= train_data.iloc[i][label]*train_data.iloc[i][features][d]
 
-        return [cost,grad]
+		    return [cost,grad]
+		else:
+		    return [None,None]
 
     @task(returns=list, isModifier = False)
     def accumulate_CostAndGrad(self,cost_grad_p1,cost_grad_p2):
+
         cost_p1 = cost_grad_p1[0]
         cost_p2 = cost_grad_p2[0]
+        grad_p1 = cost_grad_p1[1]
+        grad_p2 = cost_grad_p2[1]
+
+        if (cost_p1 == None):
+            cost_p1 = cost_p2
+            grad_p1 = grad_p2
+
+        if (cost_p1 == None) and (cost_p2 == None):
+            return [None,None]
+
+        if (cost_p2 == None):
+            return cost_grad_p1
+
         for i in range(len(cost_p1)):
             cost_p1[i]+=cost_p2[i]
 
-        grad_p1 = cost_grad_p1[1]
-        grad_p2 = cost_grad_p2[1]
+
         for d in range(len(grad_p1)):
             grad_p1[d]+=grad_p2[d]
 
         return [cost_p1, grad_p1]
-
     #------------------------------------------------------------------------
 
-    def transform(self,data, settings, numFrag):
+    def transform(self,data, model, settings, numFrag):
         """
             SVM is a supervised learning model used for binary classification.
             Given a set of training examples, each marked as belonging to one or
@@ -167,11 +182,11 @@ class SVM(object):
             :return: A list with the labels
         """
 
-        w = settings['model']
+        label = settings['label']
         features = settings['features']
         predictedLabel = settings['new_name'] if 'new_name' in settings else "{}_predited".format(label)
 
-        result_p   = [ self.predict_partial(data[f],w,predictedLabel,features)  for f in range(numFrag) ]
+        result_p   = [ self.predict_partial(data[f],model,predictedLabel,features)  for f in range(numFrag) ]
 
         return result_p
 

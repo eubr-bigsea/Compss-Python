@@ -5,14 +5,11 @@
 from pycompss.api.task import task
 from pycompss.api.parameter import *
 from pycompss.functions.reduce import mergeReduce
-from pycompss.functions.data import chunks
-from pycompss.api.api import compss_wait_on, barrier
+
 
 import numpy as np
 import pandas as pd
 import math
-
-
 
 
 #-------------------------------------------------------------------------------
@@ -20,31 +17,34 @@ import math
 
 def IntersectionOperation(data1,data2,numFrag):
     """
-        Function which returns a new set with elements that are common to all sets.
-        The output is already merged.
+        Function which returns a new set with elements
+        that are common to all sets.
 
-        :param data1: A np.array with already splited in numFrags
-        :param data2: A np.array with already splited in numFrags
-        :return: Returns a  new np.array
+        :param data1:  A pandas dataframe already splited in numFrags
+        :param data2:  A pandas dataframe already splited in numFrags
+        :return: Returns a new pandas dataframe
     """
 
     data_result = [[] for i in range(numFrag)]
 
     for i in xrange(numFrag):
         data_partial   = [ Intersect_part(data1[i], data2[j]) for j in xrange(numFrag) ]
-        data_result[i] =  mergeReduce(Union_part,data_partial)
+        data_result[i] =  mergeReduce(mergeIntersect,data_partial)
 
     return data_result
 
 
 @task(returns=list)
 def Intersect_part(list1,list2):
-    print "\nIntersect_part\n---\n{}\n---\n{}\n---\n".format(list1,list2)
-    if len(list1) == 0 or len(list2) == 0:
-        result = []
-    else:
-        result = list1.merge(list2)
-        print result
+    keys = list1.columns.tolist()
+    result = pd.merge(list1, list2, how='inner', on=keys)
 
+    return  result
+
+
+@task(returns=list)
+def mergeIntersect(list1,list2):
+    #print "\nUnion_part\n---\n{}\n---\n{}\n---\n".format(list1,list2)
+    result = pd.concat([list1,list2], ignore_index=True)
     return  result
 #-------------------------------------------------------------------------------

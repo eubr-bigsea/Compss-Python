@@ -16,7 +16,7 @@ import math
 #-------------------------------------------------------------------------------
 # Union of the datasets
 
-def Union(data1, data2,numFrag):
+def UnionOperation(data1, data2,numFrag):
     """
         Function which do a union between two np.arrays.
         The output remains splitted.

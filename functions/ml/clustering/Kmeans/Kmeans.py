@@ -11,18 +11,7 @@ from pycompss.functions.reduce import mergeReduce
 
 class Kmeans(object):
 
-    @task(returns=list, isModifier = False)
-    def format_data(self,data,columns):
-        train_data = []
-        tmp = np.array(data[columns].values)
-
-        for j in range(len(tmp)):
-            train_data.append([tmp[j][0],tmp[j][1:,]])
-
-
-        return train_data
-
-    def transform(self,Data,settings,numFrag):
+    def transform(self,data,settings,numFrag):
         """
             kmeans: starting with a set of randomly chosen initial centers,
             one repeatedly assigns each imput point to its nearest center, and
@@ -36,73 +25,70 @@ class Kmeans(object):
         """
         from pycompss.api.api import compss_wait_on
 
-
-
         columns = settings['features']
-        data = [self.format_data(Data[i],columns) for i in range(numFrag)]
-        data = compss_wait_on(data)
+
         k             = int(settings['k'])
         maxIterations = int(settings['maxIterations'])
         epsilon       = float(settings['epsilon'])
         initMode      = settings['initMode']
+        
+        new_column = settings['new_name'] if 'new_name' in settings else columns+"_ClusterPredicted"
 
-        mu = self.init(data, k, initMode)
-        oldmu = []
-        n = 0
-        size = len(data[0])#int(len(data) / numFrag) #size of each part
+        if initMode == "random":
+            from random import randint
+            partitions_C = [randint(0, numFrag-3) for i in range(k)]
+            centroids = [ self.initMode_random(data[f], columns, f, partitions_C) for f in range(numFrag)]
+            centroids = mergeReduce(self.mergeCentroids,centroids)
+            centroids = compss_wait_on(centroids)
+        elif initMode == "k-means||":
+            centroids = self.init_parallel(data, columns, k,  k, numFrag)
 
-        while not self.has_converged(mu, oldmu, epsilon, n, maxIterations):
-            oldmu = list(mu)
-            clusters = [self.cluster_points_partial(data[f], mu, f * size) for f in range(numFrag)]
-            partialResult = [self.partial_sum(data[f], clusters[f], f * size) for f in range(numFrag)]
+        size = centroids[1]
+        centroids = centroids[0]
 
-            mu = mergeReduce(self.reduceCentersTask, partialResult)
-            mu = compss_wait_on(mu)
-            mu = [mu[c][1] / mu[c][0] for c in mu]
-            n += 1
+        old_centroids = []
+        it = 0
 
-        Data = [self.assigment_cluster(data[f], mu,Data[f]) for f in range(numFrag)]
-        #Data = compss_wait_on(Data)
-        #print Data
-        return Data
+        while not self.has_converged(centroids, old_centroids, epsilon, it, maxIterations):
+            old_centroids = list(centroids)
+            idx = [ self.find_closest_centroids(data[f], columns, centroids) for f in range(numFrag)]
 
+            idx = mergeReduce(self.reduceCentersTask, idx)
+            idx = compss_wait_on(idx)
+            centroids = self.compute_centroids(idx, numFrag)
 
-    @task(returns=dict,isModifier = False)
-    def assigment_cluster(self,XP, mu, data):
-        XP = np.array(XP)
-        values = []
-        new_column = "Cluster_predited"
-        for x in enumerate(XP):
-            bestmukey = min([(i[0], np.linalg.norm(x[1] - mu[i[0]]))
-                             for i in enumerate(mu)], key=lambda t: t[1])[0]
-            values.append(bestmukey)
-        data[new_column] =  pd.Series(values).values
-        return data
+            it += 1
+            #print "Iter:{} - Centroids:{}".format(it,centroids)
 
 
-    @task(returns=dict,isModifier = False)
-    def cluster_points_partial(self,XP, mu, ind):
-        dic = {}
-        XP = np.array(XP)
-        for x in enumerate(XP):
-            bestmukey = min([(i[0], np.linalg.norm(x[1] - mu[i[0]]))
-                             for i in enumerate(mu)], key=lambda t: t[1])[0]
-            if bestmukey not in dic:
-                dic[bestmukey] = [x[0] + ind]
-            else:
-                dic[bestmukey].append(x[0] + ind)
-        return dic
 
+        data = [self.assigment_cluster(data[f], columns, centroids, new_column) for f in range(numFrag) ]
+        c = pd.DataFrame([[c] for c in centroids],columns=["Clusters"])
+
+        return data,c
 
     @task(returns=dict,isModifier = False)
-    def partial_sum(self,XP, clusters, ind):
-        XP = np.array(XP)
-        p = [(i, [(XP[j - ind]) for j in clusters[i]]) for i in clusters]
-        dic = {}
-        for i, l in p:
-            dic[i] = (len(l), np.sum(l, axis=0))
-        return dic
+    def find_closest_centroids(self,data, columns, mu):
 
+        XP = np.array(data[columns].values)
+        new_centroids = dict()
+        k = len(mu)
+
+        for i in range(k):
+            new_centroids[i] = [0,[]]
+
+        for x in XP:
+            distances = np.array([ np.linalg.norm(x - np.array(mu[j]) ) for j in range(k) ])
+            bestC = distances.argmin(axis=0)
+            new_centroids[bestC][0]+=1
+            new_centroids[bestC][1].append(x)
+
+
+        for i in range(k):
+            new_centroids[i][1] = np.sum(new_centroids[i][1], axis=0)
+
+        #print new_centroids
+        return new_centroids
 
     @task(returns=dict, priority=True,isModifier = False)
     def reduceCentersTask(self,a, b):
@@ -113,13 +99,34 @@ class Kmeans(object):
                 a[key] = (a[key][0] + b[key][0], a[key][1] + b[key][1])
         return a
 
+    def compute_centroids(self, centroids, numFrag):
+        """ Next we need a function to compute the centroid of a cluster.
+            The centroid is simply the mean of all of the examples currently
+            assigned to the cluster."""
+
+
+        centroids = [ centroids[c][1] / centroids[c][0] for c in centroids]
+        return centroids
+
+    @task(returns=list,isModifier = False)
+    def assigment_cluster(self,data, columns, mu, new_column):
+        XP = np.array(data[columns].values)
+        k = len(mu)
+        values = []
+        for x in XP:
+            distances = np.array([ np.linalg.norm(x - mu[j] ) for j in range(k) ])
+            bestC = distances.argmin(axis=0)
+            values.append(bestC)
+
+        data[new_column] = pd.Series(values).values
+        return data
 
     def has_converged(self,mu, oldmu, epsilon, iter, maxIterations):
         if oldmu != []:
             if iter < maxIterations:
                 aux = [np.linalg.norm(oldmu[i] - mu[i]) for i in range(len(mu))]
                 distancia = sum(aux)
-                if distancia < epsilon * epsilon:
+                if distancia < (epsilon**2):
                     return True
                 else:
                     return False
@@ -127,69 +134,157 @@ class Kmeans(object):
                 return True
 
 
-    def distance(self,p, X):
-        return min([np.linalg.norm(np.array(p)-x) for x in X])
 
 
-    def cost(self,Y, C):
-        return sum([self.distance(x, C)**2 for x in Y])
+    @task(returns=list,isModifier = False)
+    def cost(self, data, columns, C):
+        XP = np.array(data[columns].values)
+        dist = 0
+        for x in XP:
+            dist+= self.distance(x, C)**2
+
+        return dist
+
+    def distance(self,x, C):
+        return min( np.array([ np.linalg.norm(x - np.array(c) ) for c in C ]) )
+
+    @task(returns=list,isModifier = False)
+    def mergeCostPhi(self, cost1, cost2):
+        return cost1+cost2
+
+    @task(returns=list,isModifier = False)
+    def initC(self, data,columns):
+        import random
+        return [ random.sample(data[columns].tolist(), 1),0]
 
 
-    def bestMuKey(self,X, C):
+    def init_parallel(self, data, columns, k, l, numFrag):
+        """
+        Initialize a set of cluster centers using the k-means|| algorithm by Bahmani et al.
+        (Bahmani et al., Scalable K-Means++, VLDB 2012). This is a variant of k-means++ that tries
+        to find dissimilar cluster centers by starting with a random center and then doing
+        passes where more centers are chosen with probability proportional to their squared distance
+        to the current cluster set. It results in a provable approximation to an optimal clustering.
+
+        The original paper can be found at http://theory.stanford.edu/~sergei/papers/vldb12-kmpar.pdf.
+
+        l = oversampling factor =  0.2k or 1.5k
+        """
+        from pycompss.api.api import compss_wait_on
+
+
+        """
+        Step1: C ← sample a point uniformly at random from X
+        """
+        import random
+
+        f = random.randint(0, numFrag-1)
+        C = self.initC(data[f], columns )
+
+        """
+        Step2: Compute ϕX(C) as the sum of all distances from xi to the closest point in C
+        """
+        cost_p = [ self.cost(data[f],columns, C) for f in range(numFrag)] #compute d2 for each x_i
+        phi = mergeReduce(self.mergeCostPhi, cost_p)
+        phi = compss_wait_on(phi)
+        LogPhi = int(round(np.log(phi)))
+        #print "cost", phi
+        #print "phi", LogPhi
+        #print "L",l
+        #print "iter:{} | C:{}".format(-1,C[0])
+        for i in range(LogPhi):
+            """
+            Step3: For each point in X, denoted as xi, compute a probability from
+            px=l*d2(x,C)/ϕX(C). Here you have l a factor given as parameter,
+            d2(x,C) is the distance to the closest center, and ϕX(C) is explained
+            at step 2.
+            """
+            c = [self.probabilities(data[f], columns, C, l, phi,f) for f in range(numFrag)]
+            #print c
+            C = mergeReduce(self.mergeCentroids,c)
+            #print "iter:{} | C:{}".format(i,C[0])
+
+        """
+        In the end we have C with all centroid candidates
+
+        Step 4: pick k centers. A simple algorithm for that is to create a
+        vector w of size equals to the number of elements in C, and initialize
+        all its values with 0. Now iterate in X (elements not selected in as
+        centroids), and for each xi∈X, find the index j of the closest centroid
+        (element from C) and increment w[j]] with 1.
+
+        Step 5: when exactly k centers have been chosen, finalize the
+        initialization phase and proceed with the standard k-means algorithm
+
+        """
+        w = [ self.bestMuKey(data[f], columns, C) for f in range(numFrag) ]
+        ws = mergeReduce(self.MergeBestMuKey, w)
+        ws = compss_wait_on(ws)
+
+        Centroids = np.argsort(ws)
+        best_id =  Centroids[:k]
+        #print best_id
+        C = compss_wait_on(C)
+        Centroids = [ C[0][index] for index in best_id]
+
+        #print "Centroids",Centroids
+        return Centroids
+
+
+    @task(returns=list,isModifier = False)
+    def probabilities(self, data, columns, C, l, phi,f):
+        newC = []
+
+        for x in data[columns].values:
+            if x not in C[0]:
+                px = (l*self.distance(x, C[0])**2)/phi
+                if px >= np.random.random(1):
+                    newC.append(x)
+
+
+        #    print "newC-input",newC
+        #print "C",C[0]
+        if f == 0 :
+            if len(newC) == 0:
+                newC = C[0]
+            else:
+                newC = newC + C[0]
+
+        #print "newC-output",newC
+        return [newC, len(data)]
+
+    @task(returns=list,isModifier = False)
+    def MergeBestMuKey(self,w1,w2):
+        for i in range(len(w2)):
+            w1[i]+=w2[i]
+
+
+        return w1
+
+    @task(returns=list,isModifier = False)
+    def bestMuKey(self,data,columns, C):
+        C = C[0]
         w = [0 for i in xrange(len(C))]
-        for x in X:
-            bestmukey = min([(i[0], np.linalg.norm(x-np.array(C[i[0]])))
-                            for i in enumerate(C)], key=lambda t: t[1])[0]
-            w[bestmukey] += 1
+        for x in np.array(data[columns]):
+            distances = np.array([ np.linalg.norm(x - np.array(c) ) for c in C ])
+            bestC = distances.argmin(axis=0)
+            w[bestC]+=1
+
         return w
 
 
 
-    def probabilities(self,X, C, l, phi, n):
-        np.random.seed(5)
-        p = [(l*self.distance(x, C)**2)/phi for x in X]
-        p /= sum(p)
-        idx = np.random.choice(n, l, p=p)
-        newC = [X[i][0] for i in idx]
-        return newC
+
+    @task(returns=list,isModifier = False)
+    def initMode_random(self,data, columns,  f, partitions_C):
+        from random import sample
+        num = sum([1 for c in partitions_C if c == f ])
+        sampled = sample(data[columns].tolist(), num)
+        size = len(data)
+
+        return [sampled,[size]]
 
 
-
-    def init_parallel(self,X, k, l, initSteps=2):
-        import random
-        random.seed(5)
-        numFrag = len(X)
-        ind = random.randint(0, numFrag-1)
-        XP  = X[ind]
-        #print XP
-        C = random.sample(XP, 1)
-        phi = sum([self.cost(x, C) for x in X])
-
-        for i in range(initSteps):
-            '''calculate p'''
-            c = [self.probabilities(x, C, l, phi, len(x)) for x in X]
-            C.extend([item for sublist in c for item in sublist])
-            '''cost distributed'''
-            phi = sum([self.cost(x, C) for x in X])
-
-        '''pick k centers'''
-        w = [self.bestMuKey(x, C) for x in X]
-        bestC = [sum(x) for x in zip(*w)]
-        bestC = np.argsort(bestC)
-        bestC = bestC[::-1]
-        bestC = bestC[:k]
-        return [C[b] for b in bestC]
-
-
-    def init_random(self,dim, k):
-        np.random.seed(2)
-        m = np.array([np.random.random(dim) for _ in range(k)])
-        return m
-
-
-    def init(self,X, k, mode):
-        if mode == "kmeans++":
-            return self.init_parallel(X, k, k)
-        else:
-            dim = len(X[0][0])
-            return self.init_random(dim, k)
+    @task(returns=list,isModifier = False)
+    def mergeCentroids(self,a, b):
+        return [ a[0] + b[0] , a[1] + b[1]]

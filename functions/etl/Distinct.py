@@ -5,8 +5,6 @@
 from pycompss.api.task import task
 from pycompss.api.parameter import *
 from pycompss.functions.reduce import mergeReduce
-from pycompss.functions.data import chunks
-from pycompss.api.api import compss_wait_on, barrier
 
 import numpy as np
 import pandas as pd
@@ -16,7 +14,7 @@ import math
 #-------------------------------------------------------------------------------
 # Remove duplicate rows in a array
 
-def RemoveDuplicatedOperation(data,cols,numFrag):
+def DistinctOperation(data,cols,numFrag):
     """
         Function which remove duplicates elements (distinct elements) in a
         pandas dataframe.

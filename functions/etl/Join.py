@@ -18,118 +18,107 @@ import math
 
 
 
-def JoinOperation (data1,data2,id1,id2,params,numFrag):
+def JoinOperation (data1,data2,params,numFrag):
     result = [[] for i in range(numFrag)]
+    key1 = params['key1']
+    key2 = params['key2']
 
-    if params['option'] == "inner":
+    TYPE = params['option']
+    if TYPE == "inner": 
         for i in range(numFrag):
-            partial_join    = [InnerJoin(data1[i],data2[j],id1,id2) for j in range(numFrag)]
-            result[i]  = mergeReduce(mergeInnerJoin,partial_join)
+            partial_join    = [ InnerJoin(data1[i], data2[j], params) for j in range(numFrag)]
+            result[i]       = mergeReduce(mergeInnerJoin,partial_join)
         return result
-            #merged_join[i]  = merged_join[i][0]       ------------- TEm como enviar 2 ou mais ##############
 
-    elif params['option'] == "left":
+    elif TYPE == "left":
         partial_m = [[] for i in range(numFrag)]
         for i in range(numFrag):
-            partial_join    = [InnerJoin(data1[i],data2[j],id1,id2) for j in range(numFrag)]
+            partial_join    = [ InnerJoin(data1[i],data2[j], params) for j in range(numFrag) ]
             partial_m[i]    = mergeReduce(mergeInnerJoin,partial_join)
-            result[i]       = mergeLeftJoin(partial_m[i],data1[i],id2,id1)
+            result[i]       = mergeLeftRightJoin(data1[i],partial_m[i],params)
         return result
-    elif params['option'] == "right":
+
+    elif TYPE] == "right":
         partial_m = [[] for i in range(numFrag)]
         for i in range(numFrag):
-            partial_join    = [InnerJoin(data1[i],data2[j],id1,id2) for j in range(numFrag)]
+            partial_join    = [ InnerJoin(data1[i],data2[j], params) for j in range(numFrag) ]
             partial_m[i]    = mergeReduce(mergeInnerJoin,partial_join)
-            result[i]       = mergeRightJoin(partial_m[i],data2[i],id1,id2)
+            result[i]       = mergeLeftRightJoin(data2[i],partial_m[i], params)
         return result
+
+    else:
+        return None
 
 
 
 
 @task(returns=list)
-def InnerJoin(data1,data2,id1,id2):
+def InnerJoin(data1,data2,params):
 
-    print data1
-    print "----"
-    print data2
+    key1 = params['key1']
+    key2 = params['key2']
+    case = params['case']
+    keep = params['keep_keys']
 
-    if len(data1)>0 and len(data2)>0:
-            df_partial = pd.merge(data1,data2, how='inner', left_on=id1, right_on=id2)
-            print df_partial
-            return df_partial
+    if params['option'] != "inner":
+        data1['data1_InnerJoin'] = data1.index
+    #data2.rename(columns={'ticket': 'ticket2'}, inplace=True) #only to test
+
+    #data1 = data1[key1].apply(lambda col: col.str.lower())
+    #data1['data1'] = data1.index
+    #data2['data2'] = data2.index
+
+    #data1.apply(lambda col: col.str.lower())
+
+    if not case:
+        data1_tmp = data1[key1].apply(lambda col: col.str.lower())
+        data1_tmp['data1_tmp'] = data1_tmp.index
+        data2_tmp = data2[key2].apply(lambda col: col.str.lower())
+        data2_tmp['data2_tmp'] = data2_tmp.index
+
+        df_tmp = pd.merge(data1_tmp, data2_tmp, how='inner',left_on=key1, right_on=key2)
+        df_tmp.drop(key1+key2, axis=1, inplace=True)
+        #print  df_tmp.head(10)
+        #print "----------------"
+        df_tmp  = pd.merge(data1,df_tmp, left_index = True, right_on='data1_tmp',suffixes=('', '_right'))
+        #print df_tmp.head(10)
+        #print "----------------"
+        df_partial  = pd.merge(data2, df_tmp, left_index = True, right_on='data2_tmp',suffixes=('', '_right'))
+        df_partial.drop(['data1_tmp','data2_tmp'], axis=1, inplace=True)
+        #print df_partial
+
+        if not keep:
+            #finding for the keys of data2 where is not in data1
+            needRemove2 = []
+            for k in key2:
+                if (k+"_right") in df_partial.columns:
+                    needRemove2.append(k+"_right")
+                elif (k in df_partial.columns) and k not in key1:
+                    needRemove2.append(k)
+
+            #print needRemove2
+            df_partial.drop(needRemove2, axis=1, inplace=True)
+
+
     else:
-            return []
+        df_partial = pd.merge(data1, data2, how='inner',
+                                                left_on=key1,
+                                                right_on=key2,
+                                                suffixes=('', '_right'))
+
+        if not keep:
+            #finding for the keys of data2 where is not in data1
+            needKeep2 = [k for k in key2 if k not in key1]
+            #print needKeep2
+            df_partial.drop(needKeep2, axis=1, inplace=True)
+
 
     return df_partial
-
-@task(returns=list)
-def LeftJoin(data1,data2,id1,id2):
-
-    print data1
-    print "----"
-    print data2
-
-    if len(data1)>0 :
-        if len(data2)>0 :
-
-            df_partial = pd.merge(data1,data2, how='left', left_on=id1, right_on=id2,indicator=True)
-            idx = list(set(id1+id2))
-            df_partial.set_index(id1)
-            print df_partial
-            return df_partial
-        else:
-            df_partial = data1
-            print df_partial
-            return df_partial
-    else:
-        df_partial = data2
-        print df_partial
-        return df_partial
-
-
-@task(returns=list)
-def RightJoin(data1,data2,id1,id2):
-    L = len(data2)
-
-    if L ==0:
-        return [[],[]]
-    if len(data1) == 0:
-        return [[],[]]
-
-    C = len(data1[0]) + len(data2[0]) - len(id1)
-    size = len(data1[0]) - len(id1)
-
-    #print "L :{} | C (A+B) : {} |  sub(A-B): {}".format(L,C,size)
-
-    b = np.zeros((L,C ))
-    b[:,size:] = data2
-    log = np.zeros((L,1 ))
-
-    print b
-
-    for i in range(len(data2)):
-        for j in range(len(data1)):
-            found=True
-
-            for i1,j2 in  zip(id1,id2):
-                if data1[i][i1] != data2[j][j2]:
-                    found=False
-            if found:
-                sub = np.delete(data1[j], id2, None)
-
-                b[i][:size] =  sub
-                log[i]=1
-
-
-    print [b,log]
-
-    return [b,log]
-
 
 
 @task(returns=list)
 def mergeInnerJoin(data1,data2):
-
+    #in all the cases, columns will be correct
     if len(data1)>0:
         if len(data2)>0:
             return pd.concat([data1,data2])
@@ -138,40 +127,58 @@ def mergeInnerJoin(data1,data2):
     else:
         return data2
 
-@task(returns=list)
-def mergeLeftJoin(data1,data2,id1,id2):
-
-    print data1
-    print "---"
-    print data2
-
-    if len(data1)>0:
-        if len(data2)>0:
-            data = data1.set_index(id1).merge(data2.set_index(id2))
-            print  data
-            return data
-        else:
-            return data1
-            #log = data2[1]
-    else:
-        return data2
 
 @task(returns=list)
-def mergeRightJoin(data1,data2,id1,id2):
+def mergeLeftRightJoin(data1, data2, params):
 
-    print data1
-    print id1
-    print "---"
-    print data2
-    print id2
 
-    if len(data1)>0:
-        if len(data2)>0:
-            data = data2.set_index(id2).merge(data1.set_index(id1))
-            print  data
-            return data
-        else:
-            return data1
-            #log = data2[1]
-    else:
-        return data2
+
+    # print data1.columns
+    # print data2.columns
+    # print "---"
+    # print data1
+    # print "---"
+    # print data2
+    if params['option'] == "right":
+        key1 = params['key1']
+        key2 = params['key2']
+        cols2 = data2.columns
+        cols1 = data1.columns
+
+        convert ={}
+        for c in range(len(cols1)):
+            col = cols1[c]
+            if ( (col+"_right") in cols2) and ((col+"_right") not in cols1):
+                new = "{}_right".format(col)
+                convert[col] = new
+        data1.rename(columns=convert, inplace=True)
+
+    list_indexes = data2['data1_InnerJoin'].tolist()
+    #print list_indexes
+    data1.drop(list_indexes, inplace=True)
+    data2.drop('data1_InnerJoin', axis=1, inplace=True)
+
+    data = pd.concat([data1,data2])
+    #data =  pd.merge(data1, data2, how='left',left_on=key1, right_on=key2)
+
+    return data
+
+# @task(returns=list)
+# def mergeRightJoin(data1,data2,id1,id2):
+#
+#     print data1
+#     print id1
+#     print "---"
+#     print data2
+#     print id2
+#
+#     if len(data1)>0:
+#         if len(data2)>0:
+#             data = data2.set_index(id2).merge(data1.set_index(id1))
+#             print  data
+#             return data
+#         else:
+#             return data1
+#             #log = data2[1]
+#     else:
+#         return data2

@@ -17,13 +17,13 @@ sys.setdefaultencoding('utf-8')
 
 
 #@task(returns=list)
-def ReadShapeFile(settings):
+def ReadShapeFileOperation(settings):
     #pip install pyshp
 
     import shapefile
     from io import BytesIO
 
-
+    polygon = settings.get('polygon','points')
     shp_file = settings['url']
     dbf_file = re.sub('.shp$', '.dbf', shp_file)
     shp_content = open(shp_file, "rb")
@@ -47,7 +47,7 @@ def ReadShapeFile(settings):
 
     num_fields = [fields[f] for f in header]
 
-    header.append('points')
+    header.append(polygon)
     data = []
     for i, sector in enumerate(sectors):
         attributes = []
@@ -73,13 +73,13 @@ def GeoWithinOperation(data_input, shp_object, settings, numFrag):
     import pyqtree
 
     #olhar lat_long
-
+    polygon = settings.get('polygon','points')
     xmin = float('+inf')
     ymin = float('+inf')
     xmax = float('-inf')
     ymax = float('-inf')
     for i, sector in shp_object.iterrows():
-        for point in sector['points']:
+        for point in sector[polygon]:
             xmin = min(xmin, point[1])
             ymin = min(ymin, point[0])
             xmax = max(xmax, point[1])
@@ -93,7 +93,7 @@ def GeoWithinOperation(data_input, shp_object, settings, numFrag):
         ymin = float('+inf')
         xmax = float('-inf')
         ymax = float('-inf')
-        for point in sector['points']:
+        for point in sector[polygon]:
             points.append((point[1], point[0]))
             xmin = min(xmin, point[1])
             ymin = min(ymin, point[0])
@@ -109,9 +109,10 @@ def GeoWithinOperation(data_input, shp_object, settings, numFrag):
 @task(returns=list)
 def get_sectors(data_input, spindex, shp_object,settings):
     from matplotlib.path import Path
-    col_lat = settings['lat_col']
+    col_lat  = settings['lat_col']
     col_long = settings['long_col']
-    id_col = settings['id_col']
+    id_col   = settings['id_col']
+    polygon  = settings.get('polygon','points')
 
     def get_first_sector(lat, lng):
         x = float(lat)
@@ -121,7 +122,7 @@ def get_sectors(data_input, spindex, shp_object,settings):
 
         for shp_inx in matches:
             row = shp_object.loc[shp_inx]
-            polygon = Path(row['points'])
+            polygon = Path(row[polygon])
             if polygon.contains_point([x, y]):
                 return [row[id_col]]#[col for col in row]
 
@@ -133,9 +134,10 @@ def get_sectors(data_input, spindex, shp_object,settings):
     for i,point in data_input.iterrows():
         sector_position.append( get_first_sector(point[col_lat], point[col_long]))
 
-    print "%%%%%%%"
-    print len(sector_position)
-    print "%%%%%%%"
+    #alias = settings['alias']
+    #print "%%%%%%%"
+    #print len(sector_position)
+    #print "%%%%%%%"
     data_input.loc[:,'sectors'] =  pd.Series(sector_position).values
 
     #shapefile_features_count_geo_data = len(shp_object.value[0])

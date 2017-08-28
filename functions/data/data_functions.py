@@ -36,69 +36,6 @@ def Partitionize(data,numFrag):
 
 
 
-#------------------------------------------------------------------------------
-# Save Methods
-
-
-
-@task(filename = FILE_OUT)
-def SaveToFile(filename,data,mode,header):
-    """
-        SaveToFile (CSV):
-
-        Method used to save an array into a file.
-
-        :param filename: The name used in the output.
-        :param data: The np.array which you want to save.
-        :param mode: append, overwrite, ignore or error
-
-    """
-    import os.path
-
-
-    if mode is 'append':
-        mode = 'a'
-    elif mode is 'ignore':
-        if os.path.exists(filename):
-            return None
-    elif mode is 'error':
-        if os.path.exists(filename):
-            return None    # !   TO DO: RAISE SOME ERROR
-    else:
-        mode = 'w'
-
-    print data
-    if len(data)==0:
-        data = pd.DataFrame()
-    if header:
-        data.to_csv(filename,sep=',',mode=mode, header=True,index=False)
-    else:
-        data.to_csv(filename,sep=',',mode=mode, header=False,index=False)
-
-    return None
-
-
-def SaveToPickle(outfile,data):
-    """
-        Save an array to a serizable Pickle file format
-
-        :param outfile: the /path/file.npy
-        :param data: the data to save
-    """
-    with open(outfile, 'wb') as handle:
-        pickle.dump(data, handle, protocol=pickle.HIGHEST_PROTOCOL)
-
-def SaveToNumpy(outfile,data):
-    """
-        Save an array to a binary file in NumPy .npy format
-
-        :param outfile: the /path/file.npy
-    """
-    np.save(outfile, data)
-    return None
-
-
-
 
 def FeatureAssemble(df, cols, name):
     """

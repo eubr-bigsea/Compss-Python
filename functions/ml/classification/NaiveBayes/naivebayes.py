@@ -36,7 +36,6 @@ from pycompss.api.api import compss_wait_on
 #-------------------------------------------------------------------------
 #   Naive Bayes
 #
-#   Create the model
 #-------------------------------------------------------------------------
 
 class GaussianNB(object):
@@ -65,11 +64,8 @@ class GaussianNB(object):
             :return The model (np.array)
         """
 
-		#Data format:  label,f1,f2,f3...
         label = settings['label']
         features = settings['features']
-
-
 
         separated       = [ self.separateByClass(data[i],label,features) for i in range(numFrag)]   # separa as classes
         merged_fitted   = mergeReduce(self.merge_summaries1, separated ) #result: mean and len
@@ -177,7 +173,7 @@ class GaussianNB(object):
     #   predictions
     #-------------------------------------------------------------------------
 
-    def transform(self,data,settings, numFrag):
+    def transform(self,data, model, settings, numFrag):
         """
             Gaussian Naive Bayes:
 
@@ -190,7 +186,7 @@ class GaussianNB(object):
             :param numFrag: num fragments, if -1 data is considered chunked
             :return: list with the predictions.
         """
-        model = settings['model']
+        #model = settings['model']
         partialResult = [ self.predict_chunck(data[i],model,settings) for i in range(numFrag) ]
 
         return partialResult
@@ -203,6 +199,7 @@ class GaussianNB(object):
     def predict_chunck(self, data,summaries,settings):
         #print summaries
         features = settings['features']
+        label    = settings['label']
         predictedLabel = settings['new_name'] if 'new_name' in settings else "{}_predited".format(label)
 
         predictions = []

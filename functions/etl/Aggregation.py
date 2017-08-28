@@ -86,7 +86,6 @@ def aggregate_partial(data, columns, operation, target):
     data.columns = newidx
     data = data.reset_index()
 
-
     return data
 
 

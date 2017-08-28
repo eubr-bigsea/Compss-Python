@@ -12,7 +12,7 @@ import numpy as np
 import pandas as pd
 import sys
 
-def StringIndexerOperation(data,settings,numFrag):
+def FeatureIndexerOperation(data,settings,numFrag):
     inputCol  = settings['inputCol']
     outputCol = settings['outputCol']
     op = settings['IndexToString'] if 'IndexToString' in settings else False

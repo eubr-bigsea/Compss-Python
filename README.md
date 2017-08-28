@@ -1,6 +1,6 @@
 # COMPSs-Python
 
-A list of COMPS's operations supported by Lemonade. 
+A list of COMPS's operations supported by Lemonade.
 
 
 ## Operations:
@@ -19,10 +19,10 @@ ETL Operations:
 * Aggregation
 * Clean Missing
 * Difference
+* Distinct (Remove Duplicated Rows)
 * Drop
 * Intersection
 * Join
-* Remove Duplicated Rows
 * Replace Values
 * Sample
 * Select
@@ -52,13 +52,19 @@ Text Operations:
 Metrics:
 
 * Classification Model Evaluation
+  * Accuracy
+  * Precision
+  * Recall
+  * F-mesure
+
+
 * Regression Model Evaluation
+  * MSE
+  * RMSE
+  * MAE
+  * R2
 
 Geografic  Operations:
 
 * Read Shapefile
 * Geo Within
-
-
-
-

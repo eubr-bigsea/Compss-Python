@@ -14,6 +14,13 @@ import numpy as np
 import pandas as pd
 import sys
 
+#
+#   Como só existe o WSSSE, ele ja vai ser calculado antes
+#
+#
+#
+#
+
 
 
 def ClusteringModelEvaluation(data,settings,numFrag):
@@ -23,6 +30,7 @@ def ClusteringModelEvaluation(data,settings,numFrag):
 
 
     """
+        Within Set Sum of Squared Errors (WSSSE)
 
     """
 
@@ -90,32 +98,3 @@ def CME_stage2(confusion_matrix):
 
 
     return [confusion_matrix, table, precision_recall]
-
-
-
-def CME_stage2_binary(confusion_matrix,true_label):
-
-    N = confusion_matrix.sum().sum()
-    labels = confusion_matrix.index
-    acertos = 0
-    Precisions = []     #  TPR
-    Recalls = []        #  FPR
-
-    for i in labels:
-        acertos += confusion_matrix[i].ix[i]
-
-    TP = confusion_matrix[true_label].ix[true_label]
-    Precision =   float(TP) / confusion_matrix.ix[true_label].sum()
-    Recall    =   float(TP) / confusion_matrix[true_label].sum()
-    Accuracy = float(acertos) / N
-    F1 = 2 * (Precision * Recall) / (Precision + Recall)
-
-    table =  pd.DataFrame([
-                            ["Accuracy",Accuracy],
-                            ["Precision",Precision],
-                            ["Recall",Recall],
-                            ["F-measure (F1)",F1]
-                        ],columns=["Metric","Value"])
-
-
-    return [confusion_matrix, table]

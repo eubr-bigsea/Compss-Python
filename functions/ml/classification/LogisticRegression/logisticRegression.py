@@ -105,10 +105,10 @@ class logisticRegression(object):
         return theta,converged
 
 
-    def transform(self,data,settings,numFrag):
+    def transform(self,data,model,settings,numFrag):
         col_features = settings['features']
         col_predict    = settings['new_label']
-        model    = settings['model']
+        
 
         data = [ self.predict(data[f],col_features,col_predict,model)
                                                         for f in range(numFrag)]
