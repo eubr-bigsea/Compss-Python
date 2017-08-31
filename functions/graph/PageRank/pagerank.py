@@ -1,42 +1,86 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 
-import numpy as np
 import pandas as pd
 from pycompss.api.task          import task
 from pycompss.api.parameter     import *
 from pycompss.functions.reduce  import mergeReduce
-from pycompss.api.api import compss_wait_on
-
-"""
-outlink,inlink
-url_1,url_1
-url_1,url_2
-url_2,url_1
-url_2,url_3
-url_3,url_2
-
-"""
-
+from pycompss.functions.data    import chunks
 
 class PageRank(object):
+
+    """
+    PageRank is one of the methods Google uses to determine a page’s
+    relevance or importance. The idea that Page Rank brought up was that, the
+    importance of any web page can be judged by looking at the pages that link
+    to it.
+    PageRank can be utilized in others domains. For example, may also be used
+    as a methodology to measure the apparent impact of a community.
+
+    See more at: http://www.cs.princeton.edu/~chazelle/courses/BIB/pagerank.htm
+
+    """
+
+
+    def runPageRank(self,data,settings,numFrag):
+        """
+        runPageRank: Run PageRank for a fixed number of iterations returning a
+                     graph with vertex attributes containing the PageRank
+
+        :param data:        A list with numFrag pandas's dataframe.
+        :param settings:    A dictionary that contains:
+                            * inlink:  column name of the inlinks vertex;
+                            * outlink: column name of the outlinks vertex;
+                            * damping_factor: the coeficent of the
+                                              damping factor [0,1];
+                            * maxIters: The number of iterations;
+                            * col1: alias of the vertex column;
+                            * col2: alias of the ranking column.
+
+        :param numFrag:     A number of fragments
+        :return:            A list of pandas's dataframe with the
+                            ranking of each vertex in the dataset.
+        """
+        inlink  = settings['inlink']
+        outlink = settings['outlink']
+        factor  = settings.get('damping_factor', 0.85)
+        maxIterations = settings.get('maxIters', 100)
+        col1 = settings.get('col1','Vertex')
+        col2 = settings.get('col2','Rank')
+
+        adj, rank = self.create_AdjList(data,inlink,outlink,numFrag)
+
+        for iteration in xrange(maxIterations):
+            contributions = [ self.calcContribuitions(adj[i],rank[i])       for i in range(numFrag) ]
+            merged_c =      mergeReduce(self.mergeContribs,contributions)
+            rank =          [ self.updateRank_p(rank[i],merged_c,factor)    for i in range(numFrag) ]
+
+        table = [ self.printingResults(rank[i],col1,col2) for i in range(numFrag)]
+        #merged_table = mergeReduce(self.mergeRanks,table)
+        merged_table = mergeReduce(self.mergeRanks,table)
+        result       = self.split(merged_table, numFrag)
+
+        return result
+
 
 
     def create_AdjList(self,data,inlink,outlink,numFrag):
         """1º Load all URL's from the data and initialize their neighbors """
         """2º Initialize each page’s rank to 1.0 """
 
-        adjlist = [[] for i in range(numFrag)]
+        adjlist   = [[] for i in range(numFrag)]
         rankslist = [[] for i in range(numFrag)]
         counts_in = [[] for i in range(numFrag)]
 
         for i in range(numFrag):
             adjlist[i]    =   self.partial_AdjList(data[i],inlink, outlink)
             rankslist[i]  =   self.partial_RankList(data[i],inlink, outlink)
-            counts_in[i] =    self.counts_inlinks(adjlist[i])
+            counts_in[i]  =   self.counts_inlinks(adjlist[i])
 
         counts_in = mergeReduce(self.merge_counts,counts_in)
         adjlist =  [self.update_AdjList(adjlist[i], counts_in) for i in range(numFrag)]
+
+
 
         return adjlist,rankslist
 
@@ -54,6 +98,7 @@ class PageRank(object):
             if v_in not in ranks:
                 ranks[v_in] = 1.0
 
+
         return ranks
 
 
@@ -69,6 +114,7 @@ class PageRank(object):
                 adj[v_out][1]+=1
             else:
                 adj[v_out] = [[v_in],1]
+
 
         return adj
 
@@ -122,10 +168,6 @@ class PageRank(object):
 
     @task(returns=dict,isModifier = False)
     def mergeContribs(self,contrib1,contrib2):
-        #print "----------contributions -----------"
-        #print contrib1
-        #print contrib2
-
 
         for k2 in contrib2:
             if k2 in contrib1:
@@ -134,8 +176,6 @@ class PageRank(object):
                 contrib1[k2] = contrib2[k2]
 
 
-        #print contrib1
-        #print "----------merged contributions -----------"
         return contrib1
 
     @task(returns=dict,isModifier = False)
@@ -150,30 +190,18 @@ class PageRank(object):
         return ranks
 
 
+    @task(returns=list,isModifier = False)
+    def mergeRanks(self,df1,df2):
+        result = pd.concat([df1,df2], ignore_index=True).drop_duplicates()
+        result.reset_index(drop=True,inplace=True)
+        return result
 
-    def runPageRank(self,data,settings,numFrag):
-        inlink = settings['inlink']
-        outlink = settings['outlink']
-        factor = settings['damping_factor']
-        maxIterations = settings['maxIters']
-        col1 = settings['col1']
-        col2 = settings['col2']
+    @task(returns=list,isModifier = False)
+    def split(self,merged_table,numFrag):
+        import numpy as np
+        result   = np.array_split(merged_table, numFrag)
 
-        adj, rank = self.create_AdjList(data,inlink,outlink,numFrag)
-
-        #adj = compss_wait_on(adj)
-        #print adj
-        for iteration in xrange(maxIterations):
-            contributions = [ self.calcContribuitions(adj[i],rank[i])  for i in range(numFrag) ]
-            merged_c = mergeReduce(self.mergeContribs,contributions)
-            rank =  [ self.updateRank_p(rank[i],merged_c,factor)   for i in range(numFrag) ]
-            #rank = compss_wait_on(rank)
-            #print rank
-
-        table = [ self.printingResults(rank[i],col1,col2) for i in range(numFrag)]
-        merged_table = mergeReduce(self.mergeRanks,table)
-        return merged_table
-
+        return result
 
     @task(returns=list,isModifier = False)
     def printingResults(self,ranks,c1,c2):
@@ -189,8 +217,3 @@ class PageRank(object):
         data[c2] = Ranks
 
         return data
-
-    @task(returns=list,isModifier = False)
-    def mergeRanks(self,df1,df2):
-        result = pd.concat([df1,df2], ignore_index=True).drop_duplicates()
-        return result

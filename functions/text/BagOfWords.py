@@ -36,7 +36,8 @@ class BagOfWords(object):
             Create a dictionary (vocabulary) of each word and its frequency in
             this set and in how many documents occured.
 
-            :param input_txt: A np.array with the documents to transform.
+            :param train_set: A list of pandas dataframe with the
+                              documents to be transformed.
             :param params:    A dictionary with some options:
                                 - minimum_df
                                 - minimum_tf

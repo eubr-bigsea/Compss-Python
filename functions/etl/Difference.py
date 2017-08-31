@@ -21,11 +21,10 @@ def DifferenceOperation(data1,data2,numFrag):
     """
         Function which returns a new set with containing rows in the first frame
         but not in the second one.
-        The output is already merged.
 
-        :param data1: A np.array with already splited in numFrags
-        :param data2: A np.array with already splited in numFrags
-        :return: Returns a  new np.array
+        :param data1: A dataframe already splited in numFrags.
+        :param data2: A dataframe already splited in numFrags.
+        :return: Returns a new dataframe.
     """
     from pycompss.api.api import compss_wait_on
 
@@ -34,9 +33,6 @@ def DifferenceOperation(data1,data2,numFrag):
     for f1 in range(len(data1)):
         data_partial      = [ Difference_part(data1[f1], data2[f2]) for f2 in range(numFrag) ]
         data_result[f1]  = mergeReduce(Intersect_part, data_partial)
-
-    #data_result  = mergeReduce(Union_part,data_partial)
-    #data_result  = compss_wait_on(data_result)
 
     return data_result
 
@@ -57,5 +53,6 @@ def Difference_part(df1,df2):
         else:
             return df2
     else:
-        return pd.DataFrame()
+        names = df1.columns
+        return pd.DataFrame([],columns=names)
 #-------------------------------------------------------------------------------
