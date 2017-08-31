@@ -32,13 +32,16 @@ class TF_IDF(object):
             Create a dictionary (vocabulary) of each word and its frequency in
             this set and in how many documents occured.
 
-            :param input_txt: A np.array with the documents to transform.
+            :param train_set: A list of pandas dataframe with the
+                              documents to be transformed.
             :param params:    A dictionary with some options:
-                                - minimum_df
-                                - minimum_tf
-                                - vocabulary size
-            :param numFrag: num fragments, if -1 data is considered chunked.
-            :return  A merged numpy.array with the <vocabulary,tf,df>
+                                - minimum_df:    Minimum number of how many
+                                                 documents a word should appear.
+                                - minimum_tf:    Minimum number of occurrences
+                                                 of a word
+                                - size: Vocabulary maximum size, -1 if there are no size.
+            :param numFrag: A number of fragments
+            :return  A model (dataframe) with the <word,tf,df>
         """
 
         result_p     = [self.wordCount(data[f], params) for f in range(numFrag)]
@@ -112,15 +115,14 @@ class TF_IDF(object):
 
     def transform(self, test_set, vocabulary, params, numFrag):
         """
-            :param train_set: A dataframe with the documents to transform.
-            :param numFrag:   The number of fragments
-            :param word_dic:  A model trained (grammar and its frequency).
-            :param params: A dictionary with the settings:
-                            - minimum_df
-                            - minimum_tf
-                            - vocabulary size
-                            - vocabulary (if exists)
-            :return A pandas dataframe with the features transformed.
+            Perform the transformation of the data based in the model created.
+                :param test_set:  A list of dataframes with the documents to transform;
+                :param vocabulary:  A model trained (grammar and its frequency);
+                :param params: A dictionary with the settings:
+                            - alias: new name of the column;
+                            - attributes: all columns which contains the text. Each row is considered a document.
+                :param numFrag:   The number of fragments;
+                :return   A list of pandas dataframe with the features transformed.
         """
         counts = [self.count_records(test_set[f]) for f in range(numFrag)]
         count  = mergeReduce(self.mergeCount,counts)

@@ -27,9 +27,6 @@ class BagOfWords(object):
         of its words, disregarding grammar and even word order but keeping
         multiplicity.
 
-        Each row represents a document and each column correspond
-        to the frequency of this word in the document.
-
     """
     def fit(self, train_set, params, numFrag):
         """
@@ -39,11 +36,13 @@ class BagOfWords(object):
             :param train_set: A list of pandas dataframe with the
                               documents to be transformed.
             :param params:    A dictionary with some options:
-                                - minimum_df
-                                - minimum_tf
-                                - vocabulary size
-            :param numFrag: num fragments, if -1 data is considered chunked.
-            :return  A merged numpy.array with the <vocabulary,tf,df>
+                                - minimum_df:    Minimum number of how many
+                                                 documents a word should appear.
+                                - minimum_tf:    Minimum number of occurrences
+                                                 of a word
+                                - size
+            :param numFrag: A number of fragments
+            :return  A model (dataframe) with the <word,tf,df>
         """
 
         result_p     = [self.wordCount(train_set[f], params) for f in range(numFrag)]
@@ -114,15 +113,15 @@ class BagOfWords(object):
 
     def transform(self, test_set, vocabulary, params, numFrag):
         """
-            :param train_set: A dataframe with the documents to transform.
-            :param numFrag:   The number of fragments
-            :param word_dic:  A model trained (grammar and its frequency).
-            :param params: A dictionary with the settings:
-                            - minimum_df
-                            - minimum_tf
-                            - vocabulary size
-                            - vocabulary (if exists)
-            :return A pandas dataframe with the features transformed.
+            Perform the transformation of the data based in the model created.
+                :param test_set:  A list of dataframes with the documents to transform;
+                :param vocabulary:  A model trained (grammar and its frequency);
+                :param params: A dictionary with the settings:
+                                        - alias: new name of the column;
+                                        - attributes: all columns which contains the text.
+                                                        Each row is considered a document.
+                :param numFrag:   The number of fragments;
+                :return   A list of pandas dataframe with the features transformed.
         """
 
         partial_result = [self.transform_BoW(test_set[f], vocabulary, params) for f in range(numFrag)]
