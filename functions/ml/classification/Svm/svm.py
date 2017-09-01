@@ -15,40 +15,48 @@ from pycompss.api.api import compss_wait_on
 import pandas as pd
 import numpy as np
 
-#-------------------------
-#   Training
-#
+
+"""
+    Support vector machines (SVM):
+
+    SVM is a supervised learning model used for binary classification. Given a
+    set of training examples, each marked as belonging to one or the other of
+    two categories, a SVM training algorithm builds a model that assigns new
+    examples to one category or the other, making it a non-probabilistic binary
+    linear classifier.
+
+    An SVM model is a representation of the examples as points in space, mapped
+    so that the examples of the separate categories are divided by a clear gap
+    that is as wide as possible. New examples are then mapped into that same
+    space and predicted to belong to a category based on which side of the gap
+    they fall. This algorithm is effective in high dimensional spaces and it
+    is still effective in cases where number of dimensions is greater than
+    the number of samples.
+
+    The algorithm reads a dataset composed by labels (-1.0 or 1.0) and
+    features (numeric fields).
+
+"""
+
+
 class SVM(object):
     #OBS.: Senao for usar o COST, tem como otimizar o codigo
     def fit(self,data, settings, numFrag):
-
         """
-            SVM is a supervised learning model used for binary classification.
-            Given a set of training examples, each marked as belonging to one or
-            the other of two categories, an SVM training algorithm builds a model
-            that assigns new examples to one category or the other, making it a
-            non-probabilistic binary linear classifier.
+            fit():
 
-            An SVM model is a representation of the examples as points in space,
-            mapped so that the examples of the separate categories are divided by
-            a clear gap that is as wide as possible. New examples are then mapped
-            into that same space and predicted to belong to a category based on
-            which side of the gap they fall.
-
-            The algorithm reads a dataset composed by labels (-1.0 or 1.0) and
-            features (numeric fields).
-
-            :param train_data:  The data (splitted) to train the model
-            :param settings:  A dictionary with some necessary parameters:
-                                - coef_lambda: Regularization parameter (float)
-                                - coef_lr: Learning rate parameter (float)
-                                - coef_threshold: Tolerance for stopping criterion (float)
-                                - coef_maxIters: Number max of iterations (integer)
-            :param numFrag:       Num of fragments
-
-            :return A model (a np.array)
+            - :param data:          A list with numFrag pandas's dataframe used
+                                    to training the model.
+            - :param settings:      A dictionary that contains:
+             - coef_lambda:         Regularization parameter (float);
+             - coef_lr:             Learning rate parameter (float);
+             - coef_threshold:      Tolerance for stopping criterion (float);
+             - coef_maxIters:       Number max of iterations (integer);
+             - features: 		    Column name of the features in the training data;
+             - label:          	    Column name of the labels   in the training data;
+            - :param numFrag:       A number of fragments;
+            - :return:              The model created (which is a pandas dataframe).
         """
-
 
         coef_lambda     = float(settings['coef_lambda'])
         coef_lr         = float(settings['coef_lr'])
@@ -160,35 +168,23 @@ class SVM(object):
 
     def transform(self,data, model, settings, numFrag):
         """
-            SVM is a supervised learning model used for binary classification.
-            Given a set of training examples, each marked as belonging to one or
-            the other of two categories, an SVM training algorithm builds a model
-            that assigns new examples to one category or the other, making it a
-            non-probabilistic binary linear classifier.
-
-            An SVM model is a representation of the examples as points in space,
-            mapped so that the examples of the separate categories are divided by
-            a clear gap that is as wide as possible. New examples are then mapped
-            into that same space and predicted to belong to a category based on
-            which side of the gap they fall.
-
-            The algorithm reads a dataset composed by labels (-1.0 or 1.0) and
-            features (numeric fields).
-
-            :param test_data: The list (splitted) to predict.
-            :param w: A model already trained (np.array)
-            :param numFrag:       Num of fragments, if -1 data is considered chunked
-
-            :return: A list with the labels
+            transform():
+            
+            :param data: A list with numFrag pandas's dataframe that will be predicted.
+            :param model: A model already trained (np.array);
+            :param settings: A dictionary that contains:
+                - features: Column name of the features in the test data;
+                - predlabel: Alias to the new column with the labels predicted;
+            :param numFrag: A number of fragments;
+            :return: The prediction (in the same input format).
         """
 
-        label = settings['label']
         features = settings['features']
-        predictedLabel = settings['new_name'] if 'new_name' in settings else "{}_predited".format(label)
+        predictedLabel = settings.get('predCol','predited')
 
-        result_p   = [ self.predict_partial(data[f],model,predictedLabel,features)  for f in range(numFrag) ]
+        result   = [ self.predict_partial(data[f],model,predictedLabel,features)  for f in range(numFrag) ]
 
-        return result_p
+        return result
 
 
     @task(returns=list, isModifier = False)

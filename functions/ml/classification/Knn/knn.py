@@ -12,59 +12,122 @@ import pandas as pd
 from pycompss.api.task          import task
 from pycompss.api.parameter     import *
 from pycompss.functions.reduce  import mergeReduce
-from pycompss.functions.data    import chunks
-from pycompss.api.api import compss_wait_on
 
 class KNN(object):
 
+    """
+        K-Nearest Neighbor:
+
+        K-Nearest Neighbor is a algorithm used that can be used for both
+        classification and regression predictive problems. However, it is
+        more widely used in classification problems. Is a non parametric
+        lazy learning algorithm. Meaning that it does not use the training
+        data points to do any generalization.  In other words, there is no
+        explicit training phase. More precisely, all the training data is
+        needed during the testing phase.
+
+        To do a classification, the algorithm computes from a simple majority
+        vote of the K nearest neighbors of each point present in the training
+        set. The choice of the parameter K is very crucial in this algorithm,
+        and depends on the dataset. However, values of one or tree is more
+        commom.
+
+    """
+
     def fit(self,data,settings,numFrag):
         """
-            K-Nearest Neighbor is an non parametric lazy learning algorithm.
-            What this means is that it does not use the training data points to
-            do any generalization.  In other words, there is no explicit training
-            phase. More exactly, all the training data is needed during the
-            testing phase.
+            fit()
 
-            :param train: A list of pandas.
-            :param K: A number of K nearest neighborhood to take in count.
-            :return A model
+            :param data:     A list with numFrag pandas's dataframe used to
+                             training the model.
+            :param settings: A dictionary that contains:
+                - K:  		 Number of K nearest neighborhood to take in count.
+                - features:  Column name of the features in the training data;
+                - label:     Column name of the labels   in the training data;
+            :param numFrag:  A number of fragments;
+            :return:         The model created (which is a pandas dataframe).
         """
-
+        col_label    = settings['label']
+        col_features = settings['features']
+        data     = [createModel(data[f],col_label,col_features) for i in range(numFrag)]
         train_data = mergeReduce(self.merge_lists, data)
 
         return train_data
 
 
-    def transform(self,test_data, train_data, settings, numFrag):
+    def fit_transform(self,test_data, settings, numFrag):
         """
-            K-Nearest Neighbor: The Classification is computed from a simple
-            majority vote of the nearest neighbors of each point present in the
-            training set.
+            fit_transform():
 
-
-            :param test_data: A np.array already splitted.
-                              Each line row in this format [features]
-            :param numFrag:   number of fragments. (I can remove that later)
-            :param output_file: List of name to save the output or a empty list
-                                if you don't want to write the output in a file.
-            :return A list of labels predicted.
+            :param data:     A list with numFrag pandas's dataframe used to
+                             training the model and to classify it.
+            :param settings: A dictionary that contains:
+             - K:  			 Number of K nearest neighborhood to take in count.
+             - features: 	 Column name of the features in the training/test data;
+             - label:        Column name of the labels   in the training/test data;
+             - predCol:      Alias to the new column with the labels predicted;
+            :param numFrag:  A number of fragments;
+            :return:         The prediction (in the same input format) and the
+                             model (which is a pandas dataframe).
         """
-        label    = settings['label']
-        features = settings['features']
-        predictedLabel = settings['new_name'] if 'new_name' in settings else "{}_predited".format(label)
-        columns  = label+features
-        K = int(settings['K'])
 
+        col_label    = settings['label']
+        col_features = settings['features']
+        predictedLabel = settings.get('predCol', "{}_predited".format(label))
+        K = settings.get('K', 1)
+
+
+        data     = [createModel(data[f],col_label,col_features) for i in range(numFrag)]
+        train_data = mergeReduce(self.merge_lists, data)
 
         result = [ self.classifyBlock(  test_data[i],
                                         train_data,
-                                        features,
-                                        label,
+                                        col_features,
+                                        col_label,
                                         predictedLabel,
                                         K)  for i in range(numFrag) ]
 
 
         return result
+
+    def transform(self,test_data, model, settings, numFrag):
+        """
+            transform():
+
+            :param data:     A list with numFrag pandas's dataframe that will
+                             be predicted.
+            :param model:	 The KNN model created;
+            :param settings: A dictionary that contains:
+                - K:     	 Number of K nearest neighborhood to take in count.
+                - features:  Column name of the features in the test data;
+                - predCol: Alias to the new column with the labels predicted;
+            :param numFrag:  A number of fragments;
+            :return:         The prediction (in the same input format).
+        """
+        col_label    = settings['label']
+        col_features = settings['features']
+        predictedLabel = settings.get('predCol', "{}_predited".format(label))
+        K = settings.get('K', 1)
+
+
+        result = [ self.classifyBlock(  test_data[i],
+                                        model,
+                                        col_features,
+                                        col_label,
+                                        predictedLabel,
+                                        K)  for i in range(numFrag) ]
+
+
+        return result
+
+
+    @task(returns=list, isModifier = False)
+    def createModel(data,label,features):
+        model = pd.DataFrame([])
+        model['label']    = data[label]
+        model['features'] = data[features]
+        return model
+
 
 
     def getPopularElement(self,labels,K):
@@ -79,7 +142,7 @@ class KNN(object):
         return result
 
     @task(returns=list, isModifier = False)
-    def classifyBlock(self,data,train_data, features, label,predictedLabel,K):
+    def classifyBlock(self,data,train_data, features, label, predictedLabel,K):
 
         start=time.time()
 
@@ -98,10 +161,10 @@ class KNN(object):
         for i_test in range(sizeTest):
             for i_train in range(sizeTrain):
                 semi_dist[i_test][K] =  functions_knn.distance(
-                                np.array(train_data.iloc[i_train][features]),
+                                np.array(train_data.iloc[i_train]['features']),
                                 np.array(data.iloc[i_test][features]),
                                 numDim )
-                semi_labels[i_test][K] = train_data.iloc[i_train][label]
+                semi_labels[i_test][K] = train_data.iloc[i_train]['label']
 
                 j=K
                 while(j>0):
@@ -116,8 +179,7 @@ class KNN(object):
                     j-=1
 
 
-        values= self.getKNN(semi_labels,K)
-
+        values = self.getKNN(semi_labels,K)
         data[predictedLabel] =  pd.Series(values).values
 
 
@@ -130,10 +192,5 @@ class KNN(object):
     def merge_lists(self,list1,list2):
         #print "\nmerge_lists\n---\n{}\n---\n{}\n---\n".format(list1,list2)
 
-        if len(list1) == 0:
-            result = list2
-        elif len(list2) == 0:
-            result = list1
-        else:
-            result = pd.concat([list1,list2], ignore_index=True)
+        result = pd.concat([list1,list2], ignore_index=True)
         return  result
