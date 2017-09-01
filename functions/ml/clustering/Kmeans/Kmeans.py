@@ -10,38 +10,44 @@ from pycompss.functions.reduce import mergeReduce
 
 
 class Kmeans(object):
+    """
 
-    def transform(self,data,settings,numFrag):
+    
+    """
+
+
+
+    def fit(self,data,settings,numFrag):
         """
-            kmeans: starting with a set of randomly chosen initial centers,
-            one repeatedly assigns each imput point to its nearest center, and
-            then recomputes the centers given the point assigment. This local
-            search called Lloyd's iteration, continues until the solution does
-            not change between two consecutive rounds or iteration > maxIterations.
+            fit():
 
-            :param model: A model with the configurations
-            :param data:  A np.array (splitted)
-            :return: list os centroids
+            - :param data:        A list with numFrag pandas's dataframe used to create the model.
+            - :param settings:    A dictionary that contains:
+             	- k:  			  Number of wanted clusters.
+             	- features: 	  Column name of the features in the dataset;
+             	- maxIterations:  Maximum number of iterations;
+                - epsilon:        Threshold to stop the iterations;
+                - initMode:       "random" or "k-means||"
+            - :param numFrag:     A number of fragments;
+            - :return:            The model created (which is a pandas dataframe).
         """
         from pycompss.api.api import compss_wait_on
 
-        columns = settings['features']
+        features_col = settings['features']
 
         k             = int(settings['k'])
         maxIterations = int(settings['maxIterations'])
         epsilon       = float(settings['epsilon'])
         initMode      = settings['initMode']
-        
-        new_column = settings['new_name'] if 'new_name' in settings else columns+"_ClusterPredicted"
 
         if initMode == "random":
             from random import randint
             partitions_C = [randint(0, numFrag-3) for i in range(k)]
-            centroids = [ self.initMode_random(data[f], columns, f, partitions_C) for f in range(numFrag)]
+            centroids = [ self.initMode_random(data[f], features_col, f, partitions_C) for f in range(numFrag)]
             centroids = mergeReduce(self.mergeCentroids,centroids)
             centroids = compss_wait_on(centroids)
         elif initMode == "k-means||":
-            centroids = self.init_parallel(data, columns, k,  k, numFrag)
+            centroids = self.init_parallel(data, features_col, k, numFrag)
 
         size = centroids[1]
         centroids = centroids[0]
@@ -51,7 +57,7 @@ class Kmeans(object):
 
         while not self.has_converged(centroids, old_centroids, epsilon, it, maxIterations):
             old_centroids = list(centroids)
-            idx = [ self.find_closest_centroids(data[f], columns, centroids) for f in range(numFrag)]
+            idx = [ self.find_closest_centroids(data[f], features_col, centroids) for f in range(numFrag)]
 
             idx = mergeReduce(self.reduceCentersTask, idx)
             idx = compss_wait_on(idx)
@@ -60,12 +66,28 @@ class Kmeans(object):
             it += 1
             #print "Iter:{} - Centroids:{}".format(it,centroids)
 
+        model = pd.DataFrame([[c] for c in centroids],columns=["Clusters"])
 
+        return model
 
-        data = [self.assigment_cluster(data[f], columns, centroids, new_column) for f in range(numFrag) ]
-        c = pd.DataFrame([[c] for c in centroids],columns=["Clusters"])
+    def transform(self, data, model, settings, numFrag):
+        """
+            transform():
 
-        return data,c
+            - :param data:       A list with numFrag pandas's dataframe that will be predicted.
+            - :param model:		 The Kmeans model created;
+            - :param settings:    A dictionary that contains:
+             	- features: 	  Column name of the features in the test data;
+             	- predCol:    	  Alias to the new column with the labels predicted;
+            - :param numFrag:     A number of fragments;
+            - :return:            The prediction (in the same input format).
+        """
+
+        features_col = settings['features']
+        predCol     = settings.get('predCol','Prediction')
+
+        data = [self.assigment_cluster(data[f], features_col, model, predCol) for f in range(numFrag) ]
+        return data
 
     @task(returns=dict,isModifier = False)
     def find_closest_centroids(self,data, columns, mu):
@@ -109,7 +131,8 @@ class Kmeans(object):
         return centroids
 
     @task(returns=list,isModifier = False)
-    def assigment_cluster(self,data, columns, mu, new_column):
+    def assigment_cluster(self,data, columns, model, predCol):
+        mu = model['Clusters'].tolist()
         XP = np.array(data[columns].values)
         k = len(mu)
         values = []
@@ -118,7 +141,7 @@ class Kmeans(object):
             bestC = distances.argmin(axis=0)
             values.append(bestC)
 
-        data[new_column] = pd.Series(values).values
+        data[predCol] = pd.Series(values).values
         return data
 
     def has_converged(self,mu, oldmu, epsilon, iter, maxIterations):
@@ -158,7 +181,7 @@ class Kmeans(object):
         return [ random.sample(data[columns].tolist(), 1),0]
 
 
-    def init_parallel(self, data, columns, k, l, numFrag):
+    def init_parallel(self, data, columns, k,  numFrag):
         """
         Initialize a set of cluster centers using the k-means|| algorithm by Bahmani et al.
         (Bahmani et al., Scalable K-Means++, VLDB 2012). This is a variant of k-means++ that tries
@@ -171,7 +194,7 @@ class Kmeans(object):
         l = oversampling factor =  0.2k or 1.5k
         """
         from pycompss.api.api import compss_wait_on
-
+        l = 0.2*k
 
         """
         Step1: C ← sample a point uniformly at random from X

@@ -49,13 +49,13 @@ class KNN(object):
         """
         col_label    = settings['label']
         col_features = settings['features']
-        data     = [createModel(data[f],col_label,col_features) for i in range(numFrag)]
+        data     = [self.createModel(data[f],col_label,col_features) for f in range(numFrag)]
         train_data = mergeReduce(self.merge_lists, data)
 
         return train_data
 
 
-    def fit_transform(self,test_data, settings, numFrag):
+    def fit_transform(self,data, settings, numFrag):
         """
             fit_transform():
 
@@ -73,18 +73,17 @@ class KNN(object):
 
         col_label    = settings['label']
         col_features = settings['features']
-        predictedLabel = settings.get('predCol', "{}_predited".format(label))
+        predCol = settings.get('predCol', "{}_predited".format(col_label))
         K = settings.get('K', 1)
 
 
-        data     = [createModel(data[f],col_label,col_features) for i in range(numFrag)]
-        train_data = mergeReduce(self.merge_lists, data)
+        p_model = [self.createModel(data[f],col_label,col_features) for f in range(numFrag)]
+        model = mergeReduce(self.merge_lists, p_model)
 
-        result = [ self.classifyBlock(  test_data[i],
-                                        train_data,
+        result = [ self.classifyBlock(  data[i],
+                                        model,
                                         col_features,
-                                        col_label,
-                                        predictedLabel,
+                                        predCol,
                                         K)  for i in range(numFrag) ]
 
 
@@ -104,17 +103,15 @@ class KNN(object):
             :param numFrag:  A number of fragments;
             :return:         The prediction (in the same input format).
         """
-        col_label    = settings['label']
         col_features = settings['features']
-        predictedLabel = settings.get('predCol', "{}_predited".format(label))
+        predCol = settings.get('predCol', "predited")
         K = settings.get('K', 1)
 
 
         result = [ self.classifyBlock(  test_data[i],
                                         model,
                                         col_features,
-                                        col_label,
-                                        predictedLabel,
+                                        predCol,
                                         K)  for i in range(numFrag) ]
 
 
@@ -122,7 +119,7 @@ class KNN(object):
 
 
     @task(returns=list, isModifier = False)
-    def createModel(data,label,features):
+    def createModel(self,data,label,features):
         model = pd.DataFrame([])
         model['label']    = data[label]
         model['features'] = data[features]
@@ -142,13 +139,13 @@ class KNN(object):
         return result
 
     @task(returns=list, isModifier = False)
-    def classifyBlock(self,data,train_data, features, label, predictedLabel,K):
+    def classifyBlock(self,data,train_data, col_features, predCol,K):
 
         start=time.time()
 
         #initalizing variables
-        if isinstance(data.iloc[0][features], list):
-            numDim = len(data.iloc[0][features])
+        if isinstance(data.iloc[0][col_features], list):
+            numDim = len(data.iloc[0][col_features])
         else:
             numDim = 1
         print numDim
@@ -162,7 +159,7 @@ class KNN(object):
             for i_train in range(sizeTrain):
                 semi_dist[i_test][K] =  functions_knn.distance(
                                 np.array(train_data.iloc[i_train]['features']),
-                                np.array(data.iloc[i_test][features]),
+                                np.array(data.iloc[i_test][col_features]),
                                 numDim )
                 semi_labels[i_test][K] = train_data.iloc[i_train]['label']
 
@@ -180,8 +177,7 @@ class KNN(object):
 
 
         values = self.getKNN(semi_labels,K)
-        data[predictedLabel] =  pd.Series(values).values
-
+        data[predCol] =  pd.Series(values).values
 
         end = time.time()
         print "\n[INFO] - ClassifierBlock -> Time elapsed: %.2f seconds\n" % (end-start)

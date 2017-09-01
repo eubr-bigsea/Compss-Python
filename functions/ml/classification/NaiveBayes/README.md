@@ -8,6 +8,8 @@ To make a prediction we can calculate probabilities of the instance belonged to 
 
 ## Instructions:
 
+The algorithm reads a dataset composed by labels (numeric or categorical data) and features (numeric fields).
+
 To use this implementation, you can the method `fit()` to create a model based in the training data and then, use the method `transform()` to predict the test data.
 
 All parameters are explained below:

@@ -8,6 +8,8 @@ To do a classification, the algorithm computes from a simple majority vote of th
 
 ## Instructions:
 
+The algorithm reads a dataset composed by labels (numeric or categorical data) and features (numeric fields).
+
 To use this implementation, you can the method `fit()` to create a model based in the training data and then, use the method `transform()` to predict the test data. If you want to predict the same input data of the `fit()` method, you can use the method `fit_transform()` to do the both steps.
 
 
