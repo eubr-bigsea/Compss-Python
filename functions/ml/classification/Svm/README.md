@@ -29,7 +29,7 @@ All parameters are explained below:
 - :param model: A model already trained (np.array);
 - :param settings: A dictionary that contains:
  	- features: Column name of the features in the test data;
- 	- predlabel: Alias to the new column with the labels predicted;
+ 	- predCol: Alias to the new column with the labels predicted;
 - :param numFrag: A number of fragments;
 - :return: The prediction (in the same input format).
 
@@ -54,7 +54,7 @@ settings['features']  = 'column2'
 model = svm.fit(data1,settings,numFrag)
 settings = dict()
 settings['features']  = 'col1'
-settings['predlabel'] = 'result_data2'
+settings['predCol'] = 'result_data2'
 output 	= svm.tranform(data2,model,settings,numFrag)
 
 ```

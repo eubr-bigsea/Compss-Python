@@ -31,7 +31,7 @@ All parameters are explained below:
 - :param settings:    A dictionary that contains:
  	- K:     	 		 Number of K nearest neighborhood to take in count.
  	- features: 		 Column name of the features in the test data;
- 	- predlabel:    	 Alias to the new column with the labels predicted;
+ 	- predCol:    	 Alias to the new column with the labels predicted;
 - :param numFrag:     A number of fragments;
 - :return:            The prediction (in the same input format).
 
@@ -43,7 +43,7 @@ All parameters are explained below:
  - K:  			 	 Number of K nearest neighborhood to take in count.
  - features: 		 Column name of the features in the training/test data;
  - label:          	 Column name of the labels   in the training/test data;
- - predlabel:    	 Alias to the new column with the labels predicted;
+ - predCol:    	 Alias to the new column with the labels predicted;
 - :param numFrag:     A number of fragments;
 - :return:            The prediction (in the same input format) and the model (which is a pandas dataframe).
 
@@ -60,14 +60,14 @@ settings = dict()
 settings['K']         = 1
 setting['label']      = 'column1'
 settings['features']  = 'column2'
-settings['predlabel'] = 'result_data1'
+settings['predCol'] = 'result_data1'
 
 model, output1 = knn.fit_tranform(data1,settings,numFrag)
 
 settings = dict()
 settings['K']         = 1
 settings['features']  = 'col1'
-settings['predlabel'] = 'result_data2'
+settings['predCol'] = 'result_data2'
 output2 	= knn.tranform(data2,model,settings,numFrag)
 
 

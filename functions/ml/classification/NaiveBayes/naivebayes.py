@@ -19,7 +19,24 @@ from pycompss.api.api import compss_wait_on
 
 
 
+"""
+Gaussian Naive Bayes:
 
+The Naive Bayes algorithm is an intuitive method that uses the probabilities
+of each attribute belonged to each class to make a prediction. It is a
+supervised learning approach that you would  come up with if you wanted to
+model a predictive probabilistically modeling problem.
+
+Naive bayes simplifies the calculation of probabilities by assuming that the
+probability of each attribute belonging to a given class value is independent
+of all other attributes. The probability of a class value given a value of an
+attribute is called the conditional probability. By multiplying the conditional
+probabilities together for each attribute for a given class value, we have the
+probability of a data instance belonging to that class. To make a prediction we
+can calculate probabilities of the instance belonged to each class and select
+the class value with the highest probability.
+
+"""
 
 
 # #============ To Profile ===================
@@ -42,26 +59,14 @@ class GaussianNB(object):
 
     def fit(self,data,settings,numFrag):
         """
-            Gaussian Naive Bayes:
-
-            The Naive Bayes algorithm is an intuitive method
-            that uses the probabilities of each attribute belonging to each class
-            to make a prediction. It is the supervised learning approach you would
-            come up with if you wanted to model a predictive modeling problem
-            probabilistically.
-
-            Naive bayes simplifies the calculation of probabilities by assuming that
-            the probability of each attribute belonging to a given class value is
-            independent of all other attributes.
-
-            The probability of a class value given a value of an attribute is called
-            the conditional probability. By multiplying the conditional
-            probabilities together for each attribute for a given class value, we
-            have a probability of a data instance belonging to that class.
-
-            :param train_data: A np.array (splitted)
-            :param numFrag: num fragments, if -1 data is considered chunked
-            :return The model (np.array)
+            fit():
+            - :param data:      A list with numFrag pandas's dataframe used to
+                                training the model.
+            - :param settings:  A dictionary that contains:
+             	- features: 	Column name of the features in the training data;
+             	- label:        Column name of the labels   in the training data;
+            - :param numFrag:   A number of fragments;
+            - :return:          The model created (which is a pandas dataframe).
         """
 
         label = settings['label']
@@ -175,21 +180,18 @@ class GaussianNB(object):
 
     def transform(self,data, model, settings, numFrag):
         """
-            Gaussian Naive Bayes:
-
-            To make a prediction we can calculate probabilities of the instance
-            belonging to each class and select the class value with the highest
-            probability.
-
-            :param TestSet:  A np.array (splitted) with the data
-            :param settings: Thats includes a np.array with the probabilities (model).
-            :param numFrag: num fragments, if -1 data is considered chunked
-            :return: list with the predictions.
+            transform:
+            - :param data: A list with numFrag pandas's dataframe that will be predicted.
+            - :param model: A model already trained;
+            - :param settings: A dictionary that contains:
+             	- features: Column name of the features in the test data;
+             	- predCol: Alias to the new column with the labels predicted;
+            - :param numFrag: A number of fragments;
+            - :return: The prediction (in the same input format).
         """
-        #model = settings['model']
-        partialResult = [ self.predict_chunck(data[i],model,settings) for i in range(numFrag) ]
+        result = [ self.predict_chunck(data[i],model,settings) for i in range(numFrag) ]
 
-        return partialResult
+        return result
 
     @task(returns=list, isModifier = False)
     def merge_lists(self,list1,list2):
@@ -197,10 +199,9 @@ class GaussianNB(object):
 
     @task(returns=list, isModifier = False)
     def predict_chunck(self, data,summaries,settings):
-        #print summaries
-        features = settings['features']
+
         label    = settings['label']
-        predictedLabel = settings['new_name'] if 'new_name' in settings else "{}_predited".format(label)
+        predictedLabel = settings.get('predCol','prediction')
 
         predictions = []
         for i in range(len(data)):
