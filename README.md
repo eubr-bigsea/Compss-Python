@@ -32,7 +32,6 @@ A list of all COMPS's operations supported by Lemonade.
  	- Svm Classifier
 	- Logistic Regression
  	- Linear Regression
- 	
  	- Apriori
 
 

@@ -14,12 +14,12 @@ All parameters are explained below:
 
 - :param data:        A list with numFrag pandas's dataframe used to training the model.
 - :param settings:    A dictionary that contains:
- - coef_lambda:   Regularization parameter (float);
- - coef_lr: Learning rate parameter (float);
- - coef_threshold: Tolerance for stopping criterion (float);
- - coef_maxIters: Number max of iterations (integer);
- - features: 		   Column name of the features in the training data;
- - label:          	 Column name of the labels   in the training data;
+ 	- coef_lambda:   Regularization parameter (float);
+ 	- coef_lr: Learning rate parameter (float);
+ 	- coef_threshold: Tolerance for stopping criterion (float);
+ 	- coef_maxIters: Number max of iterations (integer);
+ 	- features: 		   Column name of the features in the training data;
+ 	- label:          	 Column name of the labels   in the training data;
 - :param numFrag:     A number of fragments;
 - :return:            The model created (which is a pandas dataframe).
 
@@ -28,8 +28,8 @@ All parameters are explained below:
 - :param data: A list with numFrag pandas's dataframe that will be predicted.
 - :param model: A model already trained (np.array);
 - :param settings: A dictionary that contains:
- - features: Column name of the features in the test data;
- - predlabel: Alias to the new column with the labels predicted;
+ 	- features: Column name of the features in the test data;
+ 	- predlabel: Alias to the new column with the labels predicted;
 - :param numFrag: A number of fragments;
 - :return: The prediction (in the same input format).
 
@@ -55,6 +55,6 @@ model = svm.fit(data1,settings,numFrag)
 settings = dict()
 settings['features']  = 'col1'
 settings['predlabel'] = 'result_data2'
-output 	= knn.tranform(data2,model,settings,numFrag)
+output 	= svm.tranform(data2,model,settings,numFrag)
 
 ```
