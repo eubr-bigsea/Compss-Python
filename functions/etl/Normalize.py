@@ -15,6 +15,8 @@ import sys
 def NormalizeOperation(data, settings, numFrag):
     """
     NormalizeOperation():
+    Perform a Feature scaling (Range Normalization) or a Standard Score
+    Normalization on the selected columns;
 
     :param data:        A list with numFrag pandas's dataframe to perform
                         the Normalization.
@@ -23,7 +25,7 @@ def NormalizeOperation(data, settings, numFrag):
             * 'range' to perform the Range Normalization,
                 also called Feature scaling. (default option)
             * 'standard' to perform the Standard Score Normalization.
-      - attributes: 	Columns names to nrmalize;
+      - attributes: 	Columns names to normalize;
       - alias:          Aliases of the new columns;
     :param numFrag:     A number of fragments;
     :return:            A list with numFrag pandas's dataframe

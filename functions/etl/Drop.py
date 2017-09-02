@@ -9,19 +9,16 @@ from pycompss.api.parameter import *
 import pandas as pd
 
 
-
-#-------------------------------------------------------------------------------
-# Drop columns
-
-def DropOperation(data, columns,numFrag):
+def DropOperation(data, columns, numFrag):
     """
+        DropOperation():
         Returns a new DataFrame that drops the specified column.
         Nothing is done if schema doesn't contain the given column name(s).
-        The only parameters is the name of the columns to be removed.
 
-        :param data: A dataframe with already splited in numFrags.
-        :param settings: A list of columns
-        :return: Returns a dataframe splited in numFrags.
+        :param data:    A list with numFrag pandas's dataframe;
+        :param columns: A list with the columns names to be removed;
+        :param numFrag: A number of fragments;
+        :return: A list with numFrag pandas's dataframe.
     """
 
     data_result = [ Drop_part(data[f], columns) for f in range(numFrag)]
@@ -31,5 +28,3 @@ def DropOperation(data, columns,numFrag):
 @task(returns=list)
 def Drop_part(list1,columns):
     return  list1.drop(columns, axis=1)
-
-#-------------------------------------------------------------------------------

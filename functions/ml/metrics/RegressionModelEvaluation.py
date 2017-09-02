@@ -8,15 +8,12 @@ __email__  = "lucasmsp@gmail.com"
 from pycompss.api.task import task
 from pycompss.api.parameter import *
 from pycompss.functions.reduce import mergeReduce
-from pycompss.api.api import compss_wait_on
 
 import numpy as np
 import pandas as pd
-import sys
 
+class RegressionModelEvaluation(object):
 
-
-def RegressionModelEvaluation(data,settings,numFrag):
     """
         Metric	Definition
         * Mean Squared Error (MSE): Is an estimator measures the average of the
@@ -43,57 +40,60 @@ def RegressionModelEvaluation(data,settings,numFrag):
         * Explained Variance: Measures the proportion to which a mathematical model
         accounts for the variation (dispersion) of a given data set.
     """
-    dim = settings['dimension'] if "dimension" in settings else 1
 
-    if settings['metric'] in ['MSE','RMSE']:
-        col_predicted = settings['pred_col']
-        col_test      = settings['test_col']
-        partial = [RME_stage1(data[f],col_test,col_predicted) for f in range(numFrag)]
-        statistics = mergeReduce(mergeRME,partial)
-        result = RME_stage2(statistics, dim)
+    def calculate(self,data,settings,numFrag):
 
-    return result
+        dim = settings['dimension'] if "dimension" in settings else 1
 
-@task(returns=list)
-def RME_stage1(df,col_test,col_predicted):
-    error = (df[col_test] - df[col_predicted]).values
-    SSE_partial = np.sum(np.square(error))
-    abs_error = np.sum(np.absolute(error))
-    sum_y = 0
-    SSY_partial = 0
-    for y in df[col_test].values:
-        sum_y+=y
-        SSY_partial+=np.square(y)
+        if settings['metric'] in ['MSE','RMSE','MAE','R2']:
+            col_predicted = settings['pred_col']
+            col_test      = settings['test_col']
+            partial = [self.RME_stage1(data[f],col_test,col_predicted) for f in range(numFrag)]
+            statistics = mergeReduce(self.mergeRME,partial)
+            result = self.RME_stage2(statistics, dim)
 
-    N = len(df)
-    return np.array([N, SSE_partial, SSY_partial, abs_error, sum_y ]).astype(float)
+        return result
 
-@task(returns=list)
-def mergeRME(pstatistic1,pstatistic2):
-    pstatistic = pstatistic1 + pstatistic2
-    return pstatistic
+    @task(returns=list, isModifier = False)
+    def RME_stage1(self,df,col_test,col_predicted):
+        error = (df[col_test] - df[col_predicted]).values
+        SSE_partial = np.sum(np.square(error))
+        abs_error = np.sum(np.absolute(error))
+        sum_y = 0
+        SSY_partial = 0
+        for y in df[col_test].values:
+            sum_y+=y
+            SSY_partial+=np.square(y)
 
-@task(returns=list)
-def RME_stage2(statistics,dim):
-    N, SSE, SSY, abs_error, sum_y = statistics
-    y_mean = sum_y / N
-    SS0 = N*(y_mean)**2
+        N = len(df)
+        return np.array([N, SSE_partial, SSY_partial, abs_error, sum_y ]).astype(float)
 
-    SST = SSY - SS0
-    SSR = SST - SSE
-    R2 = SSR/SST
+    @task(returns=list, isModifier = False)
+    def mergeRME(self,pstatistic1,pstatistic2):
+        pstatistic = pstatistic1 + pstatistic2
+        return pstatistic
 
-    MSE = SSE/(N-dim-1)
-    RMSE = np.sqrt(MSE)
-    MAE = abs_error
+    @task(returns=list, isModifier = False)
+    def RME_stage2(self,statistics,dim):
+        N, SSE, SSY, abs_error, sum_y = statistics
+        y_mean = sum_y / N
+        SS0 = N*(y_mean)**2
 
-    Explained_Variance = 1 - SSE/SST
+        SST = SSY - SS0
+        SSR = SST - SSE
+        R2 = SSR/SST
 
-    result =  pd.DataFrame([
-                            ["R^2",R2],
-                            ["Mean Squared Error (MSE)",MSE],
-                            ["Root Mean Squared Error (RMSE)",RMSE],
-                            ["Mean Absolute Error (MAE)",MAE],
-                            ["Explained Variance", Explained_Variance]
-                        ],columns=["Metric","Value"])
-    return result
+        MSE = SSE/(N-dim-1)
+        RMSE = np.sqrt(MSE)
+        MAE = abs_error
+
+        Explained_Variance = 1 - SSE/SST
+
+        result =  pd.DataFrame([
+                                ["R^2",R2],
+                                ["Mean Squared Error (MSE)",MSE],
+                                ["Root Mean Squared Error (RMSE)",RMSE],
+                                ["Mean Absolute Error (MAE)",MAE],
+                                ["Explained Variance", Explained_Variance]
+                            ],columns=["Metric","Value"])
+        return result

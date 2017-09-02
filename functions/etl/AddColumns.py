@@ -15,14 +15,15 @@ import sys
 
 def AddColumnsOperation(df1,df2,balanced,numFrag):
     """
-        Function which add new columns in the pandas dataframe.
-        If len(df1[i]) == len(df2[i]) to each i, then balanced is True,
-        otherwise, the algorithm need to balance each fragment.
+        AddColumnsOperation():
+        Merge two data frames, column-wise, similar to the command
+        paste in Linux.
 
-        :param df1: A dataframe already splited in numFrags.
-        :param df2: A dataframe already splited in numFrags.
-        :param balanced: True if len(df1[i]) == len(df2[i]) to each i
-        :return: Returns a new dataframe.
+        :param df1:         A list with numFrag pandas's dataframe;
+        :param df2:         A list with numFrag pandas's dataframe;
+        :param balanced:    True only if len(df1[i]) == len(df2[i]) to each i;
+        :param numFrag:     The number of fragments;
+        :return: 		    A list with numFrag pandas's dataframe.
     """
     if not balanced:
         df1, df2 = balancer(df1,df2,numFrag)
