@@ -200,12 +200,12 @@ class GaussianNB(object):
     @task(returns=list, isModifier = False)
     def predict_chunck(self, data,summaries,settings):
 
-        label    = settings['label']
+        features_col    = settings['features']
         predictedLabel = settings.get('predCol','prediction')
 
         predictions = []
         for i in range(len(data)):
-         	result = self.predict(summaries, data.iloc[i][features])
+         	result = self.predict(summaries, data.iloc[i][features_col])
          	predictions.append(result)
 
 

@@ -107,17 +107,18 @@ class logisticRegression(object):
 
     def transform(self,data,model,settings,numFrag):
         col_features = settings['features']
-        col_predict    = settings['new_label']
-        
+        predCol    = settings.get('predCol','prediction')
 
-        data = [ self.predict(data[f],col_features,col_predict,model)
+
+        data = [ self.predict(data[f],col_features,predCol,model)
                                                         for f in range(numFrag)]
 
         return data
 
     @task(returns=list, isModifier = False)
-    def predict(self,data,X,Y,theta):
+    def predict(self,data,X,predCol,theta):
         N = len(data)
+
         Xs = np.c_[np.ones(N), np.array(data[X].tolist() ) ]
-        data[Y] = [ round(self.sigmoid(x,theta)) for x in Xs] #1 if x >= 0.5 else 0
+        data[predCol] = [ round(self.sigmoid(x,theta)) for x in Xs] #1 if x >= 0.5 else 0
         return data

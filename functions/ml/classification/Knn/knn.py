@@ -49,6 +49,7 @@ class KNN(object):
         """
         col_label    = settings['label']
         col_features = settings['features']
+        
         data     = [self.createModel(data[f],col_label,col_features) for f in range(numFrag)]
         train_data = mergeReduce(self.merge_lists, data)
 

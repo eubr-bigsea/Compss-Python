@@ -1,0 +1,17 @@
+* ETL Operations:
+ 	- Add Columns
+ 	- Aggregation
+ 	- Clean Missing
+ 	- Difference
+ 	- Distinct (Remove Duplicated Rows)
+ 	- Drop
+ 	- Intersection
+ 	- Join
+	- Normalize: Perform a Feature scaling (Range Normalization) or a Standard Score Normalization on the selected columns;
+ 	- Replace Values
+ 	- Sample
+ 	- Select
+ 	- Sort
+ 	- Split
+ 	- Transform
+ 	- Union

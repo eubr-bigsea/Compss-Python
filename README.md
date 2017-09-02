@@ -17,6 +17,7 @@ A list of all COMPS's operations supported by Lemonade.
  	- Drop
  	- Intersection
  	- Join
+	- Normalize
  	- Replace Values
  	- Sample
  	- Select
