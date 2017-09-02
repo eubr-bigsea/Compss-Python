@@ -4,26 +4,20 @@
 
 from pycompss.api.task import task
 from pycompss.api.parameter import *
-from pycompss.functions.reduce import mergeReduce
-from pycompss.functions.data import chunks
-from pycompss.api.api import compss_wait_on, barrier
 
 import numpy as np
 import pandas as pd
-import math
 
 
-#-------------------------------------------------------------------------------
-# Union of the datasets
-
-def UnionOperation(data1, data2,numFrag):
+def UnionOperation(data1, data2, numFrag):
     """
-        Function which do a union between two np.arrays.
-        The output remains splitted.
+        UnionOperation():
+        Function which do a union between two pandas dataframes.
 
-        :param data1: A np.array with already splited in numFrags.
-        :param data2: Other np.array with already splited in numFrags.
-        :return: Returns a new np.arrays.
+        :param data1:   A list with numFrag pandas's dataframe;
+        :param data2:   Other list with numFrag pandas's dataframe;
+        :param numFrag: The number of fragments;
+        :return:        Returns a list with numFrag pandas's dataframe.
     """
 
     data_result = [Union_part(data1[f], data2[f]) for f in range(numFrag)]
@@ -33,7 +27,6 @@ def UnionOperation(data1, data2,numFrag):
 
 @task(returns=list)
 def Union_part(list1,list2):
-    print "\nUnion_part\n---\n{}\n---\n{}\n---\n".format(list1,list2)
 
     if len(list1) == 0:
         result = list2

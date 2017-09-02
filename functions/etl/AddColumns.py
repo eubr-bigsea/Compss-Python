@@ -16,14 +16,14 @@ import sys
 def AddColumnsOperation(df1,df2,balanced,numFrag):
     """
         AddColumnsOperation():
-        Merge two data frames, column-wise, similar to the command
+        Merge two dataframes, column-wise, similar to the command
         paste in Linux.
 
         :param df1:         A list with numFrag pandas's dataframe;
         :param df2:         A list with numFrag pandas's dataframe;
         :param balanced:    True only if len(df1[i]) == len(df2[i]) to each i;
         :param numFrag:     The number of fragments;
-        :return: 		    A list with numFrag pandas's dataframe.
+        :return: 		    Returns a list with numFrag pandas's dataframe.
     """
     if not balanced:
         df1, df2 = balancer(df1,df2,numFrag)
