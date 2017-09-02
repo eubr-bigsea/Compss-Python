@@ -81,8 +81,8 @@ Function which do a union between two pandas dataframes.
 ```
      UnionOperation():
         
-     :param data1: 		A list with numFrag pandas's dataframe;
-     :param data2: 		Other list with numFrag pandas's dataframe;
-     :param numFrag: 	The number of fragments;
-     :return:      		Returns a list with numFrag pandas's dataframe.
+     :param data1:   A list with numFrag pandas's dataframe;
+     :param data2:   Other list with numFrag pandas's dataframe;
+     :param numFrag: The number of fragments;
+     :return:        Returns a list with numFrag pandas's dataframe.
 ```
