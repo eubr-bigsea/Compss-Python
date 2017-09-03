@@ -4,16 +4,49 @@
 from pycompss.api.task          import task
 from pycompss.api.parameter     import *
 from pycompss.functions.reduce  import mergeReduce
-from pycompss.functions.data    import chunks
+
 from pycompss.api.api import compss_wait_on
 import math
 import numpy as np
 
 class logisticRegression(object):
 
+    """
+    Logistic regression is named for the function used at the core
+    of the method, the logistic function. It is the go-to method for
+    binary classification problems (problems with two class values).
+
+    The logistic function, also called the sigmoid function was
+    developed by statisticians to describe properties of population
+    growth in ecology, rising quickly and maxing out at the carrying
+    capacity of the environment. It’s an S-shaped curve that can take
+    any real-valued number and map it into a value between 0 and 1,
+    but never exactly at those limits.
+
+    This implementation uses a Stochastic Gradient Ascent (a variant of
+    the Stochastic gradient descent). It is called stochastic because
+    the derivative based on a randomly chosen single example is a random
+    approximation to the true derivative based on all the training data.
+    """
 
 
     def fit(self,data,settings,numFrag):
+
+        """
+        fit():
+
+        :param data:        A list with numFrag pandas's dataframe used to training the model.
+        :param settings:    A dictionary that contains:
+            - iters:            Maximum number of iterations (integer);
+            - threshold:        Tolerance for stopping criterion (float);
+            - regularization:   Regularization parameter (float);
+            - alpha:            The Learning rate, it means, how large of steps to take
+                                on our cost curve (float);
+         	- features: 		Column name of the features in the training data;
+         	- label:          	Column name of the labels   in the training data;
+        :param numFrag:     A number of fragments;
+        :return:            The model created (which is a pandas dataframe).
+        """
 
         features = settings['features']
         label    = settings['label']
@@ -25,6 +58,27 @@ class logisticRegression(object):
                                                 iters, threshold, reg, numFrag)
 
         return parameters
+
+
+    def transform(self,data,model,settings,numFrag):
+        """
+        transform():
+
+        :param data:        A list with numFrag pandas's dataframe that will be predicted.
+        :param model:		 The Logistic Regression model created;
+        :param settings:    A dictionary that contains:
+ 	      - features: 		 Column name of the features in the test data;
+ 	      - predCol:    	 Alias to the new column with the labels predicted;
+        :param numFrag:     A number of fragments;
+        :return:            The prediction (in the same input format).
+        """
+        col_features = settings['features']
+        predCol    = settings.get('predCol','prediction')
+
+        data = [ self.predict(data[f],col_features,predCol,model) for f in range(numFrag)]
+
+        return data
+
 
     def sigmoid(self ,x, w):
         """
@@ -105,15 +159,7 @@ class logisticRegression(object):
         return theta,converged
 
 
-    def transform(self,data,model,settings,numFrag):
-        col_features = settings['features']
-        predCol    = settings.get('predCol','prediction')
 
-
-        data = [ self.predict(data[f],col_features,predCol,model)
-                                                        for f in range(numFrag)]
-
-        return data
 
     @task(returns=list, isModifier = False)
     def predict(self,data,X,predCol,theta):

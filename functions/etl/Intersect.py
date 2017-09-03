@@ -12,17 +12,14 @@ import pandas as pd
 import math
 
 
-#-------------------------------------------------------------------------------
-# Intersect
 
-def IntersectionOperation(data1,data2,numFrag):
+def IntersectionOperation(data1, data2, numFrag):
     """
-        Function which returns a new set with elements
-        that are common to all sets.
+        Returns a new DataFrame containing rows only in both this frame and another frame.
 
-        :param data1:  A pandas dataframe already splited in numFrags
-        :param data2:  A pandas dataframe already splited in numFrags
-        :return: Returns a new pandas dataframe
+        :param data1:  A list with numFrag pandas's dataframe;
+        :param data2:  Other list with numFrag pandas's dataframe;
+        :return:       Returns a new pandas dataframe
     """
 
     data_result = [[] for i in range(numFrag)]
@@ -47,4 +44,3 @@ def mergeIntersect(list1,list2):
     #print "\nUnion_part\n---\n{}\n---\n{}\n---\n".format(list1,list2)
     result = pd.concat([list1,list2], ignore_index=True)
     return  result
-#-------------------------------------------------------------------------------

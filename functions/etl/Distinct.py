@@ -11,17 +11,16 @@ import pandas as pd
 import math
 
 
-#-------------------------------------------------------------------------------
-# Remove duplicate rows in a array
-
-def DistinctOperation(data,cols,numFrag):
+def DistinctOperation(data, cols, numFrag):
     """
+        DistinctOperation():
         Function which remove duplicates elements (distinct elements) in a
         pandas dataframe.
 
-
-        :param name: A pandas dataframe with already splited in numFrags
-        :return: Returns a pandas dataframe
+        :param data:        A list with numFrag pandas's dataframe;
+        :param cols:        A list with the columns names to take in count.
+        :param numFrag:     The number of fragments;
+        :return:            Returns a list with numFrag pandas's dataframe.
     """
 
     buff = [(f,g) for f in range(numFrag)  for g in xrange(f,numFrag) if f != g]

@@ -7,7 +7,7 @@ Merge two dataframes, column-wise, similar to the command paste in Linux.
 
 ```
      AddColumnsOperation():
-     
+
      :param df1:         A list with numFrag pandas's dataframe;
      :param df2:         A list with numFrag pandas's dataframe;
      :param balanced:    True only if len(df1[i]) == len(df2[i]) to each i;
@@ -17,8 +17,31 @@ Merge two dataframes, column-wise, similar to the command paste in Linux.
 
 - Aggregation
 - Clean Missing
-- Difference
-- Distinct (Remove Duplicated Rows)
+
+## Difference:
+
+Function which returns a new set with containing rows in the first frame but not in the second one.
+
+```
+     DifferenceOperation():
+
+     :param data1: A list with numFrag pandas's dataframe;
+     :param data2: The second list with numFrag pandas's dataframe.
+     :return:      A list with numFrag pandas's dataframe.
+```
+
+## Distinct (Remove Duplicated Rows):
+
+Function which remove duplicates elements in a pandas dataframe based in some columns.
+
+```
+     DistinctOperation():
+
+     :param data:      A list with numFrag pandas's dataframe;
+     :param cols:      A list with the columns names to take in count.
+     :param numFrag:   The number of fragments;
+     :return:          Returns a list with numFrag pandas's dataframe.
+```
 
 ## Drop:
 
@@ -26,14 +49,25 @@ Returns a new DataFrame that drops the specified column. Nothing is done if sche
 
 ```
      DropOperation():
-        
+
      :param data:    A list with numFrag pandas's dataframe;
      :param columns: A list with the columns names to be removed;
      :param numFrag: The number of fragments;
      :return:        A list with numFrag pandas's dataframe.
 ```
 
-- Intersection
+## Intersection:
+
+Returns a new DataFrame containing rows only in both this frame and another frame.
+
+```
+     IntersectionOperation():
+
+     :param data1:  A list with numFrag pandas's dataframe;
+     :param data2:  Other list with numFrag pandas's dataframe;
+     :return:       Returns a new pandas dataframe.
+```
+
 - Join
 
 ## Normalize:
@@ -42,7 +76,7 @@ Perform a Feature scaling (Range Normalization) or a Standard Score Normalizatio
 
 ```
      NormalizeOperation():
-     
+
      :param data:        A list with numFrag pandas's dataframe to perform the Normalization.
      :param settings:    A dictionary that contains:
        - mode:
@@ -55,7 +89,25 @@ Perform a Feature scaling (Range Normalization) or a Standard Score Normalizatio
 ```
 
 - Replace Values
-- Sample
+
+## Sample:
+
+Returns a sampled subset of the input panda's dataFrame.
+
+```
+     SampleOperation():
+
+     :param data:           A list with numFrag pandas's dataframe;
+     :param params:         A dictionary that contains:
+         - type:
+             * 'percent':   Sample a random amount of records
+             * 'value':     Sample a N random records
+             * 'head':      Sample the N firsts records of the dataframe
+         - seed :           Optional, seed for the random operation.
+         - value:           Value N to be sampled (in 'value' or 'head' type)
+     :param numFrag:        The number of fragments;
+     :return:               A list with numFrag pandas's dataframe.
+```
 
 ## Select:
 
@@ -63,15 +115,50 @@ Function which do a Projection with the columns choosed.
 
 ```
      SelectOperation():
-         
+
      :param data:    A list with numFrag pandas's dataframe;
      :param columns: A list with the columns names which will be selected;
      :param numFrag: The number of fragments;
      :return:        A list with numFrag pandas's dataframe with only the columns choosed.
 ```
 
-- Sort
-- Split
+## Sort:
+
+Returns a new DataFrame sorted by the specified column(s).
+
+```
+     SortOperation():
+
+     :param data:        A list with numFrag pandas's dataframe;
+     :param settings:    A dictionary that contains:
+         - algorithm:
+             * 'odd-even', to sort using Odd-Even Sort;
+             * 'bitonic',  to sort using Bitonic Sort (only if numFrag is power of 2);
+         - columns:      The list of columns to be sorted;
+         - ascending:    A list indicating whether the sort order is ascending (True) for the columns;
+     :param numFrag:     The number of fragments;
+     :return:            A list with numFrag pandas's dataframe. 
+
+     Condition:  the list of columns should have the same size of the list
+                 of boolean to indicating if it is ascending sorting.
+```
+
+## Split:
+
+Randomly splits a Data Frame into two data frames.
+
+```
+     SplitOperation():
+
+     :param data:      A list with numFrag pandas's dataframe;
+     :settings:        A dictionary that contains:
+       - 'percentage': Percentage to split the data;
+       - 'seed':       Optional, seed in case of deterministic random operation.
+     :return:          Returns two lists with numFrag pandas's dataframe with
+                       distincts subsets of the input.
+```
+
+
 - Transform
 
 ## Union:
@@ -80,7 +167,7 @@ Function which do a union between two pandas dataframes.
 
 ```
      UnionOperation():
-        
+
      :param data1:   A list with numFrag pandas's dataframe;
      :param data2:   Other list with numFrag pandas's dataframe;
      :param numFrag: The number of fragments;

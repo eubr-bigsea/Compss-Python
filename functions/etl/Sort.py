@@ -24,6 +24,24 @@ import math
 
 
 def SortOperation(data,settings,numFrag):
+    """
+        SortOperation():
+
+        Returns a new DataFrame sorted by the specified column(s).
+        :param data:        A list with numFrag pandas's dataframe;
+        :param settings:    A dictionary that contains:
+            - algorithm:
+                * 'odd-even', to sort using Odd-Even Sort;
+                * 'bitonic',  to sort using Bitonic Sort (only if numFrag is power of 2);
+            - columns:      The list of columns to be sorted.
+            - ascending:    A list indicating whether the sort order is ascending (True) for the columns.
+        :param numFrag:     The number of fragments;
+        :return:            A list with numFrag pandas's dataframe    
+
+        Condition:  the list of columns should have the same size of the list
+                    of boolean to indicating if it is ascending sorting.
+    """
+
 
     def is_power2(num):
         return ((num & (num - 1)) == 0) and num != 0

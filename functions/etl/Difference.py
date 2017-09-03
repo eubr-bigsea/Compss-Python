@@ -19,12 +19,13 @@ import math
 
 def DifferenceOperation(data1,data2,numFrag):
     """
-        Function which returns a new set with containing rows in the first frame
-        but not in the second one.
+        DifferenceOperation()
+        Function which returns a new set with containing rows
+        in the first frame but not in the second one.
 
-        :param data1: A dataframe already splited in numFrags.
-        :param data2: A dataframe already splited in numFrags.
-        :return: Returns a new dataframe.
+        :param data1: A list with numFrag pandas's dataframe;
+        :param data2: The second list with numFrag pandas's dataframe.
+        :return:      A list with numFrag pandas's dataframe.
     """
     from pycompss.api.api import compss_wait_on
 

@@ -10,17 +10,18 @@ import numpy as np
 import pandas as pd
 import math
 
-
-
-#-------------------------------------------------------------------------------
-#   Split
-
 def SplitOperation(data,settings,numFrag):
     """
-    Returns two distincts subsets of this DataFrame.
-    Parameters:
-        - percentage -> percentage of the size to be splitted
-        - seed       -> seed for random operation.
+    SplitOperation():
+    Randomly splits a Data Frame into two data frames.
+
+    :param data:      A list with numFrag pandas's dataframe;
+    :settings:        A dictionary that contains:
+      - 'percentage': Percentage to split the data;
+      - 'seed':       Optional, seed in case of deterministic random operation.
+    :return:          Returns two lists with numFrag pandas's dataframe with
+                      distincts subsets of the input.
+
     """
 
     percentage = settings.get('percentage',0)

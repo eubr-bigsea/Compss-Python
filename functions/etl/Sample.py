@@ -11,20 +11,21 @@ import pandas as pd
 import math
 
 
-#-------------------------------------------------------------------------------
-#   Sample
-
 def SampleOperation(data,params,numFrag):
     """
-    Returns a sampled subset of this DataFrame.
-    Parameters:
-        - type: percent     -> sample a random amount of records
-            * seed          -> seed for random operation.
-        - type: value       -> sample a N random records
-            * value         -> value N to be sampled
-            * seed          -> seed for random operation.
-        - type: head        -> sample the N firsts records of the dataframe
-            * value         -> value N to be sampled
+    SampleOperation():
+
+    Returns a sampled subset of the input panda's dataFrame.
+    :param data:           A list with numFrag pandas's dataframe;
+    :param params:         A dictionary that contains:
+        - type:
+            * 'percent':   Sample a random amount of records
+            * 'value':     Sample a N random records
+            * 'head':      Sample the N firsts records of the dataframe
+        - seed :           Optional, seed for the random operation.
+        - value:           Value N to be sampled (in 'value' or 'head' type)
+    :param numFrag:        The number of fragments;
+    :return:               A list with numFrag pandas's dataframe.
 
     """
 
