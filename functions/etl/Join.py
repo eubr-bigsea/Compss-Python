@@ -19,12 +19,32 @@ import math
 
 
 def JoinOperation (data1,data2,params,numFrag):
+    """
+    JoinOperation():
+
+    Joins with another DataFrame, using the given join expression.
+    :param data1:      A list with numFrag pandas's dataframe;
+    :param data2:      Other list with numFrag pandas's dataframe;
+    :param params:     A dictionary that contains:
+        - 'option':   'inner' to InnerJoin,
+                      'left' to left join and 'right' to right join.
+        - 'key1':      A list of keys of the first dataframe;
+        - 'key2':      A list of keys of the second dataframe;
+        - 'case':      True is case-sensitive, otherwise is False (default is True);
+        - 'keep_keys': True to keep the keys of the second dataset (default is False).
+    :param numFrag:    The number of fragments;
+    :return:           Returns a list with numFrag pandas's dataframe.
+
+    """
+
+
+
     result = [[] for i in range(numFrag)]
     key1 = params['key1']
     key2 = params['key2']
 
     TYPE = params['option']
-    if TYPE == "inner": 
+    if TYPE == "inner":
         for i in range(numFrag):
             partial_join    = [ InnerJoin(data1[i], data2[j], params) for j in range(numFrag)]
             result[i]       = mergeReduce(mergeInnerJoin,partial_join)
@@ -57,8 +77,8 @@ def InnerJoin(data1,data2,params):
 
     key1 = params['key1']
     key2 = params['key2']
-    case = params['case']
-    keep = params['keep_keys']
+    case = params.get('case',True)
+    keep = params.get('keep_keys',False)
 
     if params['option'] != "inner":
         data1['data1_InnerJoin'] = data1.index

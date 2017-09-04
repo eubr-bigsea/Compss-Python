@@ -18,17 +18,32 @@ import math
 
 def AggregationOperation(data,params,numFrag):
     """
-        Add one of more lines with attribute to be used, function and alias
-        to compute aggregate function over groups.
+        AggregationOperation():
 
-        Average (AVG)	Computes the average of each group
-        Count	Counts the total of records of each group
-        First	Returns the first element of group
-        Last	Returns the last element of group
-        Maximum (MAX)	Returns the max value of each group for one attribute
-        Minimum (MIN)	Returns the min value of each group for one attribute
-        Sum	Returns the sum of values of each group for one attribute
+        Computes aggregates and returns the result as a DataFrame.
+
+        :param data:     A list with numFrag pandas's dataframe;
+        :param params:   A dictionary that contains:
+            - columns:   A list with the columns names to aggregates;
+            - alias:     A dictionary with the aliases of all aggregated columns;
+            - operation: A dictionary with the functionst to be applied in the aggregation:
+                'mean':	    Computes the average of each group;
+                'count':	Counts the total of records of each group;
+                'first':	Returns the first element of group;
+                'last':	    Returns the last element of group;
+                'max':      Returns the max value of each group for one attribute;
+                'min':	    Returns the min value of each group for one attribute;
+                'sum':      Returns the sum of values of each group for one attribute;
+        :param numFrag: The number of fragments;
+        :return:        Returns a list with numFrag pandas's dataframe.
+
+        example:
+            settings['columns'] = ["col1"]
+            settings['operation'] = {'col2':['sum'],'col3':['first','last']}
+            settings['aliases']   = {'col2':["Sum_col2"],'col3':['col_First','col_Last']}
     """
+
+    
     columns = params['columns']
     target = params['aliases']
     operation = params['operation']

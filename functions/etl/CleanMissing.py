@@ -18,20 +18,23 @@ import math
 
 def CleanMissingOperation(data,params,numFrag):
     """
-    Clean missing fields from data set
-    Parameters:
-        - attributes: list of attributes to evaluate
-        - cleaning_mode: what to do with missing values. Possible values include
-          * "VALUE": replace by parameter "value"
-          * "REMOVE_ROW": remove entire row
+    CleanMissingOperation():
 
-          * "MEDIAN": replace by median value
-          * "MODE": replace by mode value
-          * "MEAN": replace by mean value
+    Clean missing fields from data set.
 
-          * "REMOVE_COLUMN": remove entire column
-
-        - value: optional, used to replace missing values
+    :param data:          A list with numFrag pandas's dataframe;
+    :param params:        A dictionary that contains:
+        - attributes:     A list of attributes to evaluate;
+        - cleaning_mode:  What to do with missing values;
+          * "VALUE":         replace by parameter "value";
+          * "REMOVE_ROW":    remove entire row;
+          * "MEDIAN":        replace by median value;
+          * "MODE":          replace by mode value;
+          * "MEAN":          replace by mean value;
+          * "REMOVE_COLUMN": remove entire column;
+        - value:         Used to replace missing values (if mode is "VALUE");
+    :param numFrag:      The number of fragments;
+    :return:             Returns a list with numFrag pandas's dataframe.
     """
 
     cleaning_mode = params['cleaning_mode']

@@ -10,7 +10,7 @@ This implementation uses a Stochastic Gradient Ascent (a variant of the Stochast
 
 ## Instructions:
 
-The algorithm reads a dataset composed by labels (numeric or categorical data) and features (numeric fields).
+The algorithm reads a dataset composed by labels (numeric, 0 or 1) and features (numeric fields).
 
 To use this implementation, you can the method `fit()` to create a model based in the training data and then, use the method `transform()` to predict the test data. 
 

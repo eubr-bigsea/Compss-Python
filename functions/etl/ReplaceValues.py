@@ -1,19 +1,39 @@
 # -*- coding: utf-8 -*-
 #!/usr/bin/env python
 
-
-from pycompss.functions.data import chunks
 from pycompss.api.task          import task
 from pycompss.api.parameter     import *
-from pycompss.functions.reduce import mergeReduce
 
 import numpy as np
 import math
-import pickle
 import pandas as pd
 
 
 def  ReplaceValuesOperation (data,settings,numFrag):
+	"""
+	ReplaceValuesOperation():
+
+	Replace one or more values to new ones in a pandas's dataframe.
+
+     :param data:      	A list with numFrag pandas's dataframe;
+     :param settings:   A dictionary that contains:
+		- replaces:	    A dictionary where each key is a column to perform
+						an operation. Each key is linked to a matrix of 2xN.
+						The first row is respect to the old values (or a regex)
+						and the last is the new values.
+		- regex:		True, to use a regex expression, otherwise is False
+						(default is False);
+	 :param numFrag:    The number of fragments;
+	 :return:           Returns a list with numFrag pandas's dataframe
+
+	example:
+		* settings['replaces'] = {
+		'Col1':[[<old_value1>,<old_value2>],[<new_value1>,<new_value2>]],
+		'Col2':[[<old_value3>],[<new_value3>]]
+		}
+
+	"""
+
     for f in range(numFrag):
         data[f] = ReplaceValues_p(data[f], settings)
     return data
@@ -22,7 +42,7 @@ def  ReplaceValuesOperation (data,settings,numFrag):
 @task(returns=list)
 def ReplaceValues_p(data, settings):
     dict_replaces = settings['replaces']
-    regexes = settings['regex'] # only if is string
+    regexes = settings.get('regex', False) # only if is string
 
     for col in dict_replaces:
         olds_v, news_v = dict_replaces[col]

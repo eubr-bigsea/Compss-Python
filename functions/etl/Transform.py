@@ -19,16 +19,18 @@ import time
 
 def TransformOperation(data,settings,numFrag):
     """
-    Returns a new DataFrame applying the expression to the specified column.
-    Parameters:
-        - functions:    a list with the lambda function and the alias
-            - function:     the function to be applied;
-            - new_column:   the aliases to each function applied.
-            - import:       the import if exists
+		 TransformOperation():
 
-    ex.:   settings['functions'] = ['alias_col1', "lambda row: row['col1'].lower()", None]
+		 Returns a new DataFrame applying the expression to the specified column.
+		 :param data:      A list with numFrag pandas's dataframe;
+		 :settings:        A dictionary that contains:
+		    - functions:   A list with an array with 3-dimensions.
+		      * 1ª position:  The lambda function to be applied as a string;
+		      * 2ª position:  The alias to new column to be applied the function;
+		      * 3ª position:  The string to import some needed module (if needed);
+		 :return:   Returns a list with numFrag pandas's dataframe with the news columns.
 
-    return:   the same dataframe with the new columns
+		ex.:   settings['functions'] = ['alias_col1', "lambda row: row['col1'].lower()", None]
     """
 
     functions =  settings.get('functions', [])
