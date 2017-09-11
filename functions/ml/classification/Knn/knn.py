@@ -49,7 +49,7 @@ class KNN(object):
         """
         col_label    = settings['label']
         col_features = settings['features']
-        
+
         data     = [self.createModel(data[f],col_label,col_features) for f in range(numFrag)]
         train_data = mergeReduce(self.merge_lists, data)
 
@@ -152,7 +152,7 @@ class KNN(object):
         print numDim
         sizeTest    = len(data)
         sizeTrain   = len(train_data)
-        semi_labels = np.zeros((sizeTest, K+1))
+        semi_labels = [ [ 0 for i in range(K+1)] for j in range(sizeTest)]
         semi_dist   = np.full( (sizeTest, K+1), float("inf"))
         import functions_knn
 

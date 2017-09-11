@@ -240,12 +240,3 @@ class GaussianNB(object):
         import functions_naivebayes
         prob = functions_naivebayes.calculateProbability(x,mean,stdev)
         return prob
-
-
-
-def getAccuracy(testSet, predictions):
-    correct = 0
-    for i in range(len(testSet)):
-        if testSet[i] == predictions[i]:
-            correct += 1
-    return (correct/float(len(testSet))) * 100.0

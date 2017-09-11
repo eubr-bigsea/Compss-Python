@@ -17,12 +17,6 @@ import pandas as pd
 import math
 
 
-
-
-#-------------------------------------------------------------------------------
-# Sort
-
-
 def SortOperation(data,settings,numFrag):
     """
         SortOperation():
@@ -36,7 +30,7 @@ def SortOperation(data,settings,numFrag):
             - columns:      The list of columns to be sorted.
             - ascending:    A list indicating whether the sort order is ascending (True) for the columns.
         :param numFrag:     The number of fragments;
-        :return:            A list with numFrag pandas's dataframe    
+        :return:            A list with numFrag pandas's dataframe
 
         Condition:  the list of columns should have the same size of the list
                     of boolean to indicating if it is ascending sorting.
@@ -46,13 +40,13 @@ def SortOperation(data,settings,numFrag):
     def is_power2(num):
         return ((num & (num - 1)) == 0) and num != 0
 
-    if settings['algorithm'] == "odd-even":
+    algorithm = settings.get('algorithm','odd-even')
+
+    if algorithm == "bitonic" and is_power2(numFrag):
+        data = sort_byBittonic(data,settings,numFrag)
+    else:
         data = sort_byOddEven(data,settings,numFrag)
-    elif settings['algorithm'] == "bitonic":
-        if is_power2(numFrag):
-            data = sort_byBittonic(data,settings,numFrag)
-        else:
-            data = sort_byOddEven(data,settings,numFrag)
+
 
     return data
 
@@ -129,24 +123,16 @@ def sort_byOddEven(data,settings,numFrag):
 
     nsorted = True
     while nsorted:
-        if (f % 2 == 0): #par
-            s = [ mergesort(data[i],data[i+1],settings) for i in range(numFrag) if (i % 2 == 0)]
-            s = compss_wait_on(s)
-            if f>2:
-                nsorted = False
-                for i in s:
-                    if i == -1:
-                        nsorted = True
+        if (f % 2 == 0):
+            s = [ mergesort(data[i],data[i+1],settings) for i in range(numFrag)   if (i % 2 == 0)]
         else:
             s = [ mergesort(data[i],data[i+1],settings) for i in range(numFrag-1) if (i % 2 != 0)]
-            s = compss_wait_on(s)
-            s.append(1)
-            if f>2:
-                nsorted = False
-                for i in s:
-                    if i == -1:
-                        nsorted = True
 
+        s = compss_wait_on(s)
+
+        if f>2:
+            nsorted = any([ i ==-1 for i in s])
+            #nsorted = False
         f +=1
     return data
 
@@ -158,49 +144,59 @@ def sort_byOddEven(data,settings,numFrag):
 def sort_p(data, settings):
     col = settings['columns']
     order = settings['ascending']
-    data.sort_values(col, ascending=order,inplace=True)
+    data.sort_values(col, ascending=order, inplace=True)
     data = data.reset_index(drop=True)
     return data
 
-@task(data1 = INOUT, data2 = INOUT,returns=int)
-def mergesort(data1,data2,settings):
-    col = settings['columns']
+@task(data1 = INOUT, data2 = INOUT, returns=int)
+def mergesort(data1, data2, settings):
+    """
+    Returns 1 if [data1, data2] is sorted, otherwise is -1.
+    """
+    col   = settings['columns']
     order = settings['ascending']
     n1 = len(data1)
     n2 = len(data2)
-    data = pd.DataFrame([],columns=data1.columns)
+
+    idx_data1 = data1.index
+    idx_data2 = data2.index
     j = 0
     k = 0
-    t1 =  data1[col].ix[j].values
-    t2 =  data2[col].ix[k].values
     nsorted = 1
+    data = pd.DataFrame([],columns=data1.columns)
+    t1 =  data1.ix[idx_data1[j]].values
+    t2 =  data2.ix[idx_data2[k]].values
     for i in range(n1+n2):
-        t = np.array([t1,t2])
-        tmp = np.argsort(t,axis=0).flatten()
-        if tmp[0] > tmp[1]:
+
+        tmp = pd.DataFrame([t1,t2],columns=data1.columns)
+        tmp.sort_values(col, ascending=order, inplace=True)
+        idx = tmp.index
+
+        if idx[0] == 1:
             nsorted = -1
-            data = data.append(data2.ix[k], ignore_index=True)
+            data.loc[i] = tmp.loc[1].values
+
             k+=1
             if k == n2:
                 break
-            else:
-                t2 =  data2[col].ix[k].values
+            t2 =  data2.ix[idx_data2[k]].values
+
         else:
-            data = data.append(data1.ix[j], ignore_index=True)
+            data.loc[i] = tmp.loc[0].values
             j+=1
             if j == n1:
                 break
-            else:
-                t1 =  data1[col].ix[j].values
+            t1 =  data1.ix[idx_data1[j]].values
+
+
     if k == n2:
         data = data.append(data1.ix[j:], ignore_index=True)
     else:
         data = data.append(data2.ix[k:], ignore_index=True)
 
-    data = data.reset_index(drop=True)
     data1.ix[0:] = data.ix[:n1]
     data = data[data.index >= n1]
     data = data.reset_index(drop=True)
-    data2.ix[0:] = data.ix[0:]
+    data2.ix[0:] = data.ix[:]
 
     return  nsorted

@@ -14,6 +14,18 @@ import math
 import pandas as pd
 
 def WorkloadBalancerOperation(df1, numFrag):
+    """
+    WorkloadBalancerOperation():
+
+    Rebalance all the data in equal parts.
+
+    :param data:       A list with numFrag pandas's dataframe;
+    :param numFrag:    The number of fragments;
+    :return:           Returns a balanced list with numFrag pandas's dataframe.
+    """
+
+
+
     #first: check len of each frag
     len1 = [balancing_count( df1[f]) for f in range(numFrag)]
     len1 = compss_wait_on(len1)

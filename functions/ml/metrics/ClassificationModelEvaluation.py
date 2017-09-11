@@ -46,17 +46,13 @@ class ClassificationModelEvaluation(object):
     @task(returns=list, isModifier = False)
     def CME_stage1(self,data, col_test, col_predicted):
 
-        labels = data[col_test].unique().astype(float)
+        labels = np.unique(np.concatenate((data[col_test].unique(),data[col_predicted].unique()),0))
 
-        N_labels = len(labels)
-        matrix = np.zeros((N_labels,N_labels))
+        df = pd.DataFrame(columns=labels,index=labels).fillna(0)
 
-        df = pd.DataFrame(matrix,columns=labels,index=labels)
-
-        Reals = data[col_test].values.astype(float)
-        Preds = data[col_predicted].values.astype(float)
+        Reals = data[col_test].values#.astype(float)
+        Preds = data[col_predicted].values#.astype(float)
         for real, pred in zip(Reals, Preds):
-             #idx = np.where(labels == real)[0][0]
             df.loc[real, pred]+=1
 
         return df

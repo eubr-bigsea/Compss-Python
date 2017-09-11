@@ -261,7 +261,7 @@ Returns a new DataFrame applying the expression to the specified column.
      :return:   Returns a list with numFrag pandas's dataframe with the news columns.
 
      example:
-     	* settings['functions'] = ['newCol', "lambda row: np.sqrt(row['col1'])", 'import numpy as np']
+     	* settings['functions'] = [['newCol', "lambda row: np.sqrt(row['col1'])", 'import numpy as np']]
 ```
 
 

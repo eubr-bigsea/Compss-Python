@@ -30,7 +30,7 @@ def TransformOperation(data,settings,numFrag):
 		      * 3ª position:  The string to import some needed module (if needed);
 		 :return:   Returns a list with numFrag pandas's dataframe with the news columns.
 
-		ex.:   settings['functions'] = ['alias_col1', "lambda row: row['col1'].lower()", None]
+		ex.:   settings['functions'] = [['alias_col1', "lambda row: row['col1'].lower()", None]]
     """
 
     functions =  settings.get('functions', [])
@@ -45,8 +45,10 @@ def TransformOperation(data,settings,numFrag):
 @task(returns=list)
 def apply_transformation(data, functions):
 
-    for ncol, function in functions:
-        if imp != '':
+    for r in functions:
+        print r
+        ncol, function, imp = r
+        if imp != None:
             exec(imp)
         print function
         data[ncol] = data.apply(eval(function), axis=1)

@@ -27,6 +27,42 @@ class linearRegression(object):
 
     """
 
+    def fit(self,data,settings,numFrag):
+        features = settings['features']
+        label    = settings['label']
+        mode = settings.get('option','SDG')
+
+        if mode == "SDG":
+            alpha = settings.get('alpha', 0.1)
+            iters = settings.get('max_iter', 100)
+
+            parameters = self.gradientDescent(data, features, label, alpha, iters, numFrag)
+        else:
+            """ Simple Linear Regression """
+            xs  = [ self.calcsXs(data[f], features) for f in range(numFrag) ]
+            ys  = [ self.calcsXs(data[f],label)    for f in range(numFrag)  ]
+            xys = [ self.calcsXYs(data[f],features,label)
+                                                    for f in range(numFrag) ]
+            rx  =  mergeReduce(self.mergeCalcs,xs)
+            ry  =  mergeReduce(self.mergeCalcs,ys)
+            rxy =  mergeReduce(self.mergeCalcs,xys)
+
+            parameters = self.computeLine2D(rx,ry,rxy)
+
+
+        return parameters
+
+
+
+
+    def transform(self,data,model,settings,numFrag):
+        features = settings['features']
+        label    = settings['predCol']
+
+        data = [self.predict(data[f],features,label,model) for f in range(numFrag)]
+
+        return data
+
     @task(returns=list, isModifier = False)
     def calcsXs(self,X,col):
         sumX = X[col].sum()
@@ -61,41 +97,7 @@ class linearRegression(object):
 
 
 
-    def fit(self,data,settings,numFrag):
-        features = settings['features']
-        label    = settings['label']
 
-
-        if settings['option'] != 'SDG' and settings['dim'] == "2D":
-            """ Simple Linear Regression """
-            xs  = [ self.calcsXs(data[f], features) for f in range(numFrag) ]
-            ys  = [ self.calcsXs(data[f],label)    for f in range(numFrag)  ]
-            xys = [ self.calcsXYs(data[f],features,label)
-                                                    for f in range(numFrag) ]
-            rx  =  mergeReduce(self.mergeCalcs,xs)
-            ry  =  mergeReduce(self.mergeCalcs,ys)
-            rxy =  mergeReduce(self.mergeCalcs,xys)
-
-            parameters = self.computeLine2D(rx,ry,rxy)
-        else:
-            alpha = settings['alpha']
-            iters = settings['iters']
-
-            parameters = self.gradientDescent(data, features, label, alpha, iters, numFrag)
-
-        return parameters
-
-
-
-
-    def transform(self,data,settings,numFrag):
-        features = settings['features']
-        label    = settings['new_label']
-        model    = settings['model']
-
-        data = [self.predict(data[f],features,label,model) for f in range(numFrag)]
-
-        return data
 
     @task(returns=list, isModifier = False)
     def predict(self,data,X,Y,model):
