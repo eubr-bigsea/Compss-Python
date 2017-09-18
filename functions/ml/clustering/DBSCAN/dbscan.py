@@ -2,7 +2,6 @@
 # -*- coding: utf-8 -*-
 
 import math
-import argparse
 import time
 import pandas as pd
 import numpy as np
@@ -13,63 +12,53 @@ import numpy as np
 from pycompss.api.task import task
 from pycompss.api.parameter import *
 from pycompss.functions.reduce import mergeReduce
-from pycompss.functions.data import chunks
 from pycompss.api.api import compss_wait_on
 
-
-
 #---------------------------------------------------------------------
-def plotter_p(result_df, windows, fase):
-    result_df = compss_wait_on(result_df)
+# def plotter_p(result_df, windows, fase):
+#     result_df = compss_wait_on(result_df)
+#
+#     import itertools
+#     import matplotlib.pyplot as plt
+#
+#
+#     colors = itertools.cycle(["r", "b", "g",'k','c','m','y'])
+#     for p in range(len(result_df)):
+#         fig = plt.figure()
+#         ax = fig.add_subplot(111)
+#
+#         plt.axis((0,1, 0, 1))
+#         plt.grid(True)
+#         for w in windows:
+#             init, end, end2 = w
+#             plt.axvline(end[1], color='blue')
+#             plt.axhline(end[0], color='blue')
+#             plt.axvline(init[1], color='black')
+#             plt.axhline(init[0], color='black')
+#
+#
+#         Lat  = result_df[p][0]['LONGITUDE'].tolist()
+#         Long = result_df[p][0]['LATITUDE'].tolist()
+#         #COR = [ "C{}".format(p+1) for i in range(len(Lat))]
+#         plt.scatter(Lat,Long,c = next(colors), s=30)
+#
+#
+#         plt.savefig("sample_fase_{}_p{}.png".format(fase,p))
 
-    import itertools
-    import matplotlib.pyplot as plt
 
-
-    colors = itertools.cycle(["r", "b", "g",'k','c','m','y'])
-    for p in range(len(result_df)):
-        fig = plt.figure()
-        ax = fig.add_subplot(111)
-
-        plt.axis((0,1, 0, 1))
-        plt.grid(True)
-        for w in windows:
-            init, end, end2 = w
-            plt.axvline(end[1], color='blue')
-            plt.axhline(end[0], color='blue')
-            plt.axvline(init[1], color='black')
-            plt.axhline(init[0], color='black')
-
-
-        Lat  = result_df[p][0]['LONGITUDE'].tolist()
-        Long = result_df[p][0]['LATITUDE'].tolist()
-        #COR = [ "C{}".format(p+1) for i in range(len(Lat))]
-        plt.scatter(Lat,Long,c = next(colors), s=30)
-
-
-        plt.savefig("sample_fase_{}_p{}.png".format(fase,p))
-
-
-def round_up_to_even(f):
-    import math
-    return math.ceil(f / 2.) * 2
+# def round_up_to_even(f):
+#     import math
+#     return math.ceil(f / 2.) * 2
 
 class DBSCAN(object):
-
-
-    def fragment(self,div,eps):
-        windows = []
-
-
-        for lat in range(div):
-            for log in range(div):
-                init = [ (1.0 / div)*lat           ,  (1.0 / div)*log]
-                end  = [ (1.0 / div)*(lat+1) + eps , (1.0 / div)*(log+1) + eps ]
-                end2 = [ (1.0 / div)*(lat+1)       , (1.0 / div)*(log+1)]
-                windows.append([init,end,end2])
-        return windows
-
-
+    """
+    Density-based spatial clustering of applications with noise (DBSCAN) is
+    a data clustering algorithm.  It is a density-based clustering algorithm:
+    given a set of points in some space, it groups together points that are
+    closely packed together (points with many nearby neighbors), marking as
+    outliers points that lie alone in low-density regions (whose nearest
+    neighbors are too far away).
+    """
 
     def fit_predict(self, df, settings, numFrag):
         """
@@ -159,6 +148,16 @@ class DBSCAN(object):
 #       stage1 and stage2: partitionize in 2dim and local dbscan
 #
 #-------------------------------------------------------------------------------
+
+    def fragment(self,div,eps):
+        windows = []
+        for lat in range(div):
+            for log in range(div):
+                init = [ (1.0 / div)*lat           ,  (1.0 / div)*log]
+                end  = [ (1.0 / div)*(lat+1) + eps , (1.0 / div)*(log+1) + eps ]
+                end2 = [ (1.0 / div)*(lat+1)       , (1.0 / div)*(log+1)]
+                windows.append([init,end,end2])
+        return windows    
 
 
     def inblock(self,row, column, init,end):
@@ -430,7 +429,7 @@ class DBSCAN(object):
                         #df1.set_value(index,clusters,id_newC[str(key)])
                         df1.ix[index, clusterCol] = id_newC[str(key)]
 
-            print df1
+            #print df1
             df1.ix[df1[clusterCol].str.contains("_-9", na=False), clusterCol] = -1
 
         return df1

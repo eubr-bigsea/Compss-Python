@@ -9,8 +9,7 @@ __email__  = "lucasmsp@gmail.com"
 from pycompss.api.task import task
 from pycompss.api.parameter import *
 from pycompss.functions.reduce import mergeReduce
-from pycompss.functions.data import chunks
-from pycompss.api.api import compss_wait_on, barrier
+from pycompss.api.api import compss_wait_on
 
 import numpy as np
 import pandas as pd
@@ -157,6 +156,9 @@ def mergesort(data1, data2, settings):
     order = settings['ascending']
     n1 = len(data1)
     n2 = len(data2)
+    
+    if  n1 == 0 or n2 == 0:
+        return 1
 
     idx_data1 = data1.index
     idx_data2 = data2.index

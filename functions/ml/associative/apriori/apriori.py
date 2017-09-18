@@ -33,38 +33,49 @@ class Apriori(object):
         nTotal = currentCSet_merged[1]
         k = 2
 
-        while(currentCSet_merged[0] != {}):
+        while(len(currentCSet_merged[0])>0):
             largeSet.append(currentCSet_merged[0])
-            currentLSet = self.joinSet(currentCSet_reduced , k ,numFrag)  # Candidate generation
+            currentLSet = self.joinSet(currentCSet_reduced, k ,numFrag)  # Candidate generation
             currentCSet_reduced = self.getItemsWithMinSupport(currentLSet, data, col,  minSupport, numFrag)  # Candidate pruning
             currentCSet_merged = mergeReduce(self.mergeSetstoLocal,currentCSet_reduced) # localset and ntotal
             currentCSet_merged = compss_wait_on(currentCSet_merged)
             k += 1
 
         import pandas as pd
-        #print largeSet
+        import numpy as np
+
+
+        def removeFrozen(a):
+            return ( list(a[0]), a[1])
+
+        for i in range(len(largeSet)):
+            largeSet[i] = np.array(largeSet[i].items())
+            largeSet[i] = np.apply_along_axis(removeFrozen, 1, largeSet[i])
+
+        largeSet = np.vstack((largeSet))
+        largeSet = np.array_split(largeSet, numFrag)
+
+
         largeSet_df = []
         for l in largeSet:
-            k = [[ list(x), l[x]]  for x in l]
-            largeSet_df.append( pd.DataFrame(k,columns=['transaction','support']) )
-            #print l
-        #print largeSet_df
-        return largeSet_df, nTotal
+            largeSet_df.append(pd.DataFrame(l,columns=['items','support']))
+
+        return largeSet_df
 
 
     def getItemsWithMinSupport(self,candidates, data, t, minSupport, numFrag):
         "Returns all candidates that meets a minimum support level"
 
 
-        itemSet_local  = [self.returnItemsWithMinSupport_count(candidates[i], data[i], t) for i in range(numFrag)]
-        itemSet_global = mergeReduce(self.returnItemsWithMinSupport_merge, itemSet_local) # localset and ntotal
-        C_reduced = [self.returnItemsWithMinSupport_reduce(data[i], t, itemSet_global, minSupport) for i in range(numFrag)]# localset,  ntotal
+        itemSet_local  = [self.count_Items(candidates[i], data[i], t) for i in range(numFrag)]
+        itemSet_global = mergeReduce(self.merge_ItemsWithMinSupport, itemSet_local) # localset and ntotal
+        C_reduced = [self.FilterItemsWithMinSupport(data[i], t, itemSet_global, minSupport) for i in range(numFrag)]# localset,  ntotal
 
 
         return C_reduced
 
     @task(returns=list,isModifier = False)
-    def returnItemsWithMinSupport_count(self,itemSet,data,t):
+    def count_Items(self,itemSet,data,t):
         """count the frequency of an item"""
 
         localSet = defaultdict(int)
@@ -81,14 +92,14 @@ class Apriori(object):
     def getFirstItemsWithMinSupport(self, data, col, minSupport, numFrag):
         "Returns all candidates that meets a minimum support level"
 
-        itemSet_local  = [self.returnFirstItemsWithMinSupport_count(data[i], col) for i in range(numFrag)]
-        itemSet_global = mergeReduce(self.returnItemsWithMinSupport_merge,itemSet_local) # localset and ntotal
-        C_reduced = [self.returnItemsWithMinSupport_reduce(data[i],col,itemSet_global, minSupport) for i in range(numFrag)]# localset,  ntotal
+        itemSet_local  = [self.count_FirstItems(data[i], col) for i in range(numFrag)]
+        itemSet_global = mergeReduce(self.merge_ItemsWithMinSupport,itemSet_local) # localset and ntotal
+        C_reduced = [self.FilterItemsWithMinSupport(data[i],col,itemSet_global, minSupport) for i in range(numFrag)]# localset,  ntotal
 
         return C_reduced
 
     @task(returns=list,isModifier = False)
-    def returnFirstItemsWithMinSupport_count(self,data, t):
+    def count_FirstItems(self,data, t):
         """count the frequency of an item"""
 
         itemSet = set()
@@ -108,7 +119,7 @@ class Apriori(object):
         return [localSet, len(data)]
 
     @task(returns=list,isModifier = False)
-    def returnItemsWithMinSupport_merge(self,data1,data2):
+    def merge_ItemsWithMinSupport(self,data1,data2):
             localSet1,n1 = data1
             localSet2,n2 = data2
 
@@ -121,7 +132,7 @@ class Apriori(object):
             return [localSet1,n1+n2]
 
     @task(returns=list,isModifier = False)
-    def returnItemsWithMinSupport_reduce(self,data, t,freqSet, minSupport):
+    def FilterItemsWithMinSupport(self,data, t,freqSet, minSupport):
             """calculates the support for items in the itemSet and returns a subset
            of the itemSet each of whose elements satisfies the minimum support"""
 
@@ -175,38 +186,36 @@ class Apriori(object):
 
     #%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-    def generateRules(self, L, settings,nTotal):
+    def generateRules(self, L, settings):
 
-        min_confidence = settings.get('confidence',0.5)
-        if nTotal <= 0:
-            n_p = [ self.count_transations(L[f]) for f in range(len(L))]
-            nTotal = mergeReduce(self.mergeRules,n_p)
+        min_confidence = settings.get('confidence', 0.5)
 
-        toRetRules = [ self.getRules( L[i], L, min_confidence, nTotal ) for i in range(1, len(L)) ]
-        toRetRules = mergeReduce(self.mergeRules, toRetRules)
+
+        toRetRules = [ self.getRules( i, L, min_confidence ) for i in range(len(L)) ]
+        #toRetRules = mergeReduce(self.mergeRules, toRetRules)
         return toRetRules
 
     @task(returns=list,isModifier = False)
-    def getRules(self, Li, L, minConfidence, nTotal):
+    def getRules(self, i, L, minConfidence):
 
         toRetRules = []
-        for index, row in Li.iterrows():
-            item    = row['transaction']
+        for index, row in L[i].iterrows():
+            item    = row['items']
             support = row['support']
-            _subsets = [list(x) for x in self.subsets(item)] #map(frozenset, [x for x in self.subsets(item)])
+            if len(item)>0:
+                _subsets = [list(x) for x in self.subsets(item)] #map(frozenset, [x for x in self.subsets(item)])
 
-            for element in _subsets:
-                remain = list(set(item).difference(element))
+                for element in _subsets:
+                    remain = list(set(item).difference(element))
 
-                if len(remain) > 0:
-                    num = float(support) / nTotal
-                    den = self.getSupport(element,L)/nTotal
-                    if den == 0.0: den = 0.000001
-                    confidence = num/den
-                    #print confidence
-                    if confidence > minConfidence:
-                        r = [element, remain, confidence]
-                        toRetRules.append(r)
+                    if len(remain) > 0:
+                        num = float(support)
+                        den = self.getSupport(element,L)
+                        confidence = num/den
+
+                        if confidence > minConfidence:
+                            r = [element, remain, confidence]
+                            toRetRules.append(r)
 
 
         import pandas as pd
@@ -222,10 +231,10 @@ class Apriori(object):
 
     def getSupport(self,element, L):
         for df in L:
-            for t,s  in zip(df['transaction'].values, df['support'].values):
+            for t,s  in zip(df['items'].values, df['support'].values):
                 if element == t:
                     return s
-        return 0.0
+        return float("inf")
 
     @task(returns=int,isModifier = False)
     def count_transations(self,L):
@@ -233,4 +242,4 @@ class Apriori(object):
 
     @task(returns=list,isModifier = False)
     def mergeRules(self,rules1,rules2):
-        return rules1 + rules2
+        return pd.concat([rules1,rules2])
