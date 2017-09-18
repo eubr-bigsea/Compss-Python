@@ -1,14 +1,14 @@
 
 # Data Operations:
 
+## Data Reader:
 
-## Read CSV:
+### Read CSV:
 
-Method used to load a unique pandas DataFrame from N csv files. For example.
+Method used to load a unique pandas DataFrame from N csv files.
 
 ```sh
-  ReadCSVOperation:
-
+  ReadCSVOperation():
   :param filename:        The absolute path where the dataset is stored.
                           Each dataset is expected to be in a specific folder.
                           The folder will have the name of the dataset with the suffix "_folder".
@@ -23,12 +23,41 @@ Method used to load a unique pandas DataFrame from N csv files. For example.
   :return                 A DataFrame splitted in a list with length N.
 ```
 
-### Example:
+#### Example:
 
 ```sh
 $ ls /var/workspace/dataset_folder
     dataset_00     dataset_02
     dataset_01     dataset_03
+```
+
+### Read Json:
+
+
+
+
+Method used to load a pandas DataFrame from N json files.
+
+```sh
+  ReadCSVOperation():
+    :param filename:        The absolute path where the dataset is stored.
+                            Each dataset is expected to be in a specific folder.
+                            The folder will have the name of the dataset with the suffix "_folder".
+                            The dataset is already divided into numFrags files, sorted lexicographically.
+    :param settings:        A dictionary with the following parameters:
+      - 'infer':
+        * "NO":              Do not infer the data type of each column (will be string);
+        * "FROM_VALUES":     Try to infer the data type of each column (default);
+        * "FROM_LIMONERO":   !! NOT IMPLEMENTED YET!!
+    :return                  A DataFrame splitted in a list with length N.
+```
+
+#### Example:
+
+```sh    
+    $ ls /var/workspace/dataset_folder
+        dataset_00     dataset_02
+        dataset_01     dataset_03
 ```
 
 ## Change attributes:

@@ -27,7 +27,7 @@ def SaveOperation(data,settings,numFrag):
 		header = settings['header']
 		for f in range(numFrag):
 			output = "{}_part{}".format(filename,f)
-			tmp = SaveToFile(output, data[f], mode, header)
+			tmp = SaveToCSV(output, data[f], mode, header)
 
 	elif format_file == 'JSON':
 		for f in range(numFrag):
@@ -38,9 +38,9 @@ def SaveOperation(data,settings,numFrag):
 
 
 @task(filename = FILE_OUT)
-def SaveToFile(filename,data,mode,header):
+def SaveToCSV(filename,data,mode,header):
     """
-        SaveToFile (CSV):
+        SaveToCSV():
 
         Method used to save a dataframe into a file (CSV).
 
@@ -87,9 +87,10 @@ def SaveToPickle(outfile, data):
 @task(filename = FILE_OUT)
 def SaveToJson(filename,data):
 	"""
-	    SaveToJson (JSON):
+	    SaveToJson():
 
-	    Method used to save a dataframe into a file (JSON).
+	    Method used to save a dataframe into a JSON (following the
+		'records' pandas orientation).
 
 	    :param filename: The name used in the output.
 	    :param data: The pandas dataframe which you want to save.
