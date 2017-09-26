@@ -18,6 +18,8 @@ from pycompss.api.parameter     import *
 # Save Methods
 
 
+# APPEND VAI FICAR NO MASTER
+
 def SaveOperation(data,settings,numFrag):
 	format_file = settings['format']
 	filename = settings['filename']

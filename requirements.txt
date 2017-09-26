@@ -1,0 +1,10 @@
+# Requirements to use all functions in COMPSs-Python.
+
+Cython == 0.25.2
+Pyqtree == 0.24
+matplotlib == 1.5.1
+networkx == 1.11
+numpy == 1.11.0
+pandas == 0.20.3
+pyshp == 1.2.11
+python_dateutil == 2.6.1

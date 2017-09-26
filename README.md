@@ -5,8 +5,10 @@ A list of all COMPS's operations supported by Lemonade.
 ## Operations:
 
 * [Data operations](https://github.com/eubr-bigsea/Compss-Python/tree/master/functions/data):
+    - Change attributes
  	- Data Reader
  	- Data Writer
+ 	- Workload Balancer
 
 * [ETL Operations](https://github.com/eubr-bigsea/Compss-Python/tree/master/functions/etl):
  	- Add Columns
@@ -28,6 +30,7 @@ A list of all COMPS's operations supported by Lemonade.
 
 * [Machine Learning Operations](https://github.com/eubr-bigsea/Compss-Python/tree/master/functions/ml):
  	- K-Means Clustering
+ 	- DBSCAN Clustering
  	- K-NN Classifier
  	- Naive Bayes Classifier
  	- Svm Classifier
@@ -58,8 +61,26 @@ A list of all COMPS's operations supported by Lemonade.
 * [Geografic Operations](https://github.com/eubr-bigsea/Compss-Python/tree/master/functions/geo):
  	- Read Shapefile
  	- Geo Within
+ 	- ST-DBSCAN
 
 * [Graph Operations](https://github.com/eubr-bigsea/Compss-Python/tree/master/functions/graph):
  	- PageRank
 
 
+
+# Requirements
+
+Some functions use third-party libraries, install all the dependencies below in order to use them, this can be done using the command `$ pip install -r requirements.txt`.
+
+
+
+```
+Cython == 0.25.2
+Pyqtree == 0.24
+matplotlib == 1.5.1
+networkx == 1.11
+numpy == 1.11.0
+pandas == 0.20.3
+pyshp == 1.2.11
+python_dateutil == 2.6.1
+```

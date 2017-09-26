@@ -12,7 +12,7 @@ import numpy as np
 import pandas as pd
 import datetime
 import time
-
+from dateutil.parser import parse
 
 #-------------------------------------------------------------------------------
 #  Transformation
@@ -48,8 +48,8 @@ def apply_transformation(data, functions):
     for r in functions:
         print r
         ncol, function, imp = r
-        if imp != None:
-            exec(imp)
+        #if imp != None or imp != "":
+        exec(imp)
         print function
         data[ncol] = data.apply(eval(function), axis=1)
     #print data
