@@ -2,19 +2,8 @@
 #!/usr/bin/env python
 
 
-#from pycompss.functions.data import chunks
 from pycompss.api.task          import task
 from pycompss.api.parameter     import *
-from pycompss.functions.reduce import mergeReduce
-
-import numpy as np
-import math
-import pickle
-import pandas as pd
-
-
-#------------------------------------------------------------------------------
-# Load Methods
 
 
 
@@ -73,7 +62,7 @@ def ReadCSVOperation(filename,settings):
 
 @task(returns=list, filename = FILE_IN)
 def ReadCSV(filename,separator,header,infer,na_values):
-
+    import pandas as pd
     if separator == "<new_line>": separator = "\n"
 
     if infer =="NO":
@@ -94,8 +83,6 @@ def ReadCSV(filename,separator,header,infer,na_values):
     return df
 
 #-------------------------------------------------------------
-
-
 
 def ReadJsonOperation(filename, settings):
     """
@@ -133,6 +120,7 @@ def ReadJsonOperation(filename, settings):
 
     return data
 
+#-------------------------------------------------------------
 
 @task(returns=list, filename = FILE_IN)
 def ReadJson(filename, infer):
@@ -148,7 +136,7 @@ def ReadJson(filename, infer):
             - "FROM_LIMONERO":  !! NOT IMPLEMENTED YET!!
         return:       The partial pandas dataframe.
     """
-
+    import pandas as pd
     if infer == "NO":
         df = pd.read_json(filename, orient='records', dtype='str')
     else:
@@ -157,22 +145,47 @@ def ReadJson(filename, infer):
 
 
 
-def ReadFromNumpy(infile):
+def ReadCSVFromHDFSOperation(settings, numFrag):
     """
-        Load an array from a binary file in NumPy .npy format
+    Reads a tabular file (like csv) from HDFS and split it into numFrag parts.
 
-        :param infile: the /path/file.npy
+    :param settings:        A dictionary with the following parameters:
+      - path:               The path of the file from the / of the HDFS;
+      - host:               The host of the Namenode HDFS; (default, localhost)
+      - port:               Port of the Namenode HDFS; (default, 9000)
+
+      - 'separator':        The string used to separate values (default, ',');
+      - 'header':           True if the first line is a header, otherwise is False (default, True);
+      - 'infer':
+        * "NO":              Do not infer the data type of each column (will be string);
+        * "FROM_VALUES":     Try to infer the data type of each column (default);
+        * "FROM_LIMONERO":   !! NOT IMPLEMENTED YET!!
+      - 'na_values':         A list with the all nan caracteres to be considerated.
+                             Default list:   '', '#N/A', '#N/A N/A', '#NA', '-1.#IND',
+                                             '-1.#QNAN', '-NaN', '-nan', '1.#IND', '1.#QNAN',
+                                             'N/A', 'NA', 'NULL', 'NaN', 'nan'
+    :param numFrag:   A number of fragments;
+    :return           A DataFrame splitted in a list with length N.
     """
-    return np.load(infile)
+    import hdfs_pycompss.hdfsConnector as hdfs
 
-def ReadFromPickle(infile):
-    """
-        Load an array from a serizable Pickle file format
+    HDFS_BLOCKS = hdfs.findNBlocks(settings, numFrag)
 
-        :param infile: the /path/file.npy
-    """
+    infer = settings.get('infer', 'FROM_VALUES')
+    if infer == 'FROM_VALUES':
+        settings['infer'] = True
+    elif infer == 'FROM_LIMONERO':
+        # TODO: integrate to Limonero
+        settings['infer'] = False
+    else:
+        # 'NO':
+        settings['infer'] = False
 
-    with open(infile, 'rb') as handle:
-        b = pickle.load(handle)
+    data = [readHDFSData(block,settings) for block in HDFS_BLOCKS ]
+    return data
 
-    return b
+
+@task(returns=list)
+def readHDFSData(block, csv_options):
+    import hdfs_pycompss.hdfsConnector as hdfs
+    return hdfs.readDataFrame(block, csv_options)
