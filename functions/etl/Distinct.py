@@ -8,8 +8,6 @@ from pycompss.functions.reduce import mergeReduce
 
 import numpy as np
 import pandas as pd
-import math
-
 
 def DistinctOperation(data, cols, numFrag):
     """
@@ -18,7 +16,8 @@ def DistinctOperation(data, cols, numFrag):
         pandas dataframe.
 
         :param data:        A list with numFrag pandas's dataframe;
-        :param cols:        A list with the columns names to take in count.
+        :param cols:        A list with the columns names to take in count
+                            (if no field is choosen, all fields are used).
         :param numFrag:     The number of fragments;
         :return:            Returns a list with numFrag pandas's dataframe.
     """
@@ -53,6 +52,10 @@ def DistinctOperation(data, cols, numFrag):
 def DropDuplicates_p(data1,data2,cols):
     data = pd.concat([data1,data2],axis=0, ignore_index=True)
 
+    #if no field is choosen, all fields are used)
+    if len(cols)==0:
+        cols = data.columns
+
     data.drop_duplicates(cols, keep='first',inplace=True)
     data = np.array_split(data, 2)
 
@@ -61,5 +64,5 @@ def DropDuplicates_p(data1,data2,cols):
     data1.ix[0:] =  data[0].ix[0:]
     data2.ix[0:] =  data[1].ix[0:]
 
-    data1.dropna(axis=0,inplace=True,subset=cols)
-    data2.dropna(axis=0,inplace=True,subset=cols)
+    data1.dropna(axis=0,inplace=True,subset=None,how='all')
+    data2.dropna(axis=0,inplace=True,subset=None,how='all')

@@ -12,6 +12,7 @@ Merge two dataframes, column-wise, similar to the command paste in Linux.
      :param df2:         A list with numFrag pandas's dataframe;
      :param balanced:    True only if len(df1[i]) == len(df2[i]) to each i;
      :param numFrag:     The number of fragments;
+     :param suffixes:    Suffixes for attributes (a list with 2 values);
      :return:            A list with numFrag pandas's dataframe.
 ```
 
@@ -34,6 +35,8 @@ Computes aggregates and returns the result as a DataFrame.
              'max':   Returns the max value of each group for one attribute;
              'min':   Returns the min value of each group for one attribute;
              'sum':   Returns the sum of values of each group for one attribute;
+             'list':  Returns a list of objects with duplicates;
+             'set':  Returns a set of objects with duplicate elements eliminated.
      :param numFrag:  The number of fragments;
      :return:         Returns a list with numFrag pandas's dataframe.
 
@@ -85,7 +88,7 @@ Function which remove duplicates elements in a pandas dataframe based in some co
      DistinctOperation():
 
      :param data:      A list with numFrag pandas's dataframe;
-     :param cols:      A list with the columns names to take in count.
+     :param cols:      A list with the columns names to take in count (if no field is choosen, all fields are used).
      :param numFrag:   The number of fragments;
      :return:          Returns a list with numFrag pandas's dataframe.
 ```
@@ -102,6 +105,29 @@ Returns a new DataFrame that drops the specified column. Nothing is done if sche
      :param numFrag: The number of fragments;
      :return:        A list with numFrag pandas's dataframe.
 ```
+
+## Filter:
+
+Returns a subset rows of dataFrame according to the specified query.
+
+```
+    FilterOperation():
+
+    :param data:       A list with numFrag pandas's dataframe;
+    :param settings:   A dictionary that contains:
+        - 'query':     A valid query.
+    :param numFrag:    The number of fragments;
+    :return:           Returns a list with numFrag pandas's dataframe.
+
+
+    Note: Visit the link bellow to more information about the query.
+    https://pandas.pydata.org/pandas-docs/stable/generated/pandas.DataFrame.query.html
+
+    example:
+        settings['query'] = "(VEIC == 'CARX')" to rows where VEIC is CARX
+        settings['query'] = "(VEIC == VEIC) and (YEAR > 2000)" to rows where VEIC is not NaN and YEAR is greater than 2000
+```
+
 
 ## Intersection:
 
@@ -147,7 +173,7 @@ Perform a Feature scaling (Range Normalization) or a Standard Score Normalizatio
          * 'range', to perform the Range Normalization, also called Feature scaling. (default option)
          * 'standard', to perform the Standard Score Normalization.
        - attributes: 	 Columns names to nrmalize;
-       - alias:          Aliases of the new columns;
+       - alias:          A list of aliases of the new columns (if empty, overwrite the old fields);
      :param numFrag:     The number of fragments;
      :return:            A list with numFrag pandas's dataframe
 ```

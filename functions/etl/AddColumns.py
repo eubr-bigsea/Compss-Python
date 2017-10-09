@@ -13,7 +13,7 @@ import math
 import sys
 
 
-def AddColumnsOperation(df1,df2,balanced,numFrag):
+def AddColumnsOperation(df1,df2,balanced,sufixes,numFrag):
     """
         AddColumnsOperation():
         Merge two dataframes, column-wise, similar to the command
@@ -23,23 +23,26 @@ def AddColumnsOperation(df1,df2,balanced,numFrag):
         :param df2:         A list with numFrag pandas's dataframe;
         :param balanced:    True only if len(df1[i]) == len(df2[i]) to each i;
         :param numFrag:     The number of fragments;
-        :return: 		    Returns a list with numFrag pandas's dataframe.
+        :param suffixes     Suffixes for attributes (a list with 2 values);
+        :return:            Returns a list with numFrag pandas's dataframe.
     """
     if not balanced:
         df1, df2 = balancer(df1,df2,numFrag)
 
 
-    result = [AddColumns_part(df1[f], df2[f]) for f in range(numFrag)]
+    result = [AddColumns_part(df1[f], df2[f],sufixes) for f in range(numFrag)]
 
     return result
 
 @task(returns=list)
-def AddColumns_part(a,b):
+def AddColumns_part(a,b,suffixes):
     #See more: https://pandas.pydata.org/pandas-docs/stable/generated/pandas.DataFrame.merge.html
-
+    if len(suffixes) == 0:
+        suffixes=('_x', '_y')
     a.reset_index(drop=True,inplace=True)
     b.reset_index(drop=True,inplace=True)
-    return pd.merge(a, b, left_index=True, right_index=True, how='outer')
+    return pd.merge(a, b, left_index=True, right_index=True,
+                    how='outer', suffixes=suffixes)
 
 
 #------------------------------------------------------------------------------

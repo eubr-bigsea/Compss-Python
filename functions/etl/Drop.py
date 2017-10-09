@@ -6,9 +6,6 @@ from pycompss.api.task import task
 from pycompss.api.parameter import *
 
 
-import pandas as pd
-
-
 def DropOperation(data, columns, numFrag):
     """
         DropOperation():
@@ -27,4 +24,5 @@ def DropOperation(data, columns, numFrag):
 
 @task(returns=list)
 def Drop_part(list1,columns):
+    import pandas as pd
     return  list1.drop(columns, axis=1)

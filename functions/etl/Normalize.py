@@ -9,9 +9,6 @@ from pycompss.functions.reduce import mergeReduce
 import numpy as np
 import pandas as pd
 
-import sys
-
-
 def NormalizeOperation(data, settings, numFrag):
     """
     NormalizeOperation():
@@ -25,35 +22,56 @@ def NormalizeOperation(data, settings, numFrag):
             * 'range' to perform the Range Normalization,
                 also called Feature scaling. (default option)
             * 'standard' to perform the Standard Score Normalization.
-      - attributes: 	Columns names to normalize;
-      - alias:          Aliases of the new columns;
+      - attributes: 	A list of columns names to normalize;
+      - alias:          Aliases of the new columns
+                        (if empty, overwrite the old fields);
     :param numFrag:     A number of fragments;
     :return:            A list with numFrag pandas's dataframe
     """
 
 
     mode    = settings.get('mode','range')
-    columns = settings['attributes']
-    alias   = settings['alias']
+    columns = settings.get('attributes',[])
+    alias   = settings.get('alias',[])
+
+    if len(columns) == 0:
+        raise \
+            Exception('You must insert the fields to perform the Normalization.')
 
     if mode == 'range':
-        minmax_partial = [ aggregate_maxmin(data[f], columns) for f in range(numFrag)]
-        minmax          = mergeReduce(merge_maxmin, minmax_partial)
-        result = [ normalizate_byRange(data[f], columns, alias, minmax) for f in range(numFrag)]
-        return result
-    elif mode == 'standard':
-        sum_partial     = [aggregate_sum(data[f], columns) for f in range(numFrag)]
-        mean            = mergeReduce(merge_sum, sum_partial)
-        sse_partial     = [aggregate_sse(data[f], columns, mean) for f in range(numFrag)]
-        sse             = mergeReduce(merge_sse, sse_partial)
-        result = [ normalizate_byStandard(data[f], columns, alias, mean, sse) for f in range(numFrag)]
-        return result
-    else:
-        return data
+        # generate a list of the min and the max element to each subset.
+        minmax_partial = \
+            [ aggregate_maxmin(data[f], columns) for f in range(numFrag)]
+        # merge them into only one list
+        minmax = mergeReduce(merge_maxmin, minmax_partial)
+        # compute the new values to each subset
+        result = [normalizate_byRange(data[f], columns, alias, minmax)
+                    for f in range(numFrag)]
 
+    elif mode == 'standard':
+        # compute the sum of each subset column
+        sum_partial = [aggregate_sum(data[f], columns) for f in range(numFrag)]
+        # merge then to compute a mean
+        mean = mergeReduce(merge_sum, sum_partial)
+        # using this mean, compute the variance of each subset column
+        sse_partial = \
+                [aggregate_sse(data[f], columns, mean) for f in range(numFrag)]
+        sse = mergeReduce(merge_sse, sse_partial)
+        # finally, compute the new values to each subset
+        result = [normalizate_byStandard(data[f], columns, alias, mean, sse)
+                for f in range(numFrag)]
+
+    else:
+        raise Exception('Only supports range and standard Normalization types.')
+
+    return result
+
+# ------------------------
+# By Range:
 
 @task(returns=list)
 def aggregate_maxmin(df, columns):
+        #Generates a list of min and max values, excluding NaN values
         min_max_p = df[columns].describe().loc[['min','max']]
         return min_max_p.T.values.tolist()
 
@@ -68,12 +86,18 @@ def merge_maxmin(minmax1,minmax2):
 
 @task(returns=list)
 def normalizate_byRange(data, columns, aliases, minmax):
+    if len(aliases) != len(columns):
+        aliases = columns
+
     for i, (alias,col) in  enumerate(zip(aliases,columns)):
         minimum, maximum = minmax[i]
         diff = maximum - minimum
         data[alias] = data[col].apply(lambda xi: float(xi - minimum)/diff)
 
     return data
+
+# ------------------------
+# By Standard Score Normalization:
 
 @task(returns=list)
 def aggregate_sum(df, columns):
@@ -110,6 +134,8 @@ def merge_sse(sum1,sum2):
 
 @task(returns=list)
 def normalizate_byStandard(data, columns, aliases, mean, sse):
+    if len(aliases) != len(columns):
+        aliases = columns
 
     for i, (alias,col) in  enumerate(zip(aliases,columns)):
         m   = mean[i][0]/mean[i][1]

@@ -5,13 +5,9 @@
 from pycompss.api.task import task
 from pycompss.api.parameter import *
 from pycompss.functions.reduce import mergeReduce
-from pycompss.functions.data import chunks
-from pycompss.api.api import compss_wait_on, barrier
 
 import numpy as np
 import pandas as pd
-import math
-
 
 #-------------------------------------------------------------------------------
 #  Clean Missing
@@ -27,42 +23,58 @@ def CleanMissingOperation(data,params,numFrag):
         - attributes:     A list of attributes to evaluate;
         - cleaning_mode:  What to do with missing values;
           * "VALUE":         replace by parameter "value";
-          * "REMOVE_ROW":    remove entire row;
+          * "REMOVE_ROW":    remove entire row (default);
           * "MEDIAN":        replace by median value;
           * "MODE":          replace by mode value;
           * "MEAN":          replace by mean value;
           * "REMOVE_COLUMN": remove entire column;
-        - value:         Used to replace missing values (if mode is "VALUE");
+        - value:         Value to replace missing values (if mode is "VALUE");
     :param numFrag:      The number of fragments;
     :return:             Returns a list with numFrag pandas's dataframe.
+
+    example:
+
+    settings['attributes']    =  ["ID_POSONIBUS"]
+    settings['cleaning_mode'] =  "VALUE"
+    settings['value'] = -1
     """
 
-    cleaning_mode = params['cleaning_mode']
+    cleaning_mode = params.get('cleaning_mode','REMOVE_ROW')
+    params['cleaning_mode'] = cleaning_mode
 
     if cleaning_mode in ['VALUE','REMOVE_ROW']:
-        data = [ CleanMissing_partial(data[f],params) for f in range(numFrag)]
+        #In these cases, we dont need to take in count others rows/fragments
+        data = [CleanMissing_partial(data[f], params) for f in range(numFrag)]
     else:
-        params = [ analysing_missingvalues(data[f],params) for f in range(numFrag)]
+        params = [CleanMissing_analysing(data[f],params) for f in range(numFrag)]
         params = mergeReduce(mergeCleanOptions,params)
-        data = [ CleanMissing_partial(data[f],params) for f in range(numFrag)]
+        data = [CleanMissing_partial(data[f],params) for f in range(numFrag)]
 
     return data
 
 @task(returns=dict)
-def analysing_missingvalues (data, params):
+def CleanMissing_analysing(data, params):
+    """
+    Some operations needs some pre-analysis, like:
+    REMOVE_COLUMN, MEAN, MODE and MEDIAN
+    """
+
     attributes    = params['attributes']
     cleaning_mode = params['cleaning_mode']
 
     if cleaning_mode == "REMOVE_COLUMN":
-        null_fields = data.columns[data[attributes].isnull().any()].tolist()
+        #list of columns of the current fragment that contains a null value
+        null_fields = \
+            data[attributes].columns[data[attributes].isnull().any()].tolist()
         params['columns_drop'] = null_fields
 
     elif cleaning_mode == "MEAN":
-
+        #generate a partial mean of each subset column
         params['values'] = data[attributes].mean().values
-        print params['values']
+        #print params['values']
 
     elif cleaning_mode in ["MODE",'MEDIAN']:
+        #generate a frequency list of each subset column
         dict_mode = {}
         for att in attributes:
             dict_mode[att] = data[att].value_counts()
@@ -77,23 +89,31 @@ def mergeCleanOptions(params1,params2):
     cleaning_mode = params1['cleaning_mode']
 
     if cleaning_mode == "REMOVE_COLUMN":
-        params1['columns_drop'] = list(set(params1['columns_drop'] + params2['columns_drop']))
+        params1['columns_drop'] = \
+            list(set(params1['columns_drop'] + params2['columns_drop']))
 
     elif cleaning_mode in "MEAN":
-        params1['values'] = [ (x + y)/2 for x, y in zip(params1['values'], params2['values']) ]
+        params1['values'] = \
+            [ (x + y)/2 for x, y in zip(params1['values'], params2['values']) ]
 
     elif cleaning_mode in ["MODE",'MEDIAN']:
         dict_mode1 = params1['dict_mode']
         dict_mode2 = params2['dict_mode']
         dict_mode  = {}
         for att in dict_mode1:
-            dict_mode[att] = pd.concat([dict_mode1[att], dict_mode2[att]], axis=1).fillna(0).sum(axis=1)
-        params1['dict_mode']  = dict_mode
+            dict_mode[att] = \
+                pd.concat([dict_mode1[att], dict_mode2[att]], axis=1).\
+                fillna(0).sum(axis=1)
+        params1['dict_mode'] = dict_mode
 
     return params1
 
 @task(returns=list)
 def CleanMissing_partial(data,params):
+    """
+    Perform the operation required, ie:
+    REMOVE_ROW, REMOVE_COLUMN, VALUE, MEAN, MODE and MEDIAN
+    """
     attributes    = params['attributes']
     cleaning_mode = params['cleaning_mode']
 
@@ -115,11 +135,12 @@ def CleanMissing_partial(data,params):
 
     elif cleaning_mode == "MODE":  #ok
         dict_mode = params['dict_mode']
-
+        #print dict_mode
         for att in dict_mode:
             t = dict_mode[att].max()
             mode = dict_mode[att].idxmax()
-            mode = dict_mode[att].index[mode]
+            #print mode
+            #mode = dict_mode[att].index[mode]
             data[att] = data[att].fillna(value=mode)
 
     elif cleaning_mode == "MEDIAN":

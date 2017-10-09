@@ -6,16 +6,12 @@ from pycompss.api.task import task
 from pycompss.api.parameter import *
 from pycompss.functions.reduce import mergeReduce
 
-
-import numpy as np
 import pandas as pd
-import math
-
-
 
 def IntersectionOperation(data1, data2, numFrag):
     """
-        Returns a new DataFrame containing rows only in both this frame and another frame.
+        Returns a new DataFrame containing rows only in both this
+        frame and another frame.
 
         :param data1:  A list with numFrag pandas's dataframe;
         :param data2:  Other list with numFrag pandas's dataframe;
@@ -41,6 +37,6 @@ def Intersect_part(list1,list2):
 
 @task(returns=list)
 def mergeIntersect(list1,list2):
-    #print "\nUnion_part\n---\n{}\n---\n{}\n---\n".format(list1,list2)
+
     result = pd.concat([list1,list2], ignore_index=True)
     return  result
