@@ -1,6 +1,8 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 
+__author__ = "Lucas Miguel S Ponce"
+__email__  = "lucasmsp@gmail.com"
 
 from pycompss.api.task import task
 from pycompss.api.parameter import *
@@ -22,7 +24,7 @@ def SplitOperation(data,settings,numFrag):
     :return:          Returns two lists with numFrag pandas's dataframe with
                       distincts subsets of the input.
 
-    Note:   if percentage = 0.25, the final dataframes 
+    Note:   if percentage = 0.25, the final dataframes
             will have respectively,25% and 75%.
     """
 

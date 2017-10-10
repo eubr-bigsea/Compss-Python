@@ -1,6 +1,8 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 
+__author__ = "Lucas Miguel S Ponce"
+__email__  = "lucasmsp@gmail.com"
 
 from pycompss.api.task import task
 from pycompss.api.parameter import *
@@ -96,7 +98,7 @@ def DefineNSample (N_list,value,seed,random,int_per,numFrag):
             value = total
     elif int_per == 'per':
         value = int(math.ceil(total*value))
-        
+
 
     if random:
         np.random.seed(seed)

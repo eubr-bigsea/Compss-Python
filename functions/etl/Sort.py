@@ -4,12 +4,9 @@
 __author__ = "Lucas Miguel S Ponce"
 __email__  = "lucasmsp@gmail.com"
 
-
-
 from pycompss.api.task import task
 from pycompss.api.parameter import *
 from pycompss.functions.reduce import mergeReduce
-
 
 import numpy as np
 import pandas as pd
@@ -85,14 +82,12 @@ def sort_byBittonic(data,settings,numFrag):
             if stage == 1:
                 gap = 1
                 while f<numFrag:
-                    #print "[INFO] | stage == 1 | step:{} | stage{}| idx_{} and idx_{} | gap: {}".format(step,stage,f,f+gap,gap)
                     mergesort(data[f],data[f+gap], settings)
                     f+=(gap+1)
 
             elif stage == step:
                 gap =  2**step -1
                 while gap>=1:
-                    #print "[INFO] | stage == step  step:{} | stage{}| idx_{} and idx_{} | gap: {}".format(step,stage,f,f+gap,gap)
                     mergesort(data[f],data[f+gap], settings)
                     f+=1
                     gap-=2
@@ -100,7 +95,6 @@ def sort_byBittonic(data,settings,numFrag):
             else:
                 gap = gap/2
                 while f<numFrag:
-                    #print "[INFO] | stage != step |  step:{} | stage{}| idx_{} and idx_{} | gap: {}".format(step,stage,f,f+gap,gap)
                     mergesort(data[f],data[f+gap], settings)
                     f+=(gap+1)
             stage-=1
@@ -123,9 +117,11 @@ def sort_byOddEven(data,settings,numFrag):
     from pycompss.api.api import compss_wait_on
     while nsorted:
         if (f % 2 == 0):
-            s = [ mergesort(data[i],data[i+1],settings) for i in range(numFrag)   if (i % 2 == 0)]
+            s = [ mergesort(data[i],data[i+1],settings)
+                    for i in range(numFrag)   if (i % 2 == 0)]
         else:
-            s = [ mergesort(data[i],data[i+1],settings) for i in range(numFrag-1) if (i % 2 != 0)]
+            s = [ mergesort(data[i],data[i+1],settings)
+                    for i in range(numFrag-1) if (i % 2 != 0)]
 
         s = compss_wait_on(s)
 

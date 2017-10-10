@@ -4,9 +4,6 @@
 __author__ = "Lucas Miguel S Ponce"
 __email__  = "lucasmsp@gmail.com"
 
-
-
-
 from pycompss.api.task import task
 from pycompss.api.parameter import *
 
