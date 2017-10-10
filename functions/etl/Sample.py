@@ -19,36 +19,64 @@ def SampleOperation(data,params,numFrag):
     :param data:           A list with numFrag pandas's dataframe;
     :param params:         A dictionary that contains:
         - type:
-            * 'percent':   Sample a random amount of records
+            * 'percent':   Sample a random amount of records (default)
             * 'value':     Sample a N random records
             * 'head':      Sample the N firsts records of the dataframe
         - seed :           Optional, seed for the random operation.
-        - value:           Value N to be sampled (in 'value' or 'head' type)
+        - int_value:       Value N to be sampled (in 'value' or 'head' type)
+        - per_value:       Percentage to be sampled (in 'value' or 'head' type)
     :param numFrag:        The number of fragments;
     :return:               A list with numFrag pandas's dataframe.
 
     """
 
+    value, int_per = Validate(params)
+    TYPE = params.get("type", 'percent')
+
+    #Its necessary count the distribuition of the data in each fragment
     partial_counts  = [CountRecord(data[i]) for i in range(numFrag)]
     N_list          = mergeReduce(mergeCount,partial_counts)
 
-    TYPE = params.get("type", None)
-
     if TYPE  == 'percent':
         seed        = params.get('seed', None)
-        indexes     = DefineNSample(N_list,None,seed,True,numFrag)
+        indexes     = DefineNSample(N_list,None,seed,True,'',numFrag)
         data = [GetSample(data[i],indexes,i) for i in range(numFrag)]
     elif TYPE  == 'value':
-        value       = params.get('value', 0)
+        #value       = params['value']
         seed        = params.get('seed', None)
-        indexes     = DefineNSample(N_list,value,seed,False,numFrag)
+        indexes     = DefineNSample(N_list,value,seed,False,int_per,numFrag)
         data = [GetSample(data[i],indexes,i) for i in range(numFrag)]
     elif TYPE == 'head':
-        head    = params.get('value', 0)
-        indexes = DefineHeadSample(N_list,head,numFrag)
+        #head    = params['value']
+        indexes = DefineHeadSample(N_list,value,int_per,numFrag)
         data = [GetSample(data[i],indexes,i) for i in range(numFrag)]
 
     return data
+
+
+
+def Validate(params):
+    TYPE = params.get("type", 'percent')
+    if TYPE not in ['percent','value','head']:
+        raise Exception('You must inform a valid sampling type.')
+
+    op = 'int'
+    if TYPE == 'head' or TYPE == 'value':
+        if  'int_value'  in params:
+            value = params['int_value']
+            op = 'int'
+            if not isinstance(value, int) and value < 0:
+                raise Exception('`int_value` must be a positive integer.')
+        elif 'per_value' in params:
+            value = params['per_value']
+            op = 'per'
+            if value > 1 or value < 0:
+                raise Exception('Percentage value must between 0 and 1.0.')
+        else:
+            raise Exception('Using `Head` or `value` sampling type you need to '
+                            'set `int_value` or `per_value` setting as well.')
+
+    return value, op
 
 @task(returns=list)
 def CountRecord(data):
@@ -60,11 +88,15 @@ def mergeCount(data1,data2):
     return [data1[0]+data2[0], np.concatenate((data1[1], data2[1]), axis=0)]
 
 @task(returns=list)
-def DefineNSample (N_list,value,seed,random,numFrag):
+def DefineNSample (N_list,value,seed,random,int_per,numFrag):
 
     total, n_list = N_list
-    if total < value:
-        value = total
+    if int_per == 'int':
+        if total < value:
+            value = total
+    elif int_per == 'per':
+        value = int(math.ceil(total*value))
+        
 
     if random:
         np.random.seed(seed)
@@ -91,12 +123,15 @@ def DefineNSample (N_list,value,seed,random,numFrag):
     return list_ids
 
 @task(returns=list)
-def DefineHeadSample (N_list,head,numFrag):
+def DefineHeadSample (N_list,head,int_per,numFrag):
 
     total, n_list = N_list
 
-    if total < head:
-        head = total
+    if int_per == 'int':
+        if total < head:
+            head = total
+    elif int_per == 'per':
+        head = int(math.ceil(total*head))
 
     list_ids = [[] for i in range(numFrag)]
 

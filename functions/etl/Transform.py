@@ -10,6 +10,8 @@ from pycompss.api.parameter import *
 
 import numpy as np
 import pandas as pd
+
+#basic imports:
 import datetime
 import time
 from dateutil.parser import parse
@@ -19,44 +21,45 @@ from dateutil.parser import parse
 
 def TransformOperation(data,settings,numFrag):
     """
-		 TransformOperation():
+        TransformOperation():
 
-		 Returns a new DataFrame applying the expression to the specified column.
-		 :param data:      A list with numFrag pandas's dataframe;
-		 :settings:        A dictionary that contains:
-		    - functions:   A list with an array with 3-dimensions.
-		      * 1ª position:  The lambda function to be applied as a string;
-		      * 2ª position:  The alias to new column to be applied the function;
-		      * 3ª position:  The string to import some needed module (if needed);
-		 :return:   Returns a list with numFrag pandas's dataframe with the news columns.
+        Returns a new DataFrame applying the expression to the specified column.
+        :param data:      A list with numFrag pandas's dataframe;
+        :settings:        A dictionary that contains:
+        - functions:   A list with an array with 3-dimensions.
+          * 1ª position:  The lambda function to be applied as a string;
+          * 2ª position:  The alias to new column to be applied the function;
+          * 3ª position:  The string to import some needed module
+                          ('' if isnt needed);
+        :return:   Returns a list with numFrag pandas's dataframe with
+                   the news columns.
 
-		ex.:   settings['functions'] = [['alias_col1', "lambda row: row['col1'].lower()", None]]
+        ex.:
+        settings['functions'] = \
+            [ ['alias_col1', "lambda col: np.add(col['col1'],col['col2'])", ''] ]
     """
 
-    functions =  settings.get('functions', [])
-    if len(functions)>0:
-        result = [apply_transformation(data[f], functions) for f in range(numFrag)]
-        return result
-    else:
-        return data
+    functions =  Validate(settings)
 
+    result = [apply_transformation(data[f], functions) for f in range(numFrag)]
+    return result
+
+
+def Validate(settings):
+    functions = settings.get('functions', [])
+    if any([
+            len(functions) == 0,
+            any([True if (len(func) != 3) else False for func in functions ])
+            ]):
+        raise Exception('You must inform a valid `functions` parameter.')
+    return functions
 
 
 @task(returns=list)
 def apply_transformation(data, functions):
 
-    for r in functions:
-        print r
-        ncol, function, imp = r
-        #if imp != None or imp != "":
+    for function in functions:
+        ncol, function, imp = function
         exec(imp)
-        print function
         data[ncol] = data.apply(eval(function), axis=1)
-    #print data
     return data
-
-
-# def group_datetime(d, interval):
-#     seconds = d.second + d.hour*3600 + d.minute*60 + d.microsecond/1000
-#     k = d - datetime.timedelta(seconds=seconds % interval)
-#     return datetime.datetime(k.year, k.month, k.day, k.hour, k.minute, k.second)

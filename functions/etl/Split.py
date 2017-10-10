@@ -17,16 +17,23 @@ def SplitOperation(data,settings,numFrag):
 
     :param data:      A list with numFrag pandas's dataframe;
     :settings:        A dictionary that contains:
-      - 'percentage': Percentage to split the data;
+      - 'percentage': Percentage to split the data (default, 0.5);
       - 'seed':       Optional, seed in case of deterministic random operation.
     :return:          Returns two lists with numFrag pandas's dataframe with
                       distincts subsets of the input.
 
+    Note:   if percentage = 0.25, the final dataframes 
+            will have respectively,25% and 75%.
     """
 
-    percentage = settings.get('percentage',0)
+    percentage = settings.get('percentage', 0.5)
     seed = settings.get('seed',None)
 
+    if percentage < 0 or percentage > 1:
+        raise Exception("Please inform a valid percentage [0, 1].")
+
+    # count the size of each fragment and create a mapping
+    # of the elements to be selected.
     partial_counts = [CountRecord(data[i]) for i in range(numFrag)]
     total = mergeReduce(mergeCount,partial_counts)
     indexes = DefineSplit(total,percentage,seed,numFrag)

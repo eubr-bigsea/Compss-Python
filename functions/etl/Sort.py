@@ -9,12 +9,10 @@ __email__  = "lucasmsp@gmail.com"
 from pycompss.api.task import task
 from pycompss.api.parameter import *
 from pycompss.functions.reduce import mergeReduce
-from pycompss.api.api import compss_wait_on
+
 
 import numpy as np
 import pandas as pd
-import math
-
 
 def SortOperation(data,settings,numFrag):
     """
@@ -24,30 +22,48 @@ def SortOperation(data,settings,numFrag):
         :param data:        A list with numFrag pandas's dataframe;
         :param settings:    A dictionary that contains:
             - algorithm:
-                * 'odd-even', to sort using Odd-Even Sort;
-                * 'bitonic',  to sort using Bitonic Sort (only if numFrag is power of 2);
+                * 'odd-even', to sort using Odd-Even Sort (default);
+                * 'bitonic',  to sort using Bitonic Sort
+                  (only if numFrag is power of 2);
             - columns:      The list of columns to be sorted.
-            - ascending:    A list indicating whether the sort order is ascending (True) for the columns.
+            - ascending:    A list indicating whether the sort order
+                            is ascending (True) for each column.
         :param numFrag:     The number of fragments;
         :return:            A list with numFrag pandas's dataframe
 
-        Condition:  the list of columns should have the same size of the list
-                    of boolean to indicating if it is ascending sorting.
+        Note:   the list of columns should have the same size of the list
+                of boolean to indicating if it is ascending sorting.
     """
 
+    algorithm = Validate(settings,numFrag)
 
-    def is_power2(num):
-        return ((num & (num - 1)) == 0) and num != 0
-
-    algorithm = settings.get('algorithm','odd-even')
-
-    if algorithm == "bitonic" and is_power2(numFrag):
+    if algorithm == "bitonic":
         data = sort_byBittonic(data,settings,numFrag)
     else:
         data = sort_byOddEven(data,settings,numFrag)
 
 
     return data
+
+def Validate(settings,numFrag):
+    cols1 = settings.get('columns',[])
+    asc   = settings.get('ascending',[])
+    if any([len(cols1)==0,
+            len(asc) == 0,
+            len(cols1)!= len(asc)
+            ]):
+        raise Exception('The list of `columns` ans `ascending` should have '
+                        'equal lenght (and diffent form zero).')
+
+    def is_power2(num):
+        return ((num & (num - 1)) == 0) and num != 0
+
+    algorithm = settings.get('algorithm','odd-even')
+    if not is_power2(numFrag):
+        algorithm == 'odd-even'
+
+    return algorithm
+
 
 def sort_byBittonic(data,settings,numFrag):
     """
@@ -95,23 +111,6 @@ def sort_byBittonic(data,settings,numFrag):
 
     return data
 
-# @task(data1=INOUT, data2=INOUT)
-# def bitonic_sort(data1,data2,settings):
-#     col = settings['columns']
-#     order = settings['ascending']
-#     n1 = len(data1)
-#     n2 = len(data2)
-#     data = pd.DataFrame([],columns=data1.columns)
-#
-#     data = pd.concat([data1,data2],axis=0, ignore_index=True)
-#     data.sort_values(col, ascending=order,inplace=True)
-#
-#     data = data.reset_index(drop=True)
-#     data1.ix[0:] = data.ix[:n1]
-#     data = data[data.index >= n1]
-#     data = data.reset_index(drop=True)
-#     data2.ix[0:] = data.ix[0:]
-
 
 def sort_byOddEven(data,settings,numFrag):
     for f in range(numFrag):
@@ -121,6 +120,7 @@ def sort_byOddEven(data,settings,numFrag):
     s = [ [] for i in range(numFrag/2)]
 
     nsorted = True
+    from pycompss.api.api import compss_wait_on
     while nsorted:
         if (f % 2 == 0):
             s = [ mergesort(data[i],data[i+1],settings) for i in range(numFrag)   if (i % 2 == 0)]
@@ -156,7 +156,7 @@ def mergesort(data1, data2, settings):
     order = settings['ascending']
     n1 = len(data1)
     n2 = len(data2)
-    
+
     if  n1 == 0 or n2 == 0:
         return 1
 

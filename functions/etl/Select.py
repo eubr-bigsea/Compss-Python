@@ -8,8 +8,6 @@ from pycompss.api.parameter import *
 import numpy as np
 import pandas as pd
 
-
-
 def SelectOperation(data,columns,numFrag):
     """
         SelectOperation():
@@ -21,13 +19,20 @@ def SelectOperation(data,columns,numFrag):
         :return:        A list with numFrag pandas's dataframe
                         with only the columns choosed.
     """
-
-    data = [Select_part(data[f],columns) for f in range(numFrag)]
+    if len(columns)>0:
+        data = [Select_part(data[f], columns) for f in range(numFrag)]
+    else:
+        raise Exception ("You should pass at least one column.")
 
     return data
 
 @task(returns=list)
 def Select_part(list1,fields):
+    #remove the columns that not in list1
+    fields = [field for field in fields if field in list1.columns]
+    if len(fields)==0:
+        raise Exception ("The columns passed as parameters "
+                         "do not belong to this dataframe.")
     return list1[fields]
 
 #-------------------------------------------------------------------------------

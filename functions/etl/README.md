@@ -158,6 +158,14 @@ Joins with another DataFrame, using the given join expression.
         - 'keep_keys': True to keep the keys of the second dataset (default is False).
     :param numFrag:    The number of fragments;
     :return:           Returns a list with numFrag pandas's dataframe.
+
+    example:
+    settings['key1'] = ["ID_CAR",'VEICBH']
+    settings['key2'] = ["ID_CAR",'VEICRJ']
+    settings['option'] = 'inner'
+    settings['keep_keys'] = False
+    settings['case'] = True
+
 ```
 
 ## Normalize:
@@ -211,11 +219,12 @@ Returns a sampled subset of the input panda's dataFrame.
      :param data:           A list with numFrag pandas's dataframe;
      :param params:         A dictionary that contains:
          - type:
-             * 'percent':   Sample a random amount of records
+             * 'percent':   Sample a random amount of records (default)
              * 'value':     Sample a N random records
              * 'head':      Sample the N firsts records of the dataframe
          - seed :           Optional, seed for the random operation.
-         - value:           Value N to be sampled (in 'value' or 'head' type)
+         - int_value:       Value N to be sampled (in 'value' or 'head' type)
+         - per_value:       Percentage to be sampled (in 'value' or 'head' type)
      :param numFrag:        The number of fragments;
      :return:               A list with numFrag pandas's dataframe.
 ```
@@ -243,7 +252,7 @@ Returns a new DataFrame sorted by the specified column(s).
      :param data:        A list with numFrag pandas's dataframe;
      :param settings:    A dictionary that contains:
          - algorithm:
-             * 'odd-even', to sort using Odd-Even Sort;
+             * 'odd-even', to sort using Odd-Even Sort (default);
              * 'bitonic',  to sort using Bitonic Sort (only if numFrag is power of 2);
          - columns:      The list of columns to be sorted;
          - ascending:    A list indicating whether the sort order is ascending (True) for the columns;
@@ -263,10 +272,13 @@ Randomly splits a Data Frame into two data frames.
 
      :param data:      A list with numFrag pandas's dataframe;
      :settings:        A dictionary that contains:
-       - 'percentage': Percentage to split the data;
+       - 'percentage': Percentage to split the data (default, 0.5);
        - 'seed':       Optional, seed in case of deterministic random operation.
      :return:          Returns two lists with numFrag pandas's dataframe with
                        distincts subsets of the input.
+
+     Note:  if percentage = 0.25, the final dataframes
+            will have respectively, 25% and 75%.  
 ```
 
 

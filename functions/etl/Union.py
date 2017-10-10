@@ -29,10 +29,10 @@ def UnionOperation(data1, data2, numFrag):
 def Union_part(list1,list2):
 
     if len(list1) == 0:
-        result = list2
+        return list2
     elif len(list2) == 0:
-        result = list1
+        return  list1
     else:
-        result = pd.concat([list1,list2], ignore_index=True)
-    return  result
+        return pd.concat([list1,list2], ignore_index=True)
+
 #-------------------------------------------------------------------------------
