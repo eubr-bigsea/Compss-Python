@@ -4,20 +4,14 @@
 __author__ = "Lucas Miguel S Ponce"
 __email__  = "lucasmsp@gmail.com"
 
-from pycompss.api.task import task
-from pycompss.api.parameter import *
-from pycompss.functions.reduce import mergeReduce
+from pycompss.api.parameter     import *
+from pycompss.api.task          import task
+from pycompss.functions.reduce  import mergeReduce
 
 import pandas as pd
 import numpy as np
 import re
 import itertools
-
-import sys
-reload(sys)
-sys.setdefaultencoding("utf-8")
-
-#------------------------------------------------------------------------------
 
 class TF_IDF(object):
 
@@ -35,23 +29,37 @@ class TF_IDF(object):
             :param train_set: A list of pandas dataframe with the
                               documents to be transformed.
             :param params:    A dictionary with some options:
-                                - minimum_df:    Minimum number of how many
-                                                 documents a word should appear.
-                                - minimum_tf:    Minimum number of occurrences
-                                                 of a word
-                                - size: Vocabulary maximum size, -1 if there are no size.
-            :param numFrag: A number of fragments
+                - attributes: A list with columns which contains the tokenized
+                              text/sentence;
+                - minimum_df: Minimum number of how many documents a
+                              word should appear;
+                - minimum_tf: Minimum number of occurrences  of a word;
+                - size:       Maximum size of the vocabulary.
+                              If -1, no limits will be applied. (default, -1)
             :return  A model (dataframe) with the <word,tf,df>
         """
+        #Validation
+        if 'attributes' not in params:
+            raise Exception("You must inform an `attributes` column.")
 
-        result_p     = [self.wordCount(data[f], params) for f in range(numFrag)]
-        word_dic     = mergeReduce(self.merge_wordCount, result_p)
-        vocabulary   = self.create_vocabulary(word_dic)
+        params['minimum_df'] = params.get('minimum_df', 0)
+        params['minimum_tf'] = params.get('minimum_tf', 0)
+        params['size'] = params.get('size', -1)
 
-        if params['minimum_df']>0 or params['minimum_tf']>0 or params['size']>0:
+        result_p   = [self.wordCount(data[f], params) for f in range(numFrag)]
+        word_dic   = mergeReduce(self.merge_wordCount, result_p)
+        vocabulary = self.create_vocabulary(word_dic)
+
+        if any([ params['minimum_df']>0,
+                 params['minimum_tf']>0,
+                 params['size']>0
+                 ]):
             vocabulary  = self.filter_words(vocabulary,params)
 
-        return  vocabulary
+        model = dict()
+        model['algorithm'] = 'TF-IDF'
+        model['model'] = vocabulary
+        return  model
 
 
 
@@ -96,38 +104,63 @@ class TF_IDF(object):
     @task(returns = list,isModifier = False)
     def create_vocabulary(self,word_dic):
         docs_list = [ [i[0], i[1][0], i[1][1] ] for i in word_dic.items()]
-        vocabulary = pd.DataFrame(docs_list, columns=['Word','TotalFrequency','DistinctFrequency'])
+        name_cols = ['Word','TotalFrequency','DistinctFrequency']
+        vocabulary = pd.DataFrame(docs_list, columns=name_cols)
         return vocabulary
 
     @task(returns = list,isModifier = False)
     def filter_words(self, vocabulary, params):
+        min_df = params['minimum_df']
+        min_tf = params['minimum_tf']
+        size = params['size']
 
-        if params['minimum_df'] > 0:
-            vocabulary = vocabulary.loc[vocabulary['DistinctFrequency'] >=  params['minimum_df']]
-        if params['minimum_tf'] > 0:
-            vocabulary = vocabulary.loc[vocabulary['TotalFrequency'] >=  params['minimum_tf']]
-        if params['size'] > 0:
-            vocabulary = vocabulary.sort_values(['DistinctFrequency','TotalFrequency'], ascending=[1, 1]).head(params['size'])
+        if min_df > 0:
+            vocabulary = vocabulary.loc[vocabulary['DistinctFrequency']>=min_df]
+        if min_tf > 0:
+            vocabulary = vocabulary.loc[vocabulary['TotalFrequency']>=min_tf]
+        if size > 0:
+            vocabulary = \
+                vocabulary.sort_values(['DistinctFrequency','TotalFrequency'],
+                                        ascending=[1, 1]
+                                        ).head(size)
 
         return vocabulary
 
 
 
-    def transform(self, test_set, vocabulary, params, numFrag):
+    def transform(self, test_set, model, params, numFrag):
         """
+            transform():
+
             Perform the transformation of the data based in the model created.
-                :param test_set:  A list of dataframes with the documents to transform;
-                :param vocabulary:  A model trained (grammar and its frequency);
-                :param params: A dictionary with the settings:
-                            - alias: new name of the column;
-                            - attributes: all columns which contains the text. Each row is considered a document.
-                :param numFrag:   The number of fragments;
-                :return   A list of pandas dataframe with the features transformed.
+            :param test_set:    A list of dataframes with the documents
+                                to transform;
+            :param model:       A TF-IDF model (grammar and its frequency);
+            :param params:      A dictionary with the settings:
+                - alias:        Name of the new column (default, 'tfidf_vector');
+                - attributes:   A list with columns which contains the tokenized
+                                text/sentence;
+            :param numFrag:     The number of fragments;
+            :return   A list of pandas dataframe with the features transformed.
         """
+        #Validation
+        algorithm = model.get('algorithm','')
+        if algorithm != 'TF-IDF':
+            raise Exception("You must inform a valid BagOfWords model.")
+        vocabulary = model['model']
+
+        if 'attributes' not in params:
+            raise Exception("You must inform an `attributes` column.")
+
+        params['alias'] = params.get('alias', "tfidf_vector")
+
         counts = [self.count_records(test_set[f]) for f in range(numFrag)]
         count  = mergeReduce(self.mergeCount,counts)
 
-        result = [self.construct_TF_IDF(test_set[f], vocabulary, params, count) for f in range(numFrag)]
+        result = [ [] for f in range(numFrag) ]
+        for f in range(numFrag):
+            result[f] = \
+                self.construct_TF_IDF(test_set[f], vocabulary, params, count)
 
         return result
 
@@ -142,8 +175,10 @@ class TF_IDF(object):
 
     @task(returns = list,isModifier = False)
     def construct_TF_IDF(self, data, vocabulary, params, num_doc):
-        """TF(t)  = (Number of times term t appears in a document) / (Total number of terms in the document).
-           IDF(t) = log(Total number of documents / Number of documents with term t in it).
+        """TF(t)  = (Number of times term t appears in a document)
+                        / (Total number of terms in the document).
+           IDF(t) = log( Total number of documents /
+                        Number of documents with term t in it).
            Source: http://www.tfidf.com/
         """
         alias   = params['alias']
@@ -161,7 +196,8 @@ class TF_IDF(object):
             for w in range(len(vocab)):
                 token = vocab[w]
                 if token in lines:
-                    # TF = (Number of times term t appears in the document) / (Total number of terms in the document).
+                    # TF = (Number of times term t appears in the document) /
+                    #        (Total number of terms in the document).
                     nTimesTermT = np.count_nonzero(lines == token)
                     total = len(lines)
                     if total > 0:
@@ -169,12 +205,13 @@ class TF_IDF(object):
                     else:
                         tf = 0
 
-                    # IDF = log_e(Total number of documents / Number of documents with term t in it).
-                    nDocsWithTermT = vocabulary.loc[ vocabulary['Word'] == token, 'DistinctFrequency'].item()
+                    # IDF = log_e(Total number of documents /
+                    #            Number of documents with term t in it).
+                    nDocsWithTermT = \
+                            vocabulary.loc[ vocabulary['Word'] == token,
+                                            'DistinctFrequency'
+                                            ].item()
                     idf = np.log( float(num_doc) / nDocsWithTermT )
-                    #print "TF:{} | IDF:{}".format(tf,idf)
                     data.ix[i][alias][w] = tf*idf
-
-
 
         return data
