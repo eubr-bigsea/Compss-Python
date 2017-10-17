@@ -1,43 +1,58 @@
+#!/usr/bin/python
 # -*- coding: utf-8 -*-
-#!/usr/bin/env python
 
-
-import sys
+__author__ = "Lucas Miguel S Ponce"
+__email__  = "lucasmsp@gmail.com"
 
 from itertools import chain, combinations
 from collections import defaultdict
 
-from pycompss.api.task          import task
 from pycompss.api.parameter     import *
+from pycompss.api.task          import task
 from pycompss.functions.reduce  import mergeReduce
-from pycompss.api.api import compss_wait_on
+
 
 
 
 class Apriori(object):
 
-    def runApriori(self,data, settings,numFrag):
+    def runApriori(self, data, settings, numFrag):
         """
-        run the apriori algorithm. data_iter is a record iterator
-        Return both:
-         - items (tuple, support)
-         - rules ((pretuple, posttuple), confidence)
+        Run the apriori algorithm.
+
+        :param data:          A list of pandas dataframe.;
+        :param settings:      A dictionary with the informations:
+          - 'column':         Field with the transactions;
+          - 'minSupport':     Minimum support value (default, 0.5);
+        :return               A list of pandas dataframe.
         """
-        col         = settings['col']
+
+        if 'column' not in settings:
+            raise Exception('Please inform `column` field')
+
+        col         = settings['column']
         minSupport  = settings.get('minSupport', 0.5)
         largeSet    = []
 
-        currentCSet_reduced = self.getFirstItemsWithMinSupport(data, col, minSupport, numFrag) # Candidate pruning
-        currentCSet_merged  = mergeReduce(self.mergeSetstoLocal,currentCSet_reduced) # localset and ntotal
+        from pycompss.api.api import compss_wait_on
+
+        # pruning candidates
+        currentCSet_reduced = \
+            self.getFirstItemsWithMinSupport(data, col, minSupport, numFrag)
+        currentCSet_merged  = \
+            mergeReduce(self.mergeSetstoLocal,currentCSet_reduced)
         currentCSet_merged  = compss_wait_on(currentCSet_merged)
         nTotal = currentCSet_merged[1]
         k = 2
 
         while(len(currentCSet_merged[0])>0):
             largeSet.append(currentCSet_merged[0])
-            currentLSet = self.joinSet(currentCSet_reduced, k ,numFrag)  # Candidate generation
-            currentCSet_reduced = self.getItemsWithMinSupport(currentLSet, data, col,  minSupport, numFrag)  # Candidate pruning
-            currentCSet_merged = mergeReduce(self.mergeSetstoLocal,currentCSet_reduced) # localset and ntotal
+            currentLSet = self.joinSet(currentCSet_reduced, k ,numFrag)
+            currentCSet_reduced = \
+                self.getItemsWithMinSupport(currentLSet, data, col,
+                                            minSupport, numFrag)
+            currentCSet_merged = \
+                mergeReduce(self.mergeSetstoLocal,currentCSet_reduced)
             currentCSet_merged = compss_wait_on(currentCSet_merged)
             k += 1
 
@@ -63,13 +78,17 @@ class Apriori(object):
         return largeSet_df
 
 
-    def getItemsWithMinSupport(self,candidates, data, t, minSupport, numFrag):
+    def getItemsWithMinSupport(self, candidates, data, t, minSupport, numFrag):
         "Returns all candidates that meets a minimum support level"
 
 
-        itemSet_local  = [self.count_Items(candidates[i], data[i], t) for i in range(numFrag)]
-        itemSet_global = mergeReduce(self.merge_ItemsWithMinSupport, itemSet_local) # localset and ntotal
-        C_reduced = [self.FilterItemsWithMinSupport(data[i], t, itemSet_global, minSupport) for i in range(numFrag)]# localset,  ntotal
+        sets_local  = \
+            [self.count_Items(candidates[i], data[i], t) for i in range(numFrag)]
+        sets_global = mergeReduce(self.merge_ItemsWithMinSupport, sets_local)
+        C_reduced = [[] for i in range(numFrag)]
+        for i in range(numFrag):
+            C_reduced[i] = self.FilterItemsWithMinSupport(data[i], t,
+                                sets_global, minSupport)
 
 
         return C_reduced
@@ -92,9 +111,12 @@ class Apriori(object):
     def getFirstItemsWithMinSupport(self, data, col, minSupport, numFrag):
         "Returns all candidates that meets a minimum support level"
 
-        itemSet_local  = [self.count_FirstItems(data[i], col) for i in range(numFrag)]
-        itemSet_global = mergeReduce(self.merge_ItemsWithMinSupport,itemSet_local) # localset and ntotal
-        C_reduced = [self.FilterItemsWithMinSupport(data[i],col,itemSet_global, minSupport) for i in range(numFrag)]# localset,  ntotal
+        sets_local =[self.count_FirstItems(data[i], col) for i in range(numFrag)]
+        sets_global = mergeReduce(self.merge_ItemsWithMinSupport,sets_local)
+        C_reduced = [[] for i in range(numFrag)]
+        for i in range(numFrag):
+            C_reduced[i] = self.FilterItemsWithMinSupport(data[i], col,
+                                sets_global, minSupport)
 
         return C_reduced
 
@@ -113,52 +135,52 @@ class Apriori(object):
             for item in itemSet:
                 if item.issubset(transaction):
                     localSet[item]  += 1
-                    #print "satisfies= item {} in t:{}".format(item,transaction)
-
 
         return [localSet, len(data)]
 
     @task(returns=list,isModifier = False)
     def merge_ItemsWithMinSupport(self,data1,data2):
-            localSet1,n1 = data1
-            localSet2,n2 = data2
+        localSet1,n1 = data1
+        localSet2,n2 = data2
 
-            for freq in localSet2:
-                if freq in localSet1:
-                    localSet1[freq] += localSet2[freq]
-                else:
-                    localSet1[freq] = localSet2[freq]
+        for freq in localSet2:
+            if freq in localSet1:
+                localSet1[freq] += localSet2[freq]
+            else:
+                localSet1[freq] = localSet2[freq]
 
-            return [localSet1,n1+n2]
+        return [localSet1,n1+n2]
 
     @task(returns=list,isModifier = False)
     def FilterItemsWithMinSupport(self,data, t,freqSet, minSupport):
-            """calculates the support for items in the itemSet and returns a subset
-           of the itemSet each of whose elements satisfies the minimum support"""
+        """calculates the support for items in the itemSet and returns a subset
+           of the itemSet each of whose elements satisfies the minimum support
+        """
 
-            GlobalSet,N = freqSet
-            freqTmp = defaultdict(int)
+        GlobalSet,N = freqSet
+        freqTmp = defaultdict(int)
 
-            for transaction in data[t].values:
-                for item in GlobalSet:
-                    if item.issubset(transaction):
-                        support = float(GlobalSet[item])/N
-                        if support >= minSupport:
-                            freqTmp[item] = support
+        for transaction in data[t].values:
+            for item in GlobalSet:
+                if item.issubset(transaction):
+                    support = float(GlobalSet[item])/N
+                    if support >= minSupport:
+                        freqTmp[item] = support
 
-            return [freqTmp, N]
+        return [freqTmp, N]
 
 
 
     def joinSet(self,itemSets, length, numFrag):
-            """Join a set with itself and returns the n-element itemsets"""
+        """Join a set with itself and returns the n-element itemsets"""
 
-            joined = [[] for i in range(numFrag)]
-            for i in range(numFrag):
-                tmp = [ self.joiner(itemSets[i],itemSets[j],length) for j in range(numFrag) if i!=j]
-                joined[i] = mergeReduce(self.mergeSets,tmp)
+        joined = [[] for i in range(numFrag)]
+        for i in range(numFrag):
+            tmp = [ self.joiner(itemSets[i],itemSets[j],length)
+                        for j in range(numFrag) if i!=j ]
+            joined[i] = mergeReduce(self.mergeSets,tmp)
 
-            return joined
+        return joined
 
     @task(returns=list,isModifier = False)
     def mergeSets(self,itemSet1,itemSet2):
@@ -179,7 +201,8 @@ class Apriori(object):
         sets1 = set(itemSets_local1[0].keys())
         sets2 = set(itemSets_local2[0].keys())
         itemSets_global =  sets1 | sets2
-        joined = set([i.union(j) for i in itemSets_global for j in itemSets_global if len(i.union(j)) == length])
+        joined = set([i.union(j) for i in itemSets_global
+                        for j in itemSets_global if len(i.union(j)) == length])
 
         return joined
 
@@ -187,12 +210,22 @@ class Apriori(object):
     #%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
     def generateRules(self, L, settings):
+        """
+        generateRules():
+
+        Generates the list of rules in the form: predecessor, successor
+        and its confidence for each item passed by parameter.
+
+        :param settings:   A dictionary with the informations:
+          - 'confidence':  The minimum confidence (default, 0.5);
+        :return            A list of pandas dataframe.
+        """
 
         min_confidence = settings.get('confidence', 0.5)
 
+        toRetRules = \
+            [ self.getRules( i, L, min_confidence ) for i in range(len(L)) ]
 
-        toRetRules = [ self.getRules( i, L, min_confidence ) for i in range(len(L)) ]
-        #toRetRules = mergeReduce(self.mergeRules, toRetRules)
         return toRetRules
 
     @task(returns=list,isModifier = False)
@@ -203,7 +236,7 @@ class Apriori(object):
             item    = row['items']
             support = row['support']
             if len(item)>0:
-                _subsets = [list(x) for x in self.subsets(item)] #map(frozenset, [x for x in self.subsets(item)])
+                _subsets = [list(x) for x in self.subsets(item)]
 
                 for element in _subsets:
                     remain = list(set(item).difference(element))
@@ -219,7 +252,8 @@ class Apriori(object):
 
 
         import pandas as pd
-        rules = pd.DataFrame(toRetRules,columns=['Pre-Rule','Post-Rule','confidence'])
+        names=['Pre-Rule','Post-Rule','confidence']
+        rules = pd.DataFrame(toRetRules,columns=names)
 
         return rules
 

@@ -1,14 +1,14 @@
+#!/usr/bin/python
 # -*- coding: utf-8 -*-
-#!/usr/bin/env python
 
-
+__author__ = "Lucas Miguel S Ponce"
+__email__  = "lucasmsp@gmail.com"
 
 from itertools import chain, combinations
 from collections import defaultdict
 
-
-from pycompss.api.task          import task
 from pycompss.api.parameter     import *
+from pycompss.api.task          import task
 from pycompss.functions.reduce  import mergeReduce
 
 

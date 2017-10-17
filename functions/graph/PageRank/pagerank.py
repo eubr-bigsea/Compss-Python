@@ -1,11 +1,15 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 
+__author__ = "Lucas Miguel S Ponce"
+__email__  = "lucasmsp@gmail.com"
+
 import pandas as pd
-from pycompss.api.task          import task
+
 from pycompss.api.parameter     import *
+from pycompss.api.task          import task
 from pycompss.functions.reduce  import mergeReduce
-from pycompss.functions.data    import chunks
+
 
 class PageRank(object):
 
@@ -29,20 +33,25 @@ class PageRank(object):
 
         :param data:        A list with numFrag pandas's dataframe.
         :param settings:    A dictionary that contains:
-                            * inlink:  column name of the inlinks vertex;
-                            * outlink: column name of the outlinks vertex;
-                            * damping_factor: the coeficent of the
-                                              damping factor [0,1];
-                            * maxIters: The number of iterations;
-                            * col1: alias of the vertex column;
-                            * col2: alias of the ranking column.
+            * inlink:       Field of the inlinks vertex;
+            * outlink:      Field of the outlinks vertex;
+            * damping_factor: The coeficent of the  damping factor [0,1]
+                            (default, 0.85);
+            * maxIters:     The number of iterations (defaul, 100);
+            * col1:         Alias of the vertex column (default, 'Vertex');
+            * col2:         Alias of the ranking column (default, 'Rank').
 
-        :param numFrag:     A number of fragments
+        :param numFrag:     A number of fragments;
         :return:            A list of pandas's dataframe with the
                             ranking of each vertex in the dataset.
         """
+
+
+        if 'inlink' not in settings or 'outlink' not in settings:
+            raise Exception('Please inform at least')
+
         inlink  = settings['inlink']
-        outlink = settings['outlink']
+        outlink = settings['outlink']    
         factor  = settings.get('damping_factor', 0.85)
         maxIterations = settings.get('maxIters', 100)
         col1 = settings.get('col1','Vertex')
@@ -51,12 +60,14 @@ class PageRank(object):
         adj, rank = self.create_AdjList(data,inlink,outlink,numFrag)
 
         for iteration in xrange(maxIterations):
-            contributions = [ self.calcContribuitions(adj[i],rank[i])       for i in range(numFrag) ]
+            contributions = [ self.calcContribuitions(adj[i],rank[i])
+                                for i in range(numFrag) ]
             merged_c =      mergeReduce(self.mergeContribs,contributions)
-            rank =          [ self.updateRank_p(rank[i],merged_c,factor)    for i in range(numFrag) ]
+            rank =          [ self.updateRank_p(rank[i],merged_c,factor)
+                                for i in range(numFrag) ]
 
-        table = [ self.printingResults(rank[i],col1,col2) for i in range(numFrag)]
-        #merged_table = mergeReduce(self.mergeRanks,table)
+        table = [self.printingResults(rank[i],col1,col2) for i in range(numFrag)]
+
         merged_table = mergeReduce(self.mergeRanks,table)
         result       = self.split(merged_table, numFrag)
 
@@ -78,7 +89,8 @@ class PageRank(object):
             counts_in[i]  =   self.counts_inlinks(adjlist[i])
 
         counts_in = mergeReduce(self.merge_counts,counts_in)
-        adjlist =  [self.update_AdjList(adjlist[i], counts_in) for i in range(numFrag)]
+        adjlist =  [self.update_AdjList(adjlist[i], counts_in)
+                        for i in range(numFrag)]
 
 
 
@@ -88,7 +100,8 @@ class PageRank(object):
     @task(returns=dict,isModifier = False)
     def partial_RankList(self,data,inlink,outlink):
         ranks = {}
-        for link in data[[outlink,inlink]].values:
+        cols = [outlink,inlink]
+        for link in data[cols].values:
             #print link
             v_out = link[0]
             v_in  = link[1]
@@ -203,7 +216,7 @@ class PageRank(object):
 
         return result
 
-    @task(returns=list,isModifier = False)
+    @task(returns=list, isModifier = False)
     def printingResults(self,ranks,c1,c2):
 
         Links = []
