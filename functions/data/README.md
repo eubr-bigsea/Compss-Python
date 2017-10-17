@@ -86,6 +86,48 @@ Method used to load a pandas DataFrame from N json files.
         dataset_01     dataset_03
 ```
 
+
+## Read CSV From HDFS:
+
+```sh
+  ReadCSVFromHDFSOperation():
+
+  Reads a tabular file (like csv) from HDFS and split it into numFrag parts.
+
+  :param settings:        A dictionary with the following parameters:
+    - path:               The path of the file from the / of the HDFS;
+    - host:               The host of the Namenode HDFS; (default, localhost)
+    - port:               Port of the Namenode HDFS; (default, 9000)
+
+    - 'separator':        The string used to separate values (default, ',');
+    - 'header':           True if the first line is a header, otherwise is False (default, True);
+    - 'infer':
+      * "NO":              Do not infer the data type of each column (will be string);
+      * "FROM_VALUES":     Try to infer the data type of each column (default);
+      * "FROM_LIMONERO":   !! NOT IMPLEMENTED YET!!
+    - 'na_values':         A list with the all nan caracteres to be considerated.
+                           Default list:   '', '#N/A', '#N/A N/A', '#NA', '-1.#IND',
+                                           '-1.#QNAN', '-NaN', '-nan', '1.#IND', '1.#QNAN',
+                                           'N/A', 'NA', 'NULL', 'NaN', 'nan'
+  :param numFrag:   A number of fragments;
+  :return           A DataFrame splitted in a list with length N.
+```
+
+#### Example:
+
+```sh    
+  numFrag = 4
+  settings = dict()
+  settings['host'] = 'localhost'
+  settings['port'] = 9000
+  settings['path'] = '/titanic_sample.csv'
+  settings['separator'] = ';'
+  data = ReadCSVFromHDFSOperation(settings, numFrag)
+```
+
+
+
+
 ## WorkloadBalancer:
 
 Rebalance all the data in equal parts.

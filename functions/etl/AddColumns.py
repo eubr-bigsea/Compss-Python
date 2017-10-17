@@ -159,15 +159,16 @@ def balancing_f1_to_f2(df_f1, df_f2, off1):
     return df_f2
 
 
-@task( df_f2=INOUT, returns=list ) #df_f2=INOUT
+@task( df_f2=INOUT, returns=list )
 def balancing_f2_to_f1(df_f1, df_f2, off1):
-    #df_f1 MAIOR  --to-->    df_f2 MENOR
+    # Get the head offset lines from df_f2
+    # and put at the tail of df_f1
 
     tmp = df_f2.head(off1)
     df_f2.drop(tmp.index, inplace=True)
     tmp.reset_index(drop=True,inplace=True)
 
     mynparray = df_f1.values
-    mynparray = np.vstack((tmp,mynparray))
+    mynparray = np.vstack((mynparray,tmp))
     df_f1 = pd.DataFrame(mynparray,columns = df_f1.columns)
     return df_f1

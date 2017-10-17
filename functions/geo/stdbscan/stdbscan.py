@@ -1,70 +1,20 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 
-import math
+__author__ = "Lucas Miguel S Ponce"
+__email__  = "lucasmsp@gmail.com"
+
 import time
 import pandas as pd
 import numpy as np
-from geopy.distance import great_circle
 from datetime import timedelta, datetime
+from math import atan, tan, sin, cos, pi, sqrt, atan2, asin, radians
 
 #COMPSs's imports
 from pycompss.api.task import task
 from pycompss.api.parameter import *
 from pycompss.functions.reduce import mergeReduce
-from pycompss.api.api import compss_wait_on
 
-
-# def plotter_p(results):
-#     import matplotlib.pyplot as plt
-#     n = 0
-#     for result_df in results:
-#         n+=1
-#
-#         result_df = result_df[0]
-#         print len(result_df)
-#         table = dict()
-#         clusters = result_df['cluster'].tolist()
-#         Lat      = result_df['LONGITUDE'].tolist()
-#         Long     = result_df['LATITUDE'].tolist()
-#         LAT = []
-#         LONG = []
-#         COR = []
-#         LABELS = []
-#         indexes = []
-#
-#         for i in range(len(clusters)):
-#             c = clusters[i]
-#
-#             if c not in table:
-#                 table[c] = len(table) +1
-#
-#             if "-999" not in c:
-#                 COR.append(table[c])
-#                 LAT.append(Lat[i])
-#                 LONG.append(Long[i])
-#                 LABELS.append(i)
-#             else:
-#                 indexes.append(i)
-#
-#         fig = plt.figure()
-#         ax = fig.add_subplot(111)
-#         plt.scatter(LAT,LONG,c=COR,s=15)
-#
-#         for i in indexes:
-#             x = Lat[i]
-#             y = Long[i]
-#             ax.annotate('*', xy=(x,y), xytext=(0,0), textcoords='offset points')
-#             #circ = plt.Circle((x, y), radius=eps,fill=False,facecolor='none')
-#             #ax.add_patch(circ)
-#
-#
-#         plt.grid(True)
-#
-#         plt.axis((12.20, 12.62,41.78,41.99))
-#
-#         #plt.show()
-#         plt.savefig("sample_final_{}.png".format(n))
 
 
 class STDBSCAN(object):
@@ -81,6 +31,8 @@ class STDBSCAN(object):
           - lon_col:   Column name of the longitude in the test data;
           - datetime:  Column name of the datetime  in the test data;
           - idCol:     Column name to be a primary key of the dataframe;
+
+          - minPts:    The number of samples in a neighborhood for a point
                        to be considered as a core point;
                        This includes the point itself. (int, default: 15)
 
@@ -95,6 +47,14 @@ class STDBSCAN(object):
         :param numFrag:  Number of fragments;
         :return:     Returns the same list of dataframe with the cluster column.
         """
+        from pycompss.api.api import compss_wait_on
+
+        if not all(['datetime' in settings,
+                    'lat_col'  in settings,
+                    'lon_col'  in settings,
+                    'idCol' in settings]):
+            raise Exception("Please inform, at least, the fields: "
+                            "`idCol`,`lat_col`, `lon_col` and `datetime`")
 
         #settings
         minPts             = settings.get('minPts', 15)
@@ -109,10 +69,9 @@ class STDBSCAN(object):
         idCol   = settings['idCol']
 
         grids, divs = self.fragment(df,numFrag,lat_col,lon_col)
-        print "        [INFO] - Matrix: {}x{}".format(divs[0],divs[1])
+        print "[INFO] - Matrix: {}x{}".format(divs[0],divs[1])
 
-        nlat = divs[0]
-        nlon = divs[1]
+        nlat,nlon = divs
 
         #stage1 and stage2: partitionize and local dbscan
         t = 0
@@ -121,14 +80,10 @@ class STDBSCAN(object):
             for c in range(nlon):
                 frag = []
                 for f in range(numFrag):
-                    frag   =  self.partitionize(df[f], settings, grids[t], frag)
+                   frag   =  self.partitionize(df[f], settings, grids[t], frag)
 
-                partial[t] = self.partial_dbscan(frag, settings, "p_{}_".format(t))
+                partial[t]=self.partial_dbscan(frag,settings, "p_{}".format(t))
                 t+=1
-
-
-        #partial = compss_wait_on(partial)
-        #plotter_p(partial)
 
         #stage3: combining clusters
         n_iters_diagonal   = (nlat-1)*(nlon-1)*2
@@ -170,7 +125,7 @@ class STDBSCAN(object):
             result[t]  =  self.updateClusters(partial[t], components, grids[t])
 
 
-        return result,grids
+        return result
 
 #-------------------------------------------------------------------------------
 #
@@ -183,35 +138,71 @@ class STDBSCAN(object):
         mins = df[[lat_col,lon_col]].min(axis=0).values
         maxs = df[[lat_col,lon_col]].max(axis=0).values
         sums = df[[lat_col,lon_col]].sum(axis=0).values
+        n = len(df) if len(df) > 0 else -1
         return [mins,maxs,sums,len(df)]
 
     @task(returns=list, isModifier = False)
     def mergeBounds(self, b1, b2):
         mins1, maxs1,sums1,n1 = b1
         mins2, maxs2,sums2,n2 = b2
-        min_lat =  min([mins1[0], mins2[0]])
-        min_lon =  min([mins1[1], mins2[1]])
-        max_lat =  max([maxs1[0], maxs2[0]])
-        max_lon =  max([maxs1[1], maxs2[1]])
-        sums = [sums1[0]+sums2[0],sums1[1]+sums2[1]]
-        n = n1+n2
-        return [ [min_lat, min_lon],[max_lat, max_lon],sums,n]
+
+        if n1 > 0:
+            if n2>0:
+
+                min_lat =  min([mins1[0], mins2[0]])
+                min_lon =  min([mins1[1], mins2[1]])
+                max_lat =  max([maxs1[0], maxs2[0]])
+                max_lon =  max([maxs1[1], maxs2[1]])
+                sums = [sums1[0]+sums2[0],sums1[1]+sums2[1]]
+                n = n1+n2
+            else:
+                min_lat = mins1[0]
+                min_lon = mins1[1]
+                max_lat = maxs1[0]
+                max_lon = maxs1[1]
+                sums = sums1
+                n = n1
+        else:
+            min_lat = mins2[0]
+            min_lon = mins2[1]
+            max_lat = maxs2[0]
+            max_lon = maxs2[1]
+            sums = sums2
+            n = n2
+
+        mins = [min_lat, min_lon]
+        maxs = [max_lat, max_lon]
+        return [ mins, maxs , sums, n]
 
     @task(returns=list, isModifier = False)
-    def calc_var(self,df, lat_col, lon_col, mean_lat, mean_lon):
-        sum_lat = df.apply(lambda row: (row[lat_col]-mean_lat)**2,axis=1).sum()
-        sum_lon = df.apply(lambda row: (row[lon_col]-mean_lon)**2,axis=1).sum()
+    def calc_var(self, df, lat_col, lon_col, mean_lat, mean_lon):
+        if len(df)>0:
+            sum_lat = df.\
+                apply(lambda row: (row[lat_col]-mean_lat)**2,axis=1).sum()
+            sum_lon = df.\
+                apply(lambda row: (row[lon_col]-mean_lon)**2,axis=1).sum()
+        else:
+            sum_lat= -1
+            sum_lon= -1
         return [sum_lat,sum_lon]
 
     @task(returns=list, isModifier = False)
     def mergevar(self,var1,var2):
-        return [var1[0]+var2[0],var1[1]+var2[1]]
+        if var1[0]>0:
+            if var2[0]>0:
+                var = [var1[0]+var2[0],var1[1]+var2[1]]
+            else:
+                var = var1
+        else:
+            var = var2
+        return var
 
     def fragment(self, df, numFrag, lat_col, lon_col):
 
         grids   =  []
         #retrieve the boundbox
-        minmax  = [ self.get_bounds(df[f], lat_col,lon_col) for f in range(numFrag) ]
+        minmax  = [ self.get_bounds(df[f], lat_col,lon_col)
+                        for f in range(numFrag) ]
         minmax  = mergeReduce(self.mergeBounds,minmax)
         minmax = compss_wait_on(minmax)
 
@@ -220,8 +211,7 @@ class STDBSCAN(object):
         mean_lat = minmax[2][0]/minmax[3]
         mean_lon = minmax[2][1]/minmax[3]
 
-        print """
-        [INFO] - Boundbox:
+        print """[INFO] - Boundbox:
          - South Latitude: {}
          - North Latitude: {}
          - West Longitude: {}
@@ -230,7 +220,7 @@ class STDBSCAN(object):
 
         var_p = [self.calc_var(df[f], lat_col, lon_col, mean_lat, mean_lon)
                     for f in range(numFrag) ]
-        var = mergeReduce(self.mergevar,var_p)
+        var = mergeReduce(self.mergevar, var_p)
         var  = compss_wait_on(var)
 
         t = int(np.sqrt(numFrag))
@@ -250,13 +240,11 @@ class STDBSCAN(object):
             init_lon = min_lon
             for ilon in range(div[1]):
                 end_lon = init_lon + div_lon#*(ilon+1)
-                g = [ round(init_lat,5),  round(init_lon,5),  round(end_lat,5), round(end_lon,5)]
+                g = [ round(init_lat,5),  round(init_lon,5),
+                      round(end_lat,5), round(end_lon,5)]
                 init_lon = end_lon
                 grids.append(g)
             init_lat = end_lat
-
-        #for grid in grids:
-        #    print "Maximum distance in the grid: {}km".format(self.haversine(grid))
 
         return grids,div
 
@@ -267,7 +255,6 @@ class STDBSCAN(object):
         on the earth (specified in decimal degrees)
         """
         lat1, lon1, lat2, lon2 = grid
-        from math import radians, cos, sin, asin, sqrt
         # convert decimal degrees to radians
         lon1, lat1, lon2, lat2 = map(radians, [lon1, lat1, lon2, lat2])
         # haversine formula
@@ -280,36 +267,37 @@ class STDBSCAN(object):
 
 
     @task(returns=list, isModifier = False)
-    def partitionize(self,df, settings, grid, frag):
+    def partitionize(self, df, settings, grid, frag):
+        if len(df)>0:
+            spatial_threshold  = settings.get('spatial_threshold',100)
+            lat_col = settings['lat_col']
+            lon_col = settings['lon_col']
 
-        spatial_threshold  = settings.get('spatial_threshold',100)
-        lat_col = settings['lat_col']
-        lon_col = settings['lon_col']
+            init_lat,  init_lon,  end_lat, end_lon = grid
 
-        init_lat,  init_lon,  end_lat, end_lon = grid
+            #Note:
+            #new_latitude  = latitude+(dy/r_earth)*(180/pi)
+            #new_longitude = longitude+(dx/r_earth)*(180/pi)/cos(latitude*pi/180)
 
-        #new_latitude  = latitude  + (dy / r_earth) * (180 / pi);
-        #new_longitude = longitude + (dx / r_earth) * (180 / pi) / cos(latitude * pi/180);
+            dist = 2 * spatial_threshold * 0.0000089
+            new_end_lat = end_lat + dist
+            new_end_lon = end_lon + dist / np.cos(new_end_lat * 0.018)
+            new_init_lat = init_lat - dist
+            new_init_lon = init_lon - dist / np.cos(new_init_lat * 0.018)
 
-        dist = 2 * spatial_threshold * 0.0000089
-        new_end_lat = end_lat + dist
-        new_end_lon = end_lon + dist / np.cos(new_end_lat * 0.018)
-        new_init_lat = init_lat - dist
-        new_init_lon = init_lon - dist / np.cos(new_init_lat * 0.018)
+            f = lambda point: all([ point[lat_col] >=  new_init_lat  ,
+                                    point[lat_col] <=  new_end_lat ,
+                                    point[lon_col] >=  new_init_lon ,
+                                    point[lon_col] <=  new_end_lon
+                                ])
 
-        f = lambda point: all([ point[lat_col] >=  new_init_lat  ,
-                                point[lat_col] <=  new_end_lat ,
-                                point[lon_col] >=  new_init_lon ,
-                                point[lon_col] <=  new_end_lon
-                            ])
+            tmp =  df.apply(f, axis=1)
+            tmp = df.loc[tmp]
 
-        tmp =  df.apply(f, axis=1)
-        tmp = df.loc[tmp]
-
-        if len(frag)>0:
-            frag = pd.concat([frag,tmp])
-        else:
-            frag = tmp
+            if len(frag)>0:
+                frag = pd.concat([frag, tmp])
+            else:
+                frag = tmp
 
         return frag
 
@@ -343,7 +331,7 @@ class STDBSCAN(object):
         num_ids = len(df)
         C_UNMARKED  = "{}{}".format(sufix,UNMARKED)
         C_NOISE     = "{}{}".format(sufix,NOISE)
-        df[clusterCol]   = pd.Series([ C_UNMARKED for i in range(num_ids)], index=df.index)
+        df[clusterCol]   = [ C_UNMARKED for i in range(num_ids)]
         cores = list()
         noise = dict()
         for index in range(num_ids):
@@ -366,25 +354,33 @@ class STDBSCAN(object):
                     # noise[str(point[idCol])] = tmp
                 else: # found a core point
                     cluster_label += 1
-                    df.set_value(index,clusterCol, sufix + str(cluster_label)) # assign a label to core point
+                    # assign a label to core point
+                    df.set_value(index,clusterCol, sufix + str(cluster_label))
                     cores.append(point[idCol])
 
                     for new_index in X: # assign core's label to its neighborhood
-                        df.set_value(new_index, clusterCol, sufix + str(cluster_label))
+                        df.set_value(new_index, clusterCol,
+                                        sufix + str(cluster_label))
                         if new_index not in stack:
-                            stack.append(new_index) # append neighborhood to stack
+                            stack.append(new_index)#append neighborhood to stack
 
-                        while len(stack) > 0: # find new neighbors from core point neighborhood
+                        while len(stack) > 0:
+                            #find new neighbors from core point neighborhood
                             newest_index  = stack.pop()
                             new_point = df.loc[newest_index]
-                            Y = self.retrieve_neighbors(df,newest_index, new_point, spatial_threshold, temporal_threshold, lat_col, lon_col, dt_col )
+                            Y = self.retrieve_neighbors(df,newest_index,
+                                    new_point, spatial_threshold,
+                                    temporal_threshold, lat_col,
+                                    lon_col, dt_col )
 
                             if len(Y) >= minPts: # current_point is a new core
                                 cores.append(df.loc[newest_index][idCol])
                                 for new_index_neig in Y:
-                                    neig_cluster = df.loc[new_index_neig][clusterCol]
+                                    neig_cluster = \
+                                        df.loc[new_index_neig][clusterCol]
                                     if (neig_cluster == C_UNMARKED):
-                                        df.set_value(new_index_neig, clusterCol,  sufix + str(cluster_label))
+                                        df.set_value(new_index_neig, clusterCol,
+                                                    sufix + str(cluster_label))
                                         if new_index_neig not in stack:
                                             stack.append(new_index_neig)
 
@@ -395,7 +391,7 @@ class STDBSCAN(object):
         return [df, settings]
 
     def retrieve_neighbors(self, df, i_point, point, spatial_threshold,
-                                temporal_threshold, lat_col, lon_col, dt_col ):
+                                temporal_threshold, lat_col, lon_col, dt_col):
 
         neigborhood = []
         DATATIME    = point[dt_col]
@@ -405,12 +401,45 @@ class STDBSCAN(object):
         df = df[(df[dt_col] >= min_time) & (df[dt_col] <= max_time)]
         for index, row in df.iterrows():
             if index != i_point:
-                    distance = great_circle((point[lat_col], point[lon_col]),
-                                            (row[lat_col], row[lon_col])).meters
+                    distance = self.great_circle(
+                                            (point[lat_col], point[lon_col]),
+                                            (row[lat_col], row[lon_col])
+                                )
                     if distance <= spatial_threshold:
                         neigborhood.append(index)
 
         return neigborhood
+
+
+
+
+    def great_circle(self, a, b):
+        """
+            The great-circle distance or orthodromic distance is the shortest
+            distance between two points on the surface of a sphere, measured
+            along the surface of the sphere (as opposed to a straight line
+            through the sphere's interior).
+
+            :Note: use cython in the future
+            :returns: distance in meters.
+        """
+
+        EARTH_RADIUS = 6371.009
+        lat1, lng1 = radians(a[0]), radians(a[1])
+        lat2, lng2 = radians(b[0]), radians(b[1])
+
+        sin_lat1, cos_lat1 = sin(lat1), cos(lat1)
+        sin_lat2, cos_lat2 = sin(lat2), cos(lat2)
+
+        delta_lng = lng2 - lng1
+        cos_delta_lng, sin_delta_lng = cos(delta_lng), sin(delta_lng)
+
+        d = atan2(sqrt((cos_lat2 * sin_delta_lng) ** 2 +
+                       (cos_lat1 * sin_lat2 -
+                        sin_lat1 * cos_lat2 * cos_delta_lng) ** 2),
+                  sin_lat1 * sin_lat2 + cos_lat1 * cos_lat2 * cos_delta_lng)
+
+        return (EARTH_RADIUS * d)*1000
 
 #-------------------------------------------------------------------------------
 #
@@ -419,7 +448,7 @@ class STDBSCAN(object):
 #-------------------------------------------------------------------------------
 
 
-    @task(returns=list, isModifier = False)
+    @task(returns=dict, isModifier = False)
     def CombineClusters(self, p1, p2):
 
         df1, settings = p1
@@ -463,7 +492,7 @@ class STDBSCAN(object):
 
         return result
 
-    @task(returns=list, isModifier = False)
+    @task(returns=dict, isModifier = False)
     def MergeMapper(self,mapper1,mapper2):
 
         clusters1 = mapper1['cluster']
@@ -548,12 +577,12 @@ class STDBSCAN(object):
         #     for c in component:
         #         id_newC[str(c)] = i
 
-
-        print "----------------------"
-        print "oldC_newC",oldC_newC
-        print "----------------------"
-        print "id_newC",id_newC
-        print "----------------------"
+        #
+        # print "----------------------"
+        # print "oldC_newC",oldC_newC
+        # print "----------------------"
+        # print "id_newC",id_newC
+        # print "----------------------"
 
         return [oldC_newC,id_newC]
 
@@ -582,8 +611,8 @@ class STDBSCAN(object):
 
             f = lambda point: all([ round(point[lat_col],5) >= init_lat ,
                                     round(point[lon_col],5) >= init_lon ,
-                                    round(point[lat_col],5) < (end_lat + 0.00001),
-                                    round(point[lon_col],5) < (end_lon + 0.00001),
+                                    round(point[lat_col],5) < (end_lat+0.00001),
+                                    round(point[lon_col],5) < (end_lon+0.00001),
 
                                 ])
             tmp =  df1.apply(f, axis=1)

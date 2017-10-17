@@ -6,72 +6,72 @@ __email__  = "lucasmsp@gmail.com"
 
 from pycompss.api.task          import task
 from pycompss.api.parameter     import *
-from pycompss.functions.reduce import mergeReduce
-from pycompss.api.api import compss_wait_on
 
-import numpy as np
-import math
+import numpy  as np
 import pandas as pd
 
-def WorkloadBalancerOperation(df1, numFrag):
+def WorkloadBalancerOperation(df1, forced, numFrag):
     """
     WorkloadBalancerOperation():
 
-    Rebalance all the data in equal parts.
+    Redistribute the data in equal parts if it's unbalanced. It is considered
+    an unbalanced dataframe if the coefficient of variation (CV) between
+    fragments is greater than 0.20.
 
     :param data:       A list with numFrag pandas's dataframe;
+    :param forced:     True to force redistribution of data,
+                       False to use heuristic based on the CV;
     :param numFrag:    The number of fragments;
     :return:           Returns a balanced list with numFrag pandas's dataframe.
     """
 
+    from pycompss.api.api import compss_wait_on
 
-
-    #first: check len of each frag
+    #first: check the distribution of the data
     len1 = [balancing_count( df1[f]) for f in range(numFrag)]
     len1 = compss_wait_on(len1)
+    total = sum(len1)
 
-    CV = np.std(len1) / np.mean(len1)
-    #print "std:{} | mean:{} | CV:{}".format(np.std(len1),np.mean(len1),CV)
-    if CV > 0.4:
-        balanced = False
-    else:
+    if forced:
         balanced = True
+    else:
+        CV = np.std(len1) / np.mean(len1)
+        print "Coefficient of variation:{}".format(CV)
+        if CV > 0.20:
+            balanced = False
+            print 'It assumed that do not compensates distribute the database.'
+        else:
+            balanced = True
+            print 'It assumed that compensates distribute the database.'
+
 
     if not balanced:
-        total  = max([total1,total2])
-        size_p = int(math.ceil(float(total)/numFrag))
+
+        equal_size = int(np.ceil(float(total)/numFrag))
 
         for f in range(numFrag-1):
-            partition_need1 = size_p - len1[f]
-            #print "need1:{} ".format(partition_need1)
-            if partition_need1>0:
+            quantity_needed = equal_size - len1[f]
 
+            if quantity_needed>0:
+                #If lines are missing, get from the next fragments
                 for g in xrange(f+1,numFrag):
-                    if (len1[g] - partition_need1)<0:
-                        off1 = len1[g]
+                    # amount that the next fragment can yield
+                    if len1[g] >= quantity_needed:
+                        offset = quantity_needed
                     else:
-                        off1 = partition_need1
+                        offset = len1[g]
 
-                    #print "off1:{}".format(off1)
+                    df1[f] = balancing_f2_to_f1(df1[f], df1[g], offset)
+                    len1[g] -= offset
+                    len1[f] += offset
+                    quantity_needed -= offset
 
-                    df1[f] = balancing_f2_to_f1(df1[f], df1[g], off1)
-                    #df1 = compss_wait_on(df1)
-                    len1[g] -= off1
-                    len1[f] += off1
-                    partition_need1 -= off1
+            elif quantity_needed<0:
+                #if lines are in excess, move it to the next block
+                df1[f+1] = balancing_f1_to_f2(df1[f],df1[f+1], -quantity_needed)
+                len1[f+1] -= quantity_needed
+                len1[f]   += quantity_needed
 
-                    #print "MENOR | len2[f]:{}  | need2:{} | len2[g]:{} ".format(len1[f],len1[g],partition_need1)
-                    #print "MENOR | len2[f]:{}  | need2:{} | len2[g]:{} ".format(len(df1[f]),len(df1[g]),partition_need1)
-                        #print "STATUS:{}".format(len2)
-                #print "Acabou com f:{} --> len:{}".format(f, len1[f])
-            elif partition_need1<0:
-                df1[f+1] = balancing_f1_to_f2(df1[f], df1[f+1], -partition_need1)
-                #df1 = compss_wait_on(df1)
-                len1[f+1] -= partition_need1
-                len1[f] += partition_need1
-
-                #print "MAIOR | len1[f]:{}  | need1:{} | len1[g]:{} ".format(len1[f],len1[f+1],partition_need1)
-                #print "STATUS:{}".format(len2)
 
     return df1
 
@@ -82,7 +82,8 @@ def balancing_count(df1):
 
 @task( df_f1=INOUT, returns=list ) #df_f2=INOUT
 def balancing_f1_to_f2(df_f1, df_f2, off1):
-    #df_f1 MAIOR  --to-->    df_f2 MENOR
+    # Get the tail offset lines from df_f1
+    # and put at the head of df_f2
 
     tmp = df_f1.tail(off1)
     df_f1.drop(tmp.index, inplace=True)
@@ -95,14 +96,14 @@ def balancing_f1_to_f2(df_f1, df_f2, off1):
 
 
 @task( df_f2=INOUT, returns=list ) #df_f2=INOUT
-def balancing_f2_to_f1(df_f1, df_f2, off1):
-    #df_f1 MAIOR  --to-->    df_f2 MENOR
-
-    tmp = df_f2.head(off1)
+def balancing_f2_to_f1(df_f1, df_f2, offset):
+    # Get the head offset lines from df_f2
+    # and put at the tail of df_f1
+    tmp = df_f2.head(offset)
     df_f2.drop(tmp.index, inplace=True)
     tmp.reset_index(drop=True,inplace=True)
 
     mynparray = df_f1.values
-    mynparray = np.vstack((tmp,mynparray))
+    mynparray = np.vstack((mynparray,tmp))
     df_f1 = pd.DataFrame(mynparray,columns = df_f1.columns)
     return df_f1

@@ -23,10 +23,10 @@ All parameters are explained below:
 ```
   :param data:        A list with numFrag pandas's dataframe used to training the model.
   :param settings:    A dictionary that contains:
-      - iters:            Maximum number of iterations (integer);
-      - threshold:        Tolerance for stopping criterion (float);
-      - regularization:   Regularization parameter (float);
-      - alpha:            The Learning rate. How large of steps to take on our cost curve (float);
+      - iters:            Maximum number of iterations (integer, default is 100);
+      - threshold:        Tolerance for stopping criterion (float, default is 0.001);
+      - regularization:   Regularization parameter (float, default is 0.1);
+      - alpha:            The Learning rate. How large of steps to take on our cost curve (float, default is 0.1);
       - features:         Column name of the features in the training data;
       - label:            Column name of the labels   in the training data;
   :param numFrag:     A number of fragments;

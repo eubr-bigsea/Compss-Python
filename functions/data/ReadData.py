@@ -13,22 +13,24 @@ def ReadCSVOperation(filename,settings):
 
         Method used to load a pandas DataFrame from a csv file.
 
-        :param filename:        The absolute path where the dataset is stored.
-                                Each dataset is expected to be in a specific folder.
-                                The folder will have the name of the dataset with the suffix "_folder".
-                                The dataset is already divided into numFrags files, sorted lexicographically.
-        :param settings:        A dictionary with the following parameters:
-          - 'separator':        The string used to separate values (default, ',');
-          - 'header':           True if the first line is a header, otherwise is False (default, True);
+        :param filename:       The absolute path where the dataset is stored.
+                               Each dataset is expected to be in a specific
+                               folder. The folder will have the name of the
+                               dataset with the suffix "_folder". The dataset
+                               is already divided into numFrags files.
+        :param settings:       A dictionary with the following parameters:
+          - 'separator':       Value used to separate fields (default, ',');
+          - 'header':          True if the first line is a header, otherwise
+                               is False (default, True);
           - 'infer':
-            * "NO":              Do not infer the data type of each column (will be string);
-            * "FROM_VALUES":     Try to infer the data type of each column (default);
-            * "FROM_LIMONERO":   !! NOT IMPLEMENTED YET!!
-          - 'na_values':         A list with the all nan caracteres to be considerated.
-                                 Default list:   '', '#N/A', '#N/A N/A', '#NA', '-1.#IND',
-                                                 '-1.#QNAN', '-NaN', '-nan', '1.#IND', '1.#QNAN',
-                                                 'N/A', 'NA', 'NULL', 'NaN', 'nan'
-        :return                  A DataFrame splitted in a list with length N.
+            *"NO":            Do not infer the data type of each field;
+            *"FROM_VALUES":   Try to infer the data type of each field (default);
+            *"FROM_LIMONERO": !! NOT IMPLEMENTED YET!!
+          - 'na_values':      A list with the all nan caracteres. Default list:
+                                '', '#N/A', '#N/A N/A', '#NA', '-1.#IND',
+                                '-1.#QNAN', '-NaN', '-nan', '1.#IND', '1.#QNAN',
+                                'N/A', 'NA', 'NULL', 'NaN', 'nan'
+        :return                A DataFrame splitted in a list with length N.
 
         Example:
         $ ls /var/workspace/dataset_folder
@@ -50,7 +52,11 @@ def ReadCSVOperation(filename,settings):
     data = []
     DIR = filename+"_folder"
 
-    #BUG: COMPSs dont handle with a string "\n" as a parameter, using the tag "<new_line>" instead.
+    if infer not in ['NO','FROM_VALUES','FROM_LIMONERO']:
+        raise Exception("Please inform a valid `infer` type.")
+
+    #BUG: There is a COMPSs bug whent separator is "\n". Because of that,
+    #     use a mask "<new_line>" instead in these cases.
     data =  [ ReadCSV( "{}/{}".format(DIR,name),
                         separator,
                         header,
@@ -64,21 +70,29 @@ def ReadCSVOperation(filename,settings):
 def ReadCSV(filename,separator,header,infer,na_values):
     import pandas as pd
     if separator == "<new_line>": separator = "\n"
+    if header == True:
+        header = 'infer'
+    else:
+        header = None
 
     if infer =="NO":
-        if header:
-            df = pd.read_csv(filename,sep=separator,na_values=na_values,dtype='str');
-        else:
-            df = pd.read_csv(filename,sep=separator,na_values=na_values,header=0,dtype='str');
+        df = pd.read_csv(   filename, sep=separator, na_values=na_values,
+                            header=header, dtype='str'
+                            );
 
     elif infer == "FROM_VALUES":
-        if header:
-            df = pd.read_csv(filename,sep=separator,na_values=na_values);
-        else:
-            df = pd.read_csv(filename,sep=separator,na_values=na_values,header=0);
+        df = pd.read_csv(   filename, sep=separator, na_values=na_values,
+                            header=header
+                            );
+
 
     elif infer == "FROM_LIMONERO":
         df = pd.DataFrame([])
+
+    if not header:
+        n_cols = len(df.columns)
+        new_columns = ['col_{}'.format(i) for i in range(n_cols)]
+        df.columns = new_columns
 
     return df
 
@@ -88,19 +102,20 @@ def ReadJsonOperation(filename, settings):
     """
         ReadCSVOperation():
 
-        Method used to load a pandas DataFrame from a json file  (following the
-		'records' pandas orientation).
+        Method used to load a pandas DataFrame from a json file
+        (following the 'records' pandas orientation).
 
-        :param filename:        The absolute path where the dataset is stored.
-                                Each dataset is expected to be in a specific folder.
-                                The folder will have the name of the dataset with the suffix "_folder".
-                                The dataset is already divided into numFrags files, sorted lexicographically.
-        :param settings:        A dictionary with the following parameters:
+        :param filename:    The absolute path where the dataset is stored.
+                            Each dataset is expected to be in a specific
+                            folder. The folder will have the name of the
+                            dataset with the suffix "_folder". The dataset is
+                            already divided into numFrags files.
+        :param settings:    A dictionary with the following parameters:
           - 'infer':
-            * "NO":              Do not infer the data type of each column (will be string);
-            * "FROM_VALUES":     Try to infer the data type of each column (default);
-            * "FROM_LIMONERO":   !! NOT IMPLEMENTED YET!!
-        :return                  A DataFrame splitted in a list with length N.
+            *"NO":            Do not infer the data type of each column;
+            *"FROM_VALUES":   Try to infer the data type of each field (default);
+            *"FROM_LIMONERO": !! NOT IMPLEMENTED YET!!
+        :return               A DataFrame splitted in a list with length N.
 
         Example:
         $ ls /var/workspace/dataset_folder
@@ -120,7 +135,6 @@ def ReadJsonOperation(filename, settings):
 
     return data
 
-#-------------------------------------------------------------
 
 @task(returns=list, filename = FILE_IN)
 def ReadJson(filename, infer):
@@ -131,7 +145,7 @@ def ReadJson(filename, infer):
 		'records' pandas orientation).
 	    :param filename: The name used in the output.
 	    :param infer:
-            - "NO":             Do not infer the data type of each column (will be string);
+            - "NO":             Do not infer the data type of each column;
             - "FROM_VALUES":    Try to infer the data type of each column;
             - "FROM_LIMONERO":  !! NOT IMPLEMENTED YET!!
         return:       The partial pandas dataframe.
@@ -143,7 +157,7 @@ def ReadJson(filename, infer):
         df = pd.read_json(filename, orient='records')
 	return df
 
-
+#--------------------------------------------------------------------------------
 
 def ReadCSVFromHDFSOperation(settings, numFrag):
     """
@@ -155,15 +169,20 @@ def ReadCSVFromHDFSOperation(settings, numFrag):
       - port:               Port of the Namenode HDFS; (default, 9000)
 
       - 'separator':        The string used to separate values (default, ',');
-      - 'header':           True if the first line is a header, otherwise is False (default, True);
+      - 'header':           True if the first line is a header, otherwise is
+                            False (default, True);
       - 'infer':
-        * "NO":              Do not infer the data type of each column (will be string);
-        * "FROM_VALUES":     Try to infer the data type of each column (default);
-        * "FROM_LIMONERO":   !! NOT IMPLEMENTED YET!!
-      - 'na_values':         A list with the all nan caracteres to be considerated.
-                             Default list:   '', '#N/A', '#N/A N/A', '#NA', '-1.#IND',
-                                             '-1.#QNAN', '-NaN', '-nan', '1.#IND', '1.#QNAN',
-                                             'N/A', 'NA', 'NULL', 'NaN', 'nan'
+        * "NO":             Do not infer the data type of each column;
+        * "FROM_VALUES":    Try to infer the data type of each column (default);
+        * "FROM_LIMONERO":  !! NOT IMPLEMENTED YET!!
+      - 'na_values':        A list with the all nan caracteres.
+                            Default list: '', '#N/A', '#N/A N/A', '#NA',
+                                          '-1.#IND', '-1.#QNAN', '-NaN',
+                                          '-nan', '1.#IND', '1.#QNAN',
+                                          'N/A', 'NA', 'NULL', 'NaN', 'nan'
+      - 'mode':
+        * 'FAILFAST':      Stop processing and raise error
+        * 'DROPMALFORMED': Ignore whole corrupted record
     :param numFrag:   A number of fragments;
     :return           A DataFrame splitted in a list with length N.
     """
@@ -172,6 +191,9 @@ def ReadCSVFromHDFSOperation(settings, numFrag):
     HDFS_BLOCKS = hdfs.findNBlocks(settings, numFrag)
 
     infer = settings.get('infer', 'FROM_VALUES')
+    if infer not in ['NO','FROM_VALUES','FROM_LIMONERO']:
+        raise Exception("Please inform a valid `infer` type.")
+        
     if infer == 'FROM_VALUES':
         settings['infer'] = True
     elif infer == 'FROM_LIMONERO':
@@ -181,7 +203,9 @@ def ReadCSVFromHDFSOperation(settings, numFrag):
         # 'NO':
         settings['infer'] = False
 
+
     data = [readHDFSData(block,settings) for block in HDFS_BLOCKS ]
+
     return data
 
 
@@ -189,3 +213,5 @@ def ReadCSVFromHDFSOperation(settings, numFrag):
 def readHDFSData(block, csv_options):
     import hdfs_pycompss.hdfsConnector as hdfs
     return hdfs.readDataFrame(block, csv_options)
+
+#--------------------------------------------------------------------------------

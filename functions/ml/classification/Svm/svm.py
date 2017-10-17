@@ -1,17 +1,14 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 
-#
-# Developed by Lucas Miguel Ponce
-# Mestrando em Ciências da Computação - UFMG
-# <lucasmsp@gmail.com>
-#
+__author__ = "Lucas Miguel S Ponce"
+__email__  = "lucasmsp@gmail.com"
 
-from pycompss.api.task import task
-from pycompss.api.parameter import *
+
+from pycompss.api.parameter    import *
+from pycompss.api.task         import task
 from pycompss.functions.reduce import mergeReduce
-from pycompss.functions.data import chunks
-from pycompss.api.api import compss_wait_on
+
 import pandas as pd
 import numpy as np
 
@@ -40,7 +37,7 @@ import numpy as np
 
 
 class SVM(object):
-    #OBS.: Senao for usar o COST, tem como otimizar o codigo
+
     def fit(self,data, settings, numFrag):
         """
             fit():
@@ -52,40 +49,48 @@ class SVM(object):
              - coef_lr:             Learning rate parameter (float);
              - coef_threshold:      Tolerance for stopping criterion (float);
              - coef_maxIters:       Number max of iterations (integer);
-             - features: 		    Column name of the features in the training data;
-             - label:          	    Column name of the labels   in the training data;
+             - features: 		    Fields of the features in the training data;
+             - label:          	    Fields of the labels   in the training data;
             - :param numFrag:       A number of fragments;
             - :return:              The model created (which is a pandas dataframe).
         """
 
-        coef_lambda     = float(settings['coef_lambda'])
-        coef_lr         = float(settings['coef_lr'])
-        coef_threshold  = float(settings['coef_threshold'])
-        coef_maxIters   =   int(settings['coef_maxIters'])
+        coef_lambda     = float(settings.get('coef_lambda',0.1))
+        coef_lr         = float(settings.get('coef_lr',0.01))
+        coef_threshold  = float(settings.get('coef_threshold',0.001))
+        coef_maxIters   =   int(settings.get('coef_maxIters',100))
+
+        if 'features' not in settings or  'label'  not in settings:
+           raise Exception("You must inform the `features` and `label` fields.")
 
         label    = settings['label']
         features = settings['features']
-        w = [0 for i in range(1)] #initial
 
+
+        w = [0 for i in range(1)]
+        old_cost = np.inf
+        from pycompss.api.api import compss_wait_on
         for it in range(coef_maxIters):
             cost_grad_p = [self.calc_CostAndGrad(data[f], f, coef_lambda,
                                                  w,label,features)
                                                  for f in range(numFrag)]
             cost_grad   =  mergeReduce(self.accumulate_CostAndGrad, cost_grad_p)
-            #cost_grad   =  compss_wait_on(cost_grad)
+            cost_grad   =  compss_wait_on(cost_grad)
 
-            #grad = cost_grad[0][1]
-            #cost = cost_grad[0][0][0]
-            #print "[INFO] - Current Cost %.4f" % (cost)
-            #if cost < coef_threshold:
-            #    print "[INFO] - Cost %.4f" % (cost)
-            #    break
+            cost = cost_grad[0]
+            thresold = abs(old_cost - cost)
+            if  thresold <= coef_threshold:
+                print "[INFO] - Final Cost %.4f" % (cost)
+                break
+            else:
+                old_cost = cost
 
-            w = self.updateWeight(coef_lr,cost_grad,w)
+            w = self.updateWeight(coef_lr, cost_grad, w)
 
         return w
 
-    @task(returns=list, isModifier = False)
+    # Note: If we dont use the thresold, this method must be a compss task.
+    #@task(returns=list, isModifier = False)
     def updateWeight(self,coef_lr,grad,w):
         dim = len(grad[1])
         if(dim!=len(w)):
@@ -95,21 +100,14 @@ class SVM(object):
             w[i] -=coef_lr*grad[1][i]
         return w
 
-    def get_dimension(self,row):
-        if isinstance(row, list):
-            numDim = len(row)
-        else:
-            numDim = 1
-        return numDim
-
 
     @task(returns=list, isModifier = False)
     def calc_CostAndGrad(self,train_data,f,coef_lambda,w,label,features):
 		if len(train_data)>0:
-		    numDim = self.get_dimension(train_data.iloc[0][features])
+		    numDim = len(train_data.iloc[0][features])
 
 		    ypp   = [0 for i in range(len(train_data))]
-		    cost  = [0,0]
+		    cost  = 0
 		    grad  = [0 for i in range(numDim)]
 
 		    if numDim != len(w):
@@ -122,7 +120,7 @@ class SVM(object):
 		                ypp[i]+=train_data.iloc[i][features][d]*w[d]
 
 		            if (train_data.iloc[i][label] * ypp[i] -1) < 0:
-		                cost[0]+=(1 - train_data.iloc[i][label] * ypp[i])
+		                cost+=(1 - train_data.iloc[i][label] * ypp[i])
 
 
 		        for d in range(numDim):
@@ -132,11 +130,12 @@ class SVM(object):
 
 		            for i in range(len(train_data)):
 		                if (train_data.iloc[i][label]*ypp[i]-1) < 0:
-		                    grad[d] -= train_data.iloc[i][label]*train_data.iloc[i][features][d]
+		                    grad[d] -=  train_data.iloc[i][label] *
+                                        train_data.iloc[i][features][d]
 
 		    return [cost,grad]
 		else:
-		    return [None,None]
+		    return [None, None]
 
     @task(returns=list, isModifier = False)
     def accumulate_CostAndGrad(self,cost_grad_p1,cost_grad_p2):
@@ -156,9 +155,7 @@ class SVM(object):
         if (cost_p2 == None):
             return cost_grad_p1
 
-        for i in range(len(cost_p1)):
-            cost_p1[i]+=cost_p2[i]
-
+        cost_p1+=cost_p2
 
         for d in range(len(grad_p1)):
             grad_p1[d]+=grad_p2[d]
@@ -169,20 +166,26 @@ class SVM(object):
     def transform(self,data, model, settings, numFrag):
         """
             transform():
-            
-            :param data: A list with numFrag pandas's dataframe that will be predicted.
-            :param model: A model already trained (np.array);
+
+            :param data:     A list with numFrag pandas's dataframe
+                             that will be predicted.
+            :param model:    A model already trained (np.array);
             :param settings: A dictionary that contains:
-                - features: Column name of the features in the test data;
+                - features:  Field of the features in the test data;
                 - predlabel: Alias to the new column with the labels predicted;
-            :param numFrag: A number of fragments;
-            :return: The prediction (in the same input format).
+            :param numFrag:  A number of fragments;
+            :return:         The prediction (in the same input format).
         """
+
+        if 'features' not in settings :
+           raise Exception("You must inform the `features` field.")
 
         features = settings['features']
         predictedLabel = settings.get('predCol','predited')
 
-        result   = [ self.predict_partial(data[f],model,predictedLabel,features)  for f in range(numFrag) ]
+        result   = [ self.predict_partial(data[f],model,predictedLabel,features)
+                            for f in range(numFrag)
+                     ]
 
         return result
 

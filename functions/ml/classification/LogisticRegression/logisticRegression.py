@@ -35,25 +35,33 @@ class logisticRegression(object):
         """
         fit():
 
-        :param data:        A list with numFrag pandas's dataframe used to training the model.
+        :param data:        A list with numFrag pandas's dataframe used to
+                            training the model.
         :param settings:    A dictionary that contains:
-            - iters:            Maximum number of iterations (integer);
-            - threshold:        Tolerance for stopping criterion (float);
-            - regularization:   Regularization parameter (float);
-            - alpha:            The Learning rate, it means, how large of steps to take
-                                on our cost curve (float);
-         	- features: 		Column name of the features in the training data;
-         	- label:          	Column name of the labels   in the training data;
+            - iters:            Maximum number of iterations
+                                (integer, default is 100);
+            - threshold:        Tolerance for stopping criterion
+                                (float, default is 0.001);
+            - regularization:   Regularization parameter (float, default is 0.1);
+            - alpha:            The Learning rate, it means, how large of
+                                steps to take on our cost curve
+                                (float, default is 0.1);
+         	- features: 		Field of the features in the training data;
+         	- label:          	Field of the labels in the training data;
         :param numFrag:     A number of fragments;
         :return:            The model created (which is a pandas dataframe).
         """
 
-        features = settings['features']
-        label    = settings['label']
-        alpha = settings['alpha']
-        iters = settings['iters']
-        threshold = settings['threshold']
-        reg = settings['regularization']
+        if 'features' not in settings or  'label'  not in settings:
+           raise Exception("You must inform the `features` and `label` fields.")
+
+        features  = settings['features']
+        label     = settings['label']
+        alpha     = settings.get('alpha',0.1)
+        reg       = settings.get('regularization',0.1)
+        iters     = settings.get('iters',100)
+        threshold = settings.get('threshold',0.001)
+
         parameters = self.ComputeCoeffs(data, features, label, alpha,
                                                 iters, threshold, reg, numFrag)
 
@@ -64,18 +72,23 @@ class logisticRegression(object):
         """
         transform():
 
-        :param data:        A list with numFrag pandas's dataframe that will be predicted.
-        :param model:		 The Logistic Regression model created;
+        :param data:        A list with numFrag pandas's dataframe that
+                            will be predicted.
+        :param model:		The Logistic Regression model created;
         :param settings:    A dictionary that contains:
- 	      - features: 		 Column name of the features in the test data;
- 	      - predCol:    	 Alias to the new column with the labels predicted;
+ 	      - features: 		Field of the features in the test data;
+ 	      - predCol:    	Alias to the new column with the labels predicted;
         :param numFrag:     A number of fragments;
         :return:            The prediction (in the same input format).
         """
+        if 'features' not in settings:
+           raise Exception("You must inform the `features`  field.")
+
         col_features = settings['features']
         predCol    = settings.get('predCol','prediction')
 
-        data = [ self.predict(data[f],col_features,predCol,model) for f in range(numFrag)]
+        data = [ self.predict(data[f],col_features,predCol,model)
+                    for f in range(numFrag)]
 
         return data
 
@@ -88,21 +101,21 @@ class logisticRegression(object):
         """
         return  1.0 - 1.0/(1.0 + math.exp(sum(w*x)))
 
-    def ComputeCoeffs(self,data, features, label, alpha, iters, threshold, reg, numFrag):
+    def ComputeCoeffs(self, data, features, label, alpha,
+                            iters, threshold, reg, numFrag):
         """
         Perform a logistic regression via gradient ascent.
         """
 
-        theta = theta = np.array(np.zeros(3), dtype = float)   #initial
-        i = 0
+        theta = theta = np.array(np.zeros(1), dtype = float)   #initial
+        i = reg = 0
         converged = False
-        threshold = 0.001
-        reg = 0
         while ( (i<iters) and not converged):
 
             # grEin = gradient of in-sample Error
-            grEin = [self.GradientAscent(data[f],features,label,theta,alpha) for f in range(numFrag)]
-            grad  = mergeReduce(self.agg_sga,grEin)
+            grEin = [ self.GradientAscent(data[f],features,label,theta,alpha)
+                        for f in range(numFrag)]
+            grad  = mergeReduce(self.agg_sga, grEin)
             theta, converged = self.calcTheta(grad,alpha,i,reg,threshold)
             i+=1
             converged = compss_wait_on(converged)
@@ -113,17 +126,21 @@ class logisticRegression(object):
 
     @task(returns=list, isModifier = False)
     def GradientAscent(self,data,X,Y,theta,alfa):
-        # Estimate logistic regression coefficients using stochastic gradient descent
-        if isinstance(data.iloc[0][X], list):
-            dim = len(data.iloc[0][X])
-        else:
-            dim = 1
+        """
+            Estimate logistic regression coefficients
+            using stochastic gradient descent.
+        """
+
+        if len(data)==0:
+            return [[],0,0,theta]
+
+        dim = len(data.iloc[0][X])
 
         if (dim+1) != len(theta):
             theta = np.array(np.zeros(dim+1), dtype = float)
 
         N = len(data)
-        # get the sum of error in the whole se
+        # get the sum of error
         gradient = 0
 
         Xs = np.c_[np.ones(N), np.array(data[X].tolist() ) ] # adding ones
@@ -138,8 +155,21 @@ class logisticRegression(object):
 
     @task(returns=list, isModifier = False)
     def agg_sga(self,info1,info2):
-        #print "{} + {} = {}".format(info1[0],info2[0],info1[0]+info2[0])
-        return [info1[0]+info2[0], info2[1]+info2[1], info1[2], info1[3]]
+
+        if len(info1[0])>0:
+            if len(info2[0])>0:
+                gradient = info1[0]+info2[0]
+            else:
+                gradient = info1[0]
+        else:
+            gradient = info2[0]
+
+        N   = info2[1]+info2[1]
+        dim = info1[2] if info1[2] !=0 else info2[2]
+        theta = info1[3] if len(info1[3])>len(info2[3]) else info2[3]
+
+        print [gradient, N, dim, theta]
+        return [gradient, N, dim, theta]
 
 
     @task(returns=(float,bool), isModifier = False)
@@ -166,5 +196,5 @@ class logisticRegression(object):
         N = len(data)
 
         Xs = np.c_[np.ones(N), np.array(data[X].tolist() ) ]
-        data[predCol] = [ round(self.sigmoid(x,theta)) for x in Xs] #1 if x >= 0.5 else 0
+        data[predCol] = [ round(self.sigmoid(x,theta)) for x in Xs]
         return data

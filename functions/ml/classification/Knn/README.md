@@ -20,7 +20,7 @@ All parameters are explained below:
 
 - :param data:        A list with numFrag pandas's dataframe used to training the model.
 - :param settings:    A dictionary that contains:
- 	- K:  			 	      Number of K nearest neighborhood to take in count.
+ 	- K:  			 	Number of K nearest neighborhood to take in count (default, 1).
  	- features: 		    Column name of the features in the training data;
  	- label:          	Column name of the labels   in the training data;
 - :param numFrag:     A number of fragments;
@@ -31,7 +31,7 @@ All parameters are explained below:
 - :param data:        A list with numFrag pandas's dataframe that will be predicted.
 - :param model:		 The KNN model created;
 - :param settings:    A dictionary that contains:
- 	- K:     	 		 Number of K nearest neighborhood to take in count.
+ 	- K:     	 	 Number of K nearest neighborhood to take in count (default, 1).
  	- features: 		 Column name of the features in the test data;
  	- predCol:    	 Alias to the new column with the labels predicted;
 - :param numFrag:     A number of fragments;
@@ -42,7 +42,7 @@ All parameters are explained below:
 
 - :param data:        A list with numFrag pandas's dataframe used to training the model and to classify it.
 - :param settings:    A dictionary that contains:
- - K:  			 	 Number of K nearest neighborhood to take in count.
+ - K:  			 	 Number of K nearest neighborhood to take in count (default, 1).
  - features: 		 Column name of the features in the training/test data;
  - label:          	 Column name of the labels   in the training/test data;
  - predCol:    	 Alias to the new column with the labels predicted;

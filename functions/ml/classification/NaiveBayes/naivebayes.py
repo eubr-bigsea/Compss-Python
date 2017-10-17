@@ -4,18 +4,14 @@
 __author__ = "Lucas Miguel S Ponce"
 __email__  = "lucasmsp@gmail.com"
 
-
-import random
 import math
 import numpy as np
 import pandas as pd
-import time
 
-from pycompss.api.task          import task
 from pycompss.api.parameter     import *
+from pycompss.api.task          import task
 from pycompss.functions.reduce  import mergeReduce
-from pycompss.functions.data    import chunks
-from pycompss.api.api import compss_wait_on
+
 
 
 
@@ -38,18 +34,6 @@ the class value with the highest probability.
 
 """
 
-
-# #============ To Profile ===================
-# def timing(f):
-#     def wrap(*args):
-#         time1 = time.time()
-#         ret = f(*args)
-#         time2 = time.time()
-#         print '%s function took %0.3f ms' % (f.func_name, (time2-time1)*1000.0)
-#         return ret
-#     return wrap
-# #=========================================
-
 #-------------------------------------------------------------------------
 #   Naive Bayes
 #
@@ -63,20 +47,29 @@ class GaussianNB(object):
             - :param data:      A list with numFrag pandas's dataframe used to
                                 training the model.
             - :param settings:  A dictionary that contains:
-             	- features: 	Column name of the features in the training data;
-             	- label:        Column name of the labels   in the training data;
+             	- features: 	Field of the features in the training data;
+             	- label:        Field of the labels   in the training data;
             - :param numFrag:   A number of fragments;
             - :return:          The model created (which is a pandas dataframe).
         """
 
+        if 'features' not in settings or  'label'  not in settings:
+           raise Exception("You must inform the `features` and `label` fields.")
+
         label = settings['label']
         features = settings['features']
 
-        separated       = [ self.separateByClass(data[i],label,features) for i in range(numFrag)]   # separa as classes
-        merged_fitted   = mergeReduce(self.merge_summaries1, separated ) #result: mean and len
+        #first analysis
+        separated = [ self.separateByClass(data[i],label,features)
+                            for i in range(numFrag)]
 
-        partial_result  = [ self.addVar(merged_fitted,separated[i])  for i in range(numFrag)]
-        merged_fitted   = mergeReduce(self.merge_summaries2, partial_result)
+        #generate a mean and len of each fragment
+        merged_fitted = mergeReduce(self.merge_summaries1, separated )
+
+        #compute the variance
+        partial_result = [ self.addVar(merged_fitted,separated[i])
+                            for i in range(numFrag)]
+        merged_fitted  = mergeReduce(self.merge_summaries2, partial_result)
 
         summaries = self.calcSTDEV(merged_fitted)
 
@@ -105,13 +98,10 @@ class GaussianNB(object):
         for att in separated:
             summaries = []
             nums = separated[att]
-            #print "nums: ",nums
             d = 0
             nums2 = merged_fitted[att]
-            #print "nums2: ",nums2
             for attribute in  zip(*nums):
                 avg = nums2[d][0]/nums2[d][1]
-                #print avg
                 varNum = sum([math.pow(x-avg,2) for x in attribute])
                 summaries.append((avg, varNum, nums2[d][1]))
                 d+=1
@@ -121,7 +111,6 @@ class GaussianNB(object):
 
     @task(returns=dict, isModifier = False)
     def calcSTDEV(self,summaries):
-        #summaries = summaries[0]
         new_summaries = {}
         for att in summaries:
             tupla = summaries[att]
@@ -138,8 +127,8 @@ class GaussianNB(object):
             if att in summaries1:
                 for i in range(len(summaries1[att])):
                     summaries1[att][i] = (summaries1[att][i][0],
-                                          summaries1[att][i][1] + summaries2[att][i][1],
-                                          summaries1[att][i][2] )
+                                summaries1[att][i][1] + summaries2[att][i][1],
+                                summaries1[att][i][2] )
 
             else:
                 summaries1[att] = summaries2[att]
@@ -150,8 +139,9 @@ class GaussianNB(object):
         for att in summaries2:
             if att in summaries1:
                 for i in range(len(summaries1[att])):
-                    summaries1[att][i] = ( (summaries1[att][i][0] + summaries2[att][i][0]),
-                                           summaries1[att][i][1] + summaries2[att][i][1] )
+                    summaries1[att][i] = (
+                                (summaries1[att][i][0] + summaries2[att][i][0]),
+                                 summaries1[att][i][1] + summaries2[att][i][1])
             else:
                 summaries1[att] = summaries2[att]
 
@@ -165,7 +155,6 @@ class GaussianNB(object):
         summaries = []
         for attribute in zip(*features):
             avg = sum(attribute)
-            #varNum = sum([pow(x-avg,2) for x in attribute])
             summaries.append((avg, len(attribute)))
         return summaries
 
@@ -181,14 +170,19 @@ class GaussianNB(object):
     def transform(self,data, model, settings, numFrag):
         """
             transform:
-            - :param data: A list with numFrag pandas's dataframe that will be predicted.
+            - :param data:  A list with numFrag pandas's dataframe that
+                            will be predicted.
             - :param model: A model already trained;
             - :param settings: A dictionary that contains:
-             	- features: Column name of the features in the test data;
+             	- features: Field of the features in the test data;
              	- predCol: Alias to the new column with the labels predicted;
             - :param numFrag: A number of fragments;
             - :return: The prediction (in the same input format).
         """
+
+        if 'features' not in settings:
+           raise Exception("You must inform the at least the `features` field.")
+
         result = [ self.predict_chunck(data[i],model,settings) for i in range(numFrag) ]
 
         return result
@@ -201,7 +195,7 @@ class GaussianNB(object):
     def predict_chunck(self, data,summaries,settings):
 
         features_col    = settings['features']
-        predictedLabel = settings.get('predCol','prediction')
+        predictedLabel  = settings.get('predCol','prediction')
 
         predictions = []
         for i in range(len(data)):
@@ -230,7 +224,8 @@ class GaussianNB(object):
             for i in range(len(classSummaries)):
                 mean, var = classSummaries[i]
                 x = toPredict[i]
-                probabilities[classValue] *= self.calculateProbability(x, mean, var)
+                probabilities[classValue]  *= \
+                                        self.calculateProbability(x, mean, var)
         return probabilities
 
 

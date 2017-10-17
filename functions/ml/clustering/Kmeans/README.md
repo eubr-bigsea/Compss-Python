@@ -23,11 +23,11 @@ All parameters are explained below:
 
 - :param data:        A list with numFrag pandas's dataframe used to create the model.
 - :param settings:    A dictionary that contains:
-  - k:  			  Number of wanted clusters.
-  - features: 	  Column name of the features in the dataset;
-  - maxIterations:  Maximum number of iterations;
-  - epsilon:        Threshold to stop the iterations;
-  - initMode:       "random" or "k-means||"
+  - k:  			  Number of wanted clusters (default, 2).
+  - features: 	  Field of the features in the dataset;
+  - maxIterations:  Maximum number of iterations (default, 100);
+  - epsilon:        Threshold to stop the iterations (default, 0.001);
+  - initMode:       "random" or "k-means||" (default, 'k-means||')
 - :param numFrag:     A number of fragments;
 - :return:            The model created (which is a pandas dataframe).
 
@@ -36,7 +36,7 @@ All parameters are explained below:
 - :param data:        A list with numFrag pandas's dataframe that will be predicted.
 - :param model:		    The Kmeans model created;
 - :param settings:    A dictionary that contains:
- 	- features: 		    Column name of the features in the test data;
+ 	- features: 		    Field of the features in the test data;
  	- predCol:    	    Alias to the new column with the labels predicted;
 - :param numFrag:     A number of fragments;
 - :return:            The prediction (in the same input format).

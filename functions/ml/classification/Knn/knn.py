@@ -64,8 +64,9 @@ class KNN(object):
                              training the model and to classify it.
             :param settings: A dictionary that contains:
              - K:  			 Number of K nearest neighborhood to take in count.
-             - features: 	 Column name of the features in the training/test data;
-             - label:        Column name of the labels   in the training/test data;
+                             (default, 1)
+             - features: 	 Field of the features in the training/test data;
+             - label:        Field of the labels   in the training/test data;
              - predCol:      Alias to the new column with the labels predicted;
             :param numFrag:  A number of fragments;
             :return:         The prediction (in the same input format) and the
@@ -78,7 +79,10 @@ class KNN(object):
         K = settings.get('K', 1)
 
 
-        p_model = [self.createModel(data[f],col_label,col_features) for f in range(numFrag)]
+        p_model = [ self.createModel(data[f],
+                                    col_label,
+                                    col_features) for f in range(numFrag)]
+
         model = mergeReduce(self.merge_lists, p_model)
 
         result = [ self.classifyBlock(  data[i],
@@ -100,7 +104,7 @@ class KNN(object):
             :param settings: A dictionary that contains:
                 - K:     	 Number of K nearest neighborhood to take in count.
                 - features:  Column name of the features in the test data;
-                - predCol: Alias to the new column with the labels predicted;
+                - predCol:   Alias to the new column with the labels predicted;
             :param numFrag:  A number of fragments;
             :return:         The prediction (in the same input format).
         """
@@ -143,15 +147,23 @@ class KNN(object):
     def classifyBlock(self,data,train_data, col_features, predCol,K):
 
         start=time.time()
+        sizeTest    = len(data)
+        sizeTrain   = len(train_data)
+
+        #if this frame is empty, do nothing
+        if sizeTest==0:
+            data[predCol] = np.nan
+            return data
+
+
 
         #initalizing variables
         if isinstance(data.iloc[0][col_features], list):
             numDim = len(data.iloc[0][col_features])
         else:
             numDim = 1
-        print numDim
-        sizeTest    = len(data)
-        sizeTrain   = len(train_data)
+
+
         semi_labels = [ [ 0 for i in range(K+1)] for j in range(sizeTest)]
         semi_dist   = np.full( (sizeTest, K+1), float("inf"))
         import functions_knn
@@ -181,13 +193,12 @@ class KNN(object):
         data[predCol] =  pd.Series(values).values
 
         end = time.time()
-        print "\n[INFO] - ClassifierBlock -> Time elapsed: %.2f seconds\n" % (end-start)
+        print "[INFO] - ClassifierBlock: Time elapsed: %.2f seconds\n" \
+                % (end-start)
 
         return data
 
     @task(returns=list, isModifier = False)
     def merge_lists(self,list1,list2):
-        #print "\nmerge_lists\n---\n{}\n---\n{}\n---\n".format(list1,list2)
-
         result = pd.concat([list1,list2], ignore_index=True)
         return  result

@@ -4,8 +4,8 @@
 from pycompss.api.task          import task
 from pycompss.api.parameter     import *
 from pycompss.functions.reduce  import mergeReduce
-from pycompss.functions.data    import chunks
-from pycompss.api.api import compss_wait_on
+
+
 import math
 import numpy as np
 
@@ -14,13 +14,14 @@ class linearRegression(object):
     """
 
     Linear regression is a linear model, e.g. a model that assumes a linear
-    relationship between the input variables (x) and the single output variable (y).
+    relationship between the input variables and the single output variable.
     More specifically, that y can be calculated from a linear combination of the
     input variables (x).
 
-    When there is a single input variable (x), the method is referred to as simple
-    linear regression. When there are multiple input variables, literature from
-    statistics often refers to the method as multiple linear regression.
+    When there is a single input variable (x), the method is referred to as
+    simple linear regression. When there are multiple input variables,
+    literature from statistics often refers to the method as multiple
+    linear regression.
 
     b1 = (sum(x*y) + n*m_x*m_y) / (sum(x²) -n*(m_x²))
     b0 = m_y - b1*m_x
@@ -28,40 +29,101 @@ class linearRegression(object):
     """
 
     def fit(self,data,settings,numFrag):
+        """
+            fit():
+
+            - :param data:      A list with numFrag pandas's dataframe
+                                used to create the model.
+            - :param settings:  A dictionary that contains:
+             	- features: 	Field of the features in the dataset;
+                - label: 	    Field of the label in the dataset;
+                - mode:
+                    * 'simple': Best option if is a 2D regression;
+                    * 'SDG':    Uses a Stochastic gradient descent to perform
+                                the regression. Can be used to data of all
+                                dimensions.
+             	- max_iter:     Maximum number of iterations, only using 'SDG'
+                                (integer, default: 100);
+                - alpha:        Learning rate parameter, only using 'SDG'
+                                (float, default 0.01)
+            - :param numFrag:   A number of fragments;
+            - :return:          Returns a model (which is a pandas dataframe).
+
+            Note: Best results with a normalizated data.
+        """
+
+
         features = settings['features']
         label    = settings['label']
-        mode = settings.get('option','SDG')
+        mode = settings.get('mode', 'SDG')
+
+        if mode not in ['simple','SDG']:
+           raise Exception("You must inform a valid `mode`.")
 
         if mode == "SDG":
             alpha = settings.get('alpha', 0.1)
             iters = settings.get('max_iter', 100)
 
-            parameters = self.gradientDescent(data, features, label, alpha, iters, numFrag)
-        else:
-            """ Simple Linear Regression """
-            xs  = [ self.calcsXs(data[f], features) for f in range(numFrag) ]
-            ys  = [ self.calcsXs(data[f],label)    for f in range(numFrag)  ]
-            xys = [ self.calcsXYs(data[f],features,label)
-                                                    for f in range(numFrag) ]
-            rx  =  mergeReduce(self.mergeCalcs,xs)
-            ry  =  mergeReduce(self.mergeCalcs,ys)
-            rxy =  mergeReduce(self.mergeCalcs,xys)
+            parameters = self.gradientDescent(  data, features, label,
+                                                alpha, iters, numFrag)
+        elif mode == 'simple':
+            """
+                Simple Linear Regression: This mode is useful only if
+                you have a small dataset.
+            """
+
+            xs = [self.calcsXs(data[f], features) for f in range(numFrag)]
+            ys = [self.calcsXs(data[f], label)    for f in range(numFrag)]
+            xys= [self.calcsXYs(data[f],features,label) for f in range(numFrag)]
+
+            rx  = mergeReduce(self.mergeCalcs,xs)
+            ry  = mergeReduce(self.mergeCalcs,ys)
+            rxy = mergeReduce(self.mergeCalcs,xys)
 
             parameters = self.computeLine2D(rx,ry,rxy)
 
 
-        return parameters
+        model = dict()
+        model['algorithm'] = 'linearRegression'
+        model['model'] = parameters
+        return model
 
 
 
 
-    def transform(self,data,model,settings,numFrag):
+    def transform(self, data, model, settings, numFrag):
+        """
+            transform():
+
+            - :param data:      A list with numFrag pandas's dataframe
+                                that will be predicted.
+            - :param model:		The Linear Regression's model created;
+            - :param settings:  A dictionary that contains:
+             	- features: 	Field of the features in the test data;
+             	- predCol:    	Alias to the new predicted labels;
+            - :param numFrag:   A number of fragments;
+            - :return:          The prediction (in the same input format).
+
+        """
+
+        if 'features' not in settings:
+           raise Exception("You must inform the `features` field.")
+
         features = settings['features']
-        label    = settings['predCol']
+        predCol  = settings.get('predCol','PREDICTED_VALUE')
 
-        data = [self.predict(data[f],features,label,model) for f in range(numFrag)]
+        algorithm = model.get('algorithm','')
+        if algorithm != 'linearRegression':
+            raise Exception("You must inform a valid Linear Regression model.")
+
+        model = model['model']
+        for f in range(numFrag):
+            data[f] = self.predict(data[f], features, predCol, model)
 
         return data
+
+    # --------------
+    # Simple Linear Regression
 
     @task(returns=list, isModifier = False)
     def calcsXs(self,X,col):
@@ -92,43 +154,26 @@ class linearRegression(object):
         m_y = (float(ry[0])/n)
         b1  =  float(rxy[2] - n*m_x*m_y) /(rx[2] - rx[1]* (m_x**2))
         b0  = m_y - b1*m_y
-        #SST = ry[2] - n*(m_y**2)
+
         return [b0, b1]
 
 
 
 
-
-    @task(returns=list, isModifier = False)
-    def predict(self,data,X,Y,model):
-
-        tmp = []
-        if isinstance(data.iloc[0][X], list):
-            dim = len(data.iloc[0][X])
-        else:
-            dim = 1
-        if dim >1:
-            for row in data[X].values:
-                y = row[0]
-                for j in xrange(1,len(row)):
-                    y += row[j]*model[j]
-                tmp.append(y)
-            data[Y] = tmp
-        else:
-            data[Y] = [model[0] + model[1]*row for row in data[X].values]
-        return data
-
-
+    # --------------
+    # SGD mode:
 
     def gradientDescent(self,data, features, label, alpha, iters, numFrag):
-        theta = np.array([0,0,0])   #initial
+        theta = np.array([0,0,0])
 
         #cost = np.zeros(iters)
 
         for i in range(iters):
-            stage1 = [self.firststage(data[f],features,label,theta) for f in range(numFrag)]
+            stage1 = [self.firststage(data[f],features,label,theta)
+                        for f in range(numFrag)]
             grad  = mergeReduce(self.agg_SGD,stage1)
             theta = self.calcTheta(grad, alpha)
+
             #cost[i] = [self.computeCost(data[f],features,label, theta) for f in range(numFrag)]
             #theta = compss_wait_on(theta)
 
@@ -136,28 +181,49 @@ class linearRegression(object):
 
     @task(returns=list, isModifier = False)
     def firststage(self,data,X,Y,theta):
-        if isinstance(data.iloc[0][X], list):
-            dim = len(data.iloc[0][X])
-        else:
-            dim = 1
-        #print dim
-        #print len(theta)
-        if (dim+1) != len(theta):
-            theta = np.array([0 for i in range(dim+1)])
-
         N = len(data)
 
-        Xs = np.c_[np.ones(N), np.array(data[X].tolist() ) ]
-        partial_error = np.dot(Xs, theta.T) - data[Y].values
+        if N >0:
+            if isinstance(data.iloc[0][X], list):
+                dim = len(data.iloc[0][X])
+            else:
+                dim = 1
 
-        for j in range(dim+1):
-            grad = np.multiply(partial_error, Xs[:,j])
+            if (dim+1) != len(theta):
+                theta = np.array([0 for i in range(dim+1)])
 
-        return [np.sum(grad), N, dim, theta]
+            Xs = np.c_[np.ones(N), np.array(data[X].tolist() ) ]
+            partial_error = np.dot(Xs, theta.T) - data[Y].values
+
+            for j in range(dim+1):
+                grad = np.multiply(partial_error, Xs[:,j])
+
+            return [np.sum(grad), N, dim, theta]
+
+        return [0, 0, -1, 0]
 
     @task(returns=list, isModifier = False)
     def agg_SGD(self,error1,error2):
-        return [error1[0]+error2[0], error2[1]+error2[1], error1[2], error1[3]]
+        dim1 = error1[2]
+        dim2 = error2[2]
+
+        if dim1 > 0:
+            sum_grad = error1[0]+error2[0]
+            N = error2[1]+error2[1]
+            dim = dim1
+            theta = error1[3]
+        elif dim2 > 0:
+            sum_grad = error1[0]+error2[0]
+            N = error2[1]+error2[1]
+            dim = dim2
+            theta = error2[3]
+        else:
+            sum_grad = 0
+            N = 0
+            dim = -1
+            theta = 0
+
+        return [sum_grad, N, dim, theta]
 
 
     @task(returns=list, isModifier = False)
@@ -177,3 +243,27 @@ class linearRegression(object):
     # def computeCost(X, y, theta):
     #     inner = np.power(((X * theta.T) - y), 2)
     #     return np.sum(inner) / (2 * len(X))
+
+
+
+    @task(returns=list, isModifier = False)
+    def predict(self,data,X,Y,model):
+
+        tmp = []
+        if len(data)>0:
+            if isinstance(data.iloc[0][X], list):
+                dim = len(data.iloc[0][X])
+            else:
+                dim = 1
+
+            if dim >1:
+                for row in data[X].values:
+                    y = row[0]
+                    for j in xrange(1,len(row)):
+                        y += row[j]*model[j]
+                    tmp.append(y)
+            else:
+                tmp = [model[0] + model[1]*row for row in data[X].values]
+
+        data[Y] = tmp
+        return data

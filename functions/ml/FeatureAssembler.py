@@ -12,7 +12,7 @@ import pandas as pd
 
 
 
-def FeatureAssemblerOperation(df, cols, name, numFrag):
+def FeatureAssemblerOperation(df, cols, alias, numFrag):
     """
     Feature Assembler is a transformer that combines a given list of columns
     into a single vector column. It is useful for combining raw features and
@@ -23,16 +23,54 @@ def FeatureAssemblerOperation(df, cols, name, numFrag):
     types, boolean type, and vector type. In each row, the values of the
     input columns will be concatenated into a vector in the specified order.
 
-    :param df:      Input DataFrame
-    :param cols:    List of columns's name to be assembled
-    :param name:    Name of the new column
-
+    :param df:      Input DataFrame;
+    :param cols:    List of valid columns to be assembled;
+    :param alias:   Name of the new column.
+    :return         A new DataFrame with the feature.
     """
+
+    if len(cols)==0 or alias == '':
+        raise Exception("You must inform a valid subset of fields and "
+                        "a valid alias for the new column name.")
+
     for i in range(numFrag):
-        df[i] = FeatureAssemble_parallel(df[i],cols,name)
+        df[i] = FeatureAssemble_parallel(df[i],cols,alias)
     return df
 
 @task(returns=list)
-def FeatureAssemble_parallel(df,cols,name):
-    df[name] =  df[cols].values.tolist()
+def FeatureAssemble_parallel(df, cols, name):
+
+    cols = [col for col in cols if col in df.columns]
+    if len(cols)==0:
+        raise Exception("These columns dont belong to this dataset.")
+
+    rows = df[cols].values.tolist()
+
+    has_list = False
+    if len(rows)>0:
+        row = rows[1]
+        for item in row:
+            if isinstance(item, list):
+                has_list = True
+                break
+
+    if has_list:
+        def flatter(rows):
+            n_rows = []
+            for i in range(len(rows)):
+                tmp = []
+                for items in rows[i]:
+                    if isinstance(items, list):
+                        for item in items :
+                            tmp.append(item)
+                    else:
+                        tmp.append(items)
+                n_rows.append(tmp)
+            return n_rows
+
+        n_rows = flatter(rows)
+        df[name] =  n_rows
+    else:
+        df[name] = rows
+
     return df
