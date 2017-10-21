@@ -174,7 +174,7 @@ class SVM(object):
                 - features:  Field of the features in the test data;
                 - predlabel: Alias to the new column with the labels predicted;
             :param numFrag:  A number of fragments;
-            :return:         The prediction (in the same input format).
+            :return:         The list of dataframe with the prediction.
         """
 
         if 'features' not in settings :

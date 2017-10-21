@@ -4,23 +4,21 @@
 __author__ = "Lucas Miguel S Ponce"
 __email__  = "lucasmsp@gmail.com"
 
-
-from pycompss.api.task import task
-from pycompss.api.parameter import *
-from pycompss.functions.reduce import mergeReduce
+from pycompss.api.parameter     import *
+from pycompss.api.task          import task
+from pycompss.functions.reduce  import mergeReduce
 
 import numpy as np
 import pandas as pd
 
 class ClassificationModelEvaluation(object):
     """
-            * True Positive (TP) - label is positive and prediction is also positive
-            * True Negative (TN) - label is negative and prediction is also negative
-            * False Positive (FP) - label is negative but prediction is positive
-            * False Negative (FN) - label is positive but prediction is negative
+        * True Positive (TP) - label is positive and prediction is also positive
+        * True Negative (TN) - label is negative and prediction is also negative
+        * False Positive (FP) - label is negative but prediction is positive
+        * False Negative (FN) - label is positive but prediction is negative
 
-            Metrics:
-
+        Metrics:
             * Accuracy
             * Precision (Positive Predictive Value) = tp / (tp + fp)
             * Recall (True Positive Rate) = tp / (tp + fn)
@@ -28,15 +26,35 @@ class ClassificationModelEvaluation(object):
     """
 
     def calculate(self,data,settings,numFrag):
+        """
+        calculate():
+
+        :param data:        A list with pandas dataframe with, at least,
+                            two columns, one with the predicted label
+                            (returned by the classificator) and other with
+                            the true value of each record.
+        :param settings:    A dictionary that contains:
+            - binary:       True if is a binary classification (default, False)
+            - test_col:     The field with the true label/value;
+            - pred_col:     The field with the predicted label/value;
+            - pos_label:    The True label, needed if is binary (default, 1);
+        :param numFrag:     A number of fragments;
+        :return             A dataframe with the metrics
+        """
+
+        if 'test_col' not in settings or 'pred_col'  not in settings:
+           raise Exception( "You must inform the `test_col` "
+                            "and `pred_col` fields.")
 
         col_test = settings['test_col']
         col_predicted = settings['pred_col']
 
-        stage1 = [self.CME_stage1(data[f],col_test,col_predicted) for f in range(numFrag)]
+        stage1 = [self.CME_stage1(data[f],col_test,col_predicted)
+                    for f in range(numFrag)]
         merged_stage1 = mergeReduce(self.mergeStage1,stage1)
         op = settings.get('binary', False)
         if op:
-            true_label = settings['pos_label'] if "pos_label" in settings else 1
+            true_label = settings.get('pos_label', 1)
             result = self.CME_stage2_binary(merged_stage1,true_label)
         else:
             result = self.CME_stage2(merged_stage1)
@@ -45,13 +63,19 @@ class ClassificationModelEvaluation(object):
 
     @task(returns=list, isModifier = False)
     def CME_stage1(self,data, col_test, col_predicted):
+        """creates a partial confusion matrix"""
 
-        labels = np.unique(np.concatenate((data[col_test].unique(),data[col_predicted].unique()),0))
+        Reals = data[col_test].values
+        Preds = data[col_predicted].values
+
+        labels = np.unique(
+                    np.concatenate(
+                    (data[col_test].unique(),data[col_predicted].unique()),0)
+                )
 
         df = pd.DataFrame(columns=labels,index=labels).fillna(0)
 
-        Reals = data[col_test].values#.astype(float)
-        Preds = data[col_predicted].values#.astype(float)
+
         for real, pred in zip(Reals, Preds):
             df.loc[real, pred]+=1
 
@@ -83,8 +107,9 @@ class ClassificationModelEvaluation(object):
             F1s.append(2 * (p * r) / (p + r))
 
 
-        precision_recall = pd.DataFrame(np.array([Precisions,Recalls,F1s]).T,
-                                        columns=['Precision','Recall',"F-Mesure"])
+        precision_recall = \
+            pd.DataFrame(np.array([Precisions,Recalls,F1s]).T,
+                        columns=['Precision','Recall',"F-Mesure"])
 
         Precision = np.mean(Precisions)
         Recall = np.mean(Recalls)

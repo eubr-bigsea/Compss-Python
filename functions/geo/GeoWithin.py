@@ -22,23 +22,23 @@ def GeoWithinOperation(data, shp_object, settings, numFrag):
     :param data:       A list of pandas dataframe;
     :param shp_object: The dataframe created by the function ReadShapeFile;
     :param settings:   A dictionary that contains:
-        - id_col:      Column which represents the Id field in the shp_object;
         - lat_col:     Column which represents the Latitute field in the data;
         - lon_col:     Column which represents the Longitude field in the data;
         - lat_long:    True  if the coordenates is (lat,log),
                        False if is (long,lat). Default is True;
         - polygon:     Field in shp_object where is store the
                        coordinates of each sector;
+        - attributes:  Column which represents the Id field in the shp_object;
     :param numFrag:    The number of fragments;
     :return:           Returns a list of pandas daraframe.
 
     """
 
-    if not all(['id_col'  in settings,
+    if not all(['attributes'  in settings,
                 'lat_col' in settings,
                 'lon_col' in settings]):
         raise Exception("Please inform, at least, the fields: "
-                        "`id_col`,`lat_col` and `lon_col`")
+                        "`attributes`,`lat_col` and `lon_col`")
 
     polygon = settings.get('polygon','points')
     if settings.get('lat_long', True):
@@ -91,14 +91,14 @@ def get_sectors(data_input, spindex, shp_object, settings):
     if len(data_input)>0:
         col_lat  = settings['lat_col']
         col_long = settings['lon_col']
-        id_col   = settings['id_col']
+        id_col   = settings['attributes']
         polygon_col = settings.get('polygon','points')
 
         for i,point in data_input.iterrows():
             tmp = []
             y = float(point[col_lat])
             x = float(point[col_long])
-            
+
             #(xmin,ymin,xmax,ymax)
             matches = spindex.intersect([x, y, x, y])
 

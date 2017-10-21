@@ -30,7 +30,6 @@ class STDBSCAN(object):
           - lat_col:   Column name of the latitude  in the test data;
           - lon_col:   Column name of the longitude in the test data;
           - datetime:  Column name of the datetime  in the test data;
-          - idCol:     Column name to be a primary key of the dataframe;
 
           - minPts:    The number of samples in a neighborhood for a point
                        to be considered as a core point;
@@ -51,10 +50,9 @@ class STDBSCAN(object):
 
         if not all(['datetime' in settings,
                     'lat_col'  in settings,
-                    'lon_col'  in settings,
-                    'idCol' in settings]):
+                    'lon_col'  in settings]):
             raise Exception("Please inform, at least, the fields: "
-                            "`idCol`,`lat_col`, `lon_col` and `datetime`")
+                            "`lat_col`, `lon_col` and `datetime`")
 
         #settings
         minPts             = settings.get('minPts', 15)
@@ -66,11 +64,10 @@ class STDBSCAN(object):
         lon_col = settings['lon_col']
         dt_col  = settings['datetime']
         predCol = settings.get('predCol', "cluster")
-        idCol   = settings['idCol']
 
-        grids, divs = self.fragment(df,numFrag,lat_col,lon_col)
+
+        grids, divs= self.fragment(df, numFrag, lat_col, lon_col)
         print "[INFO] - Matrix: {}x{}".format(divs[0],divs[1])
-
         nlat,nlon = divs
 
         #stage1 and stage2: partitionize and local dbscan
@@ -198,7 +195,7 @@ class STDBSCAN(object):
         return var
 
     def fragment(self, df, numFrag, lat_col, lon_col):
-
+        from pycompss.api.api import compss_wait_on
         grids   =  []
         #retrieve the boundbox
         minmax  = [ self.get_bounds(df[f], lat_col,lon_col)
@@ -312,7 +309,7 @@ class STDBSCAN(object):
         UNMARKED      = -1
         NOISE         = -999999
 
-        #pd.set_option('display.expand_frame_repr', False)
+        df.reset_index(drop=True,inplace=True)
 
         #settings
         spatial_threshold   = settings['spatial_threshold']
@@ -324,10 +321,17 @@ class STDBSCAN(object):
         lon_col     = settings['lon_col']
         dt_col      = settings['datetime']
         clusterCol  = settings['predCol']
-        idCol       = settings['idCol']
 
+        #creating a new tmp_id
+        cols = df.columns
+        idCol = 'tmp_stbscan'
+        i = 0
+        while idCol in cols:
+            idCol = 'tmp_stbscan_{}'.format(i)
+            i+=1
+        df[idCol] = df.index
+        settings['idCol'] = idCol
 
-        df = df.reset_index(drop=True)
         num_ids = len(df)
         C_UNMARKED  = "{}{}".format(sufix,UNMARKED)
         C_NOISE     = "{}{}".format(sufix,NOISE)
@@ -596,7 +600,7 @@ class STDBSCAN(object):
 #-------------------------------------------------------------------------------
 
     @task(returns=list, isModifier = False)
-    def updateClusters(self, partial, dicts,grid):
+    def updateClusters(self, partial, dicts, grid):
         df1, settings = partial
         clusters      = settings['clusters']
         primary_key   = settings['idCol']
@@ -620,22 +624,13 @@ class STDBSCAN(object):
 
             df1.drop_duplicates([primary_key],inplace=False)
 
-            df1 = df1.reset_index(drop=True)
-            #print df1
+            df1.reset_index(drop=True, inplace=True)
+
             for key in oldC_newC:
                 if key in clusters:
                     df1.ix[df1[clusterCol] == key, clusterCol] = oldC_newC[key]
 
-            #print df1
-
-            # if len(id_newC)>0:
-            #     for index, point in df1.iterrows():
-            #         key = point[primary_key]
-            #         if str(key) in id_newC:
-            #             #df1.set_value(index,clusters,id_newC[str(key)])
-            #             df1.ix[index, clusterCol] = id_newC[str(key)]
-
-            #print df1
             df1.ix[df1[clusterCol].str.contains("_-9",na=False),clusterCol] = -1
+            df1.drop(primary_key, inplace=True)
 
         return df1

@@ -85,7 +85,6 @@ def RemoveStopWords_part(data, settings, stopwords, index_s):
 
         else:
             stopwords = [tok.lower() for tok in stopwords]
-            print stopwords
 
             for index, row in data.iterrows():
                 col = []
