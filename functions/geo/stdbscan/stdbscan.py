@@ -79,7 +79,7 @@ class STDBSCAN(object):
                 for f in range(numFrag):
                    frag   =  self.partitionize(df[f], settings, grids[t], frag)
 
-                partial[t]=self.partial_dbscan(frag,settings, "p_{}".format(t))
+                partial[t]=self.partial_dbscan(frag,settings, "{}".format(t))
                 t+=1
 
         #stage3: combining clusters
@@ -324,17 +324,17 @@ class STDBSCAN(object):
 
         #creating a new tmp_id
         cols = df.columns
-        idCol = 'tmp_stbscan'
+        idCol = 'tmp_stdbscan'
         i = 0
         while idCol in cols:
-            idCol = 'tmp_stbscan_{}'.format(i)
+            idCol = 'tmp_stdbscan_{}'.format(i)
             i+=1
-        df[idCol] = df.index
+        df[idCol] = ['id{}_{}'.format(sufix,j) for j in range(len(df))]
         settings['idCol'] = idCol
 
         num_ids = len(df)
-        C_UNMARKED  = "{}{}".format(sufix,UNMARKED)
-        C_NOISE     = "{}{}".format(sufix,NOISE)
+        C_UNMARKED  = "p{}{}".format(sufix,UNMARKED)
+        C_NOISE     = "p{}{}".format(sufix,NOISE)
         df[clusterCol]   = [ C_UNMARKED for i in range(num_ids)]
         cores = list()
         noise = dict()
@@ -622,15 +622,16 @@ class STDBSCAN(object):
             tmp =  df1.apply(f, axis=1)
             df1 =  df1.loc[tmp]
 
-            df1.drop_duplicates([primary_key],inplace=False)
+            df1.drop_duplicates([primary_key], inplace=False)
 
             df1.reset_index(drop=True, inplace=True)
 
             for key in oldC_newC:
                 if key in clusters:
-                    df1.ix[df1[clusterCol] == key, clusterCol] = oldC_newC[key]
+                    df1.loc[df1[clusterCol] == key, clusterCol] = oldC_newC[key]
 
-            df1.ix[df1[clusterCol].str.contains("_-9",na=False),clusterCol] = -1
-            df1.drop(primary_key, inplace=True)
+            df1.loc[df1[clusterCol].str.contains("-9",na=False),clusterCol] = -1
+
+            df1 = df1.drop([primary_key], axis=1)
 
         return df1
