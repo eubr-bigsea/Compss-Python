@@ -60,5 +60,13 @@ def apply_transformation(data, functions):
     for function in functions:
         ncol, function, imp = function
         exec(imp)
+        #eval(compile(imp,'<string>','exec'))
         data[ncol] = data.apply(eval(function), axis=1)
     return data
+
+
+def group_datetime(d, interval):
+    d = parse(d)
+    seconds = d.second + d.hour*3600 + d.minute*60 + d.microsecond/1000
+    k = d - datetime.timedelta(seconds=seconds % interval)
+    return datetime.datetime(k.year, k.month, k.day, k.hour, k.minute, k.second)

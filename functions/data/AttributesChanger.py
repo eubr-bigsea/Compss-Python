@@ -19,9 +19,9 @@ def AttributesChangerOperation(data,settings,numFrag):
     :param data:       A list with numFrag pandas's dataframe;
     :param settings:   A dictionary that contains:
         - attributes:  A list of column(s) to be changed (or renamed).
-        - new_name:    The new name of the column. If used with multiple
-                       attributes, a numerical suffix will be used to
-                       distinguish them. (default: changed)
+        - new_name:    A list of alias with the same size of attributes.
+                       If empty, the operation will overwrite all columns
+                       in attributes (default, empty);
         - new_data_type: The new type of the selected columns:
             * 'keep' - (default);
             * 'integer';
@@ -37,17 +37,14 @@ def AttributesChangerOperation(data,settings,numFrag):
         raise Exception("You must inform an `attributes` column.")
 
     attributes = settings['attributes']
-    len_att    = len(attributes)
-    new_name      = settings.get('new_name','')
-    if new_name == '':
-        new_name = ['{}_changed'.format(att) for att in attributes]
-
-    else:
-        new_name = ['{}_{}'.format(att,new_name) for att in attributes]
+    alias      = settings.get('new_name', attributes)
+    if len(alias) > 0 and (len(alias) != len(attributes)):
+        raise Exception("Alias and attributes must have the same length, "
+                        " or Alias must be a empty list.")
 
     new_data_type = settings.get('new_data_type','keep')
     for f in range(numFrag):
-        data[f] = changeAttribute(data[f],attributes,new_name,new_data_type)
+        data[f] = changeAttribute(data[f], attributes, alias, new_data_type)
 
     return data
 
@@ -55,9 +52,9 @@ def AttributesChangerOperation(data,settings,numFrag):
 def changeAttribute(data,attributes,new_name,new_data_type):
 
     cols = data.columns
-    for col in new_name:
-        if col in cols:
-            raise Exception("The column `{}` already exists!.".format(col))
+    for col in attributes:
+        if col not in cols:
+            raise Exception("The column `{}` dont exists!.".format(col))
 
     #first, change the data types.
     for att in attributes:
@@ -69,6 +66,7 @@ def changeAttribute(data,attributes,new_name,new_data_type):
             except Exception as e:
                 tmp = data[att]
             data[att] = tmp
+
         elif new_data_type == 'string':
             data[att] = data[att].astype(str)
         elif new_data_type == "double":

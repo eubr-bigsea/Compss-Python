@@ -32,9 +32,15 @@ class KNN(object):
         and depends on the dataset. However, values of one or tree is more
         commom.
 
+        Methods:
+            - fit()
+            - fit_transform()
+            - transform()
+
+
     """
 
-    def fit(self,data,settings,numFrag):
+    def fit(self, data, settings, numFrag):
         """
             fit()
 
@@ -50,13 +56,18 @@ class KNN(object):
         col_label    = settings['label']
         col_features = settings['features']
 
-        data     = [self.createModel(data[f],col_label,col_features) for f in range(numFrag)]
-        train_data = mergeReduce(self.merge_lists, data)
+        train_data = [[] for f in range(numFrag)]
+        for f in range(numFrag):
+            train_data[f] = createModel(data[f], col_label, col_features)
+        train_data = mergeReduce(merge_lists, train_data)
 
-        return train_data
+        model = {}
+        model['algorithm'] = 'KNN'
+        model['model'] = train_data
+        return model
 
 
-    def fit_transform(self,data, settings, numFrag):
+    def fit_transform(self, data, settings, numFrag):
         """
             fit_transform():
 
@@ -75,26 +86,26 @@ class KNN(object):
 
         col_label    = settings['label']
         col_features = settings['features']
-        predCol = settings.get('predCol', "{}_predited".format(col_label))
+        predCol = settings.get('predCol', "predited")
         K = settings.get('K', 1)
 
 
-        p_model = [ self.createModel(data[f],
-                                    col_label,
-                                    col_features) for f in range(numFrag)]
+        p_model = [ createModel(data[f],
+                                col_label,
+                                col_features) for f in range(numFrag)]
 
-        model = mergeReduce(self.merge_lists, p_model)
+        model = mergeReduce(merge_lists, p_model)
 
-        result = [ self.classifyBlock(  data[i],
-                                        model,
-                                        col_features,
-                                        predCol,
-                                        K)  for i in range(numFrag) ]
+        result = [ classifyBlock(data[i],
+                                 model,
+                                 col_features,
+                                 predCol,
+                                 K)  for i in range(numFrag) ]
 
 
         return result
 
-    def transform(self,test_data, model, settings, numFrag):
+    def transform(self, data, model, settings, numFrag):
         """
             transform():
 
@@ -108,97 +119,101 @@ class KNN(object):
             :param numFrag:  A number of fragments;
             :return:         The prediction (in the same input format).
         """
+
+        if 'features' not in settings:
+           raise Exception("You must inform the at least the `features` field.")
+
+        if model.get('algorithm','null') != 'KNN':
+            raise Exception("You must inform a valid model.")
+
+        model = model['model']
+
         col_features = settings['features']
         predCol = settings.get('predCol', "predited")
         K = settings.get('K', 1)
 
-
-        result = [ self.classifyBlock(  test_data[i],
-                                        model,
-                                        col_features,
-                                        predCol,
-                                        K)  for i in range(numFrag) ]
+        result = [[] for i in range(numFrag)]
+        for i in range(numFrag):
+            result[i] = classifyBlock(data[i], model, col_features, predCol, K)
 
 
         return result
 
 
-    @task(returns=list, isModifier = False)
-    def createModel(self,data,label,features):
-        model = pd.DataFrame([])
-        model['label']    = data[label]
-        model['features'] = data[features]
-        return model
+@task(returns=list)
+def createModel(df,label,features):
+    df.rename(columns={label: 'label', features: 'features'}, inplace=True)
+    return df
 
+@task(returns=list)
+def merge_lists(list1, list2):
+    result = pd.concat([list1,list2], ignore_index=True)
+    return  result
 
+@task(returns=list)
+def classifyBlock(data, train_data, col_features, predCol, K):
 
-    def getPopularElement(self,labels,K):
-        u, indices = np.unique(labels[0:K], return_inverse=True)
-        label = u[np.argmax(np.bincount(indices))]
-        return label
+    start=time.time()
+    sizeTest    = len(data)
+    sizeTrain   = len(train_data)
 
-    def getKNN(self,neighborhood,K):
-        result = [0 for i in range(len(neighborhood))]
-        for i in range(len(neighborhood)):
-            result[i] = self.getPopularElement(neighborhood[i], K)
-        return result
-
-    @task(returns=list, isModifier = False)
-    def classifyBlock(self,data,train_data, col_features, predCol,K):
-
-        start=time.time()
-        sizeTest    = len(data)
-        sizeTrain   = len(train_data)
-
-        #if this frame is empty, do nothing
-        if sizeTest==0:
-            data[predCol] = np.nan
-            return data
-
-
-
-        #initalizing variables
-        if isinstance(data.iloc[0][col_features], list):
-            numDim = len(data.iloc[0][col_features])
-        else:
-            numDim = 1
-
-
-        semi_labels = [ [ 0 for i in range(K+1)] for j in range(sizeTest)]
-        semi_dist   = np.full( (sizeTest, K+1), float("inf"))
-        import functions_knn
-
-        for i_test in range(sizeTest):
-            for i_train in range(sizeTrain):
-                semi_dist[i_test][K] =  functions_knn.distance(
-                                np.array(train_data.iloc[i_train]['features']),
-                                np.array(data.iloc[i_test][col_features]),
-                                numDim )
-                semi_labels[i_test][K] = train_data.iloc[i_train]['label']
-
-                j=K
-                while(j>0):
-                    if(semi_dist[i_test][j] < semi_dist[i_test][j-1]):
-                        tmp_label = semi_labels[i_test][j]
-                        semi_labels[i_test][j]   = semi_labels[i_test][j-1]
-                        semi_labels[i_test][j-1] = tmp_label
-
-                        tmp_dist = semi_dist[i_test][j];
-                        semi_dist[i_test][j]    = semi_dist[i_test][j-1];
-                        semi_dist[i_test][j-1]  = tmp_dist;
-                    j-=1
-
-
-        values = self.getKNN(semi_labels,K)
-        data[predCol] =  pd.Series(values).values
-
-        end = time.time()
-        print "[INFO] - ClassifierBlock: Time elapsed: %.2f seconds\n" \
-                % (end-start)
-
+    #if this frame is empty, do nothing
+    if sizeTest == 0:
+        data[predCol] = np.nan
         return data
 
-    @task(returns=list, isModifier = False)
-    def merge_lists(self,list1,list2):
-        result = pd.concat([list1,list2], ignore_index=True)
-        return  result
+    #initalizing variables
+    print data.head(10)
+    print train_data.head(10)
+    sample = data.iloc[0][col_features]
+    if isinstance(sample, list):
+        numDim = len(sample)
+    else:
+        numDim = 1
+
+
+    semi_labels = [ [ 0 for i in range(K+1)] for j in range(sizeTest)]
+    semi_dist   = np.full( (sizeTest, K+1), float("inf"))
+    import functions_knn
+
+    for i_test in range(sizeTest):
+        for i_train in range(sizeTrain):
+            semi_dist[i_test][K] =  functions_knn.distance(
+                            np.array(train_data.iloc[i_train]['features']),
+                            np.array(data.iloc[i_test][col_features]),
+                            numDim )
+            semi_labels[i_test][K] = train_data.iloc[i_train]['label']
+
+            j=K
+            while(j>0):
+                if(semi_dist[i_test][j] < semi_dist[i_test][j-1]):
+                    tmp_label = semi_labels[i_test][j]
+                    semi_labels[i_test][j]   = semi_labels[i_test][j-1]
+                    semi_labels[i_test][j-1] = tmp_label
+
+                    tmp_dist = semi_dist[i_test][j];
+                    semi_dist[i_test][j]    = semi_dist[i_test][j-1];
+                    semi_dist[i_test][j-1]  = tmp_dist;
+                j-=1
+
+
+    values = getKNN(semi_labels,K)
+    data[predCol] =  pd.Series(values).values
+
+    end = time.time()
+    print "[INFO] - ClassifierBlock: Time elapsed: %.2f seconds\n" \
+            % (end-start)
+
+    return data
+
+
+def getPopularElement(labels,K):
+    u, indices = np.unique(labels[0:K], return_inverse=True)
+    label = u[np.argmax(np.bincount(indices))]
+    return label
+
+def getKNN(neighborhood,K):
+    result = [0 for i in range(len(neighborhood))]
+    for i in range(len(neighborhood)):
+        result[i] = getPopularElement(neighborhood[i], K)
+    return result

@@ -26,6 +26,10 @@ class linearRegression(object):
     b1 = (sum(x*y) + n*m_x*m_y) / (sum(x²) -n*(m_x²))
     b0 = m_y - b1*m_x
 
+    Methods:
+        - fit()
+        - transform()
+
     """
 
     def fit(self,data,settings,numFrag):
@@ -64,7 +68,7 @@ class linearRegression(object):
             alpha = settings.get('alpha', 0.1)
             iters = settings.get('max_iter', 100)
 
-            parameters = self.gradientDescent(  data, features, label,
+            parameters = gradientDescent(  data, features, label,
                                                 alpha, iters, numFrag)
         elif mode == 'simple':
             """
@@ -72,15 +76,15 @@ class linearRegression(object):
                 you have a small dataset.
             """
 
-            xs = [self.calcsXs(data[f], features) for f in range(numFrag)]
-            ys = [self.calcsXs(data[f], label)    for f in range(numFrag)]
-            xys= [self.calcsXYs(data[f],features,label) for f in range(numFrag)]
+            xs = [calcsXs(data[f], features) for f in range(numFrag)]
+            ys = [calcsXs(data[f], label)    for f in range(numFrag)]
+            xys= [calcsXYs(data[f],features,label) for f in range(numFrag)]
 
-            rx  = mergeReduce(self.mergeCalcs,xs)
-            ry  = mergeReduce(self.mergeCalcs,ys)
-            rxy = mergeReduce(self.mergeCalcs,xys)
+            rx  = mergeReduce(mergeCalcs,xs)
+            ry  = mergeReduce(mergeCalcs,ys)
+            rxy = mergeReduce(mergeCalcs,xys)
 
-            parameters = self.computeLine2D(rx,ry,rxy)
+            parameters = computeLine2D(rx,ry,rxy)
 
 
         model = dict()
@@ -112,158 +116,152 @@ class linearRegression(object):
         features = settings['features']
         predCol  = settings.get('predCol','PREDICTED_VALUE')
 
-        algorithm = model.get('algorithm','')
-        if algorithm != 'linearRegression':
+        if model.get('algorithm','null') != 'linearRegression':
             raise Exception("You must inform a valid Linear Regression model.")
 
         model = model['model']
+        result = [[] for f in range(numFrag)]
         for f in range(numFrag):
-            data[f] = self.predict(data[f], features, predCol, model)
+            result[f] = predict(data[f], features, predCol, model)
 
-        return data
+        return result
 
-    # --------------
-    # Simple Linear Regression
+# --------------
+# Simple Linear Regression
 
-    @task(returns=list, isModifier = False)
-    def calcsXs(self,X,col):
-        sumX = X[col].sum()
-        squareX= (X[col]**2).sum()
-        #print "sum:{} - Square:{}".format(sumX,squareX)
-        return [sumX, len(X[col]),squareX]
-
-
-    @task(returns=list, isModifier = False)
-    def calcsXYs(self,XY,col1,col2):
-        r = sum([x*y for x,y in zip(XY[col1],XY[col2])])
-        return [0,0,r]
+@task(returns=list)
+def calcsXs(X,col):
+    sumX = X[col].sum()
+    squareX= (X[col]**2).sum()
+    #print "sum:{} - Square:{}".format(sumX,squareX)
+    return [sumX, len(X[col]),squareX]
 
 
-    @task(returns=list, isModifier = False)
-    def mergeCalcs(self,p1,p2):
-        sumT = p1[0] + p2[0]
-        T = p1[1] + p2[1]
-        squareT = p1[2] + p2[2]
-        return [sumT,T,squareT]
+@task(returns=list)
+def calcsXYs(XY,col1,col2):
+    r = sum([x*y for x,y in zip(XY[col1],XY[col2])])
+    return [0,0,r]
 
 
-    @task(returns=list, isModifier = False)
-    def computeLine2D(self,rx,ry,rxy):
-        n = rx[1]
-        m_x = (float(rx[0])/n)
-        m_y = (float(ry[0])/n)
-        b1  =  float(rxy[2] - n*m_x*m_y) /(rx[2] - rx[1]* (m_x**2))
-        b0  = m_y - b1*m_y
-
-        return [b0, b1]
+@task(returns=list)
+def mergeCalcs(p1,p2):
+    sumT = p1[0] + p2[0]
+    T = p1[1] + p2[1]
+    squareT = p1[2] + p2[2]
+    return [sumT,T,squareT]
 
 
+@task(returns=list)
+def computeLine2D(rx,ry,rxy):
+    n = rx[1]
+    m_x = (float(rx[0])/n)
+    m_y = (float(ry[0])/n)
+    b1  =  float(rxy[2] - n*m_x*m_y) /(rx[2] - rx[1]* (m_x**2))
+    b0  = m_y - b1*m_y
+
+    return [b0, b1]
 
 
-    # --------------
-    # SGD mode:
 
-    def gradientDescent(self,data, features, label, alpha, iters, numFrag):
-        theta = np.array([0,0,0])
 
-        #cost = np.zeros(iters)
+# --------------
+# SGD mode:
 
-        for i in range(iters):
-            stage1 = [self.firststage(data[f],features,label,theta)
-                        for f in range(numFrag)]
-            grad  = mergeReduce(self.agg_SGD,stage1)
-            theta = self.calcTheta(grad, alpha)
+def gradientDescent(data, features, label, alpha, iters, numFrag):
+    theta = np.array([0,0,0])
 
-            #cost[i] = [self.computeCost(data[f],features,label, theta) for f in range(numFrag)]
-            #theta = compss_wait_on(theta)
+    #cost = np.zeros(iters)
 
-        return theta#, cost
+    for i in range(iters):
+        stage1 = [firststage(data[f],features,label,theta)
+                    for f in range(numFrag)]
+        grad  = mergeReduce(agg_SGD,stage1)
+        theta = calcTheta(grad, alpha)
 
-    @task(returns=list, isModifier = False)
-    def firststage(self,data,X,Y,theta):
-        N = len(data)
+        #cost[i] = [computeCost(data[f],features,label, theta) for f in range(numFrag)]
+        #theta = compss_wait_on(theta)
 
-        if N >0:
-            if isinstance(data.iloc[0][X], list):
-                dim = len(data.iloc[0][X])
-            else:
-                dim = 1
+    return theta#, cost
 
-            if (dim+1) != len(theta):
-                theta = np.array([0 for i in range(dim+1)])
+@task(returns=list)
+def firststage(data,X,Y,theta):
+    N = len(data)
 
-            Xs = np.c_[np.ones(N), np.array(data[X].tolist() ) ]
-            partial_error = np.dot(Xs, theta.T) - data[Y].values
-
-            for j in range(dim+1):
-                grad = np.multiply(partial_error, Xs[:,j])
-
-            return [np.sum(grad), N, dim, theta]
-
-        return [0, 0, -1, 0]
-
-    @task(returns=list, isModifier = False)
-    def agg_SGD(self,error1,error2):
-        dim1 = error1[2]
-        dim2 = error2[2]
-
-        if dim1 > 0:
-            sum_grad = error1[0]+error2[0]
-            N = error2[1]+error2[1]
-            dim = dim1
-            theta = error1[3]
-        elif dim2 > 0:
-            sum_grad = error1[0]+error2[0]
-            N = error2[1]+error2[1]
-            dim = dim2
-            theta = error2[3]
+    if N >0:
+        if isinstance(data.iloc[0][X], list):
+            dim = len(data.iloc[0][X])
         else:
-            sum_grad = 0
-            N = 0
-            dim = -1
-            theta = 0
+            dim = 1
 
-        return [sum_grad, N, dim, theta]
+        if (dim+1) != len(theta):
+            theta = np.array([0 for i in range(dim+1)])
 
+        Xs = np.c_[np.ones(N), np.array(data[X].tolist() ) ]
+        partial_error = np.dot(Xs, theta.T) - data[Y].values
 
-    @task(returns=list, isModifier = False)
-    def calcTheta(self,info, alpha):
-        grad  = info[0]
-        N     = info[1]
-        dim   = info[2]
-        theta = info[3]
-
-        temp = np.zeros(theta.shape)
         for j in range(dim+1):
-            temp[j] = theta[j] - ((float(alpha) / N) * grad)
+            grad = np.multiply(partial_error, Xs[:,j])
 
-        return temp
+        return [np.sum(grad), N, dim, theta]
 
-    # @task(returns=list, isModifier = False) # TO DO
-    # def computeCost(X, y, theta):
-    #     inner = np.power(((X * theta.T) - y), 2)
-    #     return np.sum(inner) / (2 * len(X))
+    return [0, 0, -1, 0]
+
+@task(returns=list)
+def agg_SGD(error1,error2):
+    dim1 = error1[2]
+    dim2 = error2[2]
+
+    if dim1 > 0:
+        sum_grad = error1[0]+error2[0]
+        N = error2[1]+error2[1]
+        dim = dim1
+        theta = error1[3]
+    elif dim2 > 0:
+        sum_grad = error1[0]+error2[0]
+        N = error2[1]+error2[1]
+        dim = dim2
+        theta = error2[3]
+    else:
+        sum_grad = 0
+        N = 0
+        dim = -1
+        theta = 0
+
+    return [sum_grad, N, dim, theta]
 
 
+@task(returns=list)
+def calcTheta(info, alpha):
+    grad  = info[0]
+    N     = info[1]
+    dim   = info[2]
+    theta = info[3]
 
-    @task(returns=list, isModifier = False)
-    def predict(self,data,X,Y,model):
+    temp = np.zeros(theta.shape)
+    for j in range(dim+1):
+        temp[j] = theta[j] - ((float(alpha) / N) * grad)
 
-        tmp = []
-        if len(data)>0:
-            if isinstance(data.iloc[0][X], list):
-                dim = len(data.iloc[0][X])
-            else:
-                dim = 1
+    return temp
 
-            if dim >1:
-                for row in data[X].values:
-                    y = row[0]
-                    for j in xrange(1,len(row)):
-                        y += row[j]*model[j]
-                    tmp.append(y)
-            else:
-                tmp = [model[0] + model[1]*row for row in data[X].values]
 
-        data[Y] = tmp
-        return data
+@task(returns=list)
+def predict(data,X,Y,model):
+
+    tmp = []
+    if len(data)>0:
+        if isinstance(data.iloc[0][X], list):
+            dim = len(data.iloc[0][X])
+        else:
+            dim = 1
+
+        if dim >1:
+            for row in data[X].values:
+                y = row[0]
+                for j in xrange(1,len(row)):
+                    y += row[j]*model[j]
+                tmp.append(y)
+        else:
+            tmp = [model[0] + model[1]*row for row in data[X].values]
+
+    data[Y] = tmp
+    return data

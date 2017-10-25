@@ -28,14 +28,16 @@ def GeoWithinOperation(data, shp_object, settings, numFrag):
                        False if is (long,lat). Default is True;
         - polygon:     Field in shp_object where is store the
                        coordinates of each sector;
-        - attributes:  Column which represents the Id field in the shp_object;
+        - attributes:  Attributes to retrieve from shapefile, empty to all
+                       (default, empty);
+        - alias:       Alias for shapefile attributes
+                       (default, 'sector_position');
     :param numFrag:    The number of fragments;
     :return:           Returns a list of pandas daraframe.
 
     """
 
-    if not all(['attributes'  in settings,
-                'lat_col' in settings,
+    if not all(['lat_col' in settings,
                 'lon_col' in settings]):
         raise Exception("Please inform, at least, the fields: "
                         "`attributes`,`lat_col` and `lon_col`")
@@ -85,13 +87,17 @@ def GeoWithinOperation(data, shp_object, settings, numFrag):
 @task(returns=list)
 def get_sectors(data_input, spindex, shp_object, settings):
     from matplotlib.path import Path
-    alias = settings.get('alias','sectors')
+    alias = settings.get('alias', 'sector_position')
+    attributes = settings.get('attributes', [])
+
     sector_position = []
 
     if len(data_input)>0:
+
         col_lat  = settings['lat_col']
         col_long = settings['lon_col']
-        id_col   = settings['attributes']
+        if len(attributes) == 0:
+            attributes = shp_object.columns
         polygon_col = settings.get('polygon','points')
 
         for i,point in data_input.iterrows():
@@ -106,7 +112,7 @@ def get_sectors(data_input, spindex, shp_object, settings):
                 row = shp_object.loc[shp_inx]
                 polygon = Path(row[polygon_col])
                 if polygon.contains_point([y, x]):
-                    tmp.append(row[id_col])
+                    tmp.append(row[attributes])
 
             sector_position.append(tmp )
 

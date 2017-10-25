@@ -10,13 +10,15 @@ __email__  = "lucasmsp@gmail.com"
 import pandas as pd
 
 #@task(returns=list)
-def ReadShapeFileOperation(shp_path, dbf_path, settings):
+def ReadShapeFileOperation(settings):
     """
         Reads a shapefile using the shp and dbf file.
 
-        :param shp_path:    Absolute path to the shapefile (.shp)
-        :param dbf_path:    Absolute path to the shapefile (.dbf)
         :param settings:    A dictionary that contains:
+            - host:         The host of the Namenode HDFS; (default, default)
+            - port:         Port of the Namenode HDFS; (default, 0)
+            - shp_path:     Path to the shapefile (.shp)
+            - dbf_path:     Path to the shapefile (.dbf)
             - polygon:      Alias to the new column to store the
                             polygon coordenates (default, 'points');
             - attributes:   List of attributes to keep in the dataframe,
@@ -28,18 +30,24 @@ def ReadShapeFileOperation(shp_path, dbf_path, settings):
     #Note: pip install pyshp
 
     import shapefile
+    from io import BytesIO
+    import hdfs_pycompss.hdfsConnector as hdfs
 
     polygon = settings.get('polygon', 'points')
     lat_long = settings.get('lat_long', True)
     header = settings.get('attributes',[])
 
-    shp_io = open(shp_path, "rb")
-    dbf_io = open(dbf_path, "rb")
+    settings['path'] = settings['shp_path']
+    shp_path = hdfs.readBinary(settings)
+    settings['path'] = settings['dbf_path']
+    dbf_path = hdfs.readBinary(settings)
+
+    shp_io = BytesIO(shp_path)
+    dbf_io = BytesIO(dbf_path)
 
     shp_object = shapefile.Reader(shp=shp_io, dbf=dbf_io)
     records = shp_object.records()
     sectors = shp_object.shapeRecords()
-
 
     fields = {} #column: position
     for i,f in enumerate(shp_object.fields):

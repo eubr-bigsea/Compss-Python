@@ -15,31 +15,35 @@ import pandas as pd
 
 def AggregationOperation(data,params,numFrag):
     """
-        AggregationOperation():
+    AggregationOperation():
 
-        Computes aggregates and returns the result as a DataFrame.
+    Computes aggregates and returns the result as a DataFrame.
 
-        :param data:     A list with numFrag pandas's dataframe;
-        :param params:   A dictionary that contains:
-            - columns:   A list with the columns names to aggregates;
-            - alias:     A dictionary with the aliases of all aggregated columns;
-            - operation: A dictionary with the functionst to be applied in the aggregation:
-                'mean':	    Computes the average of each group;
-                'count':	Counts the total of records of each group;
-                'first':	Returns the first element of group;
-                'last':	    Returns the last element of group;
-                'max':      Returns the max value of each group for one attribute;
-                'min':	    Returns the min value of each group for one attribute;
-                'sum':      Returns the sum of values of each group for one attribute;
-                'list':     Returns a list of objects with duplicates;
-                'set':      Returns a set of objects with duplicate elements eliminated.
-        :param numFrag: The number of fragments;
-        :return:        Returns a list with numFrag pandas's dataframe.
+    :param data:     A list with numFrag pandas's dataframe;
+    :param params:   A dictionary that contains:
+        - columns:   A list with the columns names to aggregates;
+        - alias:     A dictionary with the aliases of all aggregated columns;
+        - operation: A dictionary with the functionst to be applied in
+                     the aggregation:
+            'mean':	    Computes the average of each group;
+            'count':	Counts the total of records of each group;
+            'first':	Returns the first element of group;
+            'last':	    Returns the last element of group;
+            'max':      Returns the max value of each group for one attribute;
+            'min':	    Returns the min value of each group for one attribute;
+            'sum':      Returns the sum of values of each group for one
+                        attribute;
+            'list':     Returns a list of objects with duplicates;
+            'set':      Returns a set of objects with duplicate elements
+                        eliminated.
+    :param numFrag: The number of fragments;
+    :return:        Returns a list with numFrag pandas's dataframe.
 
-        example:
-            settings['columns']   = ["col1"]
-            settings['operation'] = {'col2':['sum'],'col3':['first','last']}
-            settings['aliases']   = {'col2':["Sum_col2"],'col3':['col_First','col_Last']}
+    example:
+        settings['columns']   = ["col1"]
+        settings['operation'] = {'col2':['sum'],'col3':['first','last']}
+        settings['aliases']   = \
+            {'col2':["Sum_col2"],'col3':['col_First','col_Last']}
     """
 
 
@@ -48,7 +52,8 @@ def AggregationOperation(data,params,numFrag):
     operation = params['operation']
 
 
-    data = [ aggregate_partial(data[f], columns, operation,  target) for f in range(numFrag)]
+    data = [ aggregate_partial(data[f], columns, operation,  target)
+                for f in range(numFrag)]
 
     ## buffer to store the join between each block
     buff = [(f,g) for f in range(numFrag)  for g in xrange(f,numFrag) if f != g]
@@ -77,6 +82,8 @@ def AggregationOperation(data,params,numFrag):
         for x,y in zip(step_list_i,step_list_j):
             merge_aggregate(data[x], data[y], columns, operation, target)
 
+    for f in range(numFrag):
+        data[f] = remove_nan(data[f])
 
 
     return data
@@ -106,27 +113,33 @@ def aggregate_partial(data, columns, operation, target):
     return data
 
 
-@task(data1=INOUT, data2=INOUT)
+@task(data1=INOUT,data2=INOUT)
 def merge_aggregate(data1, data2, columns, operation, target):
+    """
+        data1 and data2 will have at least, your currently size
+    """
+
+    n1 = len(data1)
+    n2 = len(data2)
 
     operation = replaceNamebyFunctions(operation,target)
 
     data = pd.concat([data1,data2],axis=0, ignore_index=True)
     data = data.groupby(columns).agg(operation)
 
-    data = data.reset_index()
+    #remove the diffent level
+    data.reset_index(inplace=True)
 
-    data = np.array_split(data, 2)
+    n = len(data)
 
-    data[0].reset_index(drop=True,inplace=True)
-    data[1].reset_index(drop=True,inplace=True)
+    data1.columns = data.columns
+    data2.columns = data.columns
+    data1.ix[0:] = data.ix[:n1]
 
-    data1.columns = data[0].columns
-    data2.columns = data[1].columns
-    data1.ix[0:] =  data[0].ix[0:]
-    data2.ix[0:] =  data[1].ix[0:]
-    data1.dropna(axis=0,how='all',inplace=True)
-    data2.dropna(axis=0,how='all',inplace=True)
+    data = data[data.index >= n1]
+    data = data.reset_index(drop=True)
+    data2.ix[0:] = data.ix[:]
+
 
 
 def collectList(x):
@@ -160,9 +173,17 @@ def replaceNamebyFunctions(operation,target):
                 operation[col][f] = 'sum'
             elif operation[col][f] == 'set':
                 operation[col][f] = mergeSet
+            elif operation[col][f] == 'count':
+                operation[col][f] = 'sum'
 
     for k in target:
         values = target[k]
         for i in range(len(values)):
             new_operations[values[i]] = operation[k][i]
     return new_operations
+
+
+@task(returns=list)
+def remove_nan(data):
+    data.dropna(axis=0,how='all',inplace=True)
+    return data

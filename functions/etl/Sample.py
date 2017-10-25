@@ -41,7 +41,7 @@ def SampleOperation(data,params,numFrag):
 
     if TYPE  == 'percent':
         seed        = params.get('seed', None)
-        indexes     = DefineNSample(N_list,None,seed,True,'',numFrag)
+        indexes     = DefineNSample(N_list,None,seed,True,'null',numFrag)
         data = [GetSample(data[i],indexes,i) for i in range(numFrag)]
     elif TYPE  == 'value':
         #value       = params['value']
@@ -62,6 +62,7 @@ def Validate(params):
     if TYPE not in ['percent','value','head']:
         raise Exception('You must inform a valid sampling type.')
 
+    value = -1
     op = 'int'
     if TYPE == 'head' or TYPE == 'value':
         if  'int_value'  in params:

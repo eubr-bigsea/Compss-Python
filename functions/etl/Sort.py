@@ -156,45 +156,77 @@ def mergesort(data1, data2, settings):
     if  n1 == 0 or n2 == 0:
         return 1
 
-    idx_data1 = data1.index
-    idx_data2 = data2.index
-    j = 0
-    k = 0
     nsorted = 1
-    data = pd.DataFrame([],columns=data1.columns)
-    t1 =  data1.ix[idx_data1[j]].values
-    t2 =  data2.ix[idx_data2[k]].values
-    for i in range(n1+n2):
+    data = pd.concat([data1,data2])
+    data.reset_index(drop=True,inplace=True)
+    indexes = data.index
+    data.sort_values(col, ascending=order, inplace=True)
+    if any(data.index != indexes):
+        sorted = -1
 
-        tmp = pd.DataFrame([t1,t2],columns=data1.columns)
-        tmp.sort_values(col, ascending=order, inplace=True)
-        idx = tmp.index
-
-        if idx[0] == 1:
-            nsorted = -1
-            data.loc[i] = tmp.loc[1].values
-
-            k+=1
-            if k == n2:
-                break
-            t2 =  data2.ix[idx_data2[k]].values
-
-        else:
-            data.loc[i] = tmp.loc[0].values
-            j+=1
-            if j == n1:
-                break
-            t1 =  data1.ix[idx_data1[j]].values
-
-
-    if k == n2:
-        data = data.append(data1.ix[j:], ignore_index=True)
-    else:
-        data = data.append(data2.ix[k:], ignore_index=True)
-
+    data = data.reset_index(drop=True)
     data1.ix[0:] = data.ix[:n1]
+
     data = data[data.index >= n1]
     data = data.reset_index(drop=True)
     data2.ix[0:] = data.ix[:]
 
+
     return  nsorted
+
+
+# @task(data1 = INOUT, data2 = INOUT, returns=int)
+# def mergesort(data1, data2, settings):
+#     """
+#     Returns 1 if [data1, data2] is sorted, otherwise is -1.
+#     """
+#     col   = settings['columns']
+#     order = settings['ascending']
+#     n1 = len(data1)
+#     n2 = len(data2)
+#
+#     if  n1 == 0 or n2 == 0:
+#         return 1
+#
+#     idx_data1 = data1.index
+#     idx_data2 = data2.index
+#     j = 0
+#     k = 0
+#     nsorted = 1
+#     data = pd.DataFrame([],columns=data1.columns)
+#     t1 =  data1.ix[idx_data1[j]].values
+#     t2 =  data2.ix[idx_data2[k]].values
+#     for i in range(n1+n2):
+#
+#         tmp = pd.DataFrame([t1,t2],columns=data1.columns)
+#         tmp.sort_values(col, ascending=order, inplace=True)
+#         idx = tmp.index
+#
+#         if idx[0] == 1:
+#             nsorted = -1
+#             data.loc[i] = tmp.loc[1].values
+#
+#             k+=1
+#             if k == n2:
+#                 break
+#             t2 =  data2.ix[idx_data2[k]].values
+#
+#         else:
+#             data.loc[i] = tmp.loc[0].values
+#             j+=1
+#             if j == n1:
+#                 break
+#             t1 =  data1.ix[idx_data1[j]].values
+#
+#
+#     if k == n2:
+#         data = data.append(data1.ix[j:], ignore_index=True)
+#     else:
+#         data = data.append(data2.ix[k:], ignore_index=True)
+#
+#     data1.ix[0:] = data.ix[:n1]
+#     data = data[data.index >= n1]
+#     data = data.reset_index(drop=True)
+#     data2.ix[0:] = data.ix[:]
+#
+#     return  nsorted

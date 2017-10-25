@@ -23,9 +23,12 @@ class ClassificationModelEvaluation(object):
             * Precision (Positive Predictive Value) = tp / (tp + fp)
             * Recall (True Positive Rate) = tp / (tp + fn)
             * F-measure = F1 = 2 * (precision * recall) / (precision + recall)
+
+        Methods:
+            - calculate()
     """
 
-    def calculate(self,data,settings,numFrag):
+    def calculate(self, data,settings,numFrag):
         """
         calculate():
 
@@ -49,106 +52,106 @@ class ClassificationModelEvaluation(object):
         col_test = settings['test_col']
         col_predicted = settings['pred_col']
 
-        stage1 = [self.CME_stage1(data[f],col_test,col_predicted)
+        stage1 = [CME_stage1(data[f],col_test,col_predicted)
                     for f in range(numFrag)]
-        merged_stage1 = mergeReduce(self.mergeStage1,stage1)
+        merged_stage1 = mergeReduce(mergeStage1,stage1)
         op = settings.get('binary', False)
         if op:
             true_label = settings.get('pos_label', 1)
-            result = self.CME_stage2_binary(merged_stage1,true_label)
+            result = CME_stage2_binary(merged_stage1,true_label)
         else:
-            result = self.CME_stage2(merged_stage1)
+            result = CME_stage2(merged_stage1)
         return result
 
 
-    @task(returns=list, isModifier = False)
-    def CME_stage1(self,data, col_test, col_predicted):
-        """creates a partial confusion matrix"""
+@task(returns=list)
+def CME_stage1(data, col_test, col_predicted):
+    """creates a partial confusion matrix"""
 
-        Reals = data[col_test].values
-        Preds = data[col_predicted].values
+    Reals = data[col_test].values
+    Preds = data[col_predicted].values
 
-        labels = np.unique(
-                    np.concatenate(
-                    (data[col_test].unique(),data[col_predicted].unique()),0)
-                )
+    labels = np.unique(
+                np.concatenate(
+                (data[col_test].unique(),data[col_predicted].unique()),0)
+            )
 
-        df = pd.DataFrame(columns=labels,index=labels).fillna(0)
-
-
-        for real, pred in zip(Reals, Preds):
-            df.loc[real, pred]+=1
-
-        return df
-
-    @task(returns=list, isModifier = False)
-    def mergeStage1(self,p1,p2):
-        p1 =  p1.add(p2, fill_value=0)
-        return p1
-
-    @task(returns=list, isModifier = False)
-    def CME_stage2(self,confusion_matrix):
-
-        N = confusion_matrix.sum().sum()
-        labels = confusion_matrix.index
-        acertos = 0
-        Precisions = []     #  TPR
-        Recalls = []        #  FPR
-        for i in labels:
-            acertos += confusion_matrix[i].ix[i]
-            TP = confusion_matrix[i].ix[i]
-            Precisions.append(   float(TP) / confusion_matrix.ix[i].sum())
-            Recalls.append( float(TP) / confusion_matrix[i].sum())
-
-        Accuracy = float(acertos) / N
-
-        F1s = []
-        for p,r in zip(Precisions,Recalls):
-            F1s.append(2 * (p * r) / (p + r))
+    df = pd.DataFrame(columns=labels,index=labels).fillna(0)
 
 
-        precision_recall = \
-            pd.DataFrame(np.array([Precisions,Recalls,F1s]).T,
-                        columns=['Precision','Recall',"F-Mesure"])
+    for real, pred in zip(Reals, Preds):
+        df.loc[real, pred]+=1
 
-        Precision = np.mean(Precisions)
-        Recall = np.mean(Recalls)
-        F1 = 2 * (Precision * Recall) / (Precision + Recall)
-        table =  pd.DataFrame([
-                                ["Accuracy",Accuracy],
-                                ["Precision",Precision],
-                                ["Recall",Recall],
-                                ["F-measure (F1)",F1]
-                            ],columns=["Metric","Value"])
+    return df
 
+@task(returns=list)
+def mergeStage1(p1,p2):
+    p1 =  p1.add(p2, fill_value=0)
+    return p1
 
-        return [confusion_matrix, table, precision_recall]
+@task(returns=list)
+def CME_stage2(confusion_matrix):
 
+    N = confusion_matrix.sum().sum()
+    labels = confusion_matrix.index
+    acertos = 0
+    Precisions = []     #  TPR
+    Recalls = []        #  FPR
+    for i in labels:
+        acertos += confusion_matrix[i].ix[i]
+        TP = confusion_matrix[i].ix[i]
+        Precisions.append(   float(TP) / confusion_matrix.ix[i].sum())
+        Recalls.append( float(TP) / confusion_matrix[i].sum())
 
-    @task(returns=list, isModifier = False)
-    def CME_stage2_binary(self,confusion_matrix,true_label):
+    Accuracy = float(acertos) / N
 
-        N = confusion_matrix.sum().sum()
-        labels = confusion_matrix.index
-        acertos = 0
-        Precisions = []     #  TPR
-        Recalls = []        #  FPR
-
-        for i in labels:
-            acertos += confusion_matrix[i].ix[i]
-
-        TP = confusion_matrix[true_label].ix[true_label]
-        Precision =   float(TP) / confusion_matrix.ix[true_label].sum()
-        Recall    =   float(TP) / confusion_matrix[true_label].sum()
-        Accuracy = float(acertos) / N
-        F1 = 2 * (Precision * Recall) / (Precision + Recall)
-
-        table =  pd.DataFrame([
-                                ["Accuracy",Accuracy],
-                                ["Precision",Precision],
-                                ["Recall",Recall],
-                                ["F-measure (F1)",F1]
-                            ],columns=["Metric","Value"])
+    F1s = []
+    for p,r in zip(Precisions,Recalls):
+        F1s.append(2 * (p * r) / (p + r))
 
 
-        return [confusion_matrix, table]
+    precision_recall = \
+        pd.DataFrame(np.array([Precisions,Recalls,F1s]).T,
+                    columns=['Precision','Recall',"F-Mesure"])
+
+    Precision = np.mean(Precisions)
+    Recall = np.mean(Recalls)
+    F1 = 2 * (Precision * Recall) / (Precision + Recall)
+    table =  pd.DataFrame([
+                            ["Accuracy",Accuracy],
+                            ["Precision",Precision],
+                            ["Recall",Recall],
+                            ["F-measure (F1)",F1]
+                        ],columns=["Metric","Value"])
+
+
+    return [confusion_matrix, table, precision_recall]
+
+
+@task(returns=list)
+def CME_stage2_binary(confusion_matrix,true_label):
+
+    N = confusion_matrix.sum().sum()
+    labels = confusion_matrix.index
+    acertos = 0
+    Precisions = []     #  TPR
+    Recalls = []        #  FPR
+
+    for i in labels:
+        acertos += confusion_matrix[i].ix[i]
+
+    TP = confusion_matrix[true_label].ix[true_label]
+    Precision =   float(TP) / confusion_matrix.ix[true_label].sum()
+    Recall    =   float(TP) / confusion_matrix[true_label].sum()
+    Accuracy = float(acertos) / N
+    F1 = 2 * (Precision * Recall) / (Precision + Recall)
+
+    table =  pd.DataFrame([
+                            ["Accuracy",Accuracy],
+                            ["Precision",Precision],
+                            ["Recall",Recall],
+                            ["F-measure (F1)",F1]
+                        ],columns=["Metric","Value"])
+
+
+    return [confusion_matrix, table]

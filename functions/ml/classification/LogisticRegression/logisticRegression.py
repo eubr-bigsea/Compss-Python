@@ -5,7 +5,6 @@ from pycompss.api.task          import task
 from pycompss.api.parameter     import *
 from pycompss.functions.reduce  import mergeReduce
 
-from pycompss.api.api import compss_wait_on
 import math
 import numpy as np
 
@@ -27,6 +26,11 @@ class logisticRegression(object):
     the Stochastic gradient descent). It is called stochastic because
     the derivative based on a randomly chosen single example is a random
     approximation to the true derivative based on all the training data.
+
+    Methods:
+        - fit()
+        - transform()
+
     """
 
 
@@ -62,13 +66,17 @@ class logisticRegression(object):
         iters     = settings.get('iters',100)
         threshold = settings.get('threshold',0.001)
 
-        parameters = self.ComputeCoeffs(data, features, label, alpha,
-                                                iters, threshold, reg, numFrag)
+        parameters = ComputeCoeffs(data, features, label, alpha,
+                                    iters, threshold, reg, numFrag)
 
-        return parameters
+        model = {}
+        model['algorithm'] = 'logisticRegression'
+        model['model'] = parameters
+
+        return model
 
 
-    def transform(self,data,model,settings,numFrag):
+    def transform(self, data, model, settings, numFrag):
         """
         transform():
 
@@ -84,117 +92,126 @@ class logisticRegression(object):
         if 'features' not in settings:
            raise Exception("You must inform the `features`  field.")
 
+        if model.get('algorithm','null') != 'logisticRegression':
+            raise Exception("You must inform a valid model.")
+
+        model = model['model']
+
         col_features = settings['features']
-        predCol    = settings.get('predCol','prediction')
+        predCol = settings.get('predCol','prediction')
 
-        data = [ self.predict(data[f],col_features,predCol,model)
+        result = [[] for i in range(numFrag)]
+        for f in range(numFrag):
+            result[f] = predict(data[f], col_features, predCol, model)
+
+        return result
+
+
+def sigmoid(x, w):
+    """
+    Evaluate the sigmoid function at x.
+    :param x: Vector.
+    :return: Value returned.
+    """
+    return  1.0 - 1.0/(1.0 + math.exp(sum(w*x)))
+
+def ComputeCoeffs(data, features, label, alpha,
+                        iters, threshold, reg, numFrag):
+    """
+    Perform a logistic regression via gradient ascent.
+    """
+    from pycompss.api.api import compss_wait_on
+
+    theta = theta = np.array(np.zeros(1), dtype = float)   #initial
+    i = reg = 0
+    converged = False
+    while ( (i<iters) and not converged):
+
+        # grEin = gradient of in-sample Error
+        grEin = [ GradientAscent(data[f],features,label,theta,alpha)
                     for f in range(numFrag)]
+        grad  = mergeReduce(agg_sga, grEin)
+        result = calcTheta(grad,alpha,i,reg,threshold)
+        result = compss_wait_on(result)
+        i+=1
+        theta, converged = result
 
-        return data
+    theta = compss_wait_on(theta)
 
-
-    def sigmoid(self ,x, w):
-        """
-        Evaluate the sigmoid function at x.
-        :param x: Vector.
-        :return: Value returned.
-        """
-        return  1.0 - 1.0/(1.0 + math.exp(sum(w*x)))
-
-    def ComputeCoeffs(self, data, features, label, alpha,
-                            iters, threshold, reg, numFrag):
-        """
-        Perform a logistic regression via gradient ascent.
-        """
-
-        theta = theta = np.array(np.zeros(1), dtype = float)   #initial
-        i = reg = 0
-        converged = False
-        while ( (i<iters) and not converged):
-
-            # grEin = gradient of in-sample Error
-            grEin = [ self.GradientAscent(data[f],features,label,theta,alpha)
-                        for f in range(numFrag)]
-            grad  = mergeReduce(self.agg_sga, grEin)
-            theta, converged = self.calcTheta(grad,alpha,i,reg,threshold)
-            i+=1
-            converged = compss_wait_on(converged)
-        theta = compss_wait_on(theta)
-
-        return theta
+    return theta
 
 
-    @task(returns=list, isModifier = False)
-    def GradientAscent(self,data,X,Y,theta,alfa):
-        """
-            Estimate logistic regression coefficients
-            using stochastic gradient descent.
-        """
+@task(returns=list)
+def GradientAscent(data,X,Y,theta,alfa):
+    """
+        Estimate logistic regression coefficients
+        using stochastic gradient descent.
+    """
 
-        if len(data)==0:
-            return [[],0,0,theta]
+    if len(data)==0:
+        return [[],0,0,theta]
 
-        dim = len(data.iloc[0][X])
+    dim = len(data.iloc[0][X])
 
-        if (dim+1) != len(theta):
-            theta = np.array(np.zeros(dim+1), dtype = float)
+    if (dim+1) != len(theta):
+        theta = np.array(np.zeros(dim+1), dtype = float)
 
-        N = len(data)
-        # get the sum of error
-        gradient = 0
+    N = len(data)
+    # get the sum of error
+    gradient = 0
 
-        Xs = np.c_[np.ones(N), np.array(data[X].tolist() ) ] # adding ones
+    Xs = np.c_[np.ones(N), np.array(data[X].tolist() ) ] # adding ones
 
-        for n in range(N):
-            xn = np.array(Xs[n, :])
-            yn = data[Y].values[n]
-            grad_p = self.sigmoid(xn, theta)
-            gradient += xn*(yn - grad_p)
+    for n in range(N):
+        xn = np.array(Xs[n, :])
+        yn = data[Y].values[n]
+        grad_p = sigmoid(xn, theta)
+        gradient += xn*(yn - grad_p)
 
-        return [gradient, N, dim, theta]
+    return [gradient, N, dim, theta]
 
-    @task(returns=list, isModifier = False)
-    def agg_sga(self,info1,info2):
+@task(returns=list)
+def agg_sga(info1,info2):
 
-        if len(info1[0])>0:
-            if len(info2[0])>0:
-                gradient = info1[0]+info2[0]
-            else:
-                gradient = info1[0]
+    if len(info1[0])>0:
+        if len(info2[0])>0:
+            gradient = info1[0]+info2[0]
         else:
-            gradient = info2[0]
+            gradient = info1[0]
+    else:
+        gradient = info2[0]
 
-        N   = info2[1]+info2[1]
-        dim = info1[2] if info1[2] !=0 else info2[2]
-        theta = info1[3] if len(info1[3])>len(info2[3]) else info2[3]
+    N   = info2[1]+info2[1]
+    dim = info1[2] if info1[2] !=0 else info2[2]
+    theta = info1[3] if len(info1[3])>len(info2[3]) else info2[3]
 
-        print [gradient, N, dim, theta]
-        return [gradient, N, dim, theta]
-
-
-    @task(returns=(float,bool), isModifier = False)
-    def calcTheta(self,info,coef_lr,it, regularization,threshold):
-        gradient  = info[0]
-        N     = info[1]
-        dim   = info[2]
-        theta = info[3]
-
-        # update coefficients
-        alpha = coef_lr/(1+it)
-        theta += alpha*(gradient - regularization*theta)
-
-        converged = False
-        if alpha*sum(gradient*gradient) < threshold:
-    	       converged = True
-        return theta,converged
+    #print [gradient, N, dim, theta]
+    return [gradient, N, dim, theta]
 
 
+@task(returns=list) #(float,bool))
+def calcTheta(info,coef_lr,it, regularization,threshold):
+    gradient  = info[0]
+    N     = info[1]
+    dim   = info[2]
+    theta = info[3]
+
+    # update coefficients
+    alpha = coef_lr/(1+it)
+    theta += alpha*(gradient - regularization*theta)
+
+    converged = False
+    if alpha*sum(gradient*gradient) < threshold:
+	       converged = True
+    return [theta,converged]
 
 
-    @task(returns=list, isModifier = False)
-    def predict(self,data,X,predCol,theta):
-        N = len(data)
 
-        Xs = np.c_[np.ones(N), np.array(data[X].tolist() ) ]
-        data[predCol] = [ round(self.sigmoid(x,theta)) for x in Xs]
-        return data
+
+@task(returns=list)
+def predict(data, X, predCol, theta):
+    N = len(data)
+
+    Xs = np.c_[np.ones(N), np.array(data[X].tolist() ) ]
+    data[predCol] = [ round(sigmoid(x,theta)) for x in Xs]
+    return data

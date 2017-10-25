@@ -37,6 +37,8 @@ A list of all COMPS's operations supported by Lemonade.
 	- Logistic Regression
  	- Linear Regression
  	- Apriori
+	- Save Model
+	- Load Model
 
 
 

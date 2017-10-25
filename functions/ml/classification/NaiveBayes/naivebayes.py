@@ -12,28 +12,6 @@ from pycompss.api.parameter     import *
 from pycompss.api.task          import task
 from pycompss.functions.reduce  import mergeReduce
 
-
-
-
-"""
-Gaussian Naive Bayes:
-
-The Naive Bayes algorithm is an intuitive method that uses the probabilities
-of each attribute belonged to each class to make a prediction. It is a
-supervised learning approach that you would  come up with if you wanted to
-model a predictive probabilistically modeling problem.
-
-Naive bayes simplifies the calculation of probabilities by assuming that the
-probability of each attribute belonging to a given class value is independent
-of all other attributes. The probability of a class value given a value of an
-attribute is called the conditional probability. By multiplying the conditional
-probabilities together for each attribute for a given class value, we have the
-probability of a data instance belonging to that class. To make a prediction we
-can calculate probabilities of the instance belonged to each class and select
-the class value with the highest probability.
-
-"""
-
 #-------------------------------------------------------------------------
 #   Naive Bayes
 #
@@ -41,7 +19,31 @@ the class value with the highest probability.
 
 class GaussianNB(object):
 
-    def fit(self,data,settings,numFrag):
+    """
+    Gaussian Naive Bayes:
+
+    The Naive Bayes algorithm is an intuitive method that uses the probabilities
+    of each attribute belonged to each class to make a prediction. It is a
+    supervised learning approach that you would  come up with if you wanted to
+    model a predictive probabilistically modeling problem.
+
+    Naive bayes simplifies the calculation of probabilities by assuming that the
+    probability of each attribute belonging to a given class value is independent
+    of all other attributes. The probability of a class value given a value of an
+    attribute is called the conditional probability. By multiplying the conditional
+    probabilities together for each attribute for a given class value, we have the
+    probability of a data instance belonging to that class. To make a prediction we
+    can calculate probabilities of the instance belonged to each class and select
+    the class value with the highest probability.
+
+        Methods:
+            - fit()
+            - transform()
+
+
+    """
+
+    def fit(self, data, settings, numFrag):
         """
             fit():
             - :param data:      A list with numFrag pandas's dataframe used to
@@ -60,114 +62,26 @@ class GaussianNB(object):
         features = settings['features']
 
         #first analysis
-        separated = [ self.separateByClass(data[i],label,features)
-                            for i in range(numFrag)]
+        separated  = [[] for i in range(numFrag)]
+        for i in range(numFrag):
+            separated[i] = separateByClass(data[i], label, features)
 
         #generate a mean and len of each fragment
-        merged_fitted = mergeReduce(self.merge_summaries1, separated )
+        merged_fitted = mergeReduce(merge_summaries1, separated )
 
         #compute the variance
-        partial_result = [ self.addVar(merged_fitted,separated[i])
+        partial_result = [ addVar(merged_fitted,separated[i])
                             for i in range(numFrag)]
-        merged_fitted  = mergeReduce(self.merge_summaries2, partial_result)
+        merged_fitted  = mergeReduce(merge_summaries2, partial_result)
 
-        summaries = self.calcSTDEV(merged_fitted)
+        summaries = calcSTDEV(merged_fitted)
 
-        return summaries
+        model = {}
+        model['algorithm'] = 'GaussianNB'
+        model['model'] = summaries
+        return model
 
-    @task(returns=list, isModifier = False)
-    def separateByClass(self,train_data,label,features):
-        separated = {}
-        for i in range(len(train_data)):
-            l = train_data.iloc[i][label]
-            if (l not in separated):
-                separated[l] = []
-            separated[l].append(train_data.iloc[i][features])
-
-        summaries = {}
-        for classValue, instances in separated.iteritems():
-            summaries[classValue] = self.summarize(instances)
-
-        return summaries
-
-
-    @task(returns=dict, isModifier = False)
-    def addVar(self,merged_fitted, separated):
-
-        summary = {}
-        for att in separated:
-            summaries = []
-            nums = separated[att]
-            d = 0
-            nums2 = merged_fitted[att]
-            for attribute in  zip(*nums):
-                avg = nums2[d][0]/nums2[d][1]
-                varNum = sum([math.pow(x-avg,2) for x in attribute])
-                summaries.append((avg, varNum, nums2[d][1]))
-                d+=1
-            summary[att] = summaries
-
-        return summary
-
-    @task(returns=dict, isModifier = False)
-    def calcSTDEV(self,summaries):
-        new_summaries = {}
-        for att in summaries:
-            tupla = summaries[att]
-            new_summaries[att]=[]
-            for t in tupla:
-                new_summaries[att].append((t[0], math.sqrt(t[1]/t[2])))
-        return new_summaries
-
-
-
-    @task(returns=list, isModifier = False)
-    def merge_summaries2(self,summaries1,summaries2):
-        for att in summaries2:
-            if att in summaries1:
-                for i in range(len(summaries1[att])):
-                    summaries1[att][i] = (summaries1[att][i][0],
-                                summaries1[att][i][1] + summaries2[att][i][1],
-                                summaries1[att][i][2] )
-
-            else:
-                summaries1[att] = summaries2[att]
-        return summaries1
-
-    @task(returns=list, isModifier = False)
-    def merge_summaries1(self,summaries1, summaries2):
-        for att in summaries2:
-            if att in summaries1:
-                for i in range(len(summaries1[att])):
-                    summaries1[att][i] = (
-                                (summaries1[att][i][0] + summaries2[att][i][0]),
-                                 summaries1[att][i][1] + summaries2[att][i][1])
-            else:
-                summaries1[att] = summaries2[att]
-
-        return summaries1
-
-
-
-
-
-    def summarize(self,features):
-        summaries = []
-        for attribute in zip(*features):
-            avg = sum(attribute)
-            summaries.append((avg, len(attribute)))
-        return summaries
-
-
-
-
-    #-------------------------------------------------------------------------
-    #   Naive Bayes
-    #
-    #   predictions
-    #-------------------------------------------------------------------------
-
-    def transform(self,data, model, settings, numFrag):
+    def transform(self, data, model, settings, numFrag):
         """
             transform:
             - :param data:  A list with numFrag pandas's dataframe that
@@ -183,55 +97,151 @@ class GaussianNB(object):
         if 'features' not in settings:
            raise Exception("You must inform the at least the `features` field.")
 
-        result = [ self.predict_chunck(data[i],model,settings) for i in range(numFrag) ]
+        if model.get('algorithm','null') != 'GaussianNB':
+            raise Exception("You must inform a valid model.")
+
+        model = model['model']
+
+        result = [[] for i in range(numFrag)]
+        for f in range(numFrag):
+            result[f] = predict_chunck(data[f], model, settings)
 
         return result
 
-    @task(returns=list, isModifier = False)
-    def merge_lists(self,list1,list2):
-        return list1+list2
+@task(returns=list)
+def separateByClass(train_data,label,features):
+    separated = {}
+    for i in range(len(train_data)):
+        l = train_data.iloc[i][label]
+        if (l not in separated):
+            separated[l] = []
+        separated[l].append(train_data.iloc[i][features])
 
-    @task(returns=list, isModifier = False)
-    def predict_chunck(self, data,summaries,settings):
+    summaries = {}
+    for classValue, instances in separated.iteritems():
+        summaries[classValue] = summarize(instances)
 
-        features_col    = settings['features']
-        predictedLabel  = settings.get('predCol','prediction')
-
-        predictions = []
-        for i in range(len(data)):
-         	result = self.predict(summaries, data.iloc[i][features_col])
-         	predictions.append(result)
-
-
-        data[predictedLabel] =  pd.Series(predictions).values
-        return data
-
-    def predict(self,summaries, inputVector):
-    	probabilities = self.calculateClassProbabilities(summaries, inputVector)
-    	bestLabel, bestProb = None, -1
-    	for classValue, probability in probabilities.iteritems():
-    		if bestLabel is None or probability > bestProb:
-    			bestProb = probability
-    			bestLabel = classValue
-    	return bestLabel
+    return summaries
 
 
-    def calculateClassProbabilities(self,summaries, toPredict):
+@task(returns=dict)
+def addVar(merged_fitted, separated):
 
-        probabilities = {}
-        for classValue, classSummaries in summaries.iteritems():
-            probabilities[classValue] = 1
-            for i in range(len(classSummaries)):
-                mean, var = classSummaries[i]
-                x = toPredict[i]
-                probabilities[classValue]  *= \
-                                        self.calculateProbability(x, mean, var)
-        return probabilities
+    summary = {}
+    for att in separated:
+        summaries = []
+        nums = separated[att]
+        d = 0
+        nums2 = merged_fitted[att]
+        for attribute in  zip(*nums):
+            avg = nums2[d][0]/nums2[d][1]
+            varNum = sum([math.pow(x-avg,2) for x in attribute])
+            summaries.append((avg, varNum, nums2[d][1]))
+            d+=1
+        summary[att] = summaries
+
+    return summary
+
+@task(returns=dict)
+def calcSTDEV(summaries):
+    new_summaries = {}
+    for att in summaries:
+        tupla = summaries[att]
+        new_summaries[att]=[]
+        for t in tupla:
+            new_summaries[att].append((t[0], math.sqrt(t[1]/t[2])))
+    return new_summaries
 
 
-    def calculateProbability(self,x, mean, stdev):
-        #exponent = math.exp(-(math.pow(x-mean,2)/(2*math.pow(stdev,2))))
-        #prob = (1 / (math.sqrt(2*math.pi) * stdev)) * exponent
-        import functions_naivebayes
-        prob = functions_naivebayes.calculateProbability(x,mean,stdev)
-        return prob
+
+@task(returns=list)
+def merge_summaries2(summaries1,summaries2):
+    for att in summaries2:
+        if att in summaries1:
+            for i in range(len(summaries1[att])):
+                summaries1[att][i] = (summaries1[att][i][0],
+                            summaries1[att][i][1] + summaries2[att][i][1],
+                            summaries1[att][i][2] )
+
+        else:
+            summaries1[att] = summaries2[att]
+    return summaries1
+
+@task(returns=list)
+def merge_summaries1(summaries1, summaries2):
+    for att in summaries2:
+        if att in summaries1:
+            for i in range(len(summaries1[att])):
+                summaries1[att][i] = (
+                            (summaries1[att][i][0] + summaries2[att][i][0]),
+                             summaries1[att][i][1] + summaries2[att][i][1])
+        else:
+            summaries1[att] = summaries2[att]
+
+    return summaries1
+
+def summarize(features):
+    summaries = []
+    for attribute in zip(*features):
+        avg = sum(attribute)
+        summaries.append((avg, len(attribute)))
+    return summaries
+
+
+
+
+#-------------------------------------------------------------------------
+#   Naive Bayes
+#
+#   predictions
+#-------------------------------------------------------------------------
+
+
+
+@task(returns=list)
+def merge_lists(list1,list2):
+    return list1+list2
+
+@task(returns=list)
+def predict_chunck(data, summaries, settings):
+
+    features_col    = settings['features']
+    predictedLabel  = settings.get('predCol','prediction')
+
+    predictions = []
+    for i in range(len(data)):
+     	result = predict(summaries, data.iloc[i][features_col])
+     	predictions.append(result)
+
+
+    data[predictedLabel] =  pd.Series(predictions).values
+    return data
+
+def predict(summaries, inputVector):
+	probabilities = calculateClassProbabilities(summaries, inputVector)
+	bestLabel, bestProb = None, -1
+	for classValue, probability in probabilities.iteritems():
+		if bestLabel is None or probability > bestProb:
+			bestProb = probability
+			bestLabel = classValue
+	return bestLabel
+
+
+def calculateClassProbabilities(summaries, toPredict):
+
+    probabilities = {}
+    for classValue, classSummaries in summaries.iteritems():
+        probabilities[classValue] = 1
+        for i in range(len(classSummaries)):
+            mean, var = classSummaries[i]
+            x = toPredict[i]
+            probabilities[classValue]  *=  calculateProbability(x, mean, var)
+    return probabilities
+
+
+def calculateProbability(x, mean, stdev):
+    #exponent = math.exp(-(math.pow(x-mean,2)/(2*math.pow(stdev,2))))
+    #prob = (1 / (math.sqrt(2*math.pi) * stdev)) * exponent
+    import functions_naivebayes
+    prob = functions_naivebayes.calculateProbability(x,mean,stdev)
+    return prob

@@ -38,6 +38,9 @@ class RegressionModelEvaluation(object):
 
         * Explained Variance: Measures the proportion to which a mathematical model
         accounts for the variation (dispersion) of a given data set.
+
+        Methods:
+            - calculate()
     """
 
     def calculate(self,data,settings,numFrag):
@@ -65,69 +68,69 @@ class RegressionModelEvaluation(object):
         col_predicted = settings['pred_col']
         col_test      = settings['test_col']
         col_features  = settings['features']
-        partial = [self.RME_stage1(data[f],col_test,col_predicted,
+        partial = [RME_stage1(data[f],col_test,col_predicted,
                     col_features) for f in range(numFrag)]
-        statistics = mergeReduce(self.mergeRME,partial)
-        result = self.RME_stage2(statistics)
+        statistics = mergeReduce(mergeRME,partial)
+        result = RME_stage2(statistics)
 
         return result
 
-    @task(returns=list, isModifier = False)
-    def RME_stage1(self,df,col_test,col_predicted,col_features):
+@task(returns=list)
+def RME_stage1(df,col_test,col_predicted,col_features):
 
-        dim = 1
-        SSE_partial = SSY_partial = abs_error = sum_y = 0
-        if len(df)>0:
-            df.reset_index(drop=True, inplace=True)
-            head = df.loc[0,col_features]
-            if isinstance(head,list):
-                dim = len(head)
+    dim = 1
+    SSE_partial = SSY_partial = abs_error = sum_y = 0
+    if len(df)>0:
+        df.reset_index(drop=True, inplace=True)
+        head = df.loc[0,col_features]
+        if isinstance(head,list):
+            dim = len(head)
 
-            error = (df[col_predicted]-df[col_test]).values
-            SSE_partial = np.sum(np.square(error))
-            abs_error = np.sum(np.absolute(error))
+        error = (df[col_predicted]-df[col_test]).values
+        SSE_partial = np.sum(np.square(error))
+        abs_error = np.sum(np.absolute(error))
 
-            for y in df[col_test].values:
-                sum_y+=y
-                SSY_partial+=np.square(y)
+        for y in df[col_test].values:
+            sum_y+=y
+            SSY_partial+=np.square(y)
 
-        N = len(df)
-        table = np.array([N, SSE_partial, SSY_partial, abs_error, sum_y ])
-        table = table.astype(float)
-        return [table, dim]
+    N = len(df)
+    table = np.array([N, SSE_partial, SSY_partial, abs_error, sum_y ])
+    table = table.astype(float)
+    return [table, dim]
 
-    @task(returns=list, isModifier = False)
-    def mergeRME(self,pstatistic1,pstatistic2):
-        dim = max(pstatistic1[1], pstatistic2[1])
-        pstatistic = pstatistic1[0] + pstatistic2[0]
-        return [pstatistic,dim]
+@task(returns=list)
+def mergeRME(pstatistic1,pstatistic2):
+    dim = max(pstatistic1[1], pstatistic2[1])
+    pstatistic = pstatistic1[0] + pstatistic2[0]
+    return [pstatistic,dim]
 
-    @task(returns=list, isModifier = False)  #@local
-    def RME_stage2(self,statistics):
+@task(returns=list)  #@local
+def RME_stage2(statistics):
 
-        dim = statistics[1]
-        N, SSE, SSY, abs_error, sum_y = statistics[0]
-        y_mean = sum_y / N
-        SS0 = N*(y_mean)**2
+    dim = statistics[1]
+    N, SSE, SSY, abs_error, sum_y = statistics[0]
+    y_mean = sum_y / N
+    SS0 = N*(y_mean)**2
 
-        SST = SSY - SS0
-        #SSR = SST - SSE
-        R2 = 1 - SSE/SST # or SSR/SST
+    SST = SSY - SS0
+    #SSR = SST - SSE
+    R2 = 1 - SSE/SST # or SSR/SST
 
-        #MSE = Mean Square Errors = Error Mean Square = Residual Mean Square
-        MSE = SSE/(N-dim-1)
-        RMSE = np.sqrt(MSE)
+    #MSE = Mean Square Errors = Error Mean Square = Residual Mean Square
+    MSE = SSE/(N-dim-1)
+    RMSE = np.sqrt(MSE)
 
-        MAE = abs_error/(N-dim-1)
+    MAE = abs_error/(N-dim-1)
 
-        #MSR = MSRegression = Mean Square of Regression
-        MSR =  SSE/dim
+    #MSR = MSRegression = Mean Square of Regression
+    MSR =  SSE/dim
 
-        result =  pd.DataFrame([
-                                ["R^2 (Explained Variance)",R2],
-                                ["Mean Squared Error (MSE)",MSE],
-                                ["Root Mean Squared Error (RMSE)",RMSE],
-                                ["Mean Absolute Error (MAE)",MAE],
-                                ['Mean Square of Regression (MSR)',MSR]
-                            ],columns=["Metric","Value"])
-        return result
+    result =  pd.DataFrame([
+                            ["R^2 (Explained Variance)",R2],
+                            ["Mean Squared Error (MSE)",MSE],
+                            ["Root Mean Squared Error (RMSE)",RMSE],
+                            ["Mean Absolute Error (MAE)",MAE],
+                            ['Mean Square of Regression (MSR)',MSR]
+                        ],columns=["Metric","Value"])
+    return result

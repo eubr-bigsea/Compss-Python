@@ -63,6 +63,8 @@ def DropDuplicates_p(data1,data2,cols):
 
     data[0].reset_index(drop=True,inplace=True)
     data[1].reset_index(drop=True,inplace=True)
+    data1.reset_index(drop=True,inplace=True)
+    data2.reset_index(drop=True,inplace=True)
     data1.ix[0:] =  data[0].ix[0:]
     data2.ix[0:] =  data[1].ix[0:]
 

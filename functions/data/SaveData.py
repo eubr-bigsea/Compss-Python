@@ -36,6 +36,13 @@ def SaveOperation(data,settings,numFrag):
 
 
 
+def SaveHDFSOperation(data, settings):
+	import hdfs_pycompss.hdfsConnector as hdfs
+	success = hdfs.writeSplittedDataFrame(settings, data)
+	if not success:
+		raise Exception('Error in SaveHDFSOperation.')
+
+
 
 @task(filename = FILE_OUT)
 def SaveToCSV(filename,data,mode,header):
