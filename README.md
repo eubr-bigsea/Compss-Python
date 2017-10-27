@@ -9,6 +9,7 @@ A list of all COMPS's operations supported by Lemonade.
  	- Data Reader
  	- Data Writer
  	- Workload Balancer
+	- Attributes Changer
 
 * [ETL Operations](https://github.com/eubr-bigsea/Compss-Python/tree/master/functions/etl):
  	- Add Columns
@@ -39,6 +40,8 @@ A list of all COMPS's operations supported by Lemonade.
  	- Apriori
 	- Save Model
 	- Load Model
+	- PCA
+	- Feature Assembler
 
 
 
