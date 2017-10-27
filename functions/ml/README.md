@@ -8,7 +8,7 @@ Feature Assembler is a transformer that combines a given list of columns into a 
 This implementation accepts the following input column types: all numeric types, boolean type, and vector type. In each row, the values of the input columns will be concatenated into a vector in the specified order.
 
 ```bash
-	FeatureAssemblerOperation():
+    FeatureAssemblerOperation():
     :param df:      Input DataFrame;
     :param cols:    List of valid columns to be assembled;
     :param alias:   Name of the new column.
@@ -61,3 +61,32 @@ Save a machine learning model in HDFS.
         - overwrite:  True if overwrite in case of colision name, False to raise a error.
 ```
 
+## Principal component analysis (PCA):
+
+Principal component analysis (PCA) is a statistical method to find a rotation such that the first coordinate has the largest variance possible, and each succeeding coordinate in turn has the largest variance possible. PCA is used widely in dimensionality reduction.
+
+
+```bash
+
+    fit():
+
+    :param data:        A list with numFrag pandas's dataframe used to create the model.
+    :param settings:    A dictionary that contains:
+        - features:     Field of the features in the dataset;
+        - NComponents:  Number of wanted dimensionality (int, 0 < NComponents <= dim(features)).
+    :param numFrag:     A number of fragments;
+    :return:            Returns a model (which is a pandas dataframe).
+
+
+
+    transform():
+
+    :param data:     A list with numFrag pandas's dataframe.
+    :param model:    The pca model created;
+    :param settings: A dictionary that contains:
+        - features: 	Field of the features data;
+        - predCol:   Alias to the new features field;
+    :param numFrag:  A number of fragments;
+    :return:         A list with numFrag pandas's dataframe (in the same input format).
+
+```
