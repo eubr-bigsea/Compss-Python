@@ -9,11 +9,10 @@ from pycompss.functions.reduce import mergeReduce
 
 import numpy as np
 import math
-import pickle
 import pandas as pd
 
 #@task(returns=list)
-def Partitionize(data,numFrag):
+def Partitionize(data, numFrag):
     """
         Partitionize:
 

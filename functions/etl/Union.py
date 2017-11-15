@@ -7,7 +7,6 @@ __email__  = "lucasmsp@gmail.com"
 from pycompss.api.task import task
 from pycompss.api.parameter import *
 
-import numpy as np
 import pandas as pd
 
 
@@ -21,10 +20,11 @@ def UnionOperation(data1, data2, numFrag):
         :param numFrag: The number of fragments;
         :return:        Returns a list with numFrag pandas's dataframe.
     """
+    result = [[] for f in range(numFrag)]
+    for f in range(numFrag):
+        result[f] = Union_part(data1[f], data2[f])
 
-    data_result = [Union_part(data1[f], data2[f]) for f in range(numFrag)]
-
-    return data_result
+    return result
 
 
 @task(returns=list)

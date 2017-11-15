@@ -98,10 +98,11 @@ def get_sectors(data_input, spindex, shp_object, settings):
         col_long = settings['lon_col']
         if len(attributes) == 0:
             attributes = shp_object.columns
+
         polygon_col = settings.get('polygon','points')
 
-        for i,point in data_input.iterrows():
-            tmp = []
+        for i, point in data_input.iterrows():
+            # tmp = []
             y = float(point[col_lat])
             x = float(point[col_long])
 
@@ -112,9 +113,18 @@ def get_sectors(data_input, spindex, shp_object, settings):
                 row = shp_object.loc[shp_inx]
                 polygon = Path(row[polygon_col])
                 if polygon.contains_point([y, x]):
-                    tmp.append(row[attributes])
+                    content = [i] + row[attributes].tolist()
+                    # tmp.append(content)
+                    sector_position.append(content)
 
-            sector_position.append(tmp )
 
-    data_input[alias] =  sector_position
+        tmp = pd.DataFrame(sector_position)
+        attributes = attributes.insert(0,'index_geoWithin')
+        tmp.columns = [a+alias for a in attributes]
+
+        key = 'index_geoWithin'+alias
+        data_input = pd.merge( data_input, tmp, left_index=True,
+                            right_on=key)
+        data_input.drop([key], axis=1, inplace=True)
+
     return data_input

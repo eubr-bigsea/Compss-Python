@@ -185,18 +185,16 @@ def construct_TF_IDF( data, vocabulary, params, num_doc):
     """
     alias   = params['alias']
     columns = params['attributes']
-    new_columns = np.zeros((len(data),len(vocabulary)),dtype=np.int)
-
-    data[alias] = pd.Series(new_columns.tolist())
+    vector = np.zeros((len(data),len(vocabulary)),dtype=np.int)
 
     vocab = vocabulary['Word'].values
+    data.reset_index(drop=True, inplace=True)
 
     for i, point in data.iterrows():
         lines = point[columns].values
         lines = np.array( list(itertools.chain(lines))).flatten()
 
-        for w in range(len(vocab)):
-            token = vocab[w]
+        for w, token in enumerate(vocab):
             if token in lines:
                 # TF = (Number of times term t appears in the document) /
                 #        (Total number of terms in the document).
@@ -214,6 +212,9 @@ def construct_TF_IDF( data, vocabulary, params, num_doc):
                                         'DistinctFrequency'
                                         ].item()
                 idf = np.log( float(num_doc) / nDocsWithTermT )
-                data.ix[i][alias][w] = tf*idf
+
+                vector[i][w] = tf*idf
+
+    data[alias] = vector.tolist()
 
     return data

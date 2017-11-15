@@ -35,6 +35,7 @@ def NormalizeOperation(data, settings, numFrag):
     mode    = settings.get('mode','range')
     columns = settings.get('attributes',[])
     alias   = settings.get('alias',[])
+    result = [[] for f in range(numFrag)]
 
     if len(columns) == 0:
         raise \
@@ -47,8 +48,8 @@ def NormalizeOperation(data, settings, numFrag):
         # merge them into only one list
         minmax = mergeReduce(merge_maxmin, minmax_partial)
         # compute the new values to each subset
-        result = [normalizate_byRange(data[f], columns, alias, minmax)
-                    for f in range(numFrag)]
+        for f in range(numFrag):
+            result[f] = normalizate_byRange(data[f], columns, alias, minmax)
 
     elif mode == 'standard':
         # compute the sum of each subset column
@@ -60,8 +61,9 @@ def NormalizeOperation(data, settings, numFrag):
                 [aggregate_sse(data[f], columns, mean) for f in range(numFrag)]
         sse = mergeReduce(merge_sse, sse_partial)
         # finally, compute the new values to each subset
-        result = [normalizate_byStandard(data[f], columns, alias, mean, sse)
-                for f in range(numFrag)]
+        for f in range(numFrag):
+            result[f] = normalizate_byStandard(data[f], columns, alias, mean,sse)
+
 
     else:
         raise Exception('Only supports range and standard Normalization types.')

@@ -6,6 +6,7 @@ __email__  = "lucasmsp@gmail.com"
 
 from pycompss.api.task          import task
 from pycompss.api.parameter     import *
+from pycompss.functions.reduce import mergeReduce
 
 import numpy  as np
 import pandas as pd
@@ -29,11 +30,13 @@ def WorkloadBalancerOperation(df1, forced, numFrag):
 
     #first: check the distribution of the data
     len1 = [balancing_count( df1[f]) for f in range(numFrag)]
+    len1 = mergeReduce(mergeCount,len1)
     len1 = compss_wait_on(len1)
-    total = sum(len1)
+    total = len1[0]
+    len1 = len1[1]
 
     if forced:
-        balanced = True
+        balanced = False
     else:
         CV = np.std(len1) / np.mean(len1)
         print "Coefficient of variation:{}".format(CV)
@@ -76,9 +79,13 @@ def WorkloadBalancerOperation(df1, forced, numFrag):
     return df1
 
 
-@task(returns=int)
+@task(returns=list)
 def balancing_count(df1):
-    return len(df1)
+    return [len(df1), [len(df1)]]
+
+@task(returns=list)
+def mergeCount(len1,len2):
+    return [len1[0]+len2[0], len1[1]+len2[1] ]
 
 @task( df_f1=INOUT, returns=list ) #df_f2=INOUT
 def balancing_f1_to_f2(df_f1, df_f2, off1):

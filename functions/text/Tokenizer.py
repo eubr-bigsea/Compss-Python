@@ -34,7 +34,9 @@ def TokenizerOperation(data,settings,numFrag):
                 fields will be merged in one unique column.
     """
     settings = Validation(settings)
-    result = [Tokenizer_part(data[i],settings) for i in range(numFrag)]
+    result = [ [] for i in range(numFrag)]
+    for i in range(numFrag):
+        result[i] = Tokenizer_part(data[i],settings)
     return result
 
 def Validation(settings):

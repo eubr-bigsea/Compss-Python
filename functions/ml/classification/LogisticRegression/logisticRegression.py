@@ -113,7 +113,11 @@ def sigmoid(x, w):
     :param x: Vector.
     :return: Value returned.
     """
-    return  1.0 - 1.0/(1.0 + math.exp(sum(w*x)))
+    try:
+        den = math.exp(sum(w*x))
+    except OverflowError:
+        den = float('inf')
+    return  1.0 - 1.0/(1.0 + den )
 
 def ComputeCoeffs(data, features, label, alpha,
                         iters, threshold, reg, numFrag):

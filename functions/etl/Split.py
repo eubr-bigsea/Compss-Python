@@ -40,8 +40,11 @@ def SplitOperation(data,settings,numFrag):
     total = mergeReduce(mergeCount,partial_counts)
     indexes = DefineSplit(total,percentage,seed,numFrag)
 
-    splits1 = [GetSplits(data[i],indexes,True,i)  for i in range(numFrag)]
-    splits2 = [GetSplits(data[i],indexes,False,i) for i in range(numFrag)]
+    splits1 = [ []  for i in range(numFrag)]
+    splits2 = [ []  for i in range(numFrag)]
+    for i in range(numFrag):
+        splits1[i] = GetSplits(data[i],indexes,True,i)
+        splits2[i] = GetSplits(data[i],indexes,False,i)
 
     return  [splits1, splits2]
 
@@ -62,20 +65,29 @@ def DefineSplit (N_list,percentage,seed,numFrag):
     size = int(math.floor(total*percentage))
 
     np.random.seed(seed)
-    ids = sorted(np.random.choice(total, size, replace=False))
+    ids = np.array(sorted(np.random.choice(total, size, replace=False)))
 
+    n_list = np.cumsum(n_list)
     list_ids = [[] for i in range(numFrag)]
 
-    frag = 0
-    maxIdFrag = n_list[frag]
-    oldmax = 0
-    for i in ids:
-        while i >= maxIdFrag:
-            frag+=1
-            oldmax = maxIdFrag
-            maxIdFrag+= n_list[frag]
+    first_id = 0
+    for i in range(numFrag):
+        last_id = n_list[i]
+        idx = (ids >= first_id) & (ids < last_id)
+        print idx
+        list_ids[i] =  ids[idx]
+        first_id = last_id
 
-        list_ids[frag].append(i-oldmax)
+    # frag = 0
+    # maxIdFrag = n_list[frag]
+    # oldmax = 0
+    # for i in ids:
+    #     while i >= maxIdFrag:
+    #         frag+=1
+    #         oldmax = maxIdFrag
+    #         maxIdFrag+= n_list[frag]
+    #
+    #     list_ids[frag].append(i-oldmax)
 
     return list_ids
 

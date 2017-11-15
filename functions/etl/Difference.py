@@ -32,8 +32,6 @@ def DifferenceOperation(data1,data2,numFrag):
         raise Exception("data1 and data2 must have len equal to numFrag.")
 
 
-    from pycompss.api.api import compss_wait_on
-
     data_result = [pd.DataFrame() for i in range(numFrag)]
 
     for f1 in range(len(data1)):

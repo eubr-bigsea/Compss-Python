@@ -38,10 +38,11 @@ def  ReplaceValuesOperation (data,settings,numFrag):
 	"""
 
 	Validate(settings)
+	result = [[] for f in range(numFrag)]
 
 	for f in range(numFrag):
-		data[f] = ReplaceValues_p(data[f], settings)
-	return data
+		result[f] = ReplaceValues_p(data[f], settings)
+	return result
 
 
 def Validate(settings):

@@ -83,6 +83,7 @@ class SVM(object):
 
             cost = cost_grad[0]
             thresold = abs(old_cost - cost)
+            # print thresold
             if  thresold <= coef_threshold:
                 print "[INFO] - Final Cost %.4f" % (cost)
                 break

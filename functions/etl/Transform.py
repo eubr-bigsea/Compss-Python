@@ -39,8 +39,9 @@ def TransformOperation(data,settings,numFrag):
     """
 
     functions =  Validate(settings)
-
-    result = [apply_transformation(data[f], functions) for f in range(numFrag)]
+    result = [[] for f in range(numFrag)]
+    for f in range(numFrag):
+        result[f] = apply_transformation(data[f], functions)
     return result
 
 

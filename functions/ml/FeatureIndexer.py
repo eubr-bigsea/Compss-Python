@@ -63,9 +63,11 @@ def FeatureIndexerOperation(data,settings,numFrag):
 
         #Operation step:
         mapper = model['model']
-        data  = [IndexToString_p(data[f], inputCol, outputCol, mapper)
-                    for f in range(numFrag)]
-        return data
+        result = [[] for f in range(numFrag)]
+        for f in range(numFrag):
+            result[f]  = IndexToString_p(data[f], inputCol, outputCol, mapper)
+
+        return result
 
 
 @task(returns=list)

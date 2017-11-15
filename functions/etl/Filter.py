@@ -7,7 +7,6 @@ __email__  = "lucasmsp@gmail.com"
 from pycompss.api.task import task
 from pycompss.api.parameter import *
 
-import numpy as np
 import pandas as pd
 
 

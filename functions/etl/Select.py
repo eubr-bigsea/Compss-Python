@@ -21,12 +21,14 @@ def SelectOperation(data,columns,numFrag):
         :return:        A list with numFrag pandas's dataframe
                         with only the columns choosed.
     """
+    result = [[] for f in range(numFrag)]
     if len(columns)>0:
-        data = [Select_part(data[f], columns) for f in range(numFrag)]
+        for f in range(numFrag):
+            result[f] = Select_part(data[f], columns)
     else:
         raise Exception ("You should pass at least one column.")
 
-    return data
+    return result
 
 @task(returns=list)
 def Select_part(list1,fields):

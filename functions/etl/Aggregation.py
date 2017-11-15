@@ -56,34 +56,62 @@ def AggregationOperation(data,params,numFrag):
                 for f in range(numFrag)]
 
     ## buffer to store the join between each block
-    buff = [(f,g) for f in range(numFrag)  for g in xrange(f,numFrag) if f != g]
-
+    import itertools
+    buff =  list(itertools.combinations([x for x in range(numFrag)], 2))
+    result = [[] for f in range(numFrag)]
 
     ## Merging the partial results
 
     def disjoint(a, b):
         return  set(a).isdisjoint(b)
+    #
+    # while len(buff)>0:
+    #     step_list_i = []
+    #     step_list_j = []
+    #     step_list_i.append(buff[0][0])
+    #     step_list_j.append(buff[0][1])
+    #     del buff[0]
+    #
+    #     for i in range(len(buff)):
+    #         tuples = buff[i]
+    #         if  disjoint(tuples, step_list_i):
+    #             if  disjoint(tuples, step_list_j):
+    #                 step_list_i.append(tuples[0])
+    #                 step_list_j.append(tuples[1])
+    #                 del buff[i]
+    #
+    #     for x,y in zip(step_list_i,step_list_j):
+
+    x_i = []
+    y_i = []
 
     while len(buff)>0:
+        x = buff[0][0]
         step_list_i = []
         step_list_j = []
-        step_list_i.append(buff[0][0])
-        step_list_j.append(buff[0][1])
+        if x >= 0:
+            y = buff[0][1]
+            step_list_i.append(x)
+            step_list_j.append(y)
+            buff[0] = [-1,-1]
+            for j in range( len(buff)):
+                tuples = buff[j]
+                if tuples[0] >=0:
+                    if  disjoint(tuples, step_list_i):
+                        if  disjoint(tuples, step_list_j):
+                            step_list_i.append(tuples[0])
+                            step_list_j.append(tuples[1])
+                            buff[j] = [-1,-1]
         del buff[0]
+        x_i.extend(step_list_i)
+        y_i.extend(step_list_j)
 
-        for i in range(len(buff)):
-            tuples = buff[i]
-            if  disjoint(tuples, step_list_i):
-                if  disjoint(tuples, step_list_j):
-                    step_list_i.append(tuples[0])
-                    step_list_j.append(tuples[1])
-                    del buff[i]
+    for x,y in zip(x_i,y_i):
+        merge_aggregate(data[x], data[y], columns, operation, target)
 
-        for x,y in zip(step_list_i,step_list_j):
-            merge_aggregate(data[x], data[y], columns, operation, target)
 
     for f in range(numFrag):
-        data[f] = remove_nan(data[f])
+        result[f] = remove_nan(data[f])
 
 
     return data

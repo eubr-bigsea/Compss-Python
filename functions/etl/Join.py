@@ -131,8 +131,7 @@ def InnerJoin(data1,data2,params):
 
     if case_sensitive:
         df_partial = pd.merge(  data1, data2, how='inner',
-                                left_on=key1,right_on=key2
-                                )
+                                left_on=key1,right_on=key2)
 
     else:
         # create a temporary copy of the two dataframe
@@ -144,18 +143,15 @@ def InnerJoin(data1,data2,params):
 
 
         df_tmp = pd.merge(  data1_tmp, data2_tmp,
-                            how='inner',left_on=key1, right_on=key2
-                            )
+                            how='inner',left_on=key1, right_on=key2)
 
         df_tmp.drop(key1+key2, axis=1, inplace=True)
 
         df_tmp  = pd.merge( data1, df_tmp,
-                            left_index = True, right_on='data1_tmp'
-                            )
+                            left_index = True, right_on='data1_tmp')
 
         df_partial  = pd.merge( df_tmp, data2,
-                                left_on='data2_tmp', right_index= True
-                                )
+                                left_on='data2_tmp', right_index= True)
         df_partial.drop(['data1_tmp','data2_tmp'], axis=1, inplace=True)
 
 

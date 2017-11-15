@@ -4,8 +4,6 @@
 __author__ = "Lucas Miguel S Ponce"
 __email__  = "lucasmsp@gmail.com"
 
-import time
-import math
 import numpy as np
 import pandas as pd
 
@@ -96,12 +94,10 @@ class KNN(object):
 
         model = mergeReduce(merge_lists, p_model)
 
-        result = [ classifyBlock(data[i],
-                                 model,
-                                 col_features,
-                                 predCol,
-                                 K)  for i in range(numFrag) ]
 
+        result = [[] for i in range(numFrag)]
+        for i in range(numFrag):
+            result[i] = classifyBlock(data[i], model, col_features, predCol, K)
 
         return result
 
@@ -142,20 +138,35 @@ class KNN(object):
 
 @task(returns=list)
 def createModel(df,label,features):
-    df.rename(columns={label: 'label', features: 'features'}, inplace=True)
-    return df
+    labels = df[label].values
+    feature = np.array(df[features].values.tolist())
+
+    # df.rename(columns={label: 'label', features: 'features'}, inplace=True)
+    return [labels, feature] #df
 
 @task(returns=list)
 def merge_lists(list1, list2):
-    result = pd.concat([list1,list2], ignore_index=True)
-    return  result
+    # pd.concat([list1,list2], ignore_index=True)
+    l1,f1 = list1
+    l2,f2 = list2
+
+    if len(l1) != 0:
+        if  len(l2) != 0:
+            result1 = np.concatenate((l1,l2), axis=0)
+            result2 = np.concatenate((f1,f2), axis=0)
+            return  [result1, result2]
+        else:
+            return list1
+    else:
+        return list2
+
+
 
 @task(returns=list)
-def classifyBlock(data, train_data, col_features, predCol, K):
+def classifyBlock(data, model, col_features, predCol, K):
 
-    start=time.time()
     sizeTest    = len(data)
-    sizeTrain   = len(train_data)
+    sizeTrain   = len(model[0])
 
     #if this frame is empty, do nothing
     if sizeTest == 0:
@@ -163,46 +174,29 @@ def classifyBlock(data, train_data, col_features, predCol, K):
         return data
 
     #initalizing variables
-    print data.head(10)
-    print train_data.head(10)
     sample = data.iloc[0][col_features]
     if isinstance(sample, list):
         numDim = len(sample)
     else:
         numDim = 1
 
+    semi_labels = [ [ 0 for i in range(K)] for j in range(sizeTest)] #without type
 
-    semi_labels = [ [ 0 for i in range(K+1)] for j in range(sizeTest)]
-    semi_dist   = np.full( (sizeTest, K+1), float("inf"))
     import functions_knn
 
     for i_test in range(sizeTest):
+        semi_dist   = np.empty(sizeTrain)
         for i_train in range(sizeTrain):
-            semi_dist[i_test][K] =  functions_knn.distance(
-                            np.array(train_data.iloc[i_train]['features']),
+            semi_dist[i_train] =   functions_knn.distance( #np.array(train_data.iloc[i_train]['features']).astype(float)
+                            model[1][i_train],
                             np.array(data.iloc[i_test][col_features]),
                             numDim )
-            semi_labels[i_test][K] = train_data.iloc[i_train]['label']
+            # semi_dist[i_train] =  np.linalg.norm(model[1][i_train]-np.array(data.iloc[i_test][col_features]))
+        inds = semi_dist.argsort()
+        semi_labels[i_test] =  model[0][inds][0:K]
 
-            j=K
-            while(j>0):
-                if(semi_dist[i_test][j] < semi_dist[i_test][j-1]):
-                    tmp_label = semi_labels[i_test][j]
-                    semi_labels[i_test][j]   = semi_labels[i_test][j-1]
-                    semi_labels[i_test][j-1] = tmp_label
-
-                    tmp_dist = semi_dist[i_test][j];
-                    semi_dist[i_test][j]    = semi_dist[i_test][j-1];
-                    semi_dist[i_test][j-1]  = tmp_dist;
-                j-=1
-
-
-    values = getKNN(semi_labels,K)
+    values = getKNN(semi_labels, K)
     data[predCol] =  pd.Series(values).values
-
-    end = time.time()
-    print "[INFO] - ClassifierBlock: Time elapsed: %.2f seconds\n" \
-            % (end-start)
 
     return data
 

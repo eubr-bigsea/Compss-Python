@@ -170,17 +170,18 @@ def transform_BoW( data, vocabulary, params):
 
     alias   = params['alias']
     columns = params['attributes']
-    new_columns = np.zeros((len(data),len(vocabulary)),dtype=np.int)
-
-    data[alias] = pd.Series(new_columns.tolist())
+    vector = np.zeros((len(data),len(vocabulary)),dtype=np.int)
 
     vocabulary = vocabulary['Word'].values
-
+    data.reset_index(drop=True, inplace=True)
     for i, point in data.iterrows():
         lines = point[columns].values
         lines = np.array( list(itertools.chain(lines))).flatten()
-        for w in range(len(vocabulary)):
-            if vocabulary[w] in lines:
-                data.ix[i][alias][w] = 1
+        for e, w in enumerate(vocabulary):
+            if w in lines:
+                vector[i][e] = 1
+
+
+    data[alias] = vector.tolist()
 
     return data

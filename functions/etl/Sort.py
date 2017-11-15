@@ -35,12 +35,12 @@ def SortOperation(data,settings,numFrag):
     algorithm = Validate(settings,numFrag)
 
     if algorithm == "bitonic":
-        data = sort_byBittonic(data,settings,numFrag)
+        result = sort_byBittonic(data,settings,numFrag)
     else:
-        data = sort_byOddEven(data,settings,numFrag)
+        result = sort_byOddEven(data,settings,numFrag)
 
 
-    return data
+    return result
 
 def Validate(settings,numFrag):
     cols1 = settings.get('columns',[])
@@ -61,7 +61,6 @@ def Validate(settings,numFrag):
 
     return algorithm
 
-
 def sort_byBittonic(data,settings,numFrag):
     """
     Given an unordered sequence of size 2*fragments, exactly
@@ -69,39 +68,7 @@ def sort_byBittonic(data,settings,numFrag):
     a completely ordered list.
     """
 
-    for f in range(numFrag):
-        data[f] = sort_p(data[f], settings)
-
-    step   = 1
-    stage  = 1
-    gap    = 2
-    max_steps = int(np.log2(numFrag))
-    while step <= max_steps:
-        if (stage <= step) and (stage>0):
-            f   = 0
-            if stage == 1:
-                gap = 1
-                while f<numFrag:
-                    mergesort(data[f],data[f+gap], settings)
-                    f+=(gap+1)
-
-            elif stage == step:
-                gap =  2**step -1
-                while gap>=1:
-                    mergesort(data[f],data[f+gap], settings)
-                    f+=1
-                    gap-=2
-
-            else:
-                gap = gap/2
-                while f<numFrag:
-                    mergesort(data[f],data[f+gap], settings)
-                    f+=(gap+1)
-            stage-=1
-
-        else:
-            step+=1
-            stage=step
+    data = bitonic_sort(data, settings)
 
     return data
 
@@ -116,23 +83,48 @@ def sort_byOddEven(data,settings,numFrag):
     nsorted = True
     from pycompss.api.api import compss_wait_on
     while nsorted:
+        signals = [0 for i in range(numFrag)]
         if (f % 2 == 0):
-            s = [ mergesort(data[i],data[i+1],settings)
-                    for i in range(numFrag)   if (i % 2 == 0)]
-        else:
-            s = [ mergesort(data[i],data[i+1],settings)
-                    for i in range(numFrag-1) if (i % 2 != 0)]
+            for i in range(numFrag):
+                if (i % 2 == 0):
+                    signals[i] =  mergesort(data[i], data[i+1], settings)
 
-        s = compss_wait_on(s)
+        else:
+            for i in range(numFrag-1):
+                if (i % 2 != 0):
+                    signals[i] =  mergesort(data[i], data[i+1], settings)
+
 
         if f>2:
-            nsorted = any([ i ==-1 for i in s])
+            signals = compss_wait_on(signals)
+            nsorted = any([ i ==-1 for i in signals])
             #nsorted = False
         f +=1
     return data
 
 
+def bitonic_sort(x, settings):
+    if len(x) <= 1:
+        return x
+    else:
+        first = bitonic_sort(x[:len(x) // 2], settings)
+        second = bitonic_sort(x[len(x) // 2:], settings)
+        return bitonic_merge( first + second, settings)
 
+def bitonic_merge(x, settings):
+    # assume input x is bitonic, and sorted list is returned
+    if len(x) == 1:
+        return x
+    else:
+        bitonic_compare(x, settings)
+        first = bitonic_merge(x[:len(x) // 2], settings)
+        second = bitonic_merge(x[len(x) // 2:], settings)
+        return first + second
+
+def bitonic_compare(x, settings):
+    dist = len(x) // 2
+    for i in range(dist):
+        mergesort(x[i], x[i+dist], settings)
 
 
 @task(returns=list)

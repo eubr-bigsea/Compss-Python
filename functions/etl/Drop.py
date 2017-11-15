@@ -19,10 +19,11 @@ def DropOperation(data, columns, numFrag):
         :param numFrag: A number of fragments;
         :return: A list with numFrag pandas's dataframe.
     """
+    result = [[] for f in range(numFrag)]
+    for f in range(numFrag):
+        result[f] = Drop_part(data[f], columns)
 
-    data_result = [ Drop_part(data[f], columns) for f in range(numFrag)]
-
-    return data_result
+    return result
 
 @task(returns=list)
 def Drop_part(list1,columns):

@@ -34,26 +34,30 @@ def SampleOperation(data,params,numFrag):
 
     value, int_per = Validate(params)
     TYPE = params.get("type", 'percent')
+    if TYPE not in ['percent','value','head']:
+        raise Exception('Please inform a valid type mode')
 
     #Its necessary count the distribuition of the data in each fragment
     partial_counts  = [CountRecord(data[i]) for i in range(numFrag)]
     N_list          = mergeReduce(mergeCount,partial_counts)
 
+    result = [[] for i in range(numFrag)]
     if TYPE  == 'percent':
         seed        = params.get('seed', None)
         indexes     = DefineNSample(N_list,None,seed,True,'null',numFrag)
-        data = [GetSample(data[i],indexes,i) for i in range(numFrag)]
+
     elif TYPE  == 'value':
-        #value       = params['value']
         seed        = params.get('seed', None)
         indexes     = DefineNSample(N_list,value,seed,False,int_per,numFrag)
-        data = [GetSample(data[i],indexes,i) for i in range(numFrag)]
-    elif TYPE == 'head':
-        #head    = params['value']
-        indexes = DefineHeadSample(N_list,value,int_per,numFrag)
-        data = [GetSample(data[i],indexes,i) for i in range(numFrag)]
 
-    return data
+    elif TYPE == 'head':
+        indexes = DefineHeadSample(N_list,value,int_per,numFrag)
+
+
+    for i in range(numFrag):
+        result[i] = GetSample(data[i],indexes,i)
+
+    return result
 
 
 
@@ -100,28 +104,33 @@ def DefineNSample (N_list,value,seed,random,int_per,numFrag):
     elif int_per == 'per':
         value = int(math.ceil(total*value))
 
-
     if random:
         np.random.seed(seed)
         percentage = np.random.random_sample()
         value = int(math.ceil(total*percentage))
 
-
     np.random.seed(seed)
-    ids = sorted(np.random.choice(total, value, replace=False))
-
+    ids = np.array(sorted(np.random.choice(total, value, replace=False)))
+    n_list = np.cumsum(n_list)
     list_ids = [[] for i in range(numFrag)]
 
-    frag = 0
-    maxIdFrag = n_list[frag]
-    oldmax = 0
-    for i in ids:
-        while i >= maxIdFrag:
-            frag+=1
-            oldmax = maxIdFrag
-            maxIdFrag+= n_list[frag]
+    first_id = 0
+    for i in range(numFrag):
+        last_id = n_list[i]
+        idx = (ids >= first_id) & (ids < last_id)
+        list_ids[i] =  ids[idx]
+        first_id = last_id
 
-        list_ids[frag].append(i-oldmax)
+    # frag = 0
+    # maxIdFrag = n_list[frag]
+    # oldmax = 0
+    # for i in ids:
+    #     while i >= maxIdFrag:
+    #         frag+=1
+    #         oldmax = maxIdFrag
+    #         maxIdFrag+= n_list[frag]
+    #
+    #     list_ids[frag].append(i-oldmax)
 
     return list_ids
 

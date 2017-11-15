@@ -4,16 +4,12 @@
 __author__ = "Lucas Miguel S Ponce"
 __email__  = "lucasmsp@gmail.com"
 
-from pycompss.api.task import task
 from pycompss.api.parameter import *
+from pycompss.api.task import task
 from pycompss.functions.reduce import mergeReduce
-from pycompss.api.api import compss_wait_on
 
 import numpy as np
 import pandas as pd
-import math
-import sys
-
 
 def AddColumnsOperation(df1,df2,balanced,sufixes,numFrag):
     """
@@ -31,9 +27,9 @@ def AddColumnsOperation(df1,df2,balanced,sufixes,numFrag):
     if not balanced:
         df1, df2 = balancer(df1,df2,numFrag)
 
-
-    result = [AddColumns_part(df1[f], df2[f],sufixes) for f in range(numFrag)]
-
+    result = [[] for f in range(numFrag)]
+    for f in range(numFrag):
+        result[f] = AddColumns_part(df1[f], df2[f], sufixes)
     return result
 
 @task(returns=list)
@@ -55,12 +51,19 @@ def balancer(df1,df2,numFrag):
 
     #first: check len of each frag
     len1 = [balancing_count( df1[f]) for f in range(numFrag)]
+    len1 = mergeReduce(mergeCount,len1)
     len2 = [balancing_count( df2[f]) for f in range(numFrag)]
+    len2 = mergeReduce(mergeCount,len2)
+
+    from pycompss.api.api import compss_wait_on
+
     len1 = compss_wait_on(len1)
     len2 = compss_wait_on(len2)
-    total1 = sum(len1)
-    total2 = sum(len2)
 
+    total1 = len1[0]
+    total2 = len2[0]
+    len1 = len1[1]
+    len2 = len2[1]
     balanced = True
     for i,j in zip(len1,len2):
         if i != j:
@@ -68,6 +71,7 @@ def balancer(df1,df2,numFrag):
             break
 
     if not balanced:
+        import math
         total  = max([total1,total2])
         size_p = int(math.ceil(float(total)/numFrag))
 
@@ -141,9 +145,13 @@ def balancer(df1,df2,numFrag):
     return df1,df2
 
 
-@task(returns=int)
+@task(returns=list)
 def balancing_count(df1):
-    return len(df1)
+    return [len(df1), [len(df1)]]
+
+@task(returns=list)
+def mergeCount(len1,len2):
+    return [len1[0]+len2[0], len1[1]+len2[1] ]
 
 @task( df_f1=INOUT, returns=list ) #df_f2=INOUT
 def balancing_f1_to_f2(df_f1, df_f2, off1):
