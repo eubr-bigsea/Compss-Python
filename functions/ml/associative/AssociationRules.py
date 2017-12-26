@@ -1,25 +1,22 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
+"""Association Rules Operation.
 
+Generates the list of rules in the form: predecessor, successor
+and its confidence for each item passed by parameter.
+"""
 __author__ = "Lucas Miguel S Ponce"
-__email__  = "lucasmsp@gmail.com"
+__email__ = "lucasmsp@gmail.com"
 
 from itertools import chain, combinations
-from collections import defaultdict
-
-from pycompss.api.parameter     import *
-from pycompss.api.task          import task
-from pycompss.functions.reduce  import mergeReduce
-
-
+from pycompss.api.parameter import *
+from pycompss.api.task import task
+from pycompss.functions.reduce import mergeReduce
+import pandas as pd
 
 
 def AssociationRulesOperation(freqItems, settings):
-    """
-    AssociationRulesOperation():
-
-    Generates the list of rules in the form: predecessor, successor
-    and its confidence for each item passed by parameter.
+    """AssociationRulesOperation.
 
     :param freqItems:     The pandas dataframe splitted in N parts;
     :param settings:      A dictionary with the informations:
@@ -30,48 +27,54 @@ def AssociationRulesOperation(freqItems, settings):
                           -1 to return all rules;
     :return               A list of pandas dataframe.
     """
-    numFrag        = len(freqItems)
-    col_item       = settings.get('col_item','items')
-    col_freq       = settings.get('col_freq','support')
-    min_confidence = settings.get('confidence', 0.5)
-    maxRules       = int(settings.get('rules_count',-1))
+    numFrag = len(freqItems)
+    col_item = settings.get('col_item', 'items')
+    col_freq = settings.get('col_freq', 'support')
+    min_conf = settings.get('confidence', 0.5)
+    maxRules = int(settings.get('rules_count', -1))
 
-    toRetRules = [ getRules(freqItems, col_item, col_freq, i, min_confidence ) for i in range(numFrag) ]
+    toRetRules = [[] for i in range(numFrag)]
+    for i in range(numFrag):
+        toRetRules[i] = getRules(freqItems, col_item, col_freq, i, min_conf)
 
-    if maxRules>-1:
-
-        conf              = ['confidence']
-        toRetRules_sorted = sort_byOddEven(toRetRules,conf ,numFrag)
-        count             = [ count_transations(toRetRules_sorted[f]) for f in range(numFrag) ]
-        mergedCount       = mergeReduce(mergecount, count)
-        toRetRules        = [filterRules(toRetRules_sorted[f],mergedCount ,int(maxRules),f) for f in range(numFrag) ]
+    if maxRules > -1:
+        conf = ['confidence']
+        toRetRules_sort = sort_byOddEven(toRetRules, conf, numFrag)
+        count = [count_transations(toRetRules_sort[f]) for f in range(numFrag)]
+        mergedCount = mergeReduce(mergecount, count)
+        for f in range(numFrag):
+            toRetRules[f] = filterRules(toRetRules_sort[f],
+                                        mergedCount, maxRules, f)
 
     return toRetRules
 
+
 @task(returns=list)
-def filterRules(toRetRules,count,maxRules,pos):
-    print count
+def filterRules(toRetRules, count, maxRules, pos):
+    """Select the first N rules."""
     total, partial = count
     if total > maxRules:
         gets = 0
         for i in range(pos):
-            gets+=partial[i]
+            gets += partial[i]
         number = maxRules-gets
-        if number > partial[pos]: number = partial[pos]
-        if number < 0:     number = 0
+        if number > partial[pos]:
+            number = partial[pos]
+        if number < 0:
+            number = 0
         return toRetRules.head(number)
     else:
         return toRetRules
 
 
 @task(returns=list)
-def getRules( freqItems, col_item, col_freq, i, minConfidence):
-
+def getRules(freqItems, col_item, col_freq, i, minConfidence):
+    """Perform a partial rules generation."""
     toRetRules = []
     for index, row in freqItems[i].iterrows():
-        item    = row[col_item]
+        item = row[col_item]
         support = row[col_freq]
-        if len(item)>0:
+        if len(item) > 0:
             _subsets = [list(x) for x in subsets(item)]
 
             for element in _subsets:
@@ -79,46 +82,50 @@ def getRules( freqItems, col_item, col_freq, i, minConfidence):
 
                 if len(remain) > 0:
                     num = float(support)
-                    den = getSupport(element,freqItems,col_item, col_freq)
+                    den = getSupport(element, freqItems, col_item, col_freq)
                     confidence = num/den
 
                     if confidence > minConfidence:
                         r = [element, remain, confidence]
                         toRetRules.append(r)
 
-
-    import pandas as pd
-    rules = pd.DataFrame(toRetRules,columns=['Pre-Rule','Post-Rule','confidence'])
+    cols = ['Pre-Rule', 'Post-Rule', 'confidence']
+    rules = pd.DataFrame(toRetRules, columns=cols)
 
     return rules
 
 
-
 def subsets(arr):
-    """ Returns non empty subsets of arr"""
+    """Return non empty subsets of arr."""
     return chain(*[combinations(arr, i + 1) for i, a in enumerate(arr)])
 
-def getSupport(element, freqItems,col_item, col_freq):
+
+def getSupport(element, freqItems, col_item, col_freq):
+    """Retrive the support of an item."""
     for df in freqItems:
-        for t,s  in zip(df[col_item].values, df[col_freq].values):
+        for t, s in zip(df[col_item].values, df[col_freq].values):
             if element == t:
                 return s
     return float("inf")
 
 
 @task(returns=list)
-def mergeRules(rules1,rules2):
-    return pd.concat([rules1,rules2])
+def mergeRules(rules1, rules2):
+    """Merge partial rules."""
+    return pd.concat([rules1, rules2])
+
 
 @task(returns=list)
 def count_transations(rules):
+    """Count the number of rules."""
     return [len(rules), [len(rules)]]
 
+
 @task(returns=list)
-def mergecount(c1,c2):
+def mergecount(c1, c2):
+    """Merge the partial count."""
     return [c1[0]+c2[0], c1[1]+c2[1]]
 
-#----------------------
 
 def sort_byOddEven(data,conf_col,numFrag):
     from pycompss.api.api import compss_wait_on
@@ -204,5 +211,3 @@ def mergesort(data1, data2, col):
     data2.ix[0:] = data.ix[:]
 
     return  nsorted
-
-#-----------------------------------

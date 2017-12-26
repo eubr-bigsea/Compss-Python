@@ -1,23 +1,19 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
-
+"""Geo Within Operation: returns the sectors that the each point belongs."""
 __author__ = "Lucas Miguel S Ponce"
-__email__  = "lucasmsp@gmail.com"
+__email__ = "lucasmsp@gmail.com"
 
 from pycompss.api.task import task
 from pycompss.api.parameter import *
-
-import numpy  as np
+from pycompss.api.api import compss_wait_on
 import pandas as pd
 import pyqtree
 
 
 def GeoWithinOperation(data, shp_object, settings, numFrag):
     """
-    GeoWithinOperation():
-
-    To each record in the data input, returns the sectors that the
-    point belongs.
+    GeoWithinOperation.
 
     :param data:       A list of pandas dataframe;
     :param shp_object: The dataframe created by the function ReadShapeFile;
@@ -42,7 +38,20 @@ def GeoWithinOperation(data, shp_object, settings, numFrag):
         raise Exception("Please inform, at least, the fields: "
                         "`attributes`,`lat_col` and `lon_col`")
 
-    polygon = settings.get('polygon','points')
+    dicty = prepareSpindex(settings, shp_object)
+    dicty = compss_wait_on(dicty)
+    spindex = dicty['spindex']
+    shp_object = dicty['shp_object']
+    result = [[] for f in range(numFrag)]
+    for f in range(numFrag):
+        result[f] = get_sectors(data[f], spindex, shp_object, settings)
+
+    return result
+
+
+@task(returns=dict)
+def prepareSpindex(settings, shp_object):
+    polygon = settings.get('polygon', 'points')
     if settings.get('lat_long', True):
         LAT_pos = 0
         LON_pos = 1
@@ -50,10 +59,13 @@ def GeoWithinOperation(data, shp_object, settings, numFrag):
         LAT_pos = 1
         LON_pos = 0
 
+    shp_object = pd.concat(shp_object)
+
     xmin = float('+inf')
     ymin = float('+inf')
     xmax = float('-inf')
     ymax = float('-inf')
+
     for i, sector in shp_object.iterrows():
         for point in sector[polygon]:
             xmin = min(xmin, point[LON_pos])
@@ -61,10 +73,10 @@ def GeoWithinOperation(data, shp_object, settings, numFrag):
             xmax = max(xmax, point[LON_pos])
             ymax = max(ymax, point[LAT_pos])
 
-    #create the main bound box
+    # create the main bound box
     spindex = pyqtree.Index(bbox=[xmin, ymin, xmax, ymax])
 
-    #than, insert all sectors bbox
+    # than, insert all sectors bbox
     for inx, sector in shp_object.iterrows():
         points = []
         xmin = float('+inf')
@@ -79,34 +91,30 @@ def GeoWithinOperation(data, shp_object, settings, numFrag):
             ymax = max(ymax, point[LAT_pos])
         spindex.insert(item=inx, bbox=[xmin, ymin, xmax, ymax])
 
-    for f in range(numFrag):
-        data[f] =  get_sectors(data[f], spindex, shp_object, settings)
+    dicty = {}
+    dicty['spindex'] = spindex
+    dicty['shp_object'] = shp_object
 
-    return data
+    return dicty
+
 
 @task(returns=list)
 def get_sectors(data_input, spindex, shp_object, settings):
+    """Retrieve the sectors of each fragment."""
     from matplotlib.path import Path
-    alias = settings.get('alias', 'sector_position')
-    attributes = settings.get('attributes', [])
-
+    alias = settings.get('alias', '_sector_position')
+    attributes = settings.get('attributes', shp_object.columns)
     sector_position = []
+    col_lat = settings['lat_col']
+    col_long = settings['lon_col']
+    polygon_col = settings.get('polygon', 'points')
 
-    if len(data_input)>0:
-
-        col_lat  = settings['lat_col']
-        col_long = settings['lon_col']
-        if len(attributes) == 0:
-            attributes = shp_object.columns
-
-        polygon_col = settings.get('polygon','points')
-
+    if len(data_input) > 0:
         for i, point in data_input.iterrows():
-            # tmp = []
             y = float(point[col_lat])
             x = float(point[col_long])
 
-            #(xmin,ymin,xmax,ymax)
+            # (xmin,ymin,xmax,ymax)
             matches = spindex.intersect([x, y, x, y])
 
             for shp_inx in matches:
@@ -114,17 +122,20 @@ def get_sectors(data_input, spindex, shp_object, settings):
                 polygon = Path(row[polygon_col])
                 if polygon.contains_point([y, x]):
                     content = [i] + row[attributes].tolist()
-                    # tmp.append(content)
                     sector_position.append(content)
 
-
+    if len(sector_position) > 0:
         tmp = pd.DataFrame(sector_position)
-        attributes = attributes.insert(0,'index_geoWithin')
-        tmp.columns = [a+alias for a in attributes]
+        attributes = ['index_geoWithin'] + attributes
+        tmp.columns = ["{}{}".format(a, alias) for a in attributes]
 
         key = 'index_geoWithin'+alias
-        data_input = pd.merge( data_input, tmp, left_index=True,
-                            right_on=key)
-        data_input.drop([key], axis=1, inplace=True)
+        data_input = pd.merge(data_input, tmp,
+                              left_index=True, right_on=key)
+        data_input = data_input.drop([key], axis=1)
+    else:
+        import numpy as np
+        for a in [a+alias for a in attributes]:
+            data_input[a] = np.nan
 
     return data_input

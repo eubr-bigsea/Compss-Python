@@ -13,7 +13,7 @@ All parameters are explained below:
     - minimum_df:    Minimum number of how many  documents a word should appear.
     - minimum_tf:    Minimum number of occurrences of a word.
     - size:         Vocabulary maximum size, -1 if there are no size.
- - :param numFrag: num fragments, if -1 data is considered chunked.
+ - :param numFrag:  The number of fragments;
  - :return  A model (dataframe) with the <word,tf,df>
 
 **transform()**: Perform the transformation of the data based in the model created.

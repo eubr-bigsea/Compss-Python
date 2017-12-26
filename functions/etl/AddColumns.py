@@ -1,182 +1,158 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
+"""AddColumns Operation: Merge two dataframes, column-wise."""
 
 __author__ = "Lucas Miguel S Ponce"
-__email__  = "lucasmsp@gmail.com"
+__email__ = "lucasmsp@gmail.com"
 
 from pycompss.api.parameter import *
 from pycompss.api.task import task
 from pycompss.functions.reduce import mergeReduce
-
 import numpy as np
 import pandas as pd
 
-def AddColumnsOperation(df1,df2,balanced,sufixes,numFrag):
-    """
-        AddColumnsOperation():
-        Merge two dataframes, column-wise, similar to the command
-        paste in Linux.
 
-        :param df1:         A list with numFrag pandas's dataframe;
-        :param df2:         A list with numFrag pandas's dataframe;
-        :param balanced:    True only if len(df1[i]) == len(df2[i]) to each i;
-        :param numFrag:     The number of fragments;
-        :param suffixes     Suffixes for attributes (a list with 2 values);
-        :return:            Returns a list with numFrag pandas's dataframe.
-    """
-    if not balanced:
-        df1, df2 = balancer(df1,df2,numFrag)
+def AddColumnsOperation(df1, df2, balanced, sufixes, numFrag):
+    """AddColumnsOperation.
 
-    result = [[] for f in range(numFrag)]
-    for f in range(numFrag):
-        result[f] = AddColumns_part(df1[f], df2[f], sufixes)
+    :param df1:         A list with numFrag pandas's dataframe;
+    :param df2:         A list with numFrag pandas's dataframe;
+    :param balanced:    True only if len(df1[i]) == len(df2[i]) to each i;
+    :param numFrag:     The number of fragments;
+    :param suffixes     Suffixes for attributes (a list with 2 values);
+    :return:            Returns a list with numFrag pandas's dataframe.
+    """
+    indexes1, indexes2, len1, len2 = check_indexes(df1, df2, numFrag)
+
+    up1 = indexes1[-1][1]
+    up2 = indexes2[-1][1]
+    op = (up2 < up1)
+    result = [pd.DataFrame([]) for f in range(numFrag)]
+    startfill = -1
+
+    if op:
+        for f in range(numFrag):
+            for j in range(numFrag):
+                if is_overlapping(indexes1[f], indexes2[j]):
+                    last = (f == numFrag-1) or (j == numFrag-1)
+                    result[f] = AddColumns_part(result[f], df1[f], df2[j],
+                                                indexes1[f], indexes2[j],
+                                                sufixes, last, op)
+                    startfill = f
+
+        if startfill < numFrag-1:
+            for f in xrange(startfill+1, numFrag):
+                result[f] = AddColumns_fill(df1[f], len2, op, sufixes)
+    else:
+        for f in range(numFrag):
+            for j in range(numFrag):
+                if is_overlapping(indexes1[j], indexes2[f]):
+                    last = (f == numFrag-1) or (j == numFrag-1)
+                    result[f] = AddColumns_part(result[f], df1[j], df2[f],
+                                                indexes1[j], indexes2[f],
+                                                sufixes, last, op)
+                    startfill = f
+
+        if startfill < numFrag-1:
+            for f in xrange(startfill+1, numFrag):
+                result[f] = AddColumns_fill(df2[f], len1, op, sufixes)
+
     return result
 
-@task(returns=list)
-def AddColumns_part(a,b,suffixes):
-    #See more: https://pandas.pydata.org/pandas-docs/stable/generated/pandas.DataFrame.merge.html
-    if len(suffixes) == 0:
-        suffixes=('_x', '_y')
-    a.reset_index(drop=True,inplace=True)
-    b.reset_index(drop=True,inplace=True)
-    return pd.merge(a, b, left_index=True, right_index=True,
-                    how='outer', suffixes=suffixes)
 
-
-#------------------------------------------------------------------------------
-
-
-
-def balancer(df1,df2,numFrag):
-
-    #first: check len of each frag
-    len1 = [balancing_count( df1[f]) for f in range(numFrag)]
-    len1 = mergeReduce(mergeCount,len1)
-    len2 = [balancing_count( df2[f]) for f in range(numFrag)]
-    len2 = mergeReduce(mergeCount,len2)
+def check_indexes(df1, df2, numFrag):
+    """Retrieve the indexes of each fragment."""
+    # first: check len of each frag
+    indexes1 = [[] for f in range(numFrag)]
+    indexes2 = [[] for f in range(numFrag)]
+    len1 = [len_count(df1[f]) for f in range(numFrag)]
+    len1 = mergeReduce(mergeCount, len1)
+    len2 = [len_count(df2[f]) for f in range(numFrag)]
+    len2 = mergeReduce(mergeCount, len2)
 
     from pycompss.api.api import compss_wait_on
-
     len1 = compss_wait_on(len1)
     len2 = compss_wait_on(len2)
 
-    total1 = len1[0]
-    total2 = len2[0]
-    len1 = len1[1]
-    len2 = len2[1]
-    balanced = True
-    for i,j in zip(len1,len2):
-        if i != j:
-            balanced = False
-            break
-
-    if not balanced:
-        import math
-        total  = max([total1,total2])
-        size_p = int(math.ceil(float(total)/numFrag))
-
-        for f in range(numFrag-1):
-            partition_need1 = size_p - len1[f]
-            #print "need1:{} ".format(partition_need1)
-            if partition_need1>0:
-
-                for g in xrange(f+1,numFrag):
-                    if (len1[g] - partition_need1)<0:
-                        off1 = len1[g]
-                    else:
-                        off1 = partition_need1
-
-                    #print "off1:{}".format(off1)
-
-                    df1[f] = balancing_f2_to_f1(df1[f], df1[g], off1)
-                    #df1 = compss_wait_on(df1)
-                    len1[g] -= off1
-                    len1[f] += off1
-                    partition_need1 -= off1
-
-                    #print "MENOR | len2[f]:{}  | need2:{} | len2[g]:{} ".format(len1[f],len1[g],partition_need1)
-                    #print "MENOR | len2[f]:{}  | need2:{} | len2[g]:{} ".format(len(df1[f]),len(df1[g]),partition_need1)
-                        #print "STATUS:{}".format(len2)
-                #print "Acabou com f:{} --> len:{}".format(f, len1[f])
-            elif partition_need1<0:
-                df1[f+1] = balancing_f1_to_f2(df1[f], df1[f+1], -partition_need1)
-                #df1 = compss_wait_on(df1)
-                len1[f+1] -= partition_need1
-                len1[f] += partition_need1
-
-                #print "MAIOR | len1[f]:{}  | need1:{} | len1[g]:{} ".format(len1[f],len1[f+1],partition_need1)
-                #print "STATUS:{}".format(len2)
-
-        for f in range(numFrag-1):
-            partition_need2 = size_p - len2[f]
-            #print "need2:{} ".format(partition_need2)
-            if partition_need2>0:
-
-                for g in xrange(f+1,numFrag):
-                    if (len2[g] - partition_need2)<0:
-                        off2 = len2[g]
-                    else:
-                        off2 = partition_need2
-
-                    #print "off2:{}".format(off2)
-
-                    df2[f] = balancing_f2_to_f1(df2[f], df2[g], off2)
-                    #df2 = compss_wait_on(df2)
-                    len2[g] -= off2
-                    len2[f] += off2
-                    partition_need2   -= off2
-
-                    #print "MENOR | len2[f]:{}  | need2:{} | len2[g]:{} ".format(len2[f],len2[g],partition_need2)
-                    #print "MENOR | len2[f]:{}  | need2:{} | len2[g]:{} ".format(len(df2[f]),len(df2[g]),partition_need2)
-                        #print "STATUS:{}".format(len2)
-                #print "Acabou com f:{} --> len:{}".format(f, len2[f])
-            elif partition_need2<0:
-                df2[f+1] = balancing_f1_to_f2(df2[f], df2[f+1], -partition_need2)
-                #df2 = compss_wait_on(df2)
-                len2[f+1] -= partition_need2
-                len2[f] += partition_need2
-
-                #print "MAIOR | len1[f]:{}  | need1:{} | len1[g]:{} ".format(len2[f],len2[f+1],partition_need2)
-                #print "STATUS:{}".format(len2)
-
-        #for i in df2:
-        #    print len(i)
-
-    return df1,df2
+    for f in range(numFrag):
+        indexes1[f] = reindexing(len1, f)
+        indexes2[f] = reindexing(len2, f)
+    return indexes1, indexes2, len1, len2
 
 
 @task(returns=list)
-def balancing_count(df1):
-    return [len(df1), [len(df1)]]
+def AddColumns_part(c, a, b,  indexes1, indexes2, suffixes, last, side):
+    """Peform a partial add columns."""
+    if len(suffixes) == 0:
+        suffixes = ('_x', '_y')
+
+    a.index = np.arange(indexes1[0], indexes1[1])
+    b.index = np.arange(indexes2[0], indexes2[1])
+
+    if not last:
+        tmp = pd.merge(a, b, left_index=True, right_index=True,
+                       how='inner', suffixes=suffixes)
+    else:
+        if side:
+            tmp = pd.merge(a, b, left_index=True, right_index=True,
+                           how='left', suffixes=suffixes)
+        else:
+            tmp = pd.merge(a, b, left_index=True, right_index=True,
+                           how='right', suffixes=suffixes)
+
+    if len(c) != 0:
+        tmp = pd.concat((c, tmp))
+        tmp = tmp.groupby(tmp.index).first()
+
+    return tmp
+
 
 @task(returns=list)
-def mergeCount(len1,len2):
-    return [len1[0]+len2[0], len1[1]+len2[1] ]
+def AddColumns_fill(df1, info2, op, suffixes):
+    """Fill the columns that is missing."""
+    cols2 = info2[2]
+    cols1 = df1.columns
+    if len(suffixes) == 0:
+        suffixes = ('_x', '_y')
+    cols1 = ['{}{}'.format(col, suffixes[0])
+             if col in cols2 else col for col in cols1]
+    cols2 = ['{}{}'.format(col, suffixes[1])
+             if col in df1.columns else col for col in cols2]
 
-@task( df_f1=INOUT, returns=list ) #df_f2=INOUT
-def balancing_f1_to_f2(df_f1, df_f2, off1):
-    #df_f1 MAIOR  --to-->    df_f2 MENOR
-
-    tmp = df_f1.tail(off1)
-    df_f1.drop(tmp.index, inplace=True)
-    tmp.reset_index(drop=True,inplace=True)
-
-    mynparray = df_f2.values
-    mynparray = np.vstack((tmp,mynparray))
-    df_f2 = pd.DataFrame(mynparray,columns = df_f2.columns)
-    return df_f2
+    if op:
+        df1.columns = cols1
+        for col in cols2:
+            df1[col] = np.nan
+    else:
+        df1.columns = cols2
+        for col in cols1:
+            df1[col] = np.nan
+    return df1
 
 
-@task( df_f2=INOUT, returns=list )
-def balancing_f2_to_f1(df_f1, df_f2, off1):
-    # Get the head offset lines from df_f2
-    # and put at the tail of df_f1
+def is_overlapping(indexes1, indexes2):
+    """Check if the both intervals are overlapping."""
+    x1, x2 = indexes1
+    y1, y2 = indexes2
+    over = max([x2, y2]) - min([x1, y1]) < ((x2 - x1) + (y2 - y1))
+    return over
 
-    tmp = df_f2.head(off1)
-    df_f2.drop(tmp.index, inplace=True)
-    tmp.reset_index(drop=True,inplace=True)
 
-    mynparray = df_f1.values
-    mynparray = np.vstack((mynparray,tmp))
-    df_f1 = pd.DataFrame(mynparray,columns = df_f1.columns)
-    return df_f1
+def reindexing(len1, index):
+    """Create the new index interval."""
+    i_start = sum(len1[1][:index])
+    i_end = i_start + len1[1][index]
+    return [i_start, i_end]
+
+
+@task(returns=list)
+def len_count(df1):
+    """Count the length of each fragment."""
+    col = list(df1.columns)
+    return [len(df1), [len(df1)], col]
+
+
+@task(returns=list)
+def mergeCount(len1, len2):
+    """Merge count of both fragments."""
+    return [len1[0]+len2[0], len1[1]+len2[1], len1[2]]

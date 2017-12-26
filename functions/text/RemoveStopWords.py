@@ -50,47 +50,72 @@ def RemoveStopWordsOperation(data, stopwords, settings, numFrag):
         if 'col_words' not in settings:
             raise Exception("You must inform an `col_words` column.")
 
+    # for f in range(numFrag):
+    #     for s in range(len_stopwords):
+    #         data[f] = RemoveStopWords_part(data[f], settings, stopwords[s], s)
+
+    #It assumes that stopwords's dataframe can fit in memmory
     for f in range(numFrag):
-        for s in range(len_stopwords):
-            data[f] = RemoveStopWords_part(data[f], settings, stopwords[s], s)
-    return data
+        stopwords[f] = ReadStopWords(stopwords[f],settings)
+    stopwords = mergeReduce(mergeStopWords,stopwords)
+
+    result = [[] for f in range(numFrag)]
+    for f in range(numFrag):
+        result[f] = RemoveStopWords_part(data[f], settings, stopwords)
+    return result
 
 @task(returns=list)
-def RemoveStopWords_part(data, settings, stopwords, index_s):
-
-    if index_s>0:
-        columns = [settings['alias']]
-        alias   = settings['alias']
+def ReadStopWords(data1,settings):
+    if len(data1)>0:
+        data1 = np.reshape(data1[settings['col_words']], -1, order='C')
     else:
-        columns = settings['attributes']
-        alias   = settings['alias']
+        data1 = np.array([])
+    return data1
+
+@task(returns=list)
+def mergeStopWords(data1,data2):
+    data1 = np.concatenate((data1,data2), axis=0)
+    return data1
+
+
+@task(returns=list)
+def RemoveStopWords_part(data, settings, stopwords):
+
+
+    columns = settings['attributes']
+    alias   = settings['alias']
 
     #stopwords must be in 1-D
     new_stops = np.reshape( settings['news-stops-words'], -1, order='C')
     if len(stopwords) !=0:
-        stopwords  = np.reshape(stopwords[settings['col_words']], -1, order='C')
+        # stopwords = np.reshape(stopwords[settings['col_words']], -1, order='C')
         stopwords = np.concatenate((stopwords,new_stops), axis=0)
     else:
         stopwords = new_stops
 
 
     new_data = []
-    if len(data)>0:
+    if data.shape[0] > 0:
         if settings['case-sensitive']:
+            stopwords = set(stopwords)
             for index, row in data.iterrows():
                 col = []
                 for entry in row[columns]:
-                    col.append([tok for tok in entry if tok not in stopwords])
+                    #col.append([tok for tok in entry if tok not in stopwords])
+                    col.append(list(set(entry).difference(stopwords)))
                 new_data.append(col)
 
         else:
             stopwords = [tok.lower() for tok in stopwords]
+            stopwords = set(stopwords)
 
             for index, row in data.iterrows():
                 col = []
                 for entry in row[columns]:
-                    col.append([tok for tok in entry
-                                    if tok.lower() not in stopwords])
+                    entry = [tok.lower() for tok in entry]
+                    col.append(list(set(entry).difference(stopwords)))
+                    # col.append([tok for tok in entry
+                    #                 if tok.lower() not in stopwords])
                 new_data.append(col)
 
         data[alias] = np.reshape(new_data, -1, order='C')

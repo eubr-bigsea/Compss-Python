@@ -1,21 +1,16 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
+"""Filter: select some rows based in a condition."""
 
 __author__ = "Lucas Miguel S Ponce"
-__email__  = "lucasmsp@gmail.com"
+__email__ = "lucasmsp@gmail.com"
 
 from pycompss.api.task import task
 from pycompss.api.parameter import *
 
-import pandas as pd
-
-
-#-------------------------------------------------------------------------------
-#   Filter
 
 def FilterOperation(data, settings, numFrag):
-    """
-    FilterOperation():
+    """FilterOperation.
 
     :param data:       A list with numFrag pandas's dataframe;
     :param settings:   A dictionary that contains:
@@ -32,7 +27,6 @@ def FilterOperation(data, settings, numFrag):
         settings['query'] = "(VEIC == VEIC) and (YEAR > 2000)" to rows where
             VEIC is not NaN and YEAR is greater than 2000
     """
-
     result = [[] for i in range(numFrag)]
     for i in range(numFrag):
         result[i] = filter_partial(data[i], settings)
@@ -41,6 +35,7 @@ def FilterOperation(data, settings, numFrag):
 
 @task(returns=list)
 def filter_partial(data, settings):
-    row_condition = settings.get('query',"")
+    """Perform partial filter."""
+    row_condition = settings.get('query', "")
     data.query(row_condition, inplace=True)
     return data

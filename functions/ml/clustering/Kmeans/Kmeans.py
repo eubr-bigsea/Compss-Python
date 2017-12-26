@@ -112,7 +112,7 @@ class Kmeans(object):
         features_col = settings['features']
         predCol      = settings.get('predCol','Prediction')
 
-        result = [[] for f in range(numFrag)]
+        result = [pd.DataFrame([]) for f in range(numFrag)]
         for f in range(numFrag):
             result[f] = assigment_cluster(data[f], features_col, model, predCol)
 
@@ -120,7 +120,7 @@ class Kmeans(object):
 
 @task(returns=list)
 def getSize(data):
-    return [len(data),[len(data)]]
+    return [data.shape[0],[data.shape[0]]]
 
 @task(returns=list)
 def mergeCentroids(a, b):
@@ -178,7 +178,7 @@ def assigment_cluster(data, columns, model, predCol):
         bestC = distances.argmin(axis=0)
         values.append(bestC)
 
-    data[predCol] = pd.Series(values).values
+    data[predCol] = values
     return data
 
 def has_converged(mu, oldmu, epsilon, iter, maxIterations):
@@ -199,7 +199,7 @@ def cost( data, columns, C):
     XP = np.array(data[columns].values)
     dist = 0
     for x in XP:
-        dist+= distance(x, C)**2
+        dist+= distance(x, C)
 
     return dist
 
@@ -329,7 +329,7 @@ def probabilities( data, columns, C, l, phi,f):
 
     for x in data[columns].values:
         if x not in C[0]:
-            px = (l*distance(x, C[0])**2)/phi
+            px = (l*distance(x, C[0]))/phi
             if px >= np.random.random(1):
                 newC.append(x)
 
@@ -343,15 +343,13 @@ def probabilities( data, columns, C, l, phi,f):
 
 @task(returns=list)
 def MergeBestMuKey(w1,w2):
-    for i in range(len(w2)):
-        w1[i]+=w2[i]
-    return w1
+    return np.add(w1,w2)
 
 @task(returns=list)
 def bestMuKey(data,columns, C):
     C = C[0]
     w = [0 for i in xrange(len(C))]
-    for x in np.array(data[columns]):
+    for x in data[columns].values:
         distances = np.array([np.linalg.norm(x - np.array(c) ) for c in C])
         bestC = distances.argmin(axis=0)
         w[bestC]+=1

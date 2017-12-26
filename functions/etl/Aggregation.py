@@ -1,23 +1,17 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
+"""Aggregation: Computes aggregates and returns the result as a DataFrame."""
 
 __author__ = "Lucas Miguel S Ponce"
-__email__  = "lucasmsp@gmail.com"
+__email__ = "lucasmsp@gmail.com"
 
 from pycompss.api.task import task
 from pycompss.api.parameter import *
-
-import numpy as np
 import pandas as pd
 
-#-------------------------------------------------------------------------------
-#  Aggregation
 
-def AggregationOperation(data,params,numFrag):
-    """
-    AggregationOperation():
-
-    Computes aggregates and returns the result as a DataFrame.
+def AggregationOperation(data, params, numFrag):
+    """AggregationOperation.
 
     :param data:     A list with numFrag pandas's dataframe;
     :param params:   A dictionary that contains:
@@ -42,50 +36,39 @@ def AggregationOperation(data,params,numFrag):
     example:
         settings['columns']   = ["col1"]
         settings['operation'] = {'col2':['sum'],'col3':['first','last']}
-        settings['aliases']   = \
-            {'col2':["Sum_col2"],'col3':['col_First','col_Last']}
+        settings['aliases']   = {'col2':["Sum_col2"],
+                                 'col3':['col_First','col_Last']
+                                }
     """
 
+    tmp = [[] for f in range(numFrag)]
+    for f in range(numFrag):
+        tmp[f] = aggregate_partial(data[f], params)
 
-    columns   = params['columns']
-    target    = params['aliases']
-    operation = params['operation']
+    result = [tmp[f] for f in range(numFrag)]
+    for f1 in range(numFrag):
+        for f2 in range(numFrag):
+            if f1 != f2:
+                result[f1] = merge_aggregate(result[f1], tmp[f2],
+                                             params, f1, f2)
+
+    return result
 
 
-    data = [ aggregate_partial(data[f], columns, operation,  target)
-                for f in range(numFrag)]
-
-    ## buffer to store the join between each block
+def createExecutionList(numFrag):
+    """Create a list of execution."""
+    # buffer to store the join between each block
     import itertools
-    buff =  list(itertools.combinations([x for x in range(numFrag)], 2))
-    result = [[] for f in range(numFrag)]
+    buff = list(itertools.combinations([x for x in range(numFrag)], 2))
 
-    ## Merging the partial results
-
+    # Merging the partial results
     def disjoint(a, b):
-        return  set(a).isdisjoint(b)
-    #
-    # while len(buff)>0:
-    #     step_list_i = []
-    #     step_list_j = []
-    #     step_list_i.append(buff[0][0])
-    #     step_list_j.append(buff[0][1])
-    #     del buff[0]
-    #
-    #     for i in range(len(buff)):
-    #         tuples = buff[i]
-    #         if  disjoint(tuples, step_list_i):
-    #             if  disjoint(tuples, step_list_j):
-    #                 step_list_i.append(tuples[0])
-    #                 step_list_j.append(tuples[1])
-    #                 del buff[i]
-    #
-    #     for x,y in zip(step_list_i,step_list_j):
+        return set(a).isdisjoint(b)
 
     x_i = []
     y_i = []
 
-    while len(buff)>0:
+    while len(buff) > 0:
         x = buff[0][0]
         step_list_i = []
         step_list_j = []
@@ -93,96 +76,109 @@ def AggregationOperation(data,params,numFrag):
             y = buff[0][1]
             step_list_i.append(x)
             step_list_j.append(y)
-            buff[0] = [-1,-1]
-            for j in range( len(buff)):
+            buff[0] = [-1, -1]
+            for j in range(len(buff)):
                 tuples = buff[j]
-                if tuples[0] >=0:
-                    if  disjoint(tuples, step_list_i):
-                        if  disjoint(tuples, step_list_j):
+                if tuples[0] >= 0:
+                    if disjoint(tuples, step_list_i):
+                        if disjoint(tuples, step_list_j):
                             step_list_i.append(tuples[0])
                             step_list_j.append(tuples[1])
-                            buff[j] = [-1,-1]
+                            buff[j] = [-1, -1]
         del buff[0]
         x_i.extend(step_list_i)
         y_i.extend(step_list_j)
+    return x_i, y_i
 
-    for x,y in zip(x_i,y_i):
-        merge_aggregate(data[x], data[y], columns, operation, target)
-
-
-    for f in range(numFrag):
-        result[f] = remove_nan(data[f])
-
-
-    return data
 
 @task(returns=list)
-def aggregate_partial(data, columns, operation, target):
-
+def aggregate_partial(data, params):
+    """Perform a partial aggregation."""
+    print params
+    columns = params['columns']
+    target = params['aliases']
+    operation = params['operation']
     operation = replaceFunctionsName(operation)
-
     data = data.groupby(columns).agg(operation)
-
     newidx = []
     i = 0
-    old=None
-    for (n1,n2) in data.columns.ravel():
-
+    old = None
+    # renaming
+    for (n1, n2) in data.columns.ravel():
         if old != n1:
             old = n1
             i = 0
-
         newidx.append(target[n1][i])
-        i+=1
+        i += 1
 
     data.columns = newidx
     data = data.reset_index()
-
+    data = data.reset_index(drop=True)
     return data
 
 
-@task(data1=INOUT,data2=INOUT)
-def merge_aggregate(data1, data2, columns, operation, target):
+@task(returns=list)
+def merge_aggregate(data1, data2, params, f1, f2):
+    """Combining the aggregation with other fragment.
+
+    if a key is present in both fragments, it will remain
+    in the result only if f1 <f2.
     """
-        data1 and data2 will have at least, your currently size
-    """
+    columns = params['columns']
+    target = params['aliases']
+    operation = params['operation']
 
-    n1 = len(data1)
-    n2 = len(data2)
+    if len(data1) > 0 and len(data2) > 0:
+        # Keep only elements that is present in A
+        merged = data2.merge(data1, on=columns,
+                             how='left', indicator=True)
+        data2 = data2.loc[merged['_merge'] != 'left_only', :]
+        data2 = data2.reset_index(drop=True)
 
-    operation = replaceNamebyFunctions(operation,target)
+        # If f1>f2: Remove elements in data1 that is present in data2
+        if f1 > f2:
 
-    data = pd.concat([data1,data2],axis=0, ignore_index=True)
-    data = data.groupby(columns).agg(operation)
+            merged = data1.merge(data2, on=columns,
+                                 how='left', indicator=True)
+            data1 = data1.loc[merged['_merge'] != 'both', :]
+            data1 = data1.reset_index(drop=True)
+            if len(data2) > 0:
+                merged = data2.merge(data1, on=columns,
+                                     how='left', indicator=True)
+                data2 = data2.loc[merged['_merge'] != 'left_only', :]
 
-    #remove the diffent level
-    data.reset_index(inplace=True)
+        operation = replaceNamebyFunctions(operation, target)
 
-    n = len(data)
+        data = pd.concat([data1, data2], axis=0, ignore_index=True)
+        data = data.groupby(columns).agg(operation)
 
-    data1.columns = data.columns
-    data2.columns = data.columns
-    data1.ix[0:] = data.ix[:n1]
-
-    data = data[data.index >= n1]
-    data = data.reset_index(drop=True)
-    data2.ix[0:] = data.ix[:]
-
+        # remove the diffent level
+        data.reset_index(inplace=True)
+        return data
+    return data1
 
 
 def collectList(x):
-    return  x.tolist()
+    """Generate a list of a group."""
+    return x.tolist()
+
 
 def collectSet(x):
-    # collectList and collectSet must be diferent functions,
-    # otherwise pandas will raise error.
-    return  x.tolist()
+    """Part of the generation of a set from a group.
+
+    CollectList and collectSet must be diferent functions,
+    otherwise pandas will raise error.
+    """
+    return x.tolist()
+
 
 def mergeSet(series):
+    """Merge set list."""
     return reduce(lambda x, y: list(set(x + y)), series.tolist())
 
+
 def replaceFunctionsName(operation):
-    # Replace 'set' and 'list' to the pointer of the real function
+    """Replace 'set' and 'list' to the pointer of the real function."""
     for col in operation:
         for f in range(len(operation[col])):
             if operation[col][f] == 'list':
@@ -191,8 +187,9 @@ def replaceFunctionsName(operation):
                 operation[col][f] = collectSet
     return operation
 
-def replaceNamebyFunctions(operation,target):
-    # Convert the operation dictionary to Alias ->  aggregate function
+
+def replaceNamebyFunctions(operation, target):
+    """Convert the operation dictionary to Alias."""
     new_operations = {}
 
     for col in operation:
@@ -209,9 +206,3 @@ def replaceNamebyFunctions(operation,target):
         for i in range(len(values)):
             new_operations[values[i]] = operation[k][i]
     return new_operations
-
-
-@task(returns=list)
-def remove_nan(data):
-    data.dropna(axis=0,how='all',inplace=True)
-    return data
