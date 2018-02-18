@@ -69,7 +69,7 @@ def changeAttribute(data, attributes, new_name, new_data_type):
             tmp = pd.to_datetime(data[att])
             data[att] = tmp.apply(convertToDate)
         elif new_data_type == "Date/time":
-            data[att] = pd.to_datetime(data[att])
+            data[att] = pd.to_datetime(data[att], infer_datetime_format=True)
 
     # second, rename the columns
     mapper = dict(zip(attributes, new_name))
