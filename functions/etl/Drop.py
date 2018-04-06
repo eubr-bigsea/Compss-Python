@@ -11,23 +11,31 @@ __email__ = "lucasmsp@gmail.com"
 from pycompss.api.task import task
 from pycompss.api.parameter import *
 
+class DropOperation(object):
 
-def DropOperation(data, columns, numFrag):
-    """DropOperation.
+    def __init__(self):
+        pass
 
-    :param data: A list with numFrag pandas's dataframe;
-    :param columns: A list with the columns names to be removed;
-    :param numFrag: A number of fragments;
-    :return: A list with numFrag pandas's dataframe.
-    """
-    result = [[] for f in range(numFrag)]
-    for f in range(numFrag):
-        result[f] = Drop_part(data[f], columns)
+    def transform(self, data, columns, numFrag):
+        """transform.
 
-    return result
+        :param data: A list with numFrag pandas's dataframe;
+        :param columns: A list with the columns names to be removed;
+        :param numFrag: A number of fragments;
+        :return: A list with numFrag pandas's dataframe.
+        """
+        result = [[] for f in range(numFrag)]
+        for f in range(numFrag):
+            result[f] = _drop(data[f], columns)
+
+        return result
+
+    @task(returns=list)
+    def _drop(self, df, columns):
+        """Peform a partial drop operation."""
+        return df.drop(columns, axis=1)
 
 
-@task(returns=list)
-def Drop_part(df, columns):
-    """Peform a partial drop operation."""
-    return df.drop(columns, axis=1)
+    def drop_serial(self, df, columns):
+        """Peform a partial drop operation."""
+        return df.drop(columns, axis=1)

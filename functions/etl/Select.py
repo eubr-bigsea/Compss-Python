@@ -10,8 +10,12 @@ __email__ = "lucasmsp@gmail.com"
 from pycompss.api.task import task
 from pycompss.api.parameter import *
 
+class SelectOperation(object):
 
-def SelectOperation(data, columns, numFrag):
+    def __init__(self):
+        pass
+
+    def transform(self, data, columns, numFrag):
     """SelectOperation.
 
     :param data:    A list with numFrag pandas's dataframe;
@@ -23,19 +27,29 @@ def SelectOperation(data, columns, numFrag):
     result = [[] for f in range(numFrag)]
     if len(columns) > 0:
         for f in range(numFrag):
-            result[f] = Select_part(data[f], columns)
+            result[f] = self._select(data[f], columns)
     else:
         raise Exception("You should pass at least one column.")
 
     return result
 
 
-@task(returns=list)
-def Select_part(list1, fields):
-    """Perform a partial projection."""
-    # remove the columns that not in list1
-    fields = [field for field in fields if field in list1.columns]
-    if len(fields) == 0:
-        raise Exception("The columns passed as parameters "
-                        "do not belong to this dataframe.")
-    return list1[fields]
+    @task(returns=list)
+    def _select(self, list1, fields):
+        """Perform a partial projection."""
+        # remove the columns that not in list1
+        fields = [field for field in fields if field in list1.columns]
+        if len(fields) == 0:
+            raise Exception("The columns passed as parameters "
+                            "do not belong to this dataframe.")
+        return list1[fields]
+
+
+    def select_serial(self, list1, fields):
+        """Perform a partial projection."""
+        # remove the columns that not in list1
+        fields = [field for field in fields if field in list1.columns]
+        if len(fields) == 0:
+            raise Exception("The columns passed as parameters "
+                            "do not belong to this dataframe.")
+        return list1[fields]
