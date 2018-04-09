@@ -26,22 +26,13 @@ class UnionOperation(object):
         """
         result = [[] for f in range(numFrag)]
         for f in range(numFrag):
-            result[f] = _union(data1[f], data2[f])
+            result[f] = self._union(data1[f], data2[f])
 
         return result
 
 
     @task(returns=list)
-    def _union(list1, list2):
-        """Perform a partil union."""
-        if len(list1) == 0:
-            return list2
-        elif len(list2) == 0:
-            return list1
-        else:
-            return pd.concat([list1, list2], ignore_index=True)
-
-    def union_serial(list1, list2):
+    def _union(self, list1, list2):
         """Perform a partil union."""
         if len(list1) == 0:
             return list2

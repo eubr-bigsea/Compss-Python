@@ -16,11 +16,11 @@ class FilterOperation(object):
     def transform(self, data, settings, numFrag):
         """FilterOperation.
 
-        :param data:       A list with numFrag pandas's dataframe;
-        :param settings:   A dictionary that contains:
-            - 'query':     A valid query.
-        :param numFrag:    The number of fragments;
-        :return:           Returns a list with numFrag pandas's dataframe.
+        :param data: A list with numFrag pandas's dataframe;
+        :param settings: A dictionary that contains:
+            - 'query': A valid query.
+        :param numFrag: The number of fragments;
+        :return: Returns a list with numFrag pandas's dataframe.
 
         Note: Visit the link bellow to more information about the query.
         https://pandas.pydata.org/pandas-docs/stable/generated/

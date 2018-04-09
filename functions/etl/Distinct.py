@@ -78,36 +78,7 @@ class DistinctOperation(object):
             data1.reset_index(drop=True, inplace=True)
             data2.reset_index(drop=True, inplace=True)
             # se os dados tiverem exatamente o mesmo tipo, pode ser feito
-            # algo mais eficiente. Por exemplo, usando infer_objects(), pandas 0.21
-            tmp1 = data.loc[data['dropDup_index'] == 'p1', alls_cols].values
-            m1 = len(tmp1)
-            data1.iloc[0:m1, :] = tmp1
-            tmp1 = data.loc[data['dropDup_index'] == 'p2', alls_cols].values
-            m2 = len(tmp1)
-            data2.iloc[0:m2, :] = tmp1
-
-            data1.drop(data1.index[m1:], inplace=True)
-            data2.drop(data2.index[m2:], inplace=True)
-
-    def drop_duplicates_serial(self, data1, data2, cols):
-        """Remove duplicate rows based in two fragments at the time."""
-        data = pd.concat([data1, data2], axis=0, ignore_index=True)
-        n = len(data)
-        if n > 0:
-            alls_cols = data1.columns
-            n1 = len(data1)
-            index = ['p1' for x in range(n1)] + ['p2' for x in xrange(n1, n)]
-            data['dropDup_index'] = index
-
-            # if no field is choosen, all fields are used)
-            if len(cols) == 0:
-                cols = data.columns
-
-            data = data.drop_duplicates(cols, keep='first').reset_index(drop=True)
-            data1.reset_index(drop=True, inplace=True)
-            data2.reset_index(drop=True, inplace=True)
-            # se os dados tiverem exatamente o mesmo tipo, pode ser feito
-            # algo mais eficiente. Por exemplo, usando infer_objects(), pandas 0.21
+            # algo mais eficiente. Por exemplo, usando infer_objects()
             tmp1 = data.loc[data['dropDup_index'] == 'p1', alls_cols].values
             m1 = len(tmp1)
             data1.iloc[0:m1, :] = tmp1

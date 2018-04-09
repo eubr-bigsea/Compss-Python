@@ -52,14 +52,14 @@ class IntersectionOperation(object):
                            indicator=True, copy=False)
             if index > 0:
                 df1['_merge'] = \
-                    np.vectorize(combineIndicators)(col1=df1['_merge'],
-                                                    col2=indicator)
+                    np.vectorize(self.combine_indicators)(col1=df1['_merge'],
+                                                          col2=indicator)
             if last:
                 df1 = df1.loc[df1['_merge'] == 'both', keys]
         return df1
 
 
-    def combineIndicators(self, col1, col2):
+    def combine_indicators(self, col1, col2):
         """Combine indicators of _merge column."""
         if ('b' in col1) or ('b' in col2):
             return 'both'
@@ -67,8 +67,8 @@ class IntersectionOperation(object):
             return 'left_only'
 
 
-    @task(returns=list)
-    def mergeIntersect(self, list1, list2):
-        """Merge partial intersections."""
-        result = pd.concat([list1, list2], ignore_index=True)
-        return result
+    # @task(returns=list)
+    # def merge_intersect(self, list1, list2):
+    #     """Merge partial intersections."""
+    #     result = pd.concat([list1, list2], ignore_index=True)
+    #     return result

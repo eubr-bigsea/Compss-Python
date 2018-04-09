@@ -26,7 +26,7 @@ class DropOperation(object):
         """
         result = [[] for f in range(numFrag)]
         for f in range(numFrag):
-            result[f] = _drop(data[f], columns)
+            result[f] = self._drop(data[f], columns)
 
         return result
 

@@ -16,22 +16,22 @@ class SelectOperation(object):
         pass
 
     def transform(self, data, columns, numFrag):
-    """SelectOperation.
+        """SelectOperation.
 
-    :param data:    A list with numFrag pandas's dataframe;
-    :param columns: A list with the columns names which will be selected;
-    :param numFrag: A number of fragments;
-    :return:        A list with numFrag pandas's dataframe
-                    with only the columns choosed.
-    """
-    result = [[] for f in range(numFrag)]
-    if len(columns) > 0:
-        for f in range(numFrag):
-            result[f] = self._select(data[f], columns)
-    else:
-        raise Exception("You should pass at least one column.")
+        :param data:    A list with numFrag pandas's dataframe;
+        :param columns: A list with the columns names which will be selected;
+        :param numFrag: A number of fragments;
+        :return:        A list with numFrag pandas's dataframe
+                        with only the columns choosed.
+        """
+        result = [[] for f in range(numFrag)]
+        if len(columns) > 0:
+            for f in range(numFrag):
+                result[f] = self._select(data[f], columns)
+        else:
+            raise Exception("You should pass at least one column.")
 
-    return result
+        return result
 
 
     @task(returns=list)

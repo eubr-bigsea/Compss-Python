@@ -40,18 +40,18 @@ class TransformOperation(object):
                                  "lambda col: np.add(col['col1'],col['col2'])",
                                 '']]
         """
-        functions = Validate(settings)
+        functions = self.validate(settings)
         result = [[] for f in range(numFrag)]
         for f in range(numFrag):
             result[f] = self._apply(data[f], functions)
         return result
 
 
-    def Validate(settings):
+    def validate(self, settings):
         """Check all the settings."""
         functions = settings.get('functions', [])
         if any([len(functions) == 0,
-                any([True if (len(func) != 3) else False for func in functions])
+                any([True if (len(f) != 3) else False for f in functions])
                 ]):
             raise Exception('You must inform a valid `functions` parameter.')
         return functions

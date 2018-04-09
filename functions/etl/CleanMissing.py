@@ -15,7 +15,7 @@ class CleanMissingOperation(object):
     def __init__(self):
         pass
 
-    def transform(self, data, params, numFrag):
+    def transform(self, data, params, nFrag):
         """CleanMissingOperation.
 
         :param data:          A list with numFrag pandas's dataframe;
@@ -29,7 +29,7 @@ class CleanMissingOperation(object):
               * "MEAN":          replace by mean value;
               * "REMOVE_COLUMN": remove entire column;
             - value:         Value to replace missing values (if mode is "VALUE");
-        :param numFrag:      The number of fragments;
+        :param nFrag:      The number of fragments;
         :return:             Returns a list with numFrag pandas's dataframe.
 
         example:
@@ -41,18 +41,21 @@ class CleanMissingOperation(object):
         params['cleaning_mode'] = cleaning_mode
 
         if cleaning_mode in ['VALUE', 'REMOVE_ROW']:
-            # In these cases, we dont need to take in count others rows/fragments
-            data = [self._clean_missing(data[f], params) for f in range(numFrag)]
+            # we dont need to take in count others rows/fragments
+            data = [self._clean_missing(data[f], params)
+                    for f in range(nFrag)]
         else:
-            params = [CleanMissing_pre(data[f], params) for f in range(numFrag)]
-            params = mergeReduce(mergeCleanOptions, params)
-            data = [self._clean_missing(data[f], params) for f in range(numFrag)]
+            params = [self._clean_missing_pre(data[f], params)
+                      for f in range(nFrag)]
+            params = mergeReduce(self.merge_clean_options, params)
+            data = [self._clean_missing(data[f], params)
+                    for f in range(nFrag)]
 
         return data
 
 
     @task(returns=dict)
-    def CleanMissing_pre(self, data, params):
+    def _clean_missing_pre(self, data, params):
         """REMOVE_COLUMN, MEAN, MODE and MEDIAN needs pre-computation."""
         attributes = params['attributes']
         cleaning_mode = params['cleaning_mode']
@@ -78,7 +81,7 @@ class CleanMissingOperation(object):
 
 
     @task(returns=dict)
-    def mergeCleanOptions(self, params1, params2):
+    def merge_clean_options(self, params1, params2):
         """Merge pre-computations."""
         cleaning_mode = params1['cleaning_mode']
 
@@ -88,7 +91,8 @@ class CleanMissingOperation(object):
 
         elif cleaning_mode in "MEAN":
             params1['values'] = \
-                [(x + y)/2 for x, y in zip(params1['values'], params2['values'])]
+                [(x + y)/2 for x, y in zip(params1['values'],
+                                           params2['values'])]
 
         elif cleaning_mode in ["MODE", 'MEDIAN']:
             dict_mode1 = params1['dict_mode']
