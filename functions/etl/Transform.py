@@ -1,9 +1,6 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
-"""Transform Operation.
 
-Returns a new DataFrame applying the expression to the specified column.
-"""
 __author__ = "Lucas Miguel S Ponce"
 __email__ = "lucasmsp@gmail.com"
 
@@ -17,12 +14,14 @@ import datetime
 import time
 from dateutil.parser import parse
 
+
 class TransformOperation(object):
+    """Transform Operation.
 
-    def __init__(self):
-        pass
+    Returns a new DataFrame applying the expression to the specified column.
+    """
 
-    def transform(self, settings, numFrag):
+    def transform(self, data, settings, numFrag):
         """TransformOperation.
 
         :param data:      A list with numFrag pandas's dataframe;
@@ -46,7 +45,6 @@ class TransformOperation(object):
             result[f] = self._apply(data[f], functions)
         return result
 
-
     def validate(self, settings):
         """Check all the settings."""
         functions = settings.get('functions', [])
@@ -56,8 +54,7 @@ class TransformOperation(object):
             raise Exception('You must inform a valid `functions` parameter.')
         return functions
 
-
-    @task(returns=list)
+    @task(isModifier=False, returns=list)
     def _apply(self, data, functions):
         """Apply the Transformation operation in each row."""
         for function in functions:

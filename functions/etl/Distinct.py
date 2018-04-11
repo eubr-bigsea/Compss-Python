@@ -1,6 +1,5 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
-"""Distinct Operation: Remove duplicates elements."""
 
 __author__ = "Lucas Miguel S Ponce"
 __email__ = "lucasmsp@gmail.com"
@@ -9,10 +8,9 @@ from pycompss.api.parameter import *
 from pycompss.api.task import task
 import pandas as pd
 
-class DistinctOperation(object):
 
-    def __init__(self):
-        pass
+class DistinctOperation(object):
+    """Distinct Operation: Remove duplicates elements."""
 
     def transform(self, data, cols, numFrag):
         """DistinctOperation.
@@ -59,7 +57,7 @@ class DistinctOperation(object):
 
         return result
 
-    @task(data1=INOUT, data2=INOUT)
+    @task(isModifier=False, data1=INOUT, data2=INOUT)
     def _drop_duplicates(self, data1, data2, cols):
         """Remove duplicate rows based in two fragments at the time."""
         data = pd.concat([data1, data2], axis=0, ignore_index=True)
@@ -74,7 +72,8 @@ class DistinctOperation(object):
             if len(cols) == 0:
                 cols = data.columns
 
-            data = data.drop_duplicates(cols, keep='first').reset_index(drop=True)
+            data = data.drop_duplicates(cols, keep='first')\
+                       .reset_index(drop=True)
             data1.reset_index(drop=True, inplace=True)
             data2.reset_index(drop=True, inplace=True)
             # se os dados tiverem exatamente o mesmo tipo, pode ser feito

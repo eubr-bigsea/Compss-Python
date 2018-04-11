@@ -1,9 +1,6 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
-"""Replace Values Operation.
 
-Replace one or more values to new ones in a pandas's dataframe.
-"""
 __author__ = "Lucas Miguel S Ponce"
 __email__ = "lucasmsp@gmail.com"
 
@@ -13,9 +10,10 @@ import numpy as np
 
 
 class ReplaceValuesOperation(object):
+    """Replace Values Operation.
 
-    def __init__(self):
-        pass
+    Replace one or more values to new ones in a pandas's dataframe.
+    """
 
     def transform(self, data, settings, numFrag):
         """ReplaceValuesOperation.
@@ -43,7 +41,6 @@ class ReplaceValuesOperation(object):
             result[f] = self._replace_values(data[f], settings)
         return result
 
-
     def validate(self, settings):
         """Check all the settings."""
         replaces = settings.get('replaces', {})
@@ -57,8 +54,7 @@ class ReplaceValuesOperation(object):
         if len(replaces) == 0 or WRONG:
             raise Exception('You must inform a valid replaces settings !')
 
-
-    @task(returns=list)
+    @task(isModifier=False, returns=list)
     def _replace_values(self, data, settings):
         """Perform a partial replace values."""
         dict_replaces = settings['replaces']
@@ -75,13 +71,16 @@ class ReplaceValuesOperation(object):
                         tmp_o.append(olds_v[ix])
                         tmp_v.append(news_v[ix])
                         ixs.append(ix)
-                olds_v = [olds_v[ix] for ix in range(len(olds_v)) if ix not in ixs]
-                news_v = [news_v[ix] for ix in range(len(news_v)) if ix not in ixs]
+                olds_v = [olds_v[ix] for ix in range(len(olds_v))
+                          if ix not in ixs]
+                news_v = [news_v[ix] for ix in range(len(news_v))
+                          if ix not in ixs]
 
-                # replace might not work with floats because the floating point
-                # representation you see in the repr of the DataFrame might not be
-                # the same as the underlying float. Because of that, we need to
-                # perform float operations in separate way.
+                # replace might not work with floats because the
+                # floating point representation you see in the repr of
+                # the DataFrame might not be the same as the underlying
+                # float. Because of that, we need to perform float
+                # operations in separate way.
 
                 for old, new in zip(tmp_o, tmp_v):
                     mask = np.isclose(data[col],  old, rtol=1e-06)

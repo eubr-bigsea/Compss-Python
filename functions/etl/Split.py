@@ -1,8 +1,5 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
-"""Split Operation: Randomly splits a Data Frame into two dataframes."""
-__author__ = "Lucas Miguel S Ponce"
-__email__ = "lucasmsp@gmail.com"
 
 from pycompss.api.task import task
 from pycompss.api.parameter import *
@@ -12,9 +9,7 @@ import math
 
 
 class SplitOperation(object):
-
-    def __init__(self):
-        pass
+    """Split Operation: Randomly splits a Data Frame into two dataframes."""
 
     def transform(self, data, settings, numFrag):
         """SplitOperation.
@@ -49,21 +44,18 @@ class SplitOperation(object):
 
         return [splits1, splits2]
 
-
-    @task(returns=list)
+    @task(isModifier=False, returns=list)
     def _count_record(self, data):
         """Count the partial length."""
         size = len(data)
         return [size, [size]]
 
-
-    @task(returns=list)
+    @task(isModifier=False, returns=list)
     def mergeCount(self, df1, df2):
         """Merge the partial lengths."""
         return [df1[0]+df2[0], np.concatenate((df1[1], df2[1]), axis=0)]
 
-
-    @task(returns=list)
+    @task(isModifier=False, returns=list)
     def define_splits(self, N_list, percentage, seed, numFrag):
         """Define a list of indexes to be splitted."""
         total, n_list = N_list
@@ -84,8 +76,7 @@ class SplitOperation(object):
 
         return list_ids
 
-
-    @task(returns=list)
+    @task(isModifier=False, returns=list)
     def get_splits(self, data, indexes, part1, frag):
         """Retrieve the split."""
         data = data.reset_index(drop=True)

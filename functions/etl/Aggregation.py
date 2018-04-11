@@ -1,6 +1,5 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
-"""Aggregation: Computes aggregates and returns the result as a DataFrame."""
 
 __author__ = "Lucas Miguel S Ponce"
 __email__ = "lucasmsp@gmail.com"
@@ -11,9 +10,10 @@ import pandas as pd
 
 
 class AggregationOperation(object):
+    """Aggregation.
 
-    def __init__(self):
-        pass
+    Computes aggregates and returns the result as a DataFrame.
+    """
 
     def transform(self, data, params, numFrag):
         """AggregationOperation.
@@ -45,22 +45,20 @@ class AggregationOperation(object):
                                      'col3':['col_First','col_Last']
                                     }
         """
-
         tmp = [[] for f in range(numFrag)]
-        result = [tmp[f] for f in range(numFrag)]
+
         for f in range(numFrag):
             tmp[f] = self._aggregate(data[f], params)
 
-        # passar pra baixo
+        result = [tmp[f] for f in range(numFrag)]
 
         for f1 in range(numFrag):
             for f2 in range(numFrag):
                 if f1 != f2:
                     result[f1] = self.merge_aggregation(result[f1], tmp[f2],
-                                                 params, f1, f2)
+                                                        params, f1, f2)
 
         return result
-
 
     def create_execution_list(self, numFrag):
         """Create a list of execution."""
@@ -97,7 +95,6 @@ class AggregationOperation(object):
             y_i.extend(step_list_j)
         return x_i, y_i
 
-
     @task(returns=list)
     def _aggregate(self, data, params):
         """Perform a partial aggregation."""
@@ -121,7 +118,6 @@ class AggregationOperation(object):
         data = data.reset_index()
         data = data.reset_index(drop=True)
         return data
-
 
     @task(returns=list)
     def merge_aggregation(self, data1, data2, params, f1, f2):
@@ -163,11 +159,9 @@ class AggregationOperation(object):
             return data
         return data1
 
-
     def collectList(self, x):
         """Generate a list of a group."""
         return x.tolist()
-
 
     def collectSet(self, x):
         """Part of the generation of a set from a group.
@@ -177,11 +171,9 @@ class AggregationOperation(object):
         """
         return x.tolist()
 
-
     def mergeSet(self, series):
         """Merge set list."""
         return reduce(lambda x, y: list(set(x + y)), series.tolist())
-
 
     def replace_functions_name(self, operation):
         """Replace 'set' and 'list' to the pointer of the real function."""
@@ -192,7 +184,6 @@ class AggregationOperation(object):
                 elif operation[col][f] == 'set':
                     operation[col][f] = self.collectSet
         return operation
-
 
     def replace_name_by_functions(self, operation, target):
         """Convert the operation dictionary to Alias."""

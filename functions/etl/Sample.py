@@ -1,9 +1,5 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
-"""Sample Operation.
-
-Returns a sampled subset of the input panda's dataFrame.
-"""
 
 __author__ = "Lucas Miguel S Ponce"
 __email__ = "lucasmsp@gmail.com"
@@ -14,10 +10,12 @@ from pycompss.functions.reduce import mergeReduce
 import numpy as np
 import math
 
-class SampleOperation(object):
 
-    def __init__(self):
-        pass
+class SampleOperation(object):
+    """Sample Operation.
+
+    Returns a sampled subset of the input panda's dataFrame.
+    """
 
     def transform(self, data, params, nFrag):
         """SampleOperation.
@@ -39,26 +37,27 @@ class SampleOperation(object):
         if TYPE not in ['percent', 'value', 'head']:
             raise Exception('Please inform a valid type mode')
 
-        partial_counts = [CountRecord(data[i]) for i in range(nFrag)]
-        N_list = mergeReduce(mergeCount, partial_counts)
+        partial_counts = [self.count_records(data[i]) for i in range(nFrag)]
+        N_list = mergeReduce(self.mergeCount, partial_counts)
 
-        result = [[] for i in range(numFrag)]
+        result = [[] for i in range(nFrag)]
         if TYPE == 'percent':
             seed = params.get('seed', None)
-            idxs =  define_n_sample(N_list, None, seed, True, 'null', nFrag)
+            idxs = self.define_n_sample(N_list, None, seed,
+                                        True, 'null', nFrag)
 
         elif TYPE == 'value':
             seed = params.get('seed', None)
-            idxs = define_n_sample(N_list, value, seed, False, int_per, nFrag)
+            idxs = self.define_n_sample(N_list, value, seed,
+                                        False, int_per, nFrag)
 
         elif TYPE == 'head':
-            idxs = define_head_sample(N_list, value, int_per, nFrag)
+            idxs = self.define_head_sample(N_list, value, int_per, nFrag)
 
         for i in range(nFrag):
-            result[i] = get_samples(data[i], idxs, i)
+            result[i] = self.get_samples(data[i], idxs, i)
 
         return result
-
 
     def validate(self, params):
         """Check the settings."""
@@ -81,26 +80,23 @@ class SampleOperation(object):
                     raise Exception('Percentage value must between 0 and 1.0.')
             else:
                 raise Exception('Using `Head` or `value` sampling type you '
-                                'need to set `int_value` or `per_value` setting '
-                                'as well.')
+                                'need to set `int_value` or `per_value` '
+                                'setting as well.')
 
         return value, op
 
-
-    @task(returns=list)
-    def CountRecord(self, data):
+    @task(isModifier=False, returns=list)
+    def count_records(self, data):
         """Count the distribuition of the data in each fragment."""
         size = len(data)
         return [size, [size]]
 
-
-    @task(returns=list)
+    @task(isModifier=False, returns=list)
     def mergeCount(self, df1, df2):
         """Merge the partial counts."""
         return [df1[0]+df2[0], np.concatenate((df1[1], df2[1]), axis=0)]
 
-
-    @task(returns=list)
+    @task(isModifier=False, returns=list)
     def define_n_sample(self, N_list, value, seed, random, int_per, numFrag):
         """Define the N random indexes to be sampled."""
         total, n_list = N_list
@@ -117,20 +113,19 @@ class SampleOperation(object):
 
         np.random.seed(seed)
         ids = np.array(sorted(np.random.choice(total, value, replace=False)))
-        n_list = np.cumsum(n_list)
+        sizes = np.cumsum(n_list)
         list_ids = [[] for i in range(numFrag)]
 
         first_id = 0
         for i in range(numFrag):
-            last_id = n_list[i]
+            last_id = sizes[i]
             idx = (ids >= first_id) & (ids < last_id)
-            list_ids[i] = ids[idx]
+            list_ids[i] = ids[idx] - first_id
             first_id = last_id
 
         return list_ids
 
-
-    @task(returns=list)
+    @task(isModifier=False, returns=list)
     def define_head_sample(self, N_list, head, int_per, numFrag):
         """Define the head N indexes to be sampled."""
         total, n_list = N_list
@@ -157,8 +152,7 @@ class SampleOperation(object):
 
         return list_ids
 
-
-    @task(returns=list)
+    @task(isModifier=False, returns=list)
     def get_samples(self, data, indexes, i):
         """Perform a partial sampling."""
         indexes = indexes[i]

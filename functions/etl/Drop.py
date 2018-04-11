@@ -1,20 +1,19 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
-"""Drop.
 
-Returns a new DataFrame that drops the specified column.
-Nothing is done if schema doesn't contain the given column name(s).
-"""
 __author__ = "Lucas Miguel S Ponce"
 __email__ = "lucasmsp@gmail.com"
 
 from pycompss.api.task import task
 from pycompss.api.parameter import *
 
-class DropOperation(object):
 
-    def __init__(self):
-        pass
+class DropOperation(object):
+    """DropOperation.
+
+    Returns a new DataFrame that drops the specified column.
+    Nothing is done if schema doesn't contain the given column name(s).
+    """
 
     def transform(self, data, columns, numFrag):
         """transform.
@@ -30,11 +29,10 @@ class DropOperation(object):
 
         return result
 
-    @task(returns=list)
+    @task(isModifier=False, returns=list)
     def _drop(self, df, columns):
         """Peform a partial drop operation."""
         return df.drop(columns, axis=1)
-
 
     def drop_serial(self, df, columns):
         """Peform a partial drop operation."""

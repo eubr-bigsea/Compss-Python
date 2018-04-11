@@ -1,10 +1,6 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
-"""Difference Operation.
 
-Returns a new set with containing rows in the first frame but not
-in the second one.
-"""
 __author__ = "Lucas Miguel S Ponce"
 __email__ = "lucasmsp@gmail.com"
 
@@ -14,9 +10,11 @@ import pandas as pd
 
 
 class DifferenceOperation(object):
+    """Difference Operation.
 
-    def __init__(self):
-        pass
+    Returns a new set with containing rows in the first frame but not
+    in the second one.
+    """
 
     def transform(self, data1, data2, numFrag):
         """DifferenceOperation.
@@ -35,8 +33,7 @@ class DifferenceOperation(object):
 
         return result
 
-
-    @task(returns=list)
+    @task(isModifier=False, returns=list)
     def _difference(self, df1, df2):
         """Peform a Difference partial operation."""
         if len(df1) > 0:

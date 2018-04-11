@@ -1,6 +1,6 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
-"""Clean Missing Operation: Clean missing fields from data set."""
+
 __author__ = "Lucas Miguel S Ponce"
 __email__ = "lucasmsp@gmail.com"
 
@@ -10,31 +10,30 @@ from pycompss.functions.reduce import mergeReduce
 import pandas as pd
 import math
 
-class CleanMissingOperation(object):
 
-    def __init__(self):
-        pass
+class CleanMissingOperation(object):
+    """Clean Missing Operation: Clean missing fields from data set."""
 
     def transform(self, data, params, nFrag):
         """CleanMissingOperation.
 
-        :param data:          A list with numFrag pandas's dataframe;
-        :param params:        A dictionary that contains:
-            - attributes:     A list of attributes to evaluate;
-            - cleaning_mode:  What to do with missing values;
-              * "VALUE":         replace by parameter "value";
-              * "REMOVE_ROW":    remove entire row (default);
-              * "MEDIAN":        replace by median value;
-              * "MODE":          replace by mode value;
-              * "MEAN":          replace by mean value;
+        :param data: A list with numFrag pandas's dataframe;
+        :param params: A dictionary that contains:
+            - attributes: A list of attributes to evaluate;
+            - cleaning_mode: What to do with missing values;
+              * "VALUE": replace by parameter "value";
+              * "REMOVE_ROW": remove entire row (default);
+              * "MEDIAN": replace by median value;
+              * "MODE": replace by mode value;
+              * "MEAN": replace by mean value;
               * "REMOVE_COLUMN": remove entire column;
-            - value:         Value to replace missing values (if mode is "VALUE");
-        :param nFrag:      The number of fragments;
-        :return:             Returns a list with numFrag pandas's dataframe.
+            - value: Value to replace missing values (if mode is "VALUE");
+        :param nFrag: The number of fragments;
+        :return: Returns a list with numFrag pandas's dataframe.
 
         example:
-            settings['attributes']    =  ["ID_POSONIBUS"]
-            settings['cleaning_mode'] =  "VALUE"
+            settings['attributes'] = ["ID_POSONIBUS"]
+            settings['cleaning_mode'] = "VALUE"
             settings['value'] = -1
         """
         cleaning_mode = params.get('cleaning_mode', 'REMOVE_ROW')
@@ -53,22 +52,23 @@ class CleanMissingOperation(object):
 
         return data
 
-
-    @task(returns=dict)
+    @task(isModifier=False, returns=dict)
     def _clean_missing_pre(self, data, params):
         """REMOVE_COLUMN, MEAN, MODE and MEDIAN needs pre-computation."""
         attributes = params['attributes']
         cleaning_mode = params['cleaning_mode']
 
         if cleaning_mode == "REMOVE_COLUMN":
-            # list of columns of the current fragment that contains a null value
+            # list of columns of the current fragment
+            # that contains a null value
             null_fields = \
                 data[attributes].columns[data[attributes].isnull().any()].tolist()
             params['columns_drop'] = null_fields
 
         elif cleaning_mode == "MEAN":
             # generate a partial mean of each subset column
-            params['values'] = data[attributes].mean().values
+            params['values'] = data[attributes].mean(numeric_only=True,
+                                                     skipna=True).values
 
         elif cleaning_mode in ["MODE", 'MEDIAN']:
             # generate a frequency list of each subset column
@@ -79,8 +79,7 @@ class CleanMissingOperation(object):
 
         return params
 
-
-    @task(returns=dict)
+    @task(isModifier=False, returns=dict)
     def merge_clean_options(self, params1, params2):
         """Merge pre-computations."""
         cleaning_mode = params1['cleaning_mode']
@@ -106,8 +105,7 @@ class CleanMissingOperation(object):
 
         return params1
 
-
-    @task(returns=list)
+    @task(isModifier=False, returns=list)
     def _clean_missing(self, data, params):
         """Perform REMOVE_ROW, REMOVE_COLUMN, VALUE, MEAN, MODE and MEDIAN."""
         attributes = params['attributes']

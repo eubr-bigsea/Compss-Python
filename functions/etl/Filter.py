@@ -1,6 +1,5 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
-"""Filter: select some rows based in a condition."""
 
 __author__ = "Lucas Miguel S Ponce"
 __email__ = "lucasmsp@gmail.com"
@@ -8,10 +7,9 @@ __email__ = "lucasmsp@gmail.com"
 from pycompss.api.task import task
 from pycompss.api.parameter import *
 
-class FilterOperation(object):
 
-    def __init__(self):
-        pass
+class FilterOperation(object):
+    """Filter: select some rows based in a condition."""
 
     def transform(self, data, settings, numFrag):
         """FilterOperation.
@@ -36,7 +34,7 @@ class FilterOperation(object):
             result[i] = self._filter(data[i], settings)
         return result
 
-    @task(returns=list)
+    @task(isModifier=False, returns=list)
     def _filter(self, data, settings):
         """Perform partial filter."""
         row_condition = settings.get('query', "")
