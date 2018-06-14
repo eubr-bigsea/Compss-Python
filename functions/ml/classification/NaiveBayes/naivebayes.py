@@ -21,7 +21,6 @@ __email__ = "lucasmsp@gmail.com"
 
 import math
 import pandas as pd
-from pycompss.api.parameter import *
 from pycompss.api.task import task
 from pycompss.functions.reduce import mergeReduce
 
@@ -33,15 +32,15 @@ class GaussianNB(object):
     - transform()
     """
 
-    def fit(self, data, settings, numFrag):
+    def fit(self, data, settings, nfrag):
         """Fit.
 
-        :param data:      A list with numFrag pandas's dataframe used to
+        :param data:      A list with nfrag pandas's dataframe used to
                             training the model.
         :param settings:  A dictionary that contains:
            - features: 	    Field of the features in the training data;
            - label:         Field of the labels   in the training data;
-        :param numFrag:   A number of fragments;
+        :param nfrag:   A number of fragments;
         :return:          The model created (which is a pandas dataframe).
         """
         if 'features' not in settings or 'label' not in settings:
@@ -52,34 +51,37 @@ class GaussianNB(object):
         features = settings['features']
 
         # first analysis
-        separated = [[] for i in range(numFrag)]
-        for i in range(numFrag):
-            separated[i] = separateByClass(data[i], label, features)
+        separated = [[] for _ in range(nfrag)]
+        for i in range(nfrag):
+            separated[i] = _separateByClass(data[i], label, features)
 
         # generate a mean and len of each fragment
-        merged_fitted = mergeReduce(merge_summaries1, separated)
+        merged_fitted = mergeReduce(_merge_summaries1, separated)
 
         # compute the variance
-        partial_result = [addVar(merged_fitted, separated[i])
-                          for i in range(numFrag)]
-        merged_fitted = mergeReduce(merge_summaries2, partial_result)
-        summaries = calcSTDEV(merged_fitted)
+        partial_result = [_addVar(merged_fitted, separated[i])
+                          for i in range(nfrag)]
+        merged_fitted = mergeReduce(_merge_summaries2, partial_result)
+        summaries = _calcSTDEV(merged_fitted)
 
-        model = {}
+        from pycompss.api.api import compss_wait_on
+        summaries = compss_wait_on(summaries)
+
+        model = dict()
         model['algorithm'] = 'GaussianNB'
         model['model'] = summaries
         return model
 
-    def transform(self, data, model, settings, numFrag):
+    def transform(self, data, model, settings, nfrag):
         """Transform.
 
-        :param data:    A list with numFrag pandas's dataframe that
+        :param data:    A list with nfrag pandas's dataframe that
                         will be predicted.
         :param model: A model already trained;
         :param settings: A dictionary that contains:
             - features: Field of the features in the test data;
             - predCol: Alias to the new column with the labels predicted;
-        :param numFrag: A number of fragments;
+        :param nfrag: A number of fragments;
         :return: The prediction (in the same input format).
         """
         if 'features' not in settings:
@@ -91,32 +93,55 @@ class GaussianNB(object):
 
         model = model['model']
 
-        result = [[] for i in range(numFrag)]
-        for f in range(numFrag):
-            result[f] = predict_chunck(data[f], model, settings)
+        result = [[] for _ in range(nfrag)]
+        for f in range(nfrag):
+            result[f] = _predict_chunck(data[f], model, settings)
+
+        return result
+
+    def transform_serial(self, data, model, settings):
+        """Transform.
+
+        :param data: A DataFrame that will be predicted.
+        :param model: A model already trained;
+        :param settings: A dictionary that contains:
+            - features: Field of the features in the test data;
+            - predCol: Alias to the new column with the labels predicted;
+        :return: The prediction (in the same input format).
+        """
+        if 'features' not in settings:
+            raise Exception("You must inform the at "
+                            "least the `features` field.")
+
+        if model.get('algorithm', 'null') != 'GaussianNB':
+            raise Exception("You must inform a valid model.")
+
+        model = model['model']
+
+        result = _predict_chunck_(data, model, settings)
 
         return result
 
 
 @task(returns=list)
-def separateByClass(train_data, label, features):
+def _separateByClass(train_data, label, features):
     """Sumarize all label in each fragment."""
     separated = {}
     for i in range(len(train_data)):
         element = train_data.iloc[i][label]
-        if (element not in separated):
+        if element not in separated:
             separated[element] = []
         separated[element].append(train_data.iloc[i][features])
 
     summaries = {}
     for classValue, instances in separated.iteritems():
-        summaries[classValue] = summarize(instances)
+        summaries[classValue] = _summarize(instances)
 
     return summaries
 
 
 @task(returns=dict)
-def addVar(merged_fitted, separated):
+def _addVar(merged_fitted, separated):
     """Calculate the variance of each class."""
     summary = {}
     for att in separated:
@@ -126,8 +151,8 @@ def addVar(merged_fitted, separated):
         nums2 = merged_fitted[att]
         for attribute in zip(*nums):
             avg = nums2[d][0]/nums2[d][1]
-            varNum = sum([math.pow(x-avg, 2) for x in attribute])
-            summaries.append((avg, varNum, nums2[d][1]))
+            var_num = sum([math.pow(x-avg, 2) for x in attribute])
+            summaries.append((avg, var_num, nums2[d][1]))
             d += 1
         summary[att] = summaries
 
@@ -135,7 +160,7 @@ def addVar(merged_fitted, separated):
 
 
 @task(returns=dict)
-def calcSTDEV(summaries):
+def _calcSTDEV(summaries):
     """Calculate the standart desviation of each class."""
     new_summaries = {}
     for att in summaries:
@@ -147,7 +172,7 @@ def calcSTDEV(summaries):
 
 
 @task(returns=list)
-def merge_summaries2(summ1, summ2):
+def _merge_summaries2(summ1, summ2):
     """Merge the statitiscs about each class (with variance)."""
     for att in summ2:
         if att in summ1:
@@ -160,7 +185,7 @@ def merge_summaries2(summ1, summ2):
 
 
 @task(returns=list)
-def merge_summaries1(summ1, summ2):
+def _merge_summaries1(summ1, summ2):
     """Merge the statitiscs about each class (without variance)."""
     for att in summ2:
         if att in summ1:
@@ -173,7 +198,7 @@ def merge_summaries1(summ1, summ2):
     return summ1
 
 
-def summarize(features):
+def _summarize(features):
     """Append the sum and the length of each class."""
     summaries = []
     for attribute in zip(*features):
@@ -183,23 +208,28 @@ def summarize(features):
 
 
 @task(returns=list)
-def predict_chunck(data, summaries, settings):
+def _predict_chunck(data, summaries, settings):
+    """Predict all records in a fragment."""
+    return _predict_chunck_(data, summaries, settings)
+
+
+def _predict_chunck_(data, summaries, settings):
     """Predict all records in a fragment."""
     features_col = settings['features']
-    predictedLabel = settings.get('predCol', 'prediction')
+    predicted_label = settings.get('predCol', 'prediction')
 
     predictions = []
     for i in range(len(data)):
-        result = predict(summaries, data.iloc[i][features_col])
+        result = _predict(summaries, data.iloc[i][features_col])
         predictions.append(result)
 
-    data[predictedLabel] = pd.Series(predictions).values
+    data[predicted_label] = pd.Series(predictions).values
     return data
 
 
-def predict(summaries, inputVector):
+def _predict(summaries, inputVector):
     """Predict a feature."""
-    probabilities = calculateClassProbabilities(summaries, inputVector)
+    probabilities = _calculateClassProbabilities(summaries, inputVector)
     bestLabel, bestProb = None, -1
     for classValue, probability in probabilities.iteritems():
         if bestLabel is None or probability > bestProb:
@@ -208,7 +238,7 @@ def predict(summaries, inputVector):
     return bestLabel
 
 
-def calculateClassProbabilities(summaries, toPredict):
+def _calculateClassProbabilities(summaries, toPredict):
     """Do the probability's calculation of all records."""
     probabilities = {}
     for classValue, classSummaries in summaries.iteritems():
@@ -216,11 +246,11 @@ def calculateClassProbabilities(summaries, toPredict):
         for i in range(len(classSummaries)):
             mean, var = classSummaries[i]
             x = toPredict[i]
-            probabilities[classValue] *= calculateProbability(x, mean, var)
+            probabilities[classValue] *= _calculateProbability(x, mean, var)
     return probabilities
 
 
-def calculateProbability(x, mean, stdev):
+def _calculateProbability(x, mean, stdev):
     """Do the probability's calculation of one record."""
     # exponent = math.exp(-(math.pow(x-mean,2)/(2*math.pow(stdev,2))))
     # prob = (1 / (math.sqrt(2*math.pi) * stdev)) * exponent

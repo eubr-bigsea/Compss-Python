@@ -15,7 +15,6 @@ __email__ = "lucasmsp@gmail.com"
 import pandas as pd
 import numpy as np
 from pycompss.api.task import task
-from pycompss.api.parameter import *
 from pycompss.functions.reduce import mergeReduce
 
 
@@ -25,22 +24,20 @@ class DBSCAN(object):
     - fit_predict(): Perform DBSCAN clustering from the features column.
     """
 
-    def fit_predict(self, df, settings, numFrag):
+    def fit_predict(self, df, settings, nfrag):
         """fit_predict.
 
-        :param df:       A list with numFrag pandas's dataframe.
+        :param df: A list with nfrag pandas's dataframe.
         :param settings: A dictionary that contains:
-            - feature:   Field  of the normalizated features in the test data;
-            - idCol:     Column name to be a primary key of the dataframe;
-            - predCol:   Alias to the new column with the labels predicted;
-            - minPts:    The number of samples in a neighborhood for a point
-                         to be considered as a core point;
-                         This includes the point itself. (int, default: 15)
-            - eps:       The maximum distance between two samples for them to
-                         be considered as in the same neighborhood.
-                         (float, default: 0.1)
-        :param numFrag:  Number of even fragments;
-        :return:         Returns a list of dataframe with the cluster column.
+            - feature: Field  of the normalizated features in the test data;
+            - predCol: Alias to the new column with the labels predicted;
+            - minPts: The number of samples in a neighborhood for a point
+                to be considered as a core point;
+                This includes the point itself. (int, default: 15)
+            - eps: The maximum distance between two samples for them to 
+                be considered as in the same neighborhood. (float, default: 0.1)
+        :param nfrag: Number of even fragments;
+        :return: Returns a list of dataframe with the cluster column.
         """
         minPts = settings.get('minPts', 15)
         eps = settings.get('eps',   0.1)
@@ -53,19 +50,20 @@ class DBSCAN(object):
             raise Exception("Please inform, at least, the fields: "
                             "`idCol`,`feature`")
 
-        div = int(np.sqrt(numFrag))
-        grids = fragment(div, eps)
+        div = int(np.sqrt(nfrag))
+        grids = _fragment(div, eps)
         nlat = nlon = div
-        # stage1 and stage2: partitionize and local dbscan
+    
+        # stage1 and stage2: _partitionize and local dbscan
         t = 0
-        partial = [[] for f in range(numFrag)]
+        partial = [[] for _ in range(nfrag)]
         for l in range(div):
             for c in range(div):
                 frag = []
-                for f in range(numFrag):
-                    frag = partitionize(df[f], settings, grids[t], frag)
+                for f in range(nfrag):
+                    frag = _partitionize(df[f], settings, grids[t], frag)
 
-                partial[t] = partial_dbscan(frag, settings, "p_{}_".format(t))
+                partial[t] = _partial_dbscan(frag, settings, "p_{}_".format(t))
                 t += 1
 
         # stage3: combining clusters
@@ -73,46 +71,45 @@ class DBSCAN(object):
         n_iters_horizontal = (nlat-1)*nlon
         n_iters_vertial = (nlon-1)*nlat
         n_inters_total = n_iters_vertial+n_iters_horizontal+n_iters_diagonal
-        mapper = [[] for f in range(n_inters_total)]
+        mapper = [[] for _ in range(n_inters_total)]
         m = 0
         for t in range(nlat*nlon):
             i = t % nlon  # column
             j = t / nlon  # line
             if i < (nlon-1):  # horizontal
-                mapper[m] = CombineClusters(partial[t], partial[t+1])
+                mapper[m] = _combine_clusters(partial[t], partial[t+1])
                 m += 1
 
             if j < (nlat-1):
-                mapper[m] = CombineClusters(partial[t], partial[t+nlon])
+                mapper[m] = _combine_clusters(partial[t], partial[t+nlon])
                 m += 1
 
             if i < (nlon-1) and j < (nlat-1):
-                mapper[m] = CombineClusters(partial[t], partial[t+nlon+1])
+                mapper[m] = _combine_clusters(partial[t], partial[t+nlon+1])
                 m += 1
 
             if i > 0 and j < (nlat-1):
-                mapper[m] = CombineClusters(partial[t], partial[t+nlon-1])
+                mapper[m] = _combine_clusters(partial[t], partial[t+nlon-1])
                 m += 1
 
-        merged_mapper = mergeReduce(MergeMapper, mapper)
-        components = findComponents(merged_mapper, minPts)
+        merged_mapper = mergeReduce(_merge_mapper, mapper)
+        components = _find_components(merged_mapper)
 
-        # stage4: updateClusters
-        t = 0
-        result = [[] for f in range(numFrag)]
-        for t in range(numFrag):
-            result[t] = updateClusters(partial[t], components, grids[t])
+        # stage4: update_clusters
+        result = [[] for _ in range(nfrag)]
+        for f in range(nfrag):
+            result[f] = _update_clusters(partial[f], components, grids[f])
 
         return result
 
 # -----------------------------------------------------------------------------
 #
-#       stage1 and stage2: partitionize in 2dim and local dbscan
+#       stage1 and stage2: _partitionize in 2dim and local dbscan
 #
 # ------------------------------------------------------------------------------
 
 
-def fragment(div, eps):
+def _fragment(div, eps):
     """Create a list of grids."""
     grids = []
     for lat in range(div):
@@ -124,7 +121,7 @@ def fragment(div, eps):
     return grids
 
 
-def inblock(row, column, init, end):
+def _inblock(row, column, init, end):
     """Check if point is in grid."""
     return all([row[column][0] >= init[0],
                 row[column][1] >= init[1],
@@ -133,13 +130,12 @@ def inblock(row, column, init, end):
 
 
 @task(returns=list)
-def partitionize(df, settings, grids, frag):
+def _partitionize(df, settings, grids, frag):
     """Select points that belongs to each grid."""
     column = settings['feature']
     if len(df) > 0:
         init, end, end2 = grids
-        f = lambda row: inblock(row, column, init, end)
-        tmp = df.apply(f, axis=1)
+        tmp = df.apply(lambda row: _inblock(row, column, init, end), axis=1)
         tmp = df.loc[tmp]
 
         if len(frag) > 0:
@@ -150,7 +146,7 @@ def partitionize(df, settings, grids, frag):
 
 
 @task(returns=list)
-def partial_dbscan(df, settings, sufix):
+def _partial_dbscan(df, settings, sufix):
     """Perform a partial dbscan."""
     stack = []
     cluster_label = 0
@@ -161,56 +157,65 @@ def partial_dbscan(df, settings, sufix):
     eps = settings['eps']
     minPts = settings['minPts']
     columns = settings['feature']
-    clusterCol = settings['predCol']
-    # idCol = settings['idCol']
+    cluster_col = settings['predCol']
+
+    # creating a new tmp_id
+    cols = df.columns
+    id_col = 'tmp_dbscan'
+    i = 0
+    while id_col in cols:
+        id_col = 'tmp_dbscan_{}'.format(i)
+        i += 1
+    df[id_col] = ['id{}{}'.format(sufix, j) for j in range(len(df))]
+    settings['idCol'] = id_col
 
     C_UNMARKED = "{}{}".format(sufix, UNMARKED)
     C_NOISE = "{}{}".format(sufix, '-0')
-    df[clusterCol] = [C_UNMARKED for i in range(num_ids)]
+    df[cluster_col] = [C_UNMARKED for _ in range(num_ids)]
+
+    df = df.reset_index(drop=True)
 
     for index in range(num_ids):
         point = df.loc[index]
-        CLUSTER = point[clusterCol]
+        CLUSTER = point[cluster_col]
 
         if CLUSTER == C_UNMARKED:
-            X = retrieve_neighbors(df, index, point, eps, columns)
+            X = _retrieve_neighbors(df, index, point, eps, columns)
 
             if len(X) < minPts:
-                df.set_value(index, clusterCol, C_NOISE)
-            else:   # found a core point
+                df.loc[df.index[index], cluster_col] = C_NOISE
+            else:   # found a core point and assign a label to this point
                 cluster_label += 1
-                # assign a label to core point
-                df.set_value(index, clusterCol, sufix + str(cluster_label))
+                df.loc[index, cluster_col] = sufix + str(cluster_label)
                 for new_index in X:  # assign core's label to its neighborhood
                     label = sufix + str(cluster_label)
-                    df.set_value(new_index, clusterCol, label)
+                    df.loc[df.index[new_index], cluster_col] = label
                     if new_index not in stack:
                         stack.append(new_index)  # append neighborhood to stack
                     while len(stack) > 0:
                         # find new neighbors from core point neighborhood
                         newest_index = stack.pop()
                         new_point = df.loc[newest_index]
-                        Y = retrieve_neighbors(df, newest_index,
+                        Y = _retrieve_neighbors(df, newest_index,
                                                new_point, eps, columns)
 
                         if len(Y) >= minPts:
                             # current_point is a new core
                             for new_index_neig in Y:
                                 neig_cluster = \
-                                    df.loc[new_index_neig][clusterCol]
-                                if (neig_cluster == C_UNMARKED):
-                                    label = sufix + str(cluster_label)
-                                    df.set_value(new_index_neig,
-                                                 clusterCol,
-                                                 label)
+                                    df.loc[new_index_neig][cluster_col]
+                                if neig_cluster == C_UNMARKED:
+                                    df.loc[df.index[new_index_neig], 
+                                           cluster_col] =\
+                                        sufix + str(cluster_label)
                                     if new_index_neig not in stack:
                                         stack.append(new_index_neig)
 
-    settings['clusters'] = df[clusterCol].unique()
+    settings['clusters'] = df[cluster_col].unique()
     return [df, settings]
 
 
-def retrieve_neighbors(df, i_point, point, eps, column):
+def _retrieve_neighbors(df, i_point, point, eps, column):
     """Retrieve the list of neigbors."""
     neigborhood = []
     for index, row in df.iterrows():
@@ -231,12 +236,12 @@ def retrieve_neighbors(df, i_point, point, eps, column):
 
 
 @task(returns=dict)
-def CombineClusters(p1, p2):
+def _combine_clusters(p1, p2):
     """Identify which points are duplicated in each grid pair."""
     df1, settings = p1
     df2 = p2[0]
     primary_key = settings['idCol']
-    clusterCol = settings['predCol']
+    cluster_col = settings['predCol']
     a = settings['clusters']
     b = p2[1]['clusters']
     unique_c = np.unique(np.concatenate((a, b), 0))
@@ -246,8 +251,8 @@ def CombineClusters(p1, p2):
         merged = pd.merge(df1, df2, how='inner', on=[primary_key])
 
         for index, point in merged.iterrows():
-            CLUSTER_DF1 = point[clusterCol+"_x"]
-            CLUSTER_DF2 = point[clusterCol+"_y"]
+            CLUSTER_DF1 = point[cluster_col+"_x"]
+            CLUSTER_DF2 = point[cluster_col+"_y"]
             link = [CLUSTER_DF1, CLUSTER_DF2]
             if link not in links:
                 links.append(link)
@@ -259,19 +264,23 @@ def CombineClusters(p1, p2):
 
 
 @task(returns=dict)
-def MergeMapper(mapper1, mapper2):
+def _merge_mapper(mapper1, mapper2):
     """Merge all the duplicated points list."""
-    clusters1 = mapper1['cluster']
-    clusters2 = mapper2['cluster']
-    clusters = np.unique(np.concatenate((clusters1, clusters2), 0))
+    if len(mapper1) > 0:
+        if len(mapper2) > 0:
+            clusters1 = mapper1['cluster']
+            clusters2 = mapper2['cluster']
+            clusters = np.unique(np.concatenate((clusters1, clusters2), 0))
 
-    mapper1['cluster'] = clusters
-    mapper1['links'] += mapper2['links']
+            mapper1['cluster'] = clusters
+            mapper1['links'] += mapper2['links']
+    else:
+        mapper1 = mapper2
     return mapper1
 
 
 @task(returns=dict)
-def findComponents(merged_mapper, minPts):
+def _find_components(merged_mapper):
     """Find the list of components presents in the duplicated points."""
     import networkx as nx
 
@@ -307,32 +316,32 @@ def findComponents(merged_mapper, minPts):
 
 # -----------------------------------------------------------------------------
 #
-#                   #stage4: updateClusters
+#                   #stage4: Update Clusters
 #
 # ------------------------------------------------------------------------------
 
 
 @task(returns=list)
-def updateClusters(partial, oldC_newC, grids):
+def _update_clusters(partial, to_update, grids):
     """Update the information about the cluster."""
-    df1, settings = partial
+    df, settings = partial
     clusters = settings['clusters']
     primary_key = settings['idCol']
-    clusterCol = settings['predCol']
+    cluster_id = settings['predCol']
     column = settings['feature']
     init, end, end2 = grids
 
-    if len(df1) > 0:
-        f = lambda row: inblock(row, column, init, end2)
-        tmp = df1.apply(f, axis=1)
-        df1 = df1.loc[tmp]
-        df1.drop_duplicates([primary_key], inplace=False)
-        df1 = df1.reset_index(drop=True)
+    if len(df) > 0:
+        tmp = df.apply(lambda row: _inblock(row, column, init, end2), axis=1)
+        df = df.loc[tmp]
+        df.drop_duplicates([primary_key], inplace=False)
+        df = df.reset_index(drop=True)
 
-        for key in oldC_newC:
+        for key in to_update:
             if key in clusters:
-                df1.ix[df1[clusterCol] == key, clusterCol] = oldC_newC[key]
+                df.loc[df[cluster_id] == key, cluster_id] = to_update[key]
 
-        df1.ix[df1[clusterCol].str.contains("-0", na=False), clusterCol] = -1
+        df.loc[df[cluster_id].str.contains("-0", na=False), cluster_id] = -1
+        df = df.drop([primary_key], axis=1)
 
-    return df1
+    return df

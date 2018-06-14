@@ -22,86 +22,55 @@ __email__ = "lucasmsp@gmail.com"
 import numpy as np
 import pandas as pd
 from pycompss.api.task import task
-from pycompss.api.parameter import *
 from pycompss.functions.reduce import mergeReduce
+from pycompss.api.api import compss_wait_on
 
 
 class KNN(object):
     """KNN's Methods.
 
     - fit(): Create a model based in an dataset.
-    - fit_transform(): Create a model and predict a dataset.
     - transform(): Predict a dataset based in the model created.
     """
 
-    def fit(self, data, settings, numFrag):
+    def fit(self, data, settings, nfrag):
         """Fit.
 
-        :param data:     A list with numFrag pandas's dataframe used to
-                         training the model.
+        :param data: A list with nfrag pandas's dataframe used to
+            training the model.
         :param settings: A dictionary that contains:
-            - K:  		 Number of K nearest neighborhood to take in count.
-            - features:  Column name of the features in the training data;
-            - label:     Column name of the labels   in the training data;
-        :param numFrag:  A number of fragments;
-        :return:         The model created (which is a pandas dataframe).
+            - K: Number of K nearest neighborhood to take in count.
+            - features: Column name of the features in the training data;
+            - label: Column name of the labels in the training data;
+        :param nfrag: A number of fragments;
+        :return: The model created (which is a pandas dataframe).
         """
         col_label = settings['label']
         col_features = settings['features']
 
-        train_data = [[] for f in range(numFrag)]
-        for f in range(numFrag):
+        train_data = [[] for _ in range(nfrag)]
+        for f in range(nfrag):
             train_data[f] = createModel(data[f], col_label, col_features)
         train_data = mergeReduce(merge_lists, train_data)
 
-        model = {}
+        train_data = compss_wait_on(train_data)
+        model = dict()
         model['algorithm'] = 'KNN'
         model['model'] = train_data
         return model
 
-    def fit_transform(self, data, settings, numFrag):
-        """Fit_transform.
-
-        :param data:     A list with numFrag pandas's dataframe used to
-                         training the model and to classify it.
-        :param settings: A dictionary that contains:
-         - K:  			 Number of K nearest neighborhood to take in count.
-                         (default, 1)
-         - features: 	 Field of the features in the training/test data;
-         - label:        Field of the labels   in the training/test data;
-         - predCol:      Alias to the new column with the labels predicted;
-        :param numFrag:  A number of fragments;
-        :return:         The prediction (in the same input format) and the
-                         model (which is a pandas dataframe).
-        """
-        col_label = settings['label']
-        col_features = settings['features']
-        predCol = settings.get('predCol', "predited")
-        K = settings.get('K', 1)
-
-        p_model = [createModel(data[f], col_label,
-                   col_features) for f in range(numFrag)]
-
-        model = mergeReduce(merge_lists, p_model)
-
-        result = [[] for i in range(numFrag)]
-        for i in range(numFrag):
-            result[i] = classifyBlock(data[i], model, col_features, predCol, K)
-
-        return result
-
-    def transform(self, data, model, settings, numFrag):
+    def transform(self, data, model, settings, nfrag):
         """Transform.
 
-        :param data:     A list with numFrag pandas's dataframe that will
-                         be predicted.
-        :param model:	 The KNN model created;
+        :param data: A list with nfrag pandas's dataframe that will
+            be predicted.
+        :param model: The KNN model created;
         :param settings: A dictionary that contains:
-            - K:     	 Number of K nearest neighborhood to take in count.
-            - features:  Column name of the features in the test data;
-            - predCol:   Alias to the new column with the labels predicted;
-        :param numFrag:  A number of fragments;
-        :return:         The prediction (in the same input format).
+            - K: Number of K nearest neighborhood to take in count.
+            - features: Column name of the features in the test data;
+            - predCol: Alias to the new column with the labels predicted;
+        :param nfrag: A number of fragments;
+        :return: The prediction (in the same input format).
         """
         if 'features' not in settings:
             raise Exception("You must inform the `features` field.")
@@ -111,13 +80,22 @@ class KNN(object):
 
         model = model['model']
 
-        col_features = settings['features']
-        predCol = settings.get('predCol', "predited")
-        K = settings.get('K', 1)
+        result = [[] for _ in range(nfrag)]
+        for i in range(nfrag):
+            result[i] = _classify_block(data[i], model, settings)
+        return result
 
-        result = [[] for i in range(numFrag)]
-        for i in range(numFrag):
-            result[i] = classifyBlock(data[i], model, col_features, predCol, K)
+    def transform_serial(self, data, model, settings):
+
+        if 'features' not in settings:
+            raise Exception("You must inform the `features` field.")
+
+        if model.get('algorithm', 'null') != 'KNN':
+            raise Exception("You must inform a valid model.")
+
+        model = model['model']
+
+        result = _classify_block_(data, model, settings)
         return result
 
 
@@ -147,11 +125,19 @@ def merge_lists(list1, list2):
 
 
 @task(returns=list)
-def classifyBlock(data, model, col_features, predCol, K):
+def _classify_block(data, model, settings):
+    return _classify_block_(data, model, settings)
+
+
+def _classify_block_(data, model, settings):
     """Perform a partial classification."""
+    col_features = settings['features']
+    pred_col = settings.get('predCol', "predited")
+    K = settings.get('K', 1)
+
     sizeTest = len(data)
     if sizeTest == 0:
-        data[predCol] = np.nan
+        data[pred_col] = np.nan
         return data
 
     # initalizing variables
@@ -161,7 +147,7 @@ def classifyBlock(data, model, col_features, predCol, K):
     else:
         numDim = 1
 
-    semi_labels = [[0 for i in range(K)] for j in range(sizeTest)]
+    semi_labels = [[0 for _ in range(K)] for _ in range(sizeTest)]
 
     import functions_knn
     from timeit import default_timer as timer
@@ -172,13 +158,13 @@ def classifyBlock(data, model, col_features, predCol, K):
                   numDim, K, semi_labels, model[0])
     end = timer()
     print "{0:.2e}".format(end - start)
-    values = getKNN(semi_labels)
-    data[predCol] = pd.Series(values).values
+    values = get_knn(semi_labels)
+    data[pred_col] = pd.Series(values).values
 
     return data
 
 
-def getKNN(neighborhood):
+def get_knn(neighborhood):
     """Finding the most frequent label."""
     result = np.zeros(len(neighborhood)).tolist()
     for i in range(len(neighborhood)):

@@ -5,7 +5,6 @@ A list of all COMPS's operations supported by Lemonade.
 ## Operations:
 
 * [Data operations](https://github.com/eubr-bigsea/Compss-Python/tree/master/functions/data):
-    - Change attributes
  	- Data Reader
  	- Data Writer
  	- Workload Balancer
@@ -20,7 +19,6 @@ A list of all COMPS's operations supported by Lemonade.
  	- Drop
  	- Intersection
  	- Join
-	- Normalize
  	- Replace Values
  	- Sample
  	- Select
@@ -42,7 +40,9 @@ A list of all COMPS's operations supported by Lemonade.
 	- Load Model
 	- PCA
 	- Feature Assembler
-
+	- MinMax Scaler
+	- MaxAbs Scaler
+    - Standard Scaler
 
 
 * [Text Operations](https://github.com/eubr-bigsea/Compss-Python/tree/master/functions/text):
