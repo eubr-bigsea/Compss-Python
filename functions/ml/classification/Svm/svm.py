@@ -22,11 +22,8 @@ features (numeric fields).
 __author__ = "Lucas Miguel S Ponce"
 __email__ = "lucasmsp@gmail.com"
 
-
-from pycompss.api.parameter import *
 from pycompss.api.task import task
 from pycompss.functions.reduce import mergeReduce
-import pandas as pd
 import numpy as np
 
 
@@ -37,20 +34,20 @@ class SVM(object):
     - transform()
     """
 
-    def fit(self, data, settings, numFrag):
+    def fit(self, data, settings, nfrag):
         """Fit.
 
-        - :param data:      A list with numFrag pandas's dataframe used
-                            to training the model.
-        - :param settings:  A dictionary that contains:
-         - coef_lambda:     Regularization parameter (float);
-         - coef_lr:         Learning rate parameter (float);
-         - coef_threshold:  Tolerance for stopping criterion (float);
-         - coef_maxIters:   Number max of iterations (integer);
-         - features: 		Fields of the features in the training data;
-         - label:           Fields of the labels   in the training data;
-        - :param numFrag:   A number of fragments;
-        - :return:          The model created (which is a pandas dataframe).
+        - :param data: A list with nfrag pandas's dataframe used
+               to training the model.
+        - :param settings: A dictionary that contains:
+         - coef_lambda: Regularization parameter (float);
+         - coef_lr: Learning rate parameter (float);
+         - coef_threshold: Tolerance for stopping criterion (float);
+         - coef_maxIters: Number max of iterations (integer);
+         - features: Fields of the features in the training data;
+         - label: Fields of the labels in the training data;
+        - :param nfrag: A number of fragments;
+        - :return:  The model created (which is a pandas dataframe).
         """
         coef_lambda = float(settings.get('coef_lambda', 0.1))
         coef_lr = float(settings.get('coef_lr', 0.01))
@@ -68,65 +65,91 @@ class SVM(object):
         old_cost = np.inf
         from pycompss.api.api import compss_wait_on
         for it in range(coef_maxIters):
-            cost_grad_p = [calc_CostAndGrad(data[f], f, coef_lambda,
-                           w, label, features) for f in range(numFrag)]
-            cost_grad = mergeReduce(accumulate_CostAndGrad, cost_grad_p)
+            cost_grad_p = [_calc_cost_grad(data[f], f, coef_lambda,
+                           w, label, features) for f in range(nfrag)]
+            cost_grad = mergeReduce(_accumulate_cost_grad, cost_grad_p)
             cost_grad = compss_wait_on(cost_grad)
 
             cost = cost_grad[0]
             thresold = np.abs(old_cost - cost)
-            # print thresold
             if thresold <= coef_threshold:
                 print "[INFO] - Final Cost %.4f" % (cost)
                 break
             else:
                 old_cost = cost
 
-            w = updateWeight(coef_lr, cost_grad, w)
+            w = _update_weight(coef_lr, cost_grad, w)
 
-        model = {}
+        model = dict()
         model['algorithm'] = 'SVM'
         model['model'] = w
 
         return model
 
-    def transform(self, data, model, settings, numFrag):
+    def transform(self, data, model, settings, nfrag):
         """Transform.
 
-        :param data:     A list with numFrag pandas's dataframe
-                         that will be predicted.
-        :param model:    A model already trained (np.array);
+        :param data: A list with nfrag pandas's dataFrame 
+            that will be predicted.
+        :param model: A model already trained (np.array);
         :param settings: A dictionary that contains:
-            - features:  Field of the features in the test data;
+            - features: Field of the features in the test data;
             - predlabel: Alias to the new column with the labels predicted;
-        :param numFrag:  A number of fragments;
-        :return:         The list of dataframe with the prediction.
+        :param nfrag: A number of fragments;
+        :return: The list of dataframe with the prediction.
         """
         if 'features' not in settings:
             raise Exception("You must inform the `features` field.")
 
         features = settings['features']
-        predictedLabel = settings.get('predCol', 'predited')
+        predicted_label = settings.get('predCol', 'predited')
 
         if model.get('algorithm', 'null') != 'SVM':
             raise Exception("You must inform a valid model.")
 
         model = model['model']
 
-        result = [[] for f in range(numFrag)]
-        for f in range(numFrag):
-            result[f] = predict_partial(data[f], model,
-                                        predictedLabel, features)
+        result = [[] for _ in range(nfrag)]
+        for f in range(nfrag):
+            result[f] = _predict_partial(data[f], model,
+                                         predicted_label, features)
+
+        return result
+    
+    def transform_serial(self, data, model, settings):
+        """Transform.
+
+        :param data: A list with nfrag pandas's dataFrame 
+            that will be predicted.
+        :param model: A model already trained (np.array);
+        :param settings: A dictionary that contains:
+            - features: Field of the features in the test data;
+            - predlabel: Alias to the new column with the labels predicted;
+        :param nfrag: A number of fragments;
+        :return: The list of dataframe with the prediction.
+        """
+        if 'features' not in settings:
+            raise Exception("You must inform the `features` field.")
+
+        features = settings['features']
+        predicted_label = settings.get('predCol', 'predited')
+
+        if model.get('algorithm', 'null') != 'SVM':
+            raise Exception("You must inform a valid model.")
+
+        model = model['model']
+
+        result = _predict_partial_(data, model, predicted_label, features)
 
         return result
 
 
 # Note: If we dont use the thresold, this method must be a compss task.
 # @task(returns=list)
-def updateWeight(coef_lr, grad, w):
+def _update_weight(coef_lr, grad, w):
     """Update the svm's weight."""
     dim = len(grad[1])
-    if(dim != len(w)):
+    if dim != len(w):
         w = np.zeros(dim)
 
     w = np.subtract(w, np.multiply(coef_lr, grad[1]))
@@ -134,30 +157,30 @@ def updateWeight(coef_lr, grad, w):
 
 
 @task(returns=list)
-def calc_CostAndGrad(train_data, f, coef_lambda, w, label, features):
+def _calc_cost_grad(train_data, f, coef_lambda, w, label, features):
     """Calculate the partial cost and gradient."""
-    sizeTrain = len(train_data)
-    if sizeTrain > 0:
-        numDim = len(train_data.iloc[0][features])
-        ypp = np.zeros(sizeTrain)
+    size_train = len(train_data)
+    if size_train > 0:
+        dim = len(train_data.iloc[0][features])
+        ypp = np.zeros(size_train)
         cost = 0
-        grad = np.zeros(numDim)
+        grad = np.zeros(dim)
 
-        if numDim != len(w):
-            w = [0 for i in range(numDim)]  # initial
+        if dim != len(w):
+            w = [0 for _ in range(dim)]  # initial
 
-        for i in range(sizeTrain):
+        for i in range(size_train):
             ypp[i] = np.matmul(train_data.iloc[i][features], w)
             condition = train_data.iloc[i][label] * ypp[i]
             if (condition - 1) < 0:
                 cost += (1 - condition)
 
-        for d in range(numDim):
+        for d in range(dim):
             grad[d] = 0
             if f is 0:
                 grad[d] += np.abs(coef_lambda * w[d])
 
-            for i in range(sizeTrain):
+            for i in range(size_train):
                 i2 = train_data.iloc[i][label]
                 condition = i2 * ypp[i]
                 if (condition-1) < 0:
@@ -169,7 +192,7 @@ def calc_CostAndGrad(train_data, f, coef_lambda, w, label, features):
 
 
 @task(returns=list)
-def accumulate_CostAndGrad(cost_grad_p1, cost_grad_p2):
+def _accumulate_cost_grad(cost_grad_p1, cost_grad_p2):
     """Merge cost and gradient."""
     cost_p1 = cost_grad_p1[0]
     cost_p2 = cost_grad_p2[0]
@@ -183,20 +206,25 @@ def accumulate_CostAndGrad(cost_grad_p1, cost_grad_p2):
 
 
 @task(returns=list)
-def predict_partial(data, w, predictedLabel, features):
+def _predict_partial(data, w, predicted_label, features):
+    """Predict all records in a fragments."""
+    return _predict_partial_(data, w, predicted_label, features)
+
+
+def _predict_partial_(data, w, predicted_label, features):
     """Predict all records in a fragments."""
     if len(data) > 0:
         values = \
-            np.vectorize(predict_one, excluded=['w'])(test_xi=data[features],
-                                                      w=w)
-        data[predictedLabel] = values.tolist()
+            np.vectorize(_predict_one, excluded=['w'])(test_xi=data[features],
+                                                       w=w)
+        data[predicted_label] = values.tolist()
     else:
-        data[predictedLabel] = np.nan
+        data[predicted_label] = np.nan
 
     return data
 
 
-def predict_one(test_xi, w):
+def _predict_one(test_xi, w):
     """Predict one record based in the model."""
     if np.matmul(test_xi, w) >= 0:
         return 1.0

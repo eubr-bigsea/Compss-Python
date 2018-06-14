@@ -6,9 +6,9 @@ __email__ = "lucasmsp@gmail.com"
 
 import pandas as pd
 import numpy as np
+import networkx as nx
 from datetime import timedelta, datetime
 from pycompss.api.task import task
-from pycompss.api.parameter import *
 from pycompss.functions.reduce import mergeReduce
 
 
@@ -18,10 +18,10 @@ class STDBSCAN(object):
     - fit_predict()
     """
 
-    def fit_predict(self, df, settings, numFrag):
+    def fit_predict(self, df, settings, nfrag):
         """Fit_predict.
 
-        :param df:       A list with numFrag pandas's dataframe.
+        :param df:       A list with nfrag pandas's dataframe.
         :param settings: A dictionary that contains:
 
           - lat_col:   Column name of the latitude  in the test data;
@@ -40,7 +40,7 @@ class STDBSCAN(object):
                                   as in the same neighborhood.
                                   (float, default: 60)
 
-        :param numFrag:  Number of fragments;
+        :param nfrag:  Number of fragments;
         :return: Returns the same list of dataframe with the cluster column.
         """
         if not all(['datetime' in settings,
@@ -53,53 +53,50 @@ class STDBSCAN(object):
         lat_col = settings['lat_col']
         lon_col = settings['lon_col']
 
-        grids, divs = fragment(df, numFrag, lat_col, lon_col)
+        grids, divs = _fragment(df, nfrag, lat_col, lon_col)
         print "[INFO] - Matrix: {}x{}".format(divs[0], divs[1])
         nlat, nlon = divs
 
         # stage1 and stage2: partitionize and local dbscan
         t = 0
-        partial = [[] for f in range(nlat*nlon)]
+        partial = [[] for _ in range(nlat*nlon)]
         for l in range(nlat):
             for c in range(nlon):
                 frag = []
-                for f in range(numFrag):
-                    frag = partitionize(df[f], settings, grids[t], frag)
+                for f in range(nfrag):
+                    frag = _partitionize(df[f], settings, grids[t], frag)
 
-                partial[t] = partial_stdbscan(frag, settings, "{}".format(t))
+                partial[t] = _partial_stdbscan(frag, settings, "{}".format(t))
                 t += 1
 
         # stage3: combining clusters
         n_iters_diagonal = (nlat-1)*(nlon-1)*2
         n_iters_horizontal = (nlat-1)*nlon
         n_iters_vertial = (nlon-1)*nlat
-        n_inters_total = n_iters_vertial+n_iters_horizontal+n_iters_diagonal
-        mapper = [[] for f in range(n_inters_total)]
+        n_iters_total = n_iters_vertial+n_iters_horizontal+n_iters_diagonal
+        mapper = [[] for _ in range(n_iters_total)]
+
         m = 0
         for t in range(nlat*nlon):
             i = t % nlon  # which column
             j = t / nlon  # which line
             if i < (nlon-1):  # horizontal
-                mapper[m] = CombineClusters(partial[t], partial[t+1])
-                m += 1
+                mapper[m] = _combine_clusters(partial[t], partial[t+1])
             if j < (nlat-1):
-                mapper[m] = CombineClusters(partial[t], partial[t+nlon])
-                m += 1
+                mapper[m] = _combine_clusters(partial[t], partial[t+nlon])
             if i < (nlon-1) and j < (nlat-1):
-                mapper[m] = CombineClusters(partial[t], partial[t+nlon+1])
-                m += 1
+                mapper[m] = _combine_clusters(partial[t], partial[t+nlon+1])
             if i > 0 and j < (nlat-1):
-                mapper[m] = CombineClusters(partial[t], partial[t+nlon-1])
-                m += 1
+                mapper[m] = _combine_clusters(partial[t], partial[t+nlon-1])
+            m += 1
 
-        merged_mapper = mergeReduce(MergeMapper, mapper)
-        components = findComponents(merged_mapper, minPts)
+        merged_mapper = mergeReduce(_merge_mapper, mapper)
+        components = _find_components(merged_mapper)
 
-        # stage4: updateClusters
-        t = 0
-        result = [[] for f in range(nlat*nlon)]
-        for t in range(nlat*nlon):
-            result[t] = updateClusters(partial[t], components, grids[t])
+        # stage4: _update_cluster
+        result = [[] for _ in range(nlat*nlon)]
+        for f in range(nlat*nlon):
+            result[f] = _update_cluster(partial[f], components, grids[f])
         return result
 
 # -----------------------------------------------------------------------------
@@ -110,7 +107,7 @@ class STDBSCAN(object):
 
 
 @task(returns=list)
-def get_bounds(df, lat_col, lon_col):
+def _get_bounds(df, lat_col, lon_col):
     """Get the maximum and minimum coordenates of each fragment."""
     mins = df[[lat_col, lon_col]].min(axis=0).values
     maxs = df[[lat_col, lon_col]].max(axis=0).values
@@ -119,7 +116,7 @@ def get_bounds(df, lat_col, lon_col):
 
 
 @task(returns=list)
-def mergeBounds(b1, b2):
+def _merge_bounds(b1, b2):
     """Merge bounds coordenates."""
     mins1, maxs1, sums1, n1 = b1
     mins2, maxs2, sums2, n2 = b2
@@ -153,7 +150,7 @@ def mergeBounds(b1, b2):
 
 
 @task(returns=list)
-def calc_var(df, lat_col, lon_col, mean_lat, mean_lon):
+def _calc_variance(df, lat_col, lon_col, mean_lat, mean_lon):
     """Calculate the partial sum of latitude and longitude column."""
     if len(df) > 0:
         sum_lat = df.\
@@ -167,7 +164,7 @@ def calc_var(df, lat_col, lon_col, mean_lat, mean_lon):
 
 
 @task(returns=list)
-def mergevar(var1, var2):
+def _merge_variance(var1, var2):
     """Merge the variance."""
     if var1[0] > 0:
         if var2[0] > 0:
@@ -179,13 +176,13 @@ def mergevar(var1, var2):
     return var
 
 
-def fragment(df, numFrag, lat_col, lon_col):
+def _fragment(df, nfrag, lat_col, lon_col):
     """Create a list of grids."""
     from pycompss.api.api import compss_wait_on
     grids = []
     # retrieve the boundbox
-    minmax = [get_bounds(df[f], lat_col, lon_col) for f in range(numFrag)]
-    minmax = mergeReduce(mergeBounds, minmax)
+    minmax = [_get_bounds(df[f], lat_col, lon_col) for f in range(nfrag)]
+    minmax = mergeReduce(_merge_bounds, minmax)
     minmax = compss_wait_on(minmax)
 
     min_lat, min_lon = minmax[0]
@@ -200,12 +197,12 @@ def fragment(df, numFrag, lat_col, lon_col):
      - East Longitude: {}
     """.format(min_lat, max_lat, min_lon, max_lon)
 
-    var_p = [calc_var(df[f], lat_col, lon_col, mean_lat, mean_lon)
-             for f in range(numFrag)]
-    var = mergeReduce(mergevar, var_p)
+    var_p = [_calc_variance(df[f], lat_col, lon_col, mean_lat, mean_lon)
+             for f in range(nfrag)]
+    var = mergeReduce(_merge_variance, var_p)
     var = compss_wait_on(var)
 
-    t = int(np.sqrt(numFrag))
+    t = int(np.sqrt(nfrag))
     if abs(var[0]-var[1]) <= 0.04:  # precision
         div = [t, t]
     elif var[0] < var[1]:
@@ -232,7 +229,7 @@ def fragment(df, numFrag, lat_col, lon_col):
 
 
 @task(returns=list)
-def partitionize(df, settings, grid, frag):
+def _partitionize(df, settings, grid, frag):
     """Select points that belongs to each grid."""
     if len(df) > 0:
         spatial_threshold = settings.get('spatial_threshold', 100)
@@ -251,12 +248,13 @@ def partitionize(df, settings, grid, frag):
         new_init_lat = init_lat - dist
         new_init_lon = init_lon - dist / np.cos(new_init_lat * 0.018)
 
-        f = lambda point: all([point[lat_col] >= new_init_lat,
-                               point[lat_col] <= new_end_lat,
-                               point[lon_col] >= new_init_lon,
-                               point[lon_col] <= new_end_lon])
+        def check_bounds(point):
+            return all([point[lat_col] >= new_init_lat,
+                        point[lat_col] <= new_end_lat,
+                        point[lon_col] >= new_init_lon,
+                        point[lon_col] <= new_end_lon])
 
-        tmp = df.apply(f, axis=1)
+        tmp = df.apply(lambda point: check_bounds(point), axis=1)
         tmp = df.loc[tmp]
 
         if len(frag) > 0:
@@ -268,7 +266,7 @@ def partitionize(df, settings, grid, frag):
 
 
 @task(returns=list)
-def partial_stdbscan(df, settings, sufix):
+def _partial_stdbscan(df, settings, sufix):
     """Perform a partial stdbscan."""
     stack = []
     cluster_label = 0
@@ -293,9 +291,9 @@ def partial_stdbscan(df, settings, sufix):
     while idCol in cols:
         idCol = 'tmp_stdbscan_{}'.format(i)
         i += 1
-    df[idCol] = ['id{}_{}'.format(sufix, j) for j in range(len(df))]
     settings['idCol'] = idCol
 
+    df[idCol] = ['id{}_{}'.format(sufix, j) for j in range(len(df))]
     num_ids = len(df)
     C_UNMARKED = "p{}{}".format(sufix, UNMARKED)
     C_NOISE = "p{}{}".format(sufix, NOISE)
@@ -305,21 +303,20 @@ def partial_stdbscan(df, settings, sufix):
         point = df.loc[index]
         CLUSTER = point[clusterCol]
         if CLUSTER == C_UNMARKED:
-            X = retrieve_neighbors(df, index, point,
-                                   spatial_threshold,
-                                   temporal_threshold,
-                                   lat_col, lon_col, dt_col)
+            X = _retrieve_neighbors(df, index, point, spatial_threshold,
+                                    temporal_threshold,
+                                    lat_col, lon_col, dt_col)
 
             if len(X) < minPts:
-                df.set_value(index, clusterCol, C_NOISE)
-            else:  # found a core point
+                df.loc[df.index[index], clusterCol] = C_NOISE
+            else:  # found a core point, assign a label to core point
                 cluster_label += 1
-                # assign a label to core point
-                df.set_value(index, clusterCol, sufix + str(cluster_label))
+                df.loc[df.index[index], clusterCol] = sufix + str(cluster_label)
 
                 for new_index in X:  # assign core's label to its neighborhood
-                    df.set_value(new_index, clusterCol,
-                                 sufix + str(cluster_label))
+                    df.loc[df.index[new_index],
+                           clusterCol] = sufix + str(cluster_label)
+
                     if new_index not in stack:
                         stack.append(new_index)  # append neighborhood to stack
 
@@ -327,18 +324,19 @@ def partial_stdbscan(df, settings, sufix):
                         # find new neighbors from core point neighborhood
                         newest_index = stack.pop()
                         new_point = df.loc[newest_index]
-                        Y = retrieve_neighbors(df, newest_index,
-                                               new_point, spatial_threshold,
-                                               temporal_threshold, lat_col,
-                                               lon_col, dt_col)
+                        Y = _retrieve_neighbors(df, newest_index,
+                                                new_point, spatial_threshold,
+                                                temporal_threshold, lat_col,
+                                                lon_col, dt_col)
 
                         if len(Y) >= minPts:  # current_point is a new core
                             for new_index_neig in Y:
                                 neig_cluster = \
                                     df.loc[new_index_neig][clusterCol]
-                                if (neig_cluster == C_UNMARKED):
-                                    df.set_value(new_index_neig, clusterCol,
-                                                 sufix + str(cluster_label))
+                                if neig_cluster == C_UNMARKED:
+                                    df.loc[df.index[new_index_neig],
+                                           clusterCol] \
+                                        = sufix + str(cluster_label)
                                     if new_index_neig not in stack:
                                         stack.append(new_index_neig)
 
@@ -346,25 +344,25 @@ def partial_stdbscan(df, settings, sufix):
     return [df, settings]
 
 
-def retrieve_neighbors(df, i_point, point, spatial_threshold,
-                       temporal_threshold, lat_col, lon_col, dt_col):
+def _retrieve_neighbors(df, i_point, point, spatial_threshold,
+                        temporal_threshold, lat_col, lon_col, dt_col):
     """Retrieve a list of neighbors."""
     neigborhood = []
-    DATATIME = point[dt_col]
-    min_time = DATATIME - timedelta(minutes=temporal_threshold)
-    max_time = DATATIME + timedelta(minutes=temporal_threshold)
+    timestamp = point[dt_col]
+    min_time = timestamp - timedelta(minutes=temporal_threshold)
+    max_time = timestamp + timedelta(minutes=temporal_threshold)
     df = df[(df[dt_col] >= min_time) & (df[dt_col] <= max_time)]
     for index, row in df.iterrows():
         if index != i_point:
-                distance = great_circle((point[lat_col], point[lon_col]),
-                                        (row[lat_col], row[lon_col]))
+                distance = _great_circle((point[lat_col], point[lon_col]),
+                                         (row[lat_col], row[lon_col]))
                 if distance <= spatial_threshold:
                     neigborhood.append(index)
 
     return neigborhood
 
 
-def great_circle(a, b):
+def _great_circle(a, b):
     """Great-circle.
 
     The great-circle distance or orthodromic distance is the shortest
@@ -376,7 +374,7 @@ def great_circle(a, b):
     :returns: distance in meters.
     """
     import math
-    EARTH_RADIUS = 6371.009
+    earth_radius = 6371.009
     lat1, lng1 = np.radians(a[0]), np.radians(a[1])
     lat2, lng2 = np.radians(b[0]), np.radians(b[1])
 
@@ -391,7 +389,7 @@ def great_circle(a, b):
                            sin_lat1 * cos_lat2 * cos_delta_lng) ** 2),
                    sin_lat1 * sin_lat2 + cos_lat1 * cos_lat2 * cos_delta_lng)
 
-    return (EARTH_RADIUS * d)*1000
+    return (earth_radius * d) * 1000
 
 # -----------------------------------------------------------------------------
 #
@@ -401,13 +399,13 @@ def great_circle(a, b):
 
 
 @task(returns=dict)
-def CombineClusters(p1, p2):
+def _combine_clusters(p1, p2):
     """Identify which points are duplicated in each grid pair."""
     df1, settings = p1
     df2 = p2[0]
 
     primary_key = settings['idCol']
-    clusterCol = settings['predCol']
+    cluster_col = settings['predCol']
     a = settings['clusters']
     b = p2[1]['clusters']
     unique_c = np.unique(np.concatenate((a, b), 0))
@@ -417,35 +415,38 @@ def CombineClusters(p1, p2):
         merged = pd.merge(df1, df2, how='inner', on=[primary_key])
 
         for index, point in merged.iterrows():
-            CLUSTER_DF1 = point[clusterCol+"_x"]
-            CLUSTER_DF2 = point[clusterCol+"_y"]
-            link = [CLUSTER_DF1, CLUSTER_DF2]
+            cluster_in_df1 = point[cluster_col+"_x"]
+            cluster_in_df2 = point[cluster_col+"_y"]
+            link = [cluster_in_df1, cluster_in_df2]
             if link not in links:
                 links.append(link)
 
     result = dict()
     result['cluster'] = unique_c
     result['links'] = links
+    print result
     return result
 
 
 @task(returns=dict)
-def MergeMapper(mapper1, mapper2):
+def _merge_mapper(mapper1, mapper2):
     """Merge all the duplicated points list."""
-    clusters1 = mapper1['cluster']
-    clusters2 = mapper2['cluster']
-    clusters = np.unique(np.concatenate((clusters1, clusters2), 0))
+    if len(mapper1) > 0:
+        if len(mapper2) > 0:
+            clusters1 = mapper1['cluster']
+            clusters2 = mapper2['cluster']
+            clusters = np.unique(np.concatenate((clusters1, clusters2), 0))
 
-    mapper1['cluster'] = clusters
-    mapper1['links'] += mapper2['links']
-
+            mapper1['cluster'] = clusters
+            mapper1['links'] += mapper2['links']
+    else:
+        mapper1 = mapper2
     return mapper1
 
 
 @task(returns=dict)
-def findComponents(merged_mapper, minPts):
+def _find_components(merged_mapper):
     """Find the list of components presents in the duplicated points."""
-    import networkx as nx
     AllClusters = merged_mapper['cluster']
     links = merged_mapper['links']
     i = 0
@@ -475,13 +476,13 @@ def findComponents(merged_mapper, minPts):
 
 # -----------------------------------------------------------------------------
 #
-#                   #stage4: updateClusters
+#                   #stage4: _update_cluster
 #
 # ------------------------------------------------------------------------------
 
 
 @task(returns=list)
-def updateClusters(partial, oldC_newC, grid):
+def _update_cluster(partial, oldC_newC, grid):
     """Update the information about the cluster."""
     df1, settings = partial
     clusters = settings['clusters']
