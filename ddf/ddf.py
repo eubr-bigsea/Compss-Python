@@ -1,27 +1,34 @@
 #!/usr/bin/python
+# -*- coding: utf-8 -*-
 
-import itertools
+__author__ = "Lucas Miguel S Ponce"
+__email__ = "lucasmsp@gmail.com"
 
-import os
-from collections import defaultdict, deque, OrderedDict
-
+from collections import OrderedDict, deque
 import uuid
-from pycompss.api.api import compss_barrier, compss_open
+
 from tasks import *
 import copy
-from  heapq3 import  *
 
 import pandas as pd
 
 
-class COMPSsContext(object):
-    tasks_map = OrderedDict()  # id: {EXECUTED, result}
+from collections import OrderedDict, deque
 
+from tasks import *
+import copy
+
+
+class COMPSsContext(object):
+    """
+    Controls the execution of DDF tasks
+    """
+    tasks_map = OrderedDict()
     adj_tasks = dict()
 
     def get_var_by_task(self, vars, uuid):
         """
-        Return a variable id which contains the task uuid.
+        Return the variable id which contains the task uuid.
 
         :param vars:
         :param uuid:
@@ -29,16 +36,26 @@ class COMPSsContext(object):
         """
         return [i for i, v in enumerate(vars) if uuid in v.task_list]
 
-    def show_workflow(self, list_uuid):
+    def show_workflow(self, tasks_to_in_count):
         """
         Show the final workflow. Only to debug
         :param list_uuid:
         :return:
         """
-        print "[LOG] - Tasks to take in count:"
-        for uuid in list_uuid:
-            print "\t{} - ({})".format(self.tasks_map[uuid]['name'], uuid[:8])
-        print "-" * 20
+        print("Tasks to take in count:")
+        for uuid in tasks_to_in_count:
+            print("\t{} - ({})".format(self.tasks_map[uuid]['name'], uuid[:8]))
+        print ("\n")
+
+    def show_tasks(self):
+        """
+        Show all tasks in the current code. Only to debug.
+        :return:
+        """
+        print("List of all tasks:")
+        for k in self.tasks_map:
+            print("{} --> {}".format(k[:8], self.tasks_map[k]))
+        print ("\n")
 
     def create_adj_tasks(self, specials=[]):
         """
@@ -56,17 +73,6 @@ class COMPSsContext(object):
                             self.adj_tasks[p] = []
                         self.adj_tasks[p].append(t)
 
-
-
-        # for t in self.tasks_map:
-        #     parents = self.tasks_map[t]['parent']
-        #     for p in parents:
-        #         if p not in self.adj_tasks:
-        #             self.adj_tasks[p] = []
-        #         self.adj_tasks[p].append(t)
-
-        from collections import deque
-
         GRAY, BLACK = 0, 1
 
         def topological(graph):
@@ -76,8 +82,10 @@ class COMPSsContext(object):
                 state[node] = GRAY
                 for k in graph.get(node, ()):
                     sk = state.get(k, None)
-                    if sk == GRAY: raise ValueError("cycle")
-                    if sk == BLACK: continue
+                    if sk == GRAY:
+                        raise ValueError("cycle")
+                    if sk == BLACK:
+                        continue
                     enter.discard(k)
                     dfs(k)
                 order.appendleft(node)
@@ -87,227 +95,179 @@ class COMPSsContext(object):
             return order
 
         result = list(topological(self.adj_tasks))
-        print "TOPOLOGICAL SORT:", result
-        print "-" * 20
+
         return result
 
-
-    def is_ready(self, uuid_task):
-        pass
-
-
-    def run(self):
+    def run(self, wanted_uuid=None):
         import gc
 
-        print "map:"
-        for k in self.tasks_map:
-            print "{}: {}".format(k[:8], self.tasks_map[k])
-        print '\n\n'
+        print "Called by :", wanted_uuid
+        # self.show_tasks()
 
+        # mapping all tasks that produce a final result
         action_tasks = []
         for t in self.tasks_map:
             if self.tasks_map[t]['name'] in ['save', 'sync']:
                 action_tasks.append(t)
 
-        all_variables = []
-        final_variables = []  # variaveis finais
+        # based on that, get the their variables
+        vars = []
+        n_vars = 0
         for obj in gc.get_objects():
-            if isinstance(obj, DPS):
-                all_variables.append(obj)
+            if isinstance(obj, DDF):
+                n_vars += 1
                 tasks = obj.task_list
                 for k in action_tasks:
                     if k in tasks:
-                        final_variables.append(obj)
+                        vars.append(obj)
 
-        # final_variables = all_variables  #!TODO
-        print "[LOG] - Number of variables: ", len(final_variables)
+        # list all tasks used in these variables
         tasks_to_in_count = list()
-        for var in final_variables:
+        for var in vars:
             tasks_to_in_count.extend(var.task_list)
 
-
-
-        # Checking for tasks that need for others input
-
-        # tasks_to_in_count = [k for k in self.tasks_map]
-
-        self.show_workflow(tasks_to_in_count)
+        # and perform a topological sort to create a DAG
         topological_tasks = self.create_adj_tasks(tasks_to_in_count)
+        # print topological_tasks
+        # print("Number of variables: {}".format(len(vars)))
+        # print("Total of variables: {}".format(n_vars))
+        # self.show_workflow(tasks_to_in_count)
 
+        # iterate over all filtered and sorted tasks
         for current_task in topological_tasks:
-            print "[LOG] - Current task: {} ({})".format(self.tasks_map[current_task]['name'], current_task)
+            print("* Current task: {} ({}) -> {}".format(
+                    self.tasks_map[current_task]['name'], current_task[:8],
+                    self.tasks_map[current_task]['status']))
 
-            id_var = self.get_var_by_task(final_variables, current_task)[0]
-            tasks_list = final_variables[id_var].task_list
+            # get its variable and related tasks
+            id_var = self.get_var_by_task(vars, current_task)[0]
+            tasks_list = vars[id_var].task_list
             id_task = tasks_list.index(current_task)
+            print ("* {} em {} ".format(id_task, tasks_list))
 
-            for i, child_task in enumerate(tasks_list[id_task:]):
+            tasks_list = tasks_list[id_task:]
+            for i, child_task in enumerate(tasks_list):
                 child_task = tasks_list[i]
-                print "[LOG] - {}o task {} ({})".format(i+1, self.tasks_map[child_task]['name'], child_task)
-                print "[LOG] - {} ".format(self.tasks_map[child_task])
-
                 id_parents = self.tasks_map[child_task]['parent']
+                n_input = self.tasks_map[child_task].get('n_input', [-1])
+
+                print("   - {}o task {} ({}) -> {}"\
+                    .format(i+1, self.tasks_map[child_task]['name'],
+                            child_task[:8], self.tasks_map[child_task]['status']))
+
                 if self.tasks_map[child_task]['status'] == 'WAIT':
-                    if not all([self.tasks_map[p]['status'] == 'COMPLETED' for p in id_parents]):
-                        print "[LOG] - WAITING FOR A PARENT BE COMPLETED"
+                    print "{}".format(self.tasks_map[child_task])
+                    # when has parents: wait all parents tasks be completed
+                    if not all([self.tasks_map[p]['status'] == 'COMPLETED'
+                                for p in id_parents]):
+                        print "WAITING FOR A PARENT BE COMPLETED"
                         break
-                    # atualiza os dados
 
-                    n_input = self.tasks_map[child_task].get('n_input', [-1])
-
+                    # get the result of each parent
                     if len(id_parents) > 0:
-
                         inputs = {}
                         for ii, p in enumerate(id_parents):
-                            # se o output do pai for dividido (ex.: split)
-                            n_input_current = n_input[ii]
-                            if n_input_current != -1:
-                                inputs[ii] = self.tasks_map[p]['function'][n_input_current]
+                            # to handle with parents with multiple outputs
+                            n_input_curr = n_input[ii]
+                            if n_input_curr != -1:
+                                inputs[ii] = \
+                                    self.tasks_map[p]['function'][n_input_curr]
                             else:
                                 tmp = self.tasks_map[p]['function']
                                 if isinstance(tmp, dict):
                                     tmp = tmp[0]
                                 inputs[ii] = tmp
+                        vars[id_var].partitions = inputs
+                        # print "----\n New INPUTS: {}\n".format(inputs)
 
-                        print "INPUTS:", inputs
-                        final_variables[id_var].partitions = inputs
 
-
-                    # mark the begining
+                    # start the path
                     if self.tasks_map[child_task]['name'] == 'init':
                         self.tasks_map[child_task]['status'] = 'COMPLETED'
-                        print "[LOG] - init ({}) is COMPLETED - condition 1".format(
-                            child_task)
+                        print "init ({}) is COMPLETED - condition 1"\
+                            .format(child_task)
+
+                    # end the path
+                    elif self.tasks_map[child_task]['name'] == 'sync':
+                        vars[id_var].action()
+                        self.tasks_map[child_task]['function'] = \
+                            vars[id_var].partitions
+
+                        self.tasks_map[child_task]['status'] = 'COMPLETED'
+                        print "sync ({}) is COMPLETED - condition 2."\
+                            .format(child_task)
 
                     elif not self.tasks_map[child_task]['lazy']:
                         # Execute f and put result in vars
-                        if self.tasks_map[child_task]['name'] == 'sync':
-                            final_variables[id_var].action()
-                            self.tasks_map[child_task]['function'] = \
-                                final_variables[id_task].partitions
 
-                            self.tasks_map[child_task]['status'] = 'COMPLETED'
-                            print "sync ({}) is COMPLETED - condition 2.".format(
+                        print "RUNNING {} ({}) - condition 3.".format(
+                                self.tasks_map[child_task]['name'], child_task)
+
+                        f = self.tasks_map[child_task]['function']
+                        vars[id_var].task_others(f)
+
+                        self.tasks_map[child_task]['status'] = 'COMPLETED'
+                        self.tasks_map[child_task]['function'] = \
+                            vars[id_var].partitions
+
+                        print "{} ({}) is COMPLETED".format(
+                                self.tasks_map[child_task]['name'],
                                 child_task)
-                            print self.tasks_map[child_task]
 
-                        elif self.tasks_map[child_task].get('input', 1) < 2:
-
-                            # tarefas com 1 input e que nao podem ser agrupadas
-                            print "[LOG] - RUNNING {} ({}) - condition 3".format(
-                                    self.tasks_map[child_task]['name'],
-                                    child_task)
-                            f = self.tasks_map[child_task]['function']
-                            final_variables[id_var].task_others(f)
-                            self.tasks_map[child_task][
-                                'status'] = 'COMPLETED'
-                            self.tasks_map[child_task]['function'] = \
-                            final_variables[id_var].partitions
-                            print '[LOG] - {} ({}) is COMPLETED'.format(
-                                    self.tasks_map[child_task]['name'],
-                                    child_task)
-                            print '[LOG] - {}\n---'.format(
-                                    self.tasks_map[child_task])
-
-                        else:
-                            #preciso chegar se todos os parents estao COMPLETED
-                            print "[LOG] - RUNNING {} ({}) - condition 4".format(
-                                    self.tasks_map[child_task]['name'],
-                                    child_task)
-                            f_task = self.tasks_map[child_task]['function']
-                            final_variables[id_var].task_others(f_task)
-
-                            self.tasks_map[child_task][
-                                'status'] = 'COMPLETED'
-                            self.tasks_map[child_task]['function'] = \
-                                final_variables[id_task].partitions
-
-                            self.tasks_map[child_task][
-                                'status'] = 'COMPLETED'
-                            print '{} ({}) is COMPLETED - condition 4'.format(
-                                    self.tasks_map[child_task]['name'],
-                                    child_task)
-
-                        pass
-
-                    else:
+                    elif self.tasks_map[child_task]['lazy']:
                         opt = set()
                         opt_functions = []
-                        last_function = self.tasks_map[tasks_list[i - 1]][
-                            'function']
-                        for j in xrange(i, len(tasks_list)):
-                            t = tasks_list[j]
-                            opt.add(t)
-                            opt_functions.append(
-                                    self.tasks_map[t]['function'])
-                            if tasks_to_in_count.count(
-                                    tasks_list[j]) != tasks_to_in_count.count(
-                                    tasks_list[j + 1]):
-                                break
-                            if not all([self.tasks_map[t]['lazy'],
-                                        self.tasks_map[tasks_list[j + 1]][
-                                            'lazy']]):
-                                break
+                        # last_function = \
+                        #     self.tasks_map[tasks_list[i-1]]['function']
 
-                        print "OPT: ", opt
-                        print "OPT:", opt_functions
-                        final_variables[id_task].perform(opt_functions,
-                                                    last_function)
+                        for id_j, task_opt in enumerate(tasks_list[i:]):
+                            # print 'Checking lazziness: {} --> {}'.format(
+                            #         self.tasks_map[task_opt]['name'],
+                            #         self.tasks_map[task_opt])
+
+
+                            opt.add(task_opt)
+                            opt_functions.append(
+                                    self.tasks_map[task_opt]['function'])
+
+                            if id_j + 1 < len(tasks_list):
+                                if tasks_to_in_count.count(task_opt) != \
+                                        tasks_to_in_count.count(
+                                        tasks_list[id_j + 1]):
+                                    print "exit 1"
+                                    break
+
+                                if not all([self.tasks_map[task_opt]['lazy'],
+                                          self.tasks_map[tasks_list[id_j + 1]][
+                                            'lazy']]):
+                                    print "exit 2"
+                                    break
+
+                        print "Stages (optimized): {}".format(opt)
+                        print "opt_functions", opt_functions
+                        # print "last:", last_function
+                        # print "data", vars[id_task].partitions
+                        vars[id_var].perform(opt_functions)
 
                         for o in opt:
                             self.tasks_map[o]['status'] = 'COMPLETED'
-                            self.tasks_map[o]['function'] = final_variables[
-                                id_task].partitions
+                            self.tasks_map[o]['function'] = \
+                                vars[id_var].partitions
 
-                            print '{} ({}) is COMPLETED - condition 5'.format(
-                                    self.tasks_map[o]['name'], o)
-                            print '[LOG] - {}\n---'.format(
-                                    self.tasks_map[o])
-
-        print "map:"
-        for k in self.tasks_map:
-            print "{} --> {}".format(k, self.tasks_map[k])
-        print '\n\n'
-
-    def check_brothers(self, b, uuid):
-        """
-        Check if a and b are brothers (if have both uuid)
-        :return:
-        """
-
-        return uuid in b.task_list
-
-    def check_lazziness(self, uuid):
-        """
-        Check if task is lazy
-
-        :param uuid:
-        :return:
-        """
-
-        return self.tasks_map[uuid]['lazy']
-
-    def check_forward(self, a, b, uuid):
-        """
-        Check if a and b at task uuid have same next
-        :param a:
-        :param b:
-        :param uuid:
-        :return:
-        """
-
-        pass
+                            print "{} ({}) is COMPLETED - condition 4."\
+                                .format(self.tasks_map[o]['name'], o[:8])
+                            # print self.tasks_map[o]
 
 
-
-class DPS(object):
+class DDF(object):
     """
-    Distributed Data Handler.
+    Distributed DataFrame Handler.
     Should distribute the data and run tasks for each partition.
     """
 
-    def __init__(self, partitions=None, task_list=None, last_uuid='init', settings={'input': -1}):
-        super(DPS, self).__init__()
+    def __init__(self, partitions=None, task_list=None,
+                 last_uuid='init', settings={'input': -1}):
+        super(DDF, self).__init__()
 
         self.schema = list()
         self.opt = OrderedDict()
@@ -330,12 +290,7 @@ class DPS(object):
 
         self.last_uuid = last_uuid
 
-        # if isinstance(input, pd.DataFrame):
-        #     self.load_df(input, num_of_parts)
-        # else:
-        #     self.load_fs(input, num_of_parts)
-
-    def load_fs(self, filename, num_of_parts=4):
+    def load_fs(self, filename, num_of_parts=4, header=True, sep=','):
 
         from functions.data.read_data import ReadOperationHDFS
 
@@ -343,6 +298,8 @@ class DPS(object):
         settings['port'] = 9000
         settings['host'] = 'localhost'
         settings['separator'] = ','
+        settings['header'] = header
+        settings['separator'] = sep
 
         self.partitions, info = ReadOperationHDFS()\
             .transform(filename, settings, num_of_parts)
@@ -356,7 +313,7 @@ class DPS(object):
                                              'parent': [self.last_uuid]}
 
         self.partial_sizes.append(info)
-        return DPS(self.partitions, self.task_list, uuid_key)
+        return DDF(self.partitions, self.task_list, uuid_key)
 
     def task_others(self, f):
 
@@ -396,7 +353,7 @@ class DPS(object):
                                              'output': 1, 'input': 0,
                                              'parent': [self.last_uuid]}
 
-        return DPS(self.partitions, self.task_list, uuid_key)
+        return DDF(self.partitions, self.task_list, uuid_key)
 
     def load_shapefile(self, shp_path, dbf_path, polygon='points',
                        attributes=[], num_of_parts=4):
@@ -408,6 +365,7 @@ class DPS(object):
                 polygon coordenates (default, 'points');
         :param attributes: List of attributes to keep in the dataframe,
                 empty to use all fields;
+        :param num_of_parts: The number of fragments;
         :return:
 
         Note: pip install pyshp
@@ -433,66 +391,9 @@ class DPS(object):
                                              'output': 1, 'input': 0,
                                              'parent': [self.last_uuid]}
 
-        return DPS(self.partitions, self.task_list, uuid_key)
-
-    def create_partitions(self, iterator, num_of_parts):
-        """
-        Saves 'List of future objects' as the partitions. So once called, this
-        data set will always contain only future objects.
-        :param iterator:
-        :param num_of_parts: Number of partitions to be created
-                            Should be -1 (minus 1) if iterator is already a list
-                            of future objects
-        :return:
-
-        >>> DDS().load(range(10), 2).collect(True)
-        [[0, 1, 2, 3, 4], [5, 6, 7, 8, 9]]
-        """
-        if self.partitions:
-            raise Exception("Partitions have already been created, cannot load "
-                            "new data.")
-
-        if num_of_parts == -1:
-            self.partitions = iterator
-            return
-
-        total = len(iterator)
-        if not total:
-            return
-
-        chunk_sizes = [(total // num_of_parts)] * num_of_parts
-        extras = total % num_of_parts
-        for i in range(extras):
-            chunk_sizes[i] += 1
-
-        if isinstance(iterator, basestring):
-            start, end = 0, 0
-            for size in chunk_sizes:
-                end = start + size
-                temp = task_load(iterator[start:end])
-                start = end
-                self.partitions.append(temp)
-            return
-
-        start = 0
-        for size in chunk_sizes:
-            end = start + size
-            temp = get_next_partition(iterator, start, end)
-            self.partitions.append(temp)
-            start = end
-        return
+        return DDF(self.partitions, self.task_list, uuid_key)
 
     def action(self):
-
-        # uuid_key = str(uuid.uuid4())
-        # COMPSsContext.tasks_map[uuid_key] = {'name': 'sync',
-        #                                      'status': 'WAIT', 'lazy': False,
-        #                                      'parent': [self.last_uuid],
-        #                                      'input': 1}
-        # task_list = self.task_list
-
-        # for f
-        # for f in COMPSsContext.tasks_map:
 
         self.partitions = compss_wait_on(self.partitions)
 
@@ -500,18 +401,34 @@ class DPS(object):
         tmp = self.partitions[0]
         return tmp
 
-    def perform(self, opt, data):
+    def perform(self, opt):
+
+        data = self.partitions
+        tmp = []
+        if isinstance(data, dict):
+            if len(data) > 1:
+                for k in data:
+                    tmp.append(data[k])
+            else:
+                for k in data:
+                    tmp = data[k]
+        else:
+            tmp = data
+
 
         future_objects = []
-        for idfrag, p in enumerate(data):
+        for idfrag, p in enumerate(tmp):
             future_objects.append(task_bundle(p, opt, idfrag))
 
         self.partitions = future_objects
 
+        # self.action()
+
+
     def get_tasks(self):
         return self.task_list
 
-    def collect(self, keep_partitions=False, future_objects=False):
+    def collect(self):
         """
         Action
 
@@ -521,28 +438,7 @@ class DPS(object):
         :param future_objects:
         :return:
 
-        >>> dds = DDS().load(range(10), 2)
-        >>> dds.collect(True)
-        [[0, 1, 2, 3, 4], [5, 6, 7, 8, 9]]
-        >>> DDS().load(range(10), 2).collect()
-        [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
         """
-
-        # self.action()
-
-        # res = list()
-        # # Future objects cannot be extended for now...
-        # if future_objects:
-        #     return self.partitions
-        #
-        # self.partitions = compss_wait_on(self.partitions)
-        # if not keep_partitions:
-        #     res = pd.concat(self.partitions)
-        #     # for p in self.partitions:
-        #     #     p = compss_wait_on(p)
-        #     #     res.extend(p)
-        # else:
-        #     res = self.partitions
         uuid_key = str(uuid.uuid4())
         COMPSsContext.tasks_map[uuid_key] = {'name': 'sync',
                                              'status': 'WAIT', 'lazy': False,
@@ -550,16 +446,17 @@ class DPS(object):
                                              'function': []}
 
         self.set_n_input(uuid_key, self.settings['input'])
+        self.task_list.append(uuid_key)
+        COMPSsContext().run(self.last_uuid)
 
-        return DPS(self.partitions, self.task_list, uuid_key)
+        COMPSsContext.tasks_map[uuid_key]['function'] = self.partitions
+        return DDF(self.partitions, self.task_list, uuid_key)
 
     def num_of_partitions(self):
         """
         Get the total amount of partitions
         :return: int
 
-        >>> DDS(range(10), 5).num_of_partitions()
-        5
         """
         return len(self.partitions)
 
@@ -591,7 +488,8 @@ class DPS(object):
 
         :return:
         """
-        res = pd.concat(self.get_data())
+
+        res = pd.concat(self.partitions[0])
         return res
 
     def count(self, reduce=True):
@@ -657,7 +555,7 @@ class DPS(object):
 
         self.set_n_input(uuid_key, self.settings['input'])
 
-        return DPS(self.partitions, self.task_list, uuid_key)
+        return DDF(self.partitions, self.task_list, uuid_key)
 
     def add_column(self, data, suffixes=["_l","_r"]):
         """
@@ -698,7 +596,7 @@ class DPS(object):
                                              'output': 1, 'input': 1}
 
         self.set_n_input(uuid_key, self.settings['input'])
-        return DPS(self.partitions, self.task_list, uuid_key)
+        return DDF(self.partitions, self.task_list, uuid_key)
 
     def clean_missing(self, columns, mode='REMOVE_ROW', value=None):
 
@@ -721,7 +619,7 @@ class DPS(object):
                                              'output': 1, 'input': 1}
 
         self.set_n_input(uuid_key, self.settings['input'])
-        return DPS(self.partitions, self.task_list, uuid_key)
+        return DDF(self.partitions, self.task_list, uuid_key)
 
     def difference(self, data2):
         """
@@ -747,7 +645,7 @@ class DPS(object):
 
         self.set_n_input(uuid_key, self.settings['input'])
         self.set_n_input(uuid_key, data2.settings['input'])
-        return DPS(self.partitions, self.task_list+ data2.task_list, uuid_key)
+        return DDF(self.partitions, self.task_list+ data2.task_list, uuid_key)
 
     def distinct(self, cols):
         from functions.etl.distinct import DistinctOperation
@@ -763,7 +661,7 @@ class DPS(object):
                                              'output': 1, 'input': 1}
 
         self.set_n_input(uuid_key, self.settings['input'])
-        return DPS(self.partitions, self.task_list, uuid_key)
+        return DDF(self.partitions, self.task_list, uuid_key)
 
     def drop(self, columns):
         """
@@ -785,7 +683,7 @@ class DPS(object):
                                              'output': 1, 'input': 1}
 
         self.set_n_input(uuid_key, self.settings['input'])
-        return DPS(self.partitions, self.task_list, uuid_key)
+        return DDF(self.partitions, self.task_list, uuid_key)
 
     def filter(self, expr):
         """
@@ -795,8 +693,6 @@ class DPS(object):
         :param query: A filtering function
         :return:
 
-        >>> DDS(range(10), 5).filter('col1 == 4').count()
-        5
         """
 
         def task_filter(df, query):
@@ -810,7 +706,7 @@ class DPS(object):
                                              'output': 1, 'input': 1}
 
         self.set_n_input(uuid_key, self.settings['input'])
-        return DPS(self.partitions, self.task_list, uuid_key)
+        return DDF(self.partitions, self.task_list, uuid_key)
 
     def geo_within(self, shp_object, lat_col, lon_col, polygon,
                    attributes=[], alias='_shp'):
@@ -853,7 +749,7 @@ class DPS(object):
 
         self.set_n_input(uuid_key, self.settings['input'])
         self.set_n_input(uuid_key, shp_object.settings['input'])
-        return DPS(self.partitions, self.task_list + shp_object.task_list,
+        return DDF(self.partitions, self.task_list + shp_object.task_list,
                    uuid_key)
 
     def intersect(self, data2):
@@ -879,7 +775,7 @@ class DPS(object):
 
         self.set_n_input(uuid_key, self.settings['input'])
         self.set_n_input(uuid_key, data2.settings['input'])
-        return DPS(self.partitions, self.task_list + data2.task_list, uuid_key)
+        return DDF(self.partitions, self.task_list + data2.task_list, uuid_key)
 
     def join(self, data2, key1=[], key2=[], mode='inner',
              suffixes=['_l', '_r'], keep_keys=False,
@@ -909,7 +805,7 @@ class DPS(object):
 
         self.set_n_input(uuid_key, self.settings['input'])
         self.set_n_input(uuid_key, data2.settings['input'])
-        return DPS(self.partitions, self.task_list+ data2.task_list, uuid_key)
+        return DDF(self.partitions, self.task_list+ data2.task_list, uuid_key)
 
     def replace(self, replaces, subset=None):
         """
@@ -939,22 +835,16 @@ class DPS(object):
                                              'output': 1, 'input': 1}
 
         self.set_n_input(uuid_key, self.settings['input'])
-        return DPS(self.partitions, self.task_list, uuid_key)
+        return DDF(self.partitions, self.task_list, uuid_key)
 
     def sample(self, value=None, seed=None):
-        """SampleOperation.
+        """
+        Returns a sampled subset.
 
-        :param data: A list with nfrag pandas's dataframe;
-        :param params: dictionary that contains:
-            - type:
-                * 'percent': Sample a random amount of records (default)
-                * 'value': Sample a N random records
-                * 'head': Sample the N firsts records of the dataframe -> take
-            - seed : Optional, seed for the random operation.
-            - int_value: Value N to be sampled (in 'value' or 'head' type)
-            - per_value: Percentage to be sampled (in 'value' or 'head' type)
-        :param nfrag: The number of fragments;
-        :return: A list with nfrag pandas's dataframe.
+        :param value: None to sample a random amount of records (default),
+            a integer or float N to sample a N random records;
+        :param seed: pptional, seed for the random operation.
+        :return
         """
 
         from functions.etl.sample import SampleOperation
@@ -987,10 +877,22 @@ class DPS(object):
 
         self.set_n_input(uuid_key, self.settings['input'])
 
-        return DPS(self.partitions, self.task_list, uuid_key)
+        return DDF(self.partitions, self.task_list, uuid_key)
 
     def save(self, filename, format='csv', storage='hdfs',
-                  header=True, mode='overwrite'):
+             header=True, mode='overwrite'):
+        """
+        Save the data in the storage.
+
+        Lazy function.
+
+        :param filename: output name;
+        :param format: format file, CSV or JSON;
+        :param storage: 'fs' to commom file system or 'hdfs' to use HDFS;
+        :param header: save with the columns header;
+        :param mode: 'overwrite' if file exists, 'ignore' or 'error'
+        :return:
+        """
 
         from functions.data.save_data import SaveOperation
 
@@ -1014,14 +916,14 @@ class DPS(object):
                                              'output': 1, 'input': 1}
 
         self.set_n_input(uuid_key, self.settings['input'])
-        return DPS(self.partitions, self.task_list, uuid_key)
+        return DDF(self.partitions, self.task_list, uuid_key)
 
     def select(self, columns):
         """
-        Perform a partial projection.
+        Perform a projection of selected columns.
 
         Lazy function
-        :param columns:
+        :param columns: list of columns to be selected
         :return:
         """
 
@@ -1041,9 +943,17 @@ class DPS(object):
                                              'output': 1, 'input': 1}
 
         self.set_n_input(uuid_key, self.settings['input'])
-        return DPS(self.partitions, self.task_list, uuid_key)
+        return DDF(self.partitions, self.task_list, uuid_key)
 
     def sort(self, cols,  ascending=[]):
+        """
+        Returns a sorted DDF by the specified column(s).
+
+        :param cols: list of columns to be sorted;
+        :param ascending: list indicating whether the sort order
+            is ascending (True) for each column;
+        :return:
+        """
 
         from functions.etl.sort import SortOperation
 
@@ -1062,9 +972,16 @@ class DPS(object):
                                              'parent': [self.last_uuid],
                                              'output': 1, 'input': 1}
 
-        return DPS(self.partitions, self.task_list, uuid_key)
+        return DDF(self.partitions, self.task_list, uuid_key)
 
     def split(self, percentage=0.5, seed=None):
+        """
+        Randomly splits a DDF into two DDF
+
+        :param percentage:  percentage to split the data (default, 0.5);
+        :param seed: optional, seed in case of deterministic random operation;
+        :return:
+        """
 
         from functions.etl.split import SplitOperation
 
@@ -1084,14 +1001,14 @@ class DPS(object):
                                              'output': 2, 'input': 1}
 
         self.set_n_input(uuid_key, self.settings['input'])
-        return DPS(self.partitions, self.task_list, uuid_key, {'input': 0}), \
-               DPS(self.partitions, self.task_list, uuid_key, {'input': 1})
+        return DDF(self.partitions, self.task_list, uuid_key, {'input': 0}), \
+               DDF(self.partitions, self.task_list, uuid_key, {'input': 1})
 
     def take(self, num):
         """
-        Returns the first num rows as a list of Row.
+        Returns the first num rows.
 
-        :param num:
+        :param num: number of rows to retrieve;
         :return:
         """
 
@@ -1112,18 +1029,18 @@ class DPS(object):
                                              'output': 1, 'input': 1}
 
         self.set_n_input(uuid_key, self.settings['input'])
-        return DPS(self.partitions, self.task_list, uuid_key)
+        return DDF(self.partitions, self.task_list, uuid_key)
 
     def transform(self, f, alias):
         """
-        Apply a function to each element of this data set.
+        Apply a function to each row of this data set.
 
-        Lazy function
-        :param f: A function that will take each element of this data set as a
+        Lazy function.
+
+        :param f: function that will take each element of this data set as a
                   parameter
-        :param alias:
+        :param alias: name of column to put the result
         :return:
-
         """
 
         settings = {'function': f, 'alias': alias}
@@ -1150,7 +1067,7 @@ class DPS(object):
                                              'output': 1, 'input': 1}
 
         self.set_n_input(uuid_key, self.settings['input'])
-        return DPS(self.partitions, self.task_list, uuid_key)
+        return DDF(self.partitions, self.task_list, uuid_key)
 
     def union(self, data2):
         """
@@ -1181,7 +1098,7 @@ class DPS(object):
 
         self.set_n_input(uuid_key, self.settings['input'])
         self.set_n_input(uuid_key, data2.settings['input'])
-        return DPS(self.partitions, self.task_list + data2.task_list, uuid_key)
+        return DDF(self.partitions, self.task_list + data2.task_list, uuid_key)
 
 
 
