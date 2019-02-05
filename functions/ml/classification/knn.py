@@ -22,85 +22,90 @@ __email__ = "lucasmsp@gmail.com"
 import numpy as np
 import pandas as pd
 from pycompss.api.task import task
-from pycompss.functions.reduce import mergeReduce
+from pycompss.functions.reduce import merge_reduce
 from pycompss.api.api import compss_wait_on
 
 
-class KNN(object):
+import uuid
+
+
+
+
+class KNearestNeighbors(object):
+
     """KNN's Methods.
 
     - fit(): Create a model based in an dataset.
     - transform(): Predict a dataset based in the model created.
     """
 
-    def fit(self, data, settings, nfrag):
-        """Fit.
+    def __init__(self, feature_col, label_col, pred_col=None, k=3):
+        if not feature_col:
+            raise Exception("You must inform the `features` field.")
 
-        :param data: A list with nfrag pandas's dataframe used to
-            training the model.
-        :param settings: A dictionary that contains:
-            - K: Number of K nearest neighborhood to take in count.
-            - features: Column name of the features in the training data;
-            - label: Column name of the labels in the training data;
-        :param nfrag: A number of fragments;
-        :return: The model created (which is a pandas dataframe).
+        if not label_col:
+            raise Exception("You must inform the `label` field.")
+
+        if not pred_col:
+            pred_col = 'prediction_kNN'
+
+        self.settings = dict()
+        self.settings['feature_col'] = feature_col
+        self.settings['label_col'] = label_col
+        self.settings['pred_col'] = pred_col
+        self.settings['k'] = k
+
+        self.model = None
+
+    def fit(self, data):
         """
-        col_label = settings['label']
-        col_features = settings['features']
 
+        :param data: DDF
+        :return: trained model
+        """
+
+        df = data.partitions[0]
+
+        nfrag = len(df)
+        col_label = self.settings['label_col']
+        col_feature = self.settings['feature_col']
         train_data = [[] for _ in range(nfrag)]
         for f in range(nfrag):
-            train_data[f] = createModel(data[f], col_label, col_features)
-        train_data = mergeReduce(merge_lists, train_data)
+            train_data[f] = create_model(df[f], col_label, col_feature)
+        model = merge_reduce(merge_lists, train_data)
 
-        train_data = compss_wait_on(train_data)
-        model = dict()
-        model['algorithm'] = 'KNN'
-        model['model'] = train_data
-        return model
+        self.model = compss_wait_on(model)
+        return self
 
-    def transform(self, data, model, settings, nfrag):
-        """Transform.
-
-        :param data: A list with nfrag pandas's dataframe that will
-            be predicted.
-        :param model: The KNN model created;
-        :param settings: A dictionary that contains:
-            - K: Number of K nearest neighborhood to take in count.
-            - features: Column name of the features in the test data;
-            - predCol: Alias to the new column with the labels predicted;
-        :param nfrag: A number of fragments;
-        :return: The prediction (in the same input format).
+    def transform(self, data):
         """
-        if 'features' not in settings:
-            raise Exception("You must inform the `features` field.")
 
-        if model.get('algorithm', 'null') != 'KNN':
-            raise Exception("You must inform a valid model.")
+        :param data: DDF
+        :return:
+        """
 
-        model = model['model']
+        if not self.model:
+            raise Exception("Model is not fitted.")
 
-        result = [[] for _ in range(nfrag)]
-        for i in range(nfrag):
-            result[i] = _classify_block(data[i], model, settings)
-        return result
+        model = self.model
 
-    def transform_serial(self, data, model, settings):
+        def task_transform_knn(df, params):
+            return _classify_block_(df, model, params)
 
-        if 'features' not in settings:
-            raise Exception("You must inform the `features` field.")
+        uuid_key = str(uuid.uuid4())
+        COMPSsContext.tasks_map[uuid_key] = {'name': 'task_transform_knn',
+                                             'status': 'WAIT', 'lazy': True,
+                                             'function': [task_transform_knn,
+                                                          self.settings],
+                                             'parent': [data.last_uuid],
+                                             'output': 1, 'input': 1}
 
-        if model.get('algorithm', 'null') != 'KNN':
-            raise Exception("You must inform a valid model.")
-
-        model = model['model']
-
-        result = _classify_block_(data, model, settings)
-        return result
+        data.set_n_input(uuid_key, data.settings['input'])
+        return DDF(data.partitions, data.task_list, uuid_key)
 
 
 @task(returns=list)
-def createModel(df, label, features):
+def create_model(df, label, features):
     """Create a partial model based in the selected columns."""
     labels = df[label].values
     feature = np.array(df[features].values.tolist())
@@ -124,16 +129,11 @@ def merge_lists(list1, list2):
         return list2
 
 
-@task(returns=list)
-def _classify_block(data, model, settings):
-    return _classify_block_(data, model, settings)
-
-
 def _classify_block_(data, model, settings):
     """Perform a partial classification."""
-    col_features = settings['features']
-    pred_col = settings.get('predCol', "predited")
-    K = settings.get('K', 1)
+    col_features = settings['feature_col']
+    pred_col = settings.get('pred_col', "prediction_kNN")
+    K = settings.get('k', 3)
 
     sizeTest = len(data)
     if sizeTest == 0:
