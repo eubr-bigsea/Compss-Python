@@ -10,7 +10,7 @@ from ddf.ddf import COMPSsContext, DDF
 
 from pycompss.api.task import task
 from pycompss.functions.reduce import merge_reduce
-
+from pycompss.api.local import *
 __all__ = ['PageRank']
 
 import uuid
@@ -49,7 +49,8 @@ class PageRank(object):
         :return: DDF
         """
 
-        df = data.partitions[0]
+        tmp = data.cache()
+        df = COMPSsContext.tasks_map[tmp.last_uuid]['function'][0]
         nfrag = len(df)
 
         inlink = self.settings['inlink_col']
@@ -73,18 +74,19 @@ class PageRank(object):
         merged_table = merge_reduce(_merge_ranks, table)
         result = _split(merged_table, nfrag)
 
-        data.partitions = {0: result}
         uuid_key = str(uuid.uuid4())
         COMPSsContext.tasks_map[uuid_key] = {
             'name': 'task_transform_pagerank',
             'status': 'COMPLETED',
             'lazy': False,
-            'function': result,
+            'function': {0: result},
             'parent': [data.last_uuid],
-            'output': 1, 'input': 1}
+            'output': 1,
+            'input': 1
+        }
 
         data.set_n_input(uuid_key, data.settings['input'])
-        return DDF(data.partitions, data.task_list, uuid_key)
+        return DDF(data.task_list, uuid_key)
 
 
 def _first_step(data, inlink, outlink, nfrag):
@@ -215,7 +217,7 @@ def _merge_ranks(df1, df2):
     return result
 
 
-@task(returns=list)
+@local
 def _split(merged_table, nfrag):
     """Split the list of vertex into nfrag parts.
 

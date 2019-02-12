@@ -99,10 +99,6 @@ class ReadShapeFileOperation(object):
         geo_data = np.array_split(geo_data, nfrag)
         return geo_data
 
-    def transform_serial(self, geo):
-        """Used in Lemonade's optimization."""
-        return geo
-
 
 class GeoWithinOperation(object):
     """Geo Within Operation: returns the sectors that the each point belongs."""
@@ -142,10 +138,6 @@ class GeoWithinOperation(object):
             raise Exception("Please inform, at least, the fields: "
                             "`lat_col` and `lon_col`")
 
-        shp_object = merge_reduce(_merge_shapefile, shp_object)
-        from pycompss.api.api import compss_wait_on
-        shp_object = compss_wait_on(shp_object)
-
         settings = self.prepare_spindex(settings, shp_object)
         return settings
 
@@ -162,6 +154,10 @@ class GeoWithinOperation(object):
         ymin = float('+inf')
         xmax = float('-inf')
         ymax = float('-inf')
+
+        from pycompss.api.api import compss_wait_on
+        shp_object = merge_reduce(_merge_shapefile, shp_object)
+        shp_object = compss_wait_on(shp_object)
 
         for i, sector in shp_object.iterrows():
             for point in sector[polygon]:
@@ -193,10 +189,6 @@ class GeoWithinOperation(object):
 
         return settings
 
-    def transform_serial(self, data_input, settings):
-        """Retrieve the sectors of each fragment."""
-        return _get_sectors_(data_input, settings)
-
 
 @task(returns=list, priority=True)
 def _merge_shapefile(shape1, shape2):
@@ -205,10 +197,6 @@ def _merge_shapefile(shape1, shape2):
 
 @task(returns=list)
 def _get_sectors(data_input, settings):
-    return _get_sectors_(data_input, settings)
-
-
-def _get_sectors_(data_input, settings):
     """Retrieve the sectors of each fragment."""
     shp_object = settings['shp_object']
     spindex = settings['spindex']

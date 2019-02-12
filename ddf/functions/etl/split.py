@@ -2,7 +2,6 @@
 # -*- coding: utf-8 -*-
 
 from pycompss.api.task import task
-from pycompss.api.parameter import INOUT
 from pycompss.functions.reduce import merge_reduce
 import numpy as np
 import math
@@ -28,11 +27,10 @@ class SplitOperation(object):
 
         idxs = self.preprocessing(settings, data, nfrag)
         splits1 = [[] for _ in range(nfrag)]
-        splits2 = data[:]
+        splits2 = [[] for _ in range(nfrag)]
         for i in range(nfrag):
-            splits1[i] = _get_splits(splits2[i], idxs, i)
-
-        return splits1, splits2
+            splits1[i], splits2[i] = _get_splits(data[i], idxs, i)
+        return [splits1, splits2]
 
     def preprocessing(self, settings, data, nfrag):
         percentage = settings.get('percentage', 0.5)
@@ -86,11 +84,11 @@ def _define_splits(total, percentage, seed, nfrag):
     return list_ids
 
 
-@task(data=INOUT, returns=list)
+@task(returns=2)
 def _get_splits(data, indexes, frag):
     """Retrieve the split."""
     data.reset_index(drop=True, inplace=True)
     idx = data.index.isin(indexes[frag])
     split1 = data.loc[idx]
     data.drop(index=indexes[frag], inplace=True)
-    return split1
+    return split1, data

@@ -55,15 +55,18 @@ class VectorAssembler(object):
             return _feature_assemble_(df, params)
 
         uuid_key = str(uuid.uuid4())
-        COMPSsContext.tasks_map[uuid_key] = {'name': 'task_vector_assembler',
-                                             'status': 'WAIT', 'lazy': True,
-                                             'function': [task_vector_assembler,
-                                                          self.settings],
-                                             'parent': [data.last_uuid],
-                                             'output': 1, 'input': 1}
+        COMPSsContext.tasks_map[uuid_key] = \
+            {'name': 'task_vector_assembler',
+             'status': 'WAIT',
+             'lazy': True,
+             'function': [task_vector_assembler, self.settings],
+             'parent': [data.last_uuid],
+             'output': 1,
+             'input': 1
+             }
 
         data.set_n_input(uuid_key, data.settings['input'])
-        return DDF(data.partitions, data.task_list, uuid_key)
+        return DDF(data.task_list, uuid_key)
 
 
 def _feature_assemble_(df, settings):
@@ -137,15 +140,18 @@ class Tokenizer(object):
             return _tokenizer_(df, params)
 
         uuid_key = str(uuid.uuid4())
-        COMPSsContext.tasks_map[uuid_key] = {'name': 'tokenizer',
-                                             'status': 'WAIT', 'lazy': True,
-                                             'function': [task_tokenizer,
-                                                          self.settings],
-                                             'parent': [data.last_uuid],
-                                             'output': 1, 'input': 1}
+        COMPSsContext.tasks_map[uuid_key] = \
+            {'name': 'tokenizer',
+             'status': 'WAIT',
+             'lazy': True,
+             'function': [task_tokenizer, self.settings],
+             'parent': [data.last_uuid],
+             'output': 1,
+             'input': 1
+             }
 
         data.set_n_input(uuid_key, data.settings['input'])
-        return DDF(data.partitions, data.task_list, uuid_key)
+        return DDF(data.task_list, uuid_key)
 
 
 class RegexTokenizer(object):
@@ -178,17 +184,17 @@ class RegexTokenizer(object):
             return _tokenizer_(df, params)
 
         uuid_key = str(uuid.uuid4())
-        COMPSsContext.tasks_map[uuid_key] = {'name': 'regex-tokenizer',
-                                             'status': 'WAIT',
-                                             'lazy': True,
-                                             'function': [task_regex_tokenizer,
-                                                          self.settings],
-                                             'parent': [data.last_uuid],
-                                             'output': 1,
-                                             'input': 1}
+        COMPSsContext.tasks_map[uuid_key] = \
+            {'name': 'regex-tokenizer',
+             'status': 'WAIT',
+             'lazy': True,
+             'function': [task_regex_tokenizer, self.settings],
+             'parent': [data.last_uuid],
+             'output': 1,
+             'input': 1}
 
         data.set_n_input(uuid_key, data.settings['input'])
-        return DDF(data.partitions, data.task_list, uuid_key)
+        return DDF(data.task_list, uuid_key)
 
 
 def _tokenizer_(data, settings):
@@ -238,7 +244,7 @@ class RemoveStopWords(object):
     """
 
     def __init__(self, input_col, output_col=None, case_sensitive=True,
-                 stops_words_list=[]):
+                 stops_words_list=list()):
         if not input_col:
             raise Exception("You must inform the `input_col` field.")
 
@@ -265,7 +271,8 @@ class RemoveStopWords(object):
             raise Exception("You must inform the `input_col` field.")
 
         # It assumes that stopwords's dataframe can fit in memmory
-        df = data.partitions[0]
+        tmp = data.cache()
+        df = COMPSsContext.tasks_map[tmp.last_uuid]['function'][0]
         nfrag = len(df)
 
         stopwords = [[] for _ in range(nfrag)]
@@ -284,25 +291,27 @@ class RemoveStopWords(object):
         :return: DDF
         """
 
-        df = data.partitions[0]
+        tmp = data.cache()
+        df = COMPSsContext.tasks_map[tmp.last_uuid]['function'][0]
         nfrag = len(df)
 
         result = [[] for _ in range(nfrag)]
         for f in range(nfrag):
             result[f] = _remove_stopwords(df[f], self.settings, self.stopwords)
 
-        data.partitions = {0: result}
         uuid_key = str(uuid.uuid4())
         COMPSsContext.tasks_map[uuid_key] = \
             {'name': 'task_transform_stopwords',
              'status': 'COMPLETED',
              'lazy': False,
-             'function': result,
-             'parent': [data.last_uuid],
-             'output': 1, 'input': 1}
+             'function': {0: result},
+             'parent': [tmp.last_uuid],
+             'output': 1,
+             'input': 1
+             }
 
-        data.set_n_input(uuid_key, data.settings['input'])
-        return DDF(data.partitions, data.task_list, uuid_key)
+        tmp.set_n_input(uuid_key, tmp.settings['input'])
+        return DDF(tmp.task_list, uuid_key)
 
 
 @task(returns=list)
@@ -401,7 +410,9 @@ class CountVectorizer(object):
         vocab_size = self.settings['vocab_size']
         min_tf = self.settings['min_tf']
         min_df = self.settings['min_df']
-        df = data.partitions[0]
+
+        tmp = data.cache()
+        df = COMPSsContext.tasks_map[tmp.last_uuid]['function'][0]
         nfrag = len(df)
 
         result_p = [[] for _ in range(nfrag)]
@@ -428,24 +439,27 @@ class CountVectorizer(object):
 
         vocabulary = self.model[0]
 
-        df = data.partitions[0]
+        tmp = data.cache()
+        df = COMPSsContext.tasks_map[tmp.last_uuid]['function'][0]
         nfrag = len(df)
+
         result = [[] for _ in range(nfrag)]
         for f in range(nfrag):
             result[f] = _transform_BoW(df[f], vocabulary, self.settings)
 
-        data.partitions = {0: result}
         uuid_key = str(uuid.uuid4())
         COMPSsContext.tasks_map[uuid_key] = \
             {'name': 'task_transform_count_vectorizer',
              'status': 'COMPLETED',
              'lazy': False,
-             'function': result,
-             'parent': [data.last_uuid],
-             'output': 1, 'input': 1}
+             'function': {0: result},
+             'parent': [tmp.last_uuid],
+             'output': 1,
+             'input': 1
+             }
 
-        data.set_n_input(uuid_key, data.settings['input'])
-        return DDF(data.partitions, data.task_list, uuid_key)
+        tmp.set_n_input(uuid_key, tmp.settings['input'])
+        return DDF(tmp.task_list, uuid_key)
 
 
 @task(returns=dict)
@@ -585,7 +599,9 @@ class TfidfVectorizer(object):
         vocab_size = self.settings['vocab_size']
         min_tf = self.settings['min_tf']
         min_df = self.settings['min_df']
-        df = data.partitions[0]
+
+        tmp = data.cache()
+        df = COMPSsContext.tasks_map[tmp.last_uuid]['function'][0]
         nfrag = len(df)
 
         result_p = [[] for _ in range(nfrag)]
@@ -612,7 +628,8 @@ class TfidfVectorizer(object):
             raise Exception("Model is not fitted.")
         vocabulary = self.model[0]
 
-        df = data.partitions[0]
+        tmp = data.cache()
+        df = COMPSsContext.tasks_map[tmp.last_uuid]['function'][0]
         nfrag = len(df)
 
         counts = [count_records(df[f]) for f in range(nfrag)]
@@ -623,18 +640,19 @@ class TfidfVectorizer(object):
             result[f] = \
                 construct_tf_idf(df[f], vocabulary, self.settings, count)
 
-        data.partitions = {0: result}
         uuid_key = str(uuid.uuid4())
         COMPSsContext.tasks_map[uuid_key] = \
             {'name': 'task_transform_tfidf',
              'status': 'COMPLETED',
              'lazy': False,
-             'function': result,
-             'parent': [data.last_uuid],
-             'output': 1, 'input': 1}
+             'function': {0: result},
+             'parent': [tmp.last_uuid],
+             'output': 1,
+             'input': 1
+             }
 
-        data.set_n_input(uuid_key, data.settings['input'])
-        return DDF(data.partitions, data.task_list, uuid_key)
+        tmp.set_n_input(uuid_key, tmp.settings['input'])
+        return DDF(tmp.task_list, uuid_key)
 
 
 @task(returns=list)
@@ -729,7 +747,8 @@ class MinMaxScaler(object):
 
     def fit(self, data):
 
-        df = data.partitions[0]
+        tmp = data.cache()
+        df = COMPSsContext.tasks_map[tmp.last_uuid]['function'][0]
         nfrag = len(df)
         columns = self.settings['input_col']
         # generate a list of the min and the max element to each subset.
@@ -747,24 +766,26 @@ class MinMaxScaler(object):
         if len(self.model) == 0:
             raise Exception("Model is not fitted.")
 
-        nfrag = len(data.partitions[0])
+        tmp = data.cache()
+        df = COMPSsContext.tasks_map[tmp.last_uuid]['function'][0]
+        nfrag = len(df)
         result = [[] for _ in range(nfrag)]
         for f in range(nfrag):
-            result[f] = _minmax_scaler(data.partitions[0][f],
-                                       self.settings, self.model[0])
+            result[f] = _minmax_scaler(df[f], self.settings, self.model[0])
 
-        data.partitions = {0: result}
         uuid_key = str(uuid.uuid4())
         COMPSsContext.tasks_map[uuid_key] = \
             {'name': 'task_transform_minmax_scaler',
              'status': 'COMPLETED',
              'lazy': False,
-             'function': result,
-             'parent': [data.last_uuid],
-             'output': 1, 'input': 1}
+             'function': {0: result},
+             'parent': [tmp.last_uuid],
+             'output': 1,
+             'input': 1
+             }
 
-        data.set_n_input(uuid_key, data.settings['input'])
-        return DDF(data.partitions, data.task_list, uuid_key)
+        tmp.set_n_input(uuid_key, tmp.settings['input'])
+        return DDF(tmp.task_list, uuid_key)
 
 
 @task(returns=list)
@@ -846,7 +867,8 @@ class MaxAbsScaler(object):
 
     def fit(self, data):
 
-        df = data.partitions[0]
+        tmp = data.cache()
+        df = COMPSsContext.tasks_map[tmp.last_uuid]['function'][0]
         nfrag = len(df)
         columns = self.settings['input_col']
         # generate a list of the min and the max element to each subset.
@@ -864,24 +886,24 @@ class MaxAbsScaler(object):
         if len(self.model) == 0:
             raise Exception("Model is not fitted.")
 
-        nfrag = len(data.partitions[0])
+        tmp = data.cache()
+        df = COMPSsContext.tasks_map[tmp.last_uuid]['function'][0]
+        nfrag = len(df)
         result = [[] for _ in range(nfrag)]
         for f in range(nfrag):
-            result[f] = _maxabs_scaler(data.partitions[0][f],
-                                       self.model[0], self.settings)
+            result[f] = _maxabs_scaler(df[f], self.model[0], self.settings)
 
-        data.partitions = {0: result}
         uuid_key = str(uuid.uuid4())
         COMPSsContext.tasks_map[uuid_key] = \
             {'name': 'task_transform_maxabs_scaler',
              'status': 'COMPLETED',
              'lazy': False,
-             'function': result,
-             'parent': [data.last_uuid],
+             'function': {0: result},
+             'parent': [tmp.last_uuid],
              'output': 1, 'input': 1}
 
-        data.set_n_input(uuid_key, data.settings['input'])
-        return DDF(data.partitions, data.task_list, uuid_key)
+        tmp.set_n_input(uuid_key, tmp.settings['input'])
+        return DDF(tmp.task_list, uuid_key)
 
 
 @task(returns=list)
@@ -977,7 +999,8 @@ class StandardScaler(object):
         :return: trained model
         """
 
-        df = data.partitions[0]
+        tmp = data.cache()
+        df = COMPSsContext.tasks_map[tmp.last_uuid]['function'][0]
         nfrag = len(df)
 
         features = self.settings['input_col']
@@ -1007,7 +1030,8 @@ class StandardScaler(object):
         if len(self.model) == 0:
             raise Exception("Model is not fitted.")
 
-        df = data.partitions[0]
+        tmp = data.cache()
+        df = COMPSsContext.tasks_map[tmp.last_uuid]['function'][0]
         nfrag = len(df)
 
         mean, sse = self.model[0]
@@ -1015,18 +1039,17 @@ class StandardScaler(object):
         for f in range(nfrag):
             result[f] = _stardard_scaler(df[f], self.settings, mean, sse)
 
-        data.partitions = {0: result}
         uuid_key = str(uuid.uuid4())
         COMPSsContext.tasks_map[uuid_key] = \
             {'name': 'task_transform_standard_scaler',
              'status': 'COMPLETED',
              'lazy': False,
-             'function': result,
-             'parent': [data.last_uuid],
+             'function': {0: result},
+             'parent': [tmp.last_uuid],
              'output': 1, 'input': 1}
 
-        data.set_n_input(uuid_key, data.settings['input'])
-        return DDF(data.partitions, data.task_list, uuid_key)
+        tmp.set_n_input(uuid_key, tmp.settings['input'])
+        return DDF(tmp.task_list, uuid_key)
 
 
 @task(returns=list)
@@ -1153,7 +1176,8 @@ class StringIndexer(ModelDDS):
 
         in_col = self.settings['input_col']
 
-        df = data.partitions[0]
+        tmp = data.cache()
+        df = COMPSsContext.tasks_map[tmp.last_uuid]['function'][0]
         nfrag = len(df)
 
         mapper = [get_indexes(df[f], in_col) for f in range(nfrag)]
@@ -1170,7 +1194,8 @@ class StringIndexer(ModelDDS):
         in_col = self.settings['input_col']
         out_col = self.settings['output_col']
 
-        df = data.partitions[0]
+        tmp = data.cache()
+        df = COMPSsContext.tasks_map[tmp.last_uuid]['function'][0]
         nfrag = len(df)
 
         result = [[] for _ in range(nfrag)]
@@ -1178,18 +1203,17 @@ class StringIndexer(ModelDDS):
             result[f] = _string_to_indexer(df[f], in_col, out_col,
                                            self.model[0])
 
-        data.partitions = {0: result}
         uuid_key = str(uuid.uuid4())
         COMPSsContext.tasks_map[uuid_key] = \
             {'name': 'task_transform_string_indexer',
              'status': 'COMPLETED',
              'lazy': False,
-             'function': result,
+             'function': {0: result},
              'parent': [data.last_uuid],
              'output': 1, 'input': 1}
 
-        data.set_n_input(uuid_key, data.settings['input'])
-        return DDF(data.partitions, data.task_list, uuid_key)
+        tmp.set_n_input(uuid_key, tmp.settings['input'])
+        return DDF(tmp.task_list, uuid_key)
 
 
 @task(returns=list)
@@ -1246,7 +1270,8 @@ class IndexToString(ModelDDS):
         inputCol = self.settings['input_col']
         outputCol = self.settings['output_col']
 
-        df = data.partitions[0]
+        tmp = data.cache()
+        df = COMPSsContext.tasks_map[tmp.last_uuid]['function'][0]
         nfrag = len(df)
 
         result = [[] for _ in range(nfrag)]
@@ -1254,18 +1279,17 @@ class IndexToString(ModelDDS):
             result[f] = _index_to_string(df[f], inputCol,
                                            outputCol, self.model[0])
 
-        data.partitions = {0: result}
         uuid_key = str(uuid.uuid4())
         COMPSsContext.tasks_map[uuid_key] = \
             {'name': 'task_transform_indextostring',
              'status': 'COMPLETED',
              'lazy': False,
-             'function': result,
-             'parent': [data.last_uuid],
+             'function': {0: result},
+             'parent': [tmp.last_uuid],
              'output': 1, 'input': 1}
 
-        data.set_n_input(uuid_key, data.settings['input'])
-        return DDF(data.partitions, data.task_list, uuid_key)
+        tmp.set_n_input(uuid_key, tmp.settings['input'])
+        return DDF(tmp.task_list, uuid_key)
 
 
 @task(returns=list)
@@ -1307,7 +1331,8 @@ class PCA(ModelDDS):
         :return: trained model
         """
 
-        df = data.partitions[0]
+        tmp = data.cache()
+        df = COMPSsContext.tasks_map[tmp.last_uuid]['function'][0]
         nfrag = len(df)
 
         NComponents = self.settings.get('n_components')
@@ -1348,7 +1373,8 @@ class PCA(ModelDDS):
         - :return:          A list with nfrag pandas's dataframe
                             (in the same input format).
         """
-        df = data.partitions[0]
+        tmp = data.cache()
+        df = COMPSsContext.tasks_map[tmp.last_uuid]['function'][0]
         nfrag = len(df)
 
         if len(self.model) == 0:
@@ -1362,18 +1388,19 @@ class PCA(ModelDDS):
         for f in range(nfrag):
             result[f] = _pca_transform(df[f], features_col, predCol, model)
 
-        data.partitions = {0: result}
         uuid_key = str(uuid.uuid4())
         COMPSsContext.tasks_map[uuid_key] = \
             {'name': 'task_transform_pca',
              'status': 'COMPLETED',
              'lazy': False,
-             'function': result,
-             'parent': [data.last_uuid],
-             'output': 1, 'input': 1}
+             'function': {0: result},
+             'parent': [tmp.last_uuid],
+             'output': 1,
+             'input': 1
+             }
 
-        data.set_n_input(uuid_key, data.settings['input'])
-        return DDF(data.partitions, data.task_list, uuid_key)
+        tmp.set_n_input(uuid_key, tmp.settings['input'])
+        return DDF(tmp.task_list, uuid_key)
 
 
 @task(returns=list)

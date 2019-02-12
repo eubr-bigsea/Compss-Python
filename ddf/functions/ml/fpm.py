@@ -14,7 +14,7 @@ from pycompss.api.task import task
 from pycompss.api.parameter import INOUT
 from pycompss.functions.reduce import merge_reduce
 from pycompss.api.api import compss_wait_on
-from ddf import ddf
+from ddf.ddf import COMPSsContext, DDF, ModelDDS
 
 __all__ = ['AssociationRules', 'Apriori']
 
@@ -48,15 +48,17 @@ class AssociationRules(object):
         :return:
         """
 
-        nfrag = len(data.partitions[0])
+        tmp = data.cache()
+        df = COMPSsContext.tasks_map[tmp.last_uuid]['function'][0]
+        print "LIST:", tmp.task_list
+        nfrag = len(df)
 
         col_item = self.settings['col_item']
         col_freq = self.settings['col_freq']
         min_conf = self.settings['confidence']
         df_rules = [[] for _ in range(nfrag)]
-        for i in range(nfrag):
-            df_rules[i] = _ar_get_rules(data.partitions[0],
-                                        col_item, col_freq, i, min_conf)
+        for f in range(nfrag):
+            df_rules[f] = _ar_get_rules(df, col_item, col_freq, f, min_conf)
 
         # if max_rules > -1:
         #     conf = ['confidence']
@@ -67,17 +69,47 @@ class AssociationRules(object):
         #         df_rules[f] = _filter_rules(rules_sorted[f],
         #                                     count_total, max_rules, f)
 
-        data.partitions = {0: df_rules}
-        uuid_key = str(uuid.uuid4())
-        ddf.COMPSsContext.tasks_map[uuid_key] = {'name': 'task_associative_rules',
-                                                 'status': 'COMPLETED',
-                                                 'lazy': False,
-                                                 'function': df_rules,
-                                                 'parent': [data.last_uuid],
-                                                 'output': 1, 'input': 1}
+        uuid_key = tmp.generate_uuid()
+        COMPSsContext.tasks_map[uuid_key] = \
+            {'name': 'task_associative_rules',
+             'status': 'COMPLETED',
+             'lazy': False,
+             'function': {0: df_rules},
+             'parent': [tmp.last_uuid],
+             'output': 1,
+             'input': 1
+             }
 
-        data.set_n_input(uuid_key, data.settings['input'])
-        return ddf.DDF(data.partitions, data.task_list, uuid_key)
+        tmp.set_n_input(uuid_key, tmp.settings['input'])
+        return DDF(tmp.task_list, uuid_key)
+
+
+@task(returns=1)
+def _ar_get_rules(df, col_item, col_freq, i, min_confidence):
+    """Perform a partial rules generation."""
+    list_rules = []
+    for index, row in df[i].iterrows():
+        item = row[col_item]
+        support = row[col_freq]
+        if len(item) > 0:
+            subsets = [list(x) for x in _ar_subsets(item)]
+
+            for element in subsets:
+                remain = list(set(item).difference(element))
+
+                if len(remain) > 0:
+                    num = float(support)
+                    den = _ar_get_support(element, df, col_item, col_freq)
+                    confidence = num/den
+
+                    if confidence > min_confidence:
+                        r = [element, remain, confidence]
+                        list_rules.append(r)
+
+    cols = ['Pre-Rule', 'Post-Rule', 'confidence']
+    rules = pd.DataFrame(list_rules, columns=cols)
+
+    return rules
 
 
 @task(returns=list)
@@ -96,34 +128,6 @@ def _ar_filter_rules(rules, count, max_rules, pos):
         return rules.head(number)
     else:
         return rules
-
-
-@task(returns=list)
-def _ar_get_rules(freq_items, col_item, col_freq, i, min_confidence):
-    """Perform a partial rules generation."""
-    list_rules = []
-    for index, row in freq_items[i].iterrows():
-        item = row[col_item]
-        support = row[col_freq]
-        if len(item) > 0:
-            subsets = [list(x) for x in _ar_subsets(item)]
-
-            for element in subsets:
-                remain = list(set(item).difference(element))
-
-                if len(remain) > 0:
-                    num = float(support)
-                    den = _ar_get_support(element, freq_items, col_item, col_freq)
-                    confidence = num/den
-
-                    if confidence > min_confidence:
-                        r = [element, remain, confidence]
-                        list_rules.append(r)
-
-    cols = ['Pre-Rule', 'Post-Rule', 'confidence']
-    rules = pd.DataFrame(list_rules, columns=cols)
-
-    return rules
 
 
 def _ar_subsets(arr):
@@ -168,6 +172,7 @@ class Apriori(object):
 
         self.model = []
         self.name = 'Apriori'
+        self.result = []
 
     def run(self, data):
         """
@@ -179,7 +184,8 @@ class Apriori(object):
         minSupport = self.settings.get('min_support', 0.5)
         large_set = []
 
-        df = data.partitions[0]
+        tmp = data.cache()
+        df = COMPSsContext.tasks_map[tmp.last_uuid]['function'][0]
         nfrag = len(df)
 
         # pruning candidates
@@ -215,28 +221,33 @@ class Apriori(object):
         for subset in large_set:
             result.append(pd.DataFrame(subset, columns=['items', 'support']))
 
-        self.model = [result, data.task_list, data.last_uuid]
+        self.model = [result, tmp.task_list, tmp.last_uuid]
 
         return self
 
     def get_frequent_itemsets(self):
+        if len(self.result) == 0:
 
-        if len(self.model) == 0:
-            raise Exception("Model is not fitted.")
+            if len(self.model) == 0:
+                raise Exception("Model is not fitted.")
 
-        result = {0: self.model[0]}
+            uuid_key = str(uuid.uuid4())
+            COMPSsContext.tasks_map[uuid_key] = \
+                {'name': 'task_apriori',
+                 'status': 'COMPLETED',
+                 'lazy': False,
+                 'function': {0: self.model[0]},
+                 'parent': [self.model[2]],
+                 'output': 1,
+                 'input': 1
+                 }
 
-        uuid_key = str(uuid.uuid4())
-        df = ddf.DDF(result, self.model[1], uuid_key)
-        ddf.COMPSsContext.tasks_map[uuid_key] = {'name': 'task_apriori',
-                                                 'status': 'COMPLETED',
-                                                 'lazy': False,
-                                                 'function': result,
-                                                 'parent': [self.model[2]],
-                                                 'output': 1, 'input': 1}
-
-        df.set_n_input(uuid_key, df.settings['input'])
-        return df
+            #df.set_n_input(uuid_key, df.settings['input'])
+            tmp = DDF(self.model[1], uuid_key)
+            self.result = [tmp]
+            return tmp
+        else:
+            return self.result[0]
 
     def generate_association_rules(self, confidence=0.5, max_rules=-1):
 

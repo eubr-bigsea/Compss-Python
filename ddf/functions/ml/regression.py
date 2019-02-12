@@ -11,7 +11,7 @@ import pandas as pd
 from pycompss.api.task import task
 from pycompss.functions.reduce import merge_reduce
 from pycompss.api.api import compss_wait_on
-from ddf import ddf
+from ddf.ddf import COMPSsContext, DDF, ModelDDS
 
 __all__ = ['LinearRegression']
 
@@ -38,16 +38,13 @@ class LinearRegression(object):
     b0 = m_y - b1*m_x
     """
 
-    def __init__(self, feature_col, label_col, pred_col=None, mode='SDG',
-                 max_iter=100, alpha=0.01):
+    def __init__(self, feature_col, label_col, pred_col='pred_LinearReg',
+                 mode='SDG', max_iter=100, alpha=0.01):
         if not feature_col:
             raise Exception("You must inform the `features` field.")
 
         if not label_col:
             raise Exception("You must inform the `label` field.")
-
-        if not pred_col:
-            pred_col = 'prediction_LinearReg'
 
         if mode not in ['simple', 'SDG']:
             raise Exception("You must inform a valid `mode`.")
@@ -70,7 +67,8 @@ class LinearRegression(object):
         :return: trained model
         """
 
-        df = data.partitions[0]
+        tmp = data.cache()
+        df = COMPSsContext.tasks_map[tmp.last_uuid]['function'][0]
         nfrag = len(df)
         features = self.settings['feature_col']
         label = self.settings['label_col']
@@ -125,24 +123,24 @@ class LinearRegression(object):
         features = self.settings['feature_col']
         pred_col = self.settings['pred_col']
 
-        nfrag = len(data.partitions[0])
+        tmp = data.cache()
+        df = COMPSsContext.tasks_map[tmp.last_uuid]['function'][0]
+        nfrag = len(df)
         result = [[] for _ in range(nfrag)]
         for f in range(nfrag):
-            result[f] = _predict(data.partitions[0][f], features,
-                                 pred_col, self.model[0])
+            result[f] = _predict(df[f], features, pred_col, self.model[0])
 
-        data.partitions = {0: result}
         uuid_key = str(uuid.uuid4())
-        ddf.COMPSsContext.tasks_map[uuid_key] = \
+        COMPSsContext.tasks_map[uuid_key] = \
             {'name': 'task_transform_linear_reg',
              'status': 'COMPLETED',
              'lazy': False,
-             'function': result,
-             'parent': [data.last_uuid],
+             'function': {0: result},
+             'parent': [tmp.last_uuid],
              'output': 1, 'input': 1}
 
-        data.set_n_input(uuid_key, data.settings['input'])
-        return ddf.DDF(data.partitions, data.task_list, uuid_key)
+        tmp.set_n_input(uuid_key, tmp.settings['input'])
+        return DDF(tmp.task_list, uuid_key)
 
 
 # --------------

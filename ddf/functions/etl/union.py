@@ -23,7 +23,7 @@ class UnionOperation(object):
         :return:        Returns a list with nfrag pandas's dataframe.
         """
 
-        nfrag = len(data1) + len(data2)
+        nfrag = len(data1)
         result = [[] for _ in range(nfrag)]
         for f in range(nfrag):
             result[f] = _union(data1[f], data2[f])

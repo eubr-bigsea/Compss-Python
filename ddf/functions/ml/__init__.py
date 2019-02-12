@@ -2,5 +2,5 @@
 # -*- coding: utf-8 -*-
 
 
-__all__ = ['associative', 'classification', 'clustering', 'feature',
+__all__ = ['fpm', 'classification', 'clustering', 'feature',
            'regression']

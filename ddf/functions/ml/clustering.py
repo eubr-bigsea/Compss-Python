@@ -12,7 +12,8 @@ from pycompss.api.task import task
 from pycompss.api.parameter import INOUT
 from pycompss.functions.reduce import merge_reduce
 from pycompss.api.api import compss_wait_on
-from ddf import ddf
+from pycompss.api.local import *
+from ddf.ddf import COMPSsContext, DDF, ModelDDS
 
 __all__ = ['Kmeans', 'DBSCAN']
 
@@ -24,7 +25,7 @@ sys.path.append('../../')
 
 class Kmeans(object):
 
-    def __init__(self, feature_col, pred_col=None, k=3,
+    def __init__(self, feature_col, pred_col=None, n_clusters=3,
                  max_iters=100, epsilon=0.001, init_mode='k-means||'):
         if not feature_col:
             raise Exception("You must inform the `features` field.")
@@ -41,11 +42,12 @@ class Kmeans(object):
         self.settings['pred_col'] = pred_col
         self.settings['max_iters'] = max_iters
         self.settings['init_mode'] = init_mode
-        self.settings['k'] = k
+        self.settings['k'] = n_clusters
         self.settings['epsilon'] = epsilon
 
         self.model = []
         self.name = 'Kmeans'
+        self.cost = None
 
     def fit(self, data):
         """
@@ -54,24 +56,26 @@ class Kmeans(object):
         :return: trained model
         """
 
-        df = data.partitions[0]
+        tmp = data.cache()
+        df = COMPSsContext.tasks_map[tmp.last_uuid]['function'][0]
+        nfrag = len(df)
 
-        k = int(self.settings.get('k', 2))
+        # print compss_wait_on(df)
+
+        k = int(self.settings['k'])
         max_iterations = int(self.settings.get('max_iters', 100))
         epsilon = float(self.settings.get('epsilon', 0.001))
         init_mode = self.settings.get('init_mode', 'k-means||')
         features_col = self.settings['feature_col']
 
-        nfrag = len(df)
-
         # counting rows in each fragment
         size = [[] for _ in range(nfrag)]
         xp = [[] for _ in range(nfrag)]
         for f in range(nfrag):
-            xp[f] = _kmeans_getSize(df[f], features_col, size[f])
-        size = merge_reduce(_kmeans_mergeCentroids, size)
-        size = compss_wait_on(size)
-        size, n_list = size
+            xp[f], size[f] = _kmeans_get_size(df[f], features_col)
+        info = merge_reduce(_kmeans_mergeCentroids, size)
+        info = compss_wait_on(info)
+        size, n_list = info
 
         if init_mode == "random":
             centroids = _kmeans_init_random(xp, k, size, n_list, nfrag)
@@ -84,21 +88,18 @@ class Kmeans(object):
         old_centroids = []
         it = 0
 
-        while not _kmeans_has_converged(centroids, old_centroids,
-                                epsilon, it, max_iterations):
+        while not self._kmeans_has_converged(centroids, old_centroids,
+                                             epsilon, it, max_iterations):
             old_centroids = list(centroids)
             idx = [_kmeans_find_closest_centroids(xp[f], centroids)
                    for f in range(nfrag)]
-
             idx = merge_reduce(_kmeans_reduceCentersTask, idx)
-            idx = compss_wait_on(idx)
-
             centroids = _kmeans_compute_centroids(idx)
             it += 1
             print '[INFO] - Iteration:' + str(it)
 
-        self.model = [pd.DataFrame([[c] for c in centroids],
-                                   columns=["Clusters"])]
+        self.model = pd.DataFrame([[c] for c in centroids],
+                                  columns=["Clusters"])
         return self
 
     def transform(self, data):
@@ -111,43 +112,67 @@ class Kmeans(object):
         if len(self.model) == 0:
             raise Exception("Model is not fitted.")
 
-        nfrag = len(data.partitions[0])
+        tmp = data.cache()
+        df = COMPSsContext.tasks_map[tmp.last_uuid]['function'][0]
+        nfrag = len(df)
+
         features_col = self.settings['feature_col']
         alias = self.settings['pred_col']
 
         result = [[] for _ in range(nfrag)]
         for f in range(nfrag):
-            result[f] = _kmeans_assigment_cluster(data.partitions[0][f],
+            result[f] = _kmeans_assigment_cluster(df[f],
                                                   features_col,
-                                                  self.model[0], alias)
+                                                  self.model, alias)
 
-        data.partitions = {0: result}
         uuid_key = str(uuid.uuid4())
-        ddf.COMPSsContext.tasks_map[uuid_key] = {'name': 'task_transform_kmeans',
-                                                 'status': 'COMPLETED',
-                                                 'lazy': False,
-                                                 'function': result,
-                                                 'parent': [data.last_uuid],
-                                                 'output': 1, 'input': 1}
+        COMPSsContext.tasks_map[uuid_key] = \
+            {'name': 'task_transform_kmeans',
+             'status': 'COMPLETED',
+             'lazy': False,
+             'function': {0: result},
+             'parent': [tmp.last_uuid],
+             'output': 1,
+             'input': 1
+             }
 
-        data.set_n_input(uuid_key, data.settings['input'])
-        return ddf.DDF(data.partitions, data.task_list, uuid_key)
+        tmp.set_n_input(uuid_key, tmp.settings['input'])
+        return DDF(tmp.task_list, uuid_key)
+
+    def compute_cost(self):
+
+        if self.cost is None:
+            raise Exception("Model is not fitted.")
+        else:
+            return self.cost
+
+    def _kmeans_has_converged(self, mu, oldmu, epsilon, iter, maxIterations):
+        if len(oldmu) > 0:
+            if iter < maxIterations:
+                aux = [np.linalg.norm(oldmu[i] - mu[i]) for i in range(len(mu))]
+                self.cost = sum(aux)
+                if self.cost < (epsilon ** 2):
+                    return True
+                else:
+                    return False
+            else:
+                return True
 
 
-@task(returns=list, size=INOUT)
-def _kmeans_getSize(data, columns, size):
+@task(returns=2)
+def _kmeans_get_size(data, columns):
     n = len(data)
-    size += [n, [n]]
+    size = [n, [n]]
     XP = np.array(data[columns].values.tolist())
-    return XP
+    return XP, size
 
 
-@task(returns=list)
+@task(returns=1)
 def _kmeans_mergeCentroids(a, b):
     return [a[0] + b[0], a[1] + b[1]]
 
 
-@task(returns=dict)
+@task(returns=1)
 def _kmeans_find_closest_centroids(XP, mu):
     """Find the closest centroid of each point in XP"""
     new_centroids = dict()
@@ -168,7 +193,7 @@ def _kmeans_find_closest_centroids(XP, mu):
     return new_centroids
 
 
-@task(returns=dict, priority=True)
+@task(returns=1)
 def _kmeans_reduceCentersTask(a, b):
     for key in b:
         if key not in a:
@@ -177,16 +202,12 @@ def _kmeans_reduceCentersTask(a, b):
             a[key] = (a[key][0] + b[key][0], a[key][1] + b[key][1])
     return a
 
-
+@local
 def _kmeans_compute_centroids(centroids):
     """ Next we need a function to compute the centroid of a cluster.
         The centroid is simply the mean of all of the examples currently
         assigned to the cluster."""
-    def safe_div(x, y):
-        if y == 0: return 0
-        return x/y
-
-    centroids = [safe_div(centroids[c][1], centroids[c][0]) for c in centroids]
+    centroids = [np.divide(centroids[c][1], centroids[c][0]) for c in centroids]
     return centroids
 
 
@@ -206,19 +227,6 @@ def _kmeans_assigment_cluster(data, columns, model, alias):
     return data
 
 
-def _kmeans_has_converged(mu, oldmu, epsilon, iter, maxIterations):
-    if len(oldmu) > 0:
-        if iter < maxIterations:
-            aux = [np.linalg.norm(oldmu[i] - mu[i]) for i in range(len(mu))]
-            distancia = sum(aux)
-            if distancia < (epsilon**2):
-                return True
-            else:
-                return False
-        else:
-            return True
-
-
 def _kmeans_distance(x, clusters):
     dist = min(np.array([np.linalg.norm(x - np.array(c)) for c in clusters]))
     return dist
@@ -226,37 +234,36 @@ def _kmeans_distance(x, clusters):
 
 # ------ INIT MODE: random
 def _kmeans_init_random(xp, k, size, n_list, nfrag):
-    from pycompss.api.api import compss_wait_on
 
     # define where get the inital core.
     # ids = np.sort(np.random.choice(size, k, replace=False))
     ids = _kmeans_get_idx(size, k)
     list_ids = [[] for _ in range(nfrag)]
 
-    frag = 0
-    maxIdFrag = n_list[frag]
-    oldmax = 0
-    for i in ids:
-        while i >= maxIdFrag:
-            frag += 1
-            oldmax = maxIdFrag
-            maxIdFrag += n_list[frag]
+    acc = 0
+    acc_old = 0
+    for nfrag, limit in enumerate(n_list):
+        acc += limit
+        ns = [i for i in ids if i < acc]
+        list_ids[nfrag] = np.subtract(ns, acc_old).tolist()
+        acc_old = acc
+        ids = ids[len(ns):]
+        if len(ids) == 0:
+            break
 
-        list_ids[frag].append(i-oldmax)
-
-    fs_valids = [f for f in range(nfrag) if len(list_ids[f]) > 0]
+    fs_valids = [f for f, values in enumerate(list_ids) if len(values) > 0]
 
     centroids = [_kmeans_initMode_random(xp[f], list_ids[f]) for f in fs_valids]
     centroids = merge_reduce(_kmeans_merge_initMode, centroids)
     centroids = compss_wait_on(centroids)
+
     centroids = centroids[0]
     return centroids
 
 
 def _kmeans_get_idx(size, k):
-    n = []
-    for i in range(k):
-        n.append(np.random.random_integers(0, size))
+    import random
+    n = random.sample(range(0, size), k)
     n = np.sort(n)
     return n
 
@@ -292,7 +299,8 @@ def _kmeans_init_parallel(xp, k, size, n_list, nfrag):
     """
     Step1: C ← sample a point uniformly at random from X
     """
-    fs_valids = [f for f in range(nfrag) if n_list[f] > 0]
+
+    fs_valids = [f for f, values in enumerate(n_list) if values > 0]
     f = np.random.choice(fs_valids, 1, replace=False)[0]
     centroids = _kmeans_initC(xp[f])
 
@@ -303,44 +311,44 @@ def _kmeans_init_parallel(xp, k, size, n_list, nfrag):
         """
         dists = [_kmeans_cost(xp[f], centroids) for f in range(nfrag)]
         info = merge_reduce(_kmeans_merge_cost, dists)
-        idx = _kmeans_generate_candidate(info, n_list)
-        idx = compss_wait_on(idx)
+        idx, f = _kmeans_generate_candidate(info, n_list)
         centroids = _kmeans_get_new_centroid(centroids, xp[f], idx)
 
     centroids = compss_wait_on(centroids)
 
+    print "centroids", centroids
+
     return centroids
 
-
-@task(returns=list)
+@local
 def _kmeans_generate_candidate(info, n_list):
 
     distribution = info[0]/info[1]
     # Calculate the distribution for sampling a new center
     idx = np.random.choice(range(len(distribution)), 1, p=distribution)[0]
-    frag = 0
-    maxIdFrag = n_list[frag]
-    oldmax = 0
-    while idx >= maxIdFrag:
-        frag += 1
-        oldmax = maxIdFrag
-        maxIdFrag += n_list[frag]
-    idx = idx-oldmax
-    return [idx]
+
+    acc = 0
+    for nfrag, limit in enumerate(n_list):
+        if idx < limit:
+            print [idx, nfrag]
+            return [idx, nfrag]
+        idx -= limit
+
+    return [idx, len(n_list)]
 
 
 @task(returns=list)
 def _kmeans_initC(xp):
-    indices = np.random.randint(0,len(xp),1)
+    indices = np.random.randint(0, len(xp), 1)
     sample = xp[indices]
     return sample
 
 
 @task(returns=list)
 def _kmeans_get_new_centroid(centroids, xp, idx):
-    idx = idx[0]
+
     x = xp[idx]
-    centroids = np.concatenate((centroids,[x]))
+    centroids = np.concatenate((centroids, [x]))
     return centroids
 
 

@@ -23,11 +23,11 @@ class TransformOperation(object):
     #CHECK apply method
     """
 
-    def transform(self, data, settings, nfrag):
+    def transform(self, data, settings):
         """TransformOperation.
 
         :param data:  A list with nfrag pandas's dataframe;
-        :settings: A dictionary that contains:
+        :param settings: A dictionary that contains:
         - functions: A list with an array with 3-dimensions.
           * 1ª position: The lambda function to be applied as a string;
           * 2ª position: The alias to new column to be applied the function;
@@ -41,46 +41,24 @@ class TransformOperation(object):
                                  "lambda col: np.add(col['col1'],col['col2'])",
                                 '']]
         """
-        functions = self.preprocessing(settings)
-        result = [[] for _ in range(nfrag)]
-        for f in range(nfrag):
-            result[f] = _apply(data[f], functions)
-        return result
 
-    def preprocessing(self, settings):
-        """Check all the settings."""
-        functions = settings.get('functions', [])
-        if any([len(functions) == 0,
-                any([True if (len(f) != 3) else False for f in functions])
-                ]):
-            raise Exception('You must inform a valid `functions` parameter.')
-        return functions
-
-    def transform_serial(self, data, functions):
-        """Apply the Transformation operation in each row."""
-        return _apply_(data, functions)
+        return _apply(data, settings)
 
 
-@task(returns=list)
-def _apply(data, functions):
+def _apply(df, settings):
     """Apply the Transformation operation in each row."""
-    return _apply_(data, functions)
 
+    function = settings['function']
+    new_column = settings['alias']
 
-def _apply_(data, functions):
-    """Apply the Transformation operation in each row."""
-    for action in functions:
-        ncol, function, imp = action
-        exec(imp)
-        if len(data) > 0:
-            func = eval(function)
-            v1s = []
-            for _, row in data.iterrows():
-                v1s.append(func(row))
-            data[ncol] = v1s
-        else:
-            data[ncol] = np.nan
-    return data
+    if len(df) > 0:
+        v1s = []
+        for _, row in df.iterrows():
+            v1s.append(function(row))
+        df[new_column] = v1s
+    else:
+        df[new_column] = np.nan
+    return df
 
 
 def group_datetime(d, interval):
