@@ -327,8 +327,6 @@ def task_bundle(data, functions, id_frag):
 
     for f in functions:
         function, settings = f
-        print "TASK_BUNDLE function:", function
-        print "TASK_BUNDLE data:", data
         # Used only in save
         if isinstance(settings, dict):
             settings['id_frag'] = id_frag
@@ -340,6 +338,7 @@ def task_bundle(data, functions, id_frag):
 class DDF(object):
     """
     Distributed DataFrame Handler.
+
     Should distribute the data and run tasks for each partition.
     """
 
@@ -374,7 +373,49 @@ class DDF(object):
 
         self.last_uuid = last_uuid
 
+    @staticmethod
+    def merge_tasks_list(seq):
+        """
+        Merge two list of tasks removing duplicated tasks
+
+        :param seq: list with possible duplicated elements
+        :return:
+        """
+        seen = set()
+        return [x for x in seq if x not in seen and not seen.add(x)]
+
+    @staticmethod
+    def generate_uuid():
+        """
+        Generate a unique id
+        :return: uuid
+        """
+        new_state_uuid = str(uuid.uuid4())
+        while new_state_uuid in COMPSsContext.tasks_map:
+            new_state_uuid = str(uuid.uuid4())
+        return new_state_uuid
+
+    @staticmethod
+    def set_n_input(state_uuid, idx):
+        """
+        Method to inform the index of the input data
+
+        :param state_uuid: id of the current task
+        :param idx: idx of input data
+        :return:
+        """
+
+        if 'n_input' not in COMPSsContext.tasks_map[state_uuid]:
+            COMPSsContext.tasks_map[state_uuid]['n_input'] = []
+        COMPSsContext.tasks_map[state_uuid]['n_input'].append(idx)
+
     def task_others(self, f):
+        """
+        Used to execute all non-lazy functions.
+
+        :param f: a list that contains the current task and its parameters.
+        :return:
+        """
 
         function, settings = f
         if len(self.partitions) > 1:
@@ -383,6 +424,34 @@ class DDF(object):
             self.partitions = self.partitions[0]
 
         self.partitions = function(self.partitions, settings)
+
+    def perform(self, opt):
+        """
+        Used to execute a group of lazy tasks. This method submit
+        multiple 'task_bundle', one for each data fragment.
+
+        :param opt: sequence of functions and parameters to be executed in
+            each fragment
+        :return:
+        """
+
+        data = self.partitions
+        tmp = []
+        if isinstance(data, dict):
+            if len(data) > 1:
+                for k in data:
+                    tmp.append(data[k])
+            else:
+                for k in data:
+                    tmp = data[k]
+        else:
+            tmp = data
+
+        future_objects = []
+        for idfrag, p in enumerate(tmp):
+            future_objects.append(task_bundle(p, opt, idfrag))
+
+        self.partitions = future_objects
 
     def load_fs(self, filename, num_of_parts=4, header=True, sep=','):
 
@@ -487,36 +556,9 @@ class DDF(object):
 
         self.partitions = compss_wait_on(self.partitions)
 
-    def get_data(self):
-        tmp = self.partitions[0]
-        return tmp
-
-    def perform(self, opt):
-
-        data = self.partitions
-        tmp = []
-        if isinstance(data, dict):
-            if len(data) > 1:
-                for k in data:
-                    tmp.append(data[k])
-            else:
-                for k in data:
-                    tmp = data[k]
-        else:
-            tmp = data
-
-        future_objects = []
-        for idfrag, p in enumerate(tmp):
-            future_objects.append(task_bundle(p, opt, idfrag))
-
-        self.partitions = future_objects
-
-    def get_tasks(self):
-        return self.task_list
-
     def cache(self):
         """
-        Compute all tasks until this state
+        Compute all tasks until the current state
 
         :return:
 
@@ -548,38 +590,23 @@ class DDF(object):
         COMPSsContext().run(wanted)
         return self
 
+    # TODO: CHECK it
     def num_of_partitions(self):
         """
         Get the total amount of partitions
         :return: int
 
         """
-        return len(self.partitions)
+        size = len(COMPSsContext().tasks_map[self.last_uuid]['function'])
+        return size
 
     def schema(self):
 
         return self.schema
 
-    def show(self, n=20, truncate=False):
+    def show(self, n=20):
         """
-        Prints the first n rows to the console.
-
-        :param n: Number of rows to show.
-        :param truncate: If set to True, truncate strings longer than 20 chars
-        by default. If set to a number greater than one, truncates long strings
-        to length truncate and align cells right.
-
-        :return:
-        """
-        res = self.take(n)
-        res = compss_wait_on(res.partitions)
-
-        return None
-
-    def toPandas(self):
-        """
-        Returns the contents of this DataFrame as Pandas pandas.DataFrame.
-
+        Returns the DDF contents in a concatenated pandas's DataFrame.
 
         :return:
         """
@@ -610,17 +637,11 @@ class DDF(object):
 
         COMPSsContext.tasks_map[self.last_uuid]['function'][n_input] = res
         COMPSsContext.tasks_map[last_last_uuid]['function'][n_input] = res
-        return pd.concat(res)
-
-    def join_tasks_list(self, seq):
-        # Order preserving
-        seen = set()
-        return [x for x in seq if x not in seen and not seen.add(x)]
+        return pd.concat(res)[:abs(n)]
 
     def count(self):
         """
         :return: total number of elements
-"
         """
 
         def task_count(df, params):
@@ -646,13 +667,6 @@ class DDF(object):
         res = sum(res)
 
         return res
-
-    def set_n_input(self, state_uuid, id):
-
-        if 'n_input' not in COMPSsContext.tasks_map[state_uuid]:
-            COMPSsContext.tasks_map[state_uuid]['n_input'] = []
-
-        COMPSsContext.tasks_map[state_uuid]['n_input'].append(id)
 
     def with_column(self, old_column, new_column=None, cast=None):
         """
@@ -701,6 +715,7 @@ class DDF(object):
 
         return DDF(self.task_list, new_state_uuid)
 
+    # TODO: CHECK it
     def add_column(self, data, suffixes=["_l","_r"]):
         """
 
@@ -776,7 +791,7 @@ class DDF(object):
         Returns a new set with containing rows in the first frame but not
         in the second one.
 
-        :param cols:
+        :param data2: second DDF
         :return:
         """
         from functions.etl.difference import DifferenceOperation
@@ -798,10 +813,16 @@ class DDF(object):
 
         self.set_n_input(new_state_uuid, self.settings['input'])
         self.set_n_input(new_state_uuid, data2.settings['input'])
-        new_list = self.join_tasks_list(self.task_list + data2.task_list)
+        new_list = self.merge_tasks_list(self.task_list + data2.task_list)
         return DDF(new_list, new_state_uuid)
 
     def distinct(self, cols):
+        """
+        Returns a new DDF with non duplicated rows
+
+        :param cols: subset of columns to consider
+        :return:
+        """
         from functions.etl.distinct import DistinctOperation
 
         def task_distinct(df, params):
@@ -915,7 +936,7 @@ class DDF(object):
 
         self.set_n_input(new_state_uuid, self.settings['input'])
         self.set_n_input(new_state_uuid, shp_object.settings['input'])
-        new_list = self.join_tasks_list(self.task_list + shp_object.task_list)
+        new_list = self.merge_tasks_list(self.task_list + shp_object.task_list)
         return DDF(new_list, new_state_uuid)
 
     def intersect(self, data2):
@@ -944,7 +965,7 @@ class DDF(object):
 
         self.set_n_input(new_state_uuid, self.settings['input'])
         self.set_n_input(new_state_uuid, data2.settings['input'])
-        new_list = self.join_tasks_list(self.task_list + data2.task_list)
+        new_list = self.merge_tasks_list(self.task_list + data2.task_list)
         return DDF(new_list, new_state_uuid)
 
     def join(self, data2, key1=[], key2=[], mode='inner',
@@ -976,7 +997,7 @@ class DDF(object):
 
         self.set_n_input(new_state_uuid, self.settings['input'])
         self.set_n_input(new_state_uuid, data2.settings['input'])
-        new_list = self.join_tasks_list(self.task_list + data2.task_list)
+        new_list = self.merge_tasks_list(self.task_list + data2.task_list)
         return DDF(new_list, new_state_uuid)
 
     def replace(self, replaces, subset=None):
@@ -1283,14 +1304,8 @@ class DDF(object):
 
         self.set_n_input(new_state_uuid, self.settings['input'])
         self.set_n_input(new_state_uuid, data2.settings['input'])
-        new_list = self.join_tasks_list(self.task_list + data2.task_list)
+        new_list = self.merge_tasks_list(self.task_list + data2.task_list)
         return DDF(new_list, new_state_uuid)
-
-    def generate_uuid(self):
-        new_state_uuid = str(uuid.uuid4())
-        while new_state_uuid in COMPSsContext.tasks_map:
-            new_state_uuid = str(uuid.uuid4())
-        return new_state_uuid
 
 
 class ModelDDS(object):
