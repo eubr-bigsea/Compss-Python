@@ -44,7 +44,7 @@ class CleanMissingOperation(object):
 
     def preprocessing(self, data, params, nfrag):
         if not isinstance(params['attributes'], list):
-            params['attributes'] = [ params['attributes']]
+            params['attributes'] = [params['attributes']]
 
         params['cleaning_mode'] = params.get('cleaning_mode', 'REMOVE_ROW')
         if params['cleaning_mode'] not in ['VALUE', 'REMOVE_ROW']:

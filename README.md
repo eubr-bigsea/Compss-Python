@@ -1,5 +1,5 @@
 <h1 align="center">  
-    <img src="docs/ddf-logo-h-full.png" alt="Distributed DataFrame (DDF) Library" height="90px">    
+    <img src="./docs/ddf-logo.png" alt="Distributed DataFrame (DDF) Library" height="90px">    
 </h1>
 
 <h3 align="center">A PyCOMPSs library for Big Data scenarios.</h3>

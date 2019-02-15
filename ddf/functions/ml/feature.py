@@ -1267,8 +1267,8 @@ class IndexToString(ModelDDS):
         if len(self.model) == 0:
             raise Exception("Model is not fitted.")
 
-        inputCol = self.settings['input_col']
-        outputCol = self.settings['output_col']
+        input_col = self.settings['input_col']
+        output_col = self.settings['output_col']
 
         tmp = data.cache()
         df = COMPSsContext.tasks_map[tmp.last_uuid]['function'][0]
@@ -1276,8 +1276,8 @@ class IndexToString(ModelDDS):
 
         result = [[] for _ in range(nfrag)]
         for f in range(nfrag):
-            result[f] = _index_to_string(df[f], inputCol,
-                                           outputCol, self.model[0])
+            result[f] = _index_to_string(df[f], input_col,
+                                           output_col, self.model[0])
 
         uuid_key = str(uuid.uuid4())
         COMPSsContext.tasks_map[uuid_key] = \

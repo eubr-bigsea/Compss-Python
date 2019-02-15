@@ -120,8 +120,7 @@ def overlap(sorted_idx1, sorted_idx2, nfrag):
                 y1, y2, cols2 = sorted_idx2[j]
                 if len(y1) != 0:  # only if data2 was empty
 
-                    tmp = pd.DataFrame([x1, x2, y1, y2],
-                                       index=[0, 1, 2, 3])
+                    tmp = pd.DataFrame([x1, x2, y1, y2], index=[0, 1, 2, 3])
                     tmp = tmp.infer_objects()
 
                     cols = [0]
@@ -150,7 +149,7 @@ def overlap(sorted_idx1, sorted_idx2, nfrag):
     return overlapping
 
 
-@task(returns=list)
+@task(returns=1)
 def _join_partial_sort(data, key):
     """Perform a partial sort to optimize the join."""
     data = data.dropna(axis=0, how='any', subset=key)
@@ -167,7 +166,7 @@ def _join_partial_sort(data, key):
     return [[[], [], cols]]
 
 
-@task(returns=list, priority=True)
+@task(returns=1, priority=True)
 def _merge_idx(idx1, idx2):
     return np.concatenate((idx1, idx2), axis=0)
 
@@ -192,9 +191,6 @@ def check_dtypes(data1, data2, key1, key2):
     data1[key1] = data1[key1].infer_objects()
     data2[key2] = data2[key2].infer_objects()
 
-    print "TEMPORARY_JOIN: check_dtypes "
-    print data1.dtypes
-    print data2.dtypes
     from pandas.api.types import is_numeric_dtype
     for c1, c2 in zip(key1, key2):
         type1 = data1[c1].dtype
@@ -207,9 +203,6 @@ def check_dtypes(data1, data2, key1, key2):
             else:
                 data1[c1] = data1[c1].astype(str)
                 data2[c2] = data2[c2].astype(str)
-
-    print data1.dtypes
-    print data2.dtypes
 
     return data1, data2
 

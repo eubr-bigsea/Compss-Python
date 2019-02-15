@@ -43,14 +43,7 @@ class ReplaceValuesOperation(object):
     def preprocessing(self, settings):
         """Check all the settings."""
         replaces = settings.get('replaces', {})
-        WRONG = False
-        for col in replaces:
-            if len(replaces[col]) != 2:
-                WRONG = True
-                break
-            if len(replaces[col][0]) != len(replaces[col][1]):
-                WRONG = True
-        if len(replaces) == 0 or WRONG:
+        if not isinstance(replaces, dict):
             raise Exception('You must inform a valid replaces settings !')
         return settings
 
@@ -67,24 +60,30 @@ def _replace_values(data, settings):
 
 def _replace_values_(data, settings):
     """Perform a partial replace values."""
-    dict_replaces = settings['replaces']
+    replaces = settings['replaces']
+    subset = settings.get('subset', data.columns)
+
+    to_replace = dict()
+    for col in subset:
+        to_replace[col] = replaces
+
     regexes = settings.get('regex', False)  # only if is string
 
-    for col in dict_replaces:
-        olds_v, news_v = dict_replaces[col]
-        if not regexes:
-            tmp_o = []
-            tmp_v = []
-            ixs = []
-            for ix in range(len(olds_v)):
-                if isinstance(olds_v[ix], float):
-                    tmp_o.append(olds_v[ix])
-                    tmp_v.append(news_v[ix])
-                    ixs.append(ix)
-            olds_v = [olds_v[ix] for ix in range(len(olds_v))
-                      if ix not in ixs]
-            news_v = [news_v[ix] for ix in range(len(news_v))
-                      if ix not in ixs]
+    data.replace(to_replace=to_replace, regex=regexes, inplace=True)
+
+        # if not regexes:
+            # tmp_o = []
+            # tmp_v = []
+            # ixs = []
+            # for ix in range(len(olds_v)):
+            #     if isinstance(olds_v[ix], float):
+            #         tmp_o.append(olds_v[ix])
+            #         tmp_v.append(news_v[ix])
+            #         ixs.append(ix)
+            # olds_v = [olds_v[ix] for ix in range(len(olds_v))
+            #           if ix not in ixs]
+            # news_v = [news_v[ix] for ix in range(len(news_v))
+            #           if ix not in ixs]
 
             # replace might not work with floats because the
             # floating point representation you see in the repr of
@@ -92,11 +91,8 @@ def _replace_values_(data, settings):
             # float. Because of that, we need to perform float
             # operations in separate way.
 
-            for old, new in zip(tmp_o, tmp_v):
-                mask = np.isclose(data[col],  old, rtol=1e-06)
-                data.ix[mask, col] = new
-
-        data[col].replace(to_replace=olds_v, value=news_v,
-                          regex=regexes, inplace=True)
+            # for old, new in zip(tmp_o, tmp_v):
+            #     mask = np.isclose(data[col],  old, rtol=1e-06)
+            #     data.ix[mask, col] = new
 
     return data
