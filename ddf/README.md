@@ -1,121 +1,176 @@
-# PyCOMPSs Distributed DataFrame (DDF)
+# Distributed DataFrame (DDF) Library
 
-DDF is a lightweight library for [PyCOMPSs](https://pypi.org/project/pycompss/)
-developers which contains ETL (extract-transform-load), machine learning, text and geographic operations. 
-The main purpose of this library is to avoid implementations of simple 'task' functions by developers. 
-DDF is trustful and it processes the data in the most adequate way in terms of parallelism.
+<h1 align="center">  
+    <img src="docs/ddf-logo-h-full.png" alt="Distributed DataFrame (DDF) Library" height="90px">    
+</h1>
+
+<h3 align="center">Distributed DataFrame (DDF) Library.</h3>
+
+<p align="center"><b>
+    <a href="#">Documentation</a> •
+    <a href="https://github.com/eubr-bigsea/Compss-Python/tree/compss2.5/releases">Releases</a>
+</b>
+
+</p>
 
 
-### TO DO:
 
- - document all tasks
- - collect
- - COMPSsContext
- - add more functions
- - increase the optimizations guidelines
- - test, test and test it !
+## Introduction
+
+The Distributed DataFrame Library provides distributed algorithms and operations ready to use as a library 
+implemented over [PyCOMPSs](https://pypi.org/project/pycompss/) programming model. Currently, is highly focused on 
+ETL (extract-transform-load) and Machine Learning algorithms to Data Science tasks. DDF is greatly inspired by Spark's 
+DataFrame and its operators.
+
+Currently, an operation can be of two types, transformations or actions. Action operations are those that produce 
+a final result (whether to save to a file or to display on screen). Transformation operations are those that will 
+transform an input DDF into another output DDF. Besides this classification, there are operations with one processing 
+stage and those with two or more stages of processing (those that need to exchange information between the partitions).
+
+When running DDF operation/algorithms, a context variable (COMPSs Context) will check the possibility of 
+optimizations during the scheduling of COMPS tasks. These optimizations can be of the type: grouping one stage 
+operations to a single task COMPSs and stacking operations until an action operation is found.
+
+
+## Contents
+
+- [Algorithms and operations currently available](#algorithms-and-operations-available)
+- [Example of use](#example-of-use)
+- [Requirements](#requirements)
+- [License](#license)
+
+ 
+## Algorithms and operations available:
+
+ - ETL: Add Columns, Aggregation, Change attribute, Clean Missing Values, Difference, Distinct (Remove Duplicated Rows), 
+ Drop Columns, Set-Intersect, Join (Inner, Left or Right), Load Data, Replace Values, Sample Rows, Save data, 
+ Select Columns, Sort, Split, Transform (Map operations), Union
+ - ML:
+   - Evaluator Models: Binary Classification Metrics, Multi-label Metrics and Regression Metrics
+   - Feature Operations: Vector Assembler, Simple Tokenizer, Regex Tokenizer, Remove Stop-Words,
+           Count Vectorizer, Tf-idf Vectorizer, String Indexer,
+           Index To String, Max-Abs Scaler, Min-Max Scaler, Standard Scaler, PCA
+   
+   - Frequent Pattern Mining: Apriori and Association Rules
+   - Classification: K-Nearest Neighbors, Gaussian Naive Bayes, Logistic Regression, SVM
+   - Clustering: K-means (using random or k-means|| initialization method), DBSCAN
+   - Regression: Linear Regression using method of least squares (works only for 2-D data) or using 
+   Stochastic Gradient Descent
+  - Geographic Operations: Load data from shapefile, Geo Within (Select rows that exists within a specified shape)
+  - Graph Operations: Initially, only Page Rank are present
+
  
 ### Example of use:
 
+The following code is an example of how to use this library for Data Science purposes. In this example, we want
+to know the number of men, women and children who survived or died in the Titanic crash.
+
+In the first part, we will perform some pre-processing (remove some columns, clean some rows that
+have missing values, replace some value and filter rows) and after that, aggregate the information for adult women.
+
+For explanatory aspects, the input data (Pandas DataFrame) is distributed by COMPSs in 4 fragments using `parallelize()`. 
+At this point, the programmer no longer has to worry about partitioning the data. All operations will be able to 
+work transparently to the user. The COMPS tasks will be executed in parallel, one for each fragment. 
+
+```python
+from ddf.ddf import DDF
+import pandas as pd
+
+url = 'https://gist.githubusercontent.com/michhar/' \
+          '2dfd2de0d4f8727f873422c5d959fff5/raw/' \
+          'ff414a1bcfcba32481e4d4e8db578e55872a2ca1/titanic.csv'
+df = pd.read_csv(url, sep='\t')
+
+ddf1 = DDF().parallelize(df, num_of_parts=4)\
+    .select(['Sex', 'Age', 'Survived'])\
+    .clean_missing(['Sex', 'Age'], mode='REMOVE_ROW')\
+    .replace({0: 'No', 1: 'Yes'}, subset=['Survived'])
+
+ddf_women = ddf1.filter('(Sex == "female") and (Age >= 18)').\
+    aggregation(group_by=['Survived'],
+                exprs={'Survived': ['count']},
+                aliases={'Survived': ["Women"]})
+
+print ddf_women.show()
 ```
-from ddf import DDF, COMPSsContext
 
-data1 = DDF().load_fs('/flights.csv', num_of_parts=4)\
-             .transform(lambda col: col['Year']-2000, 'new_Year')\
-             .drop(['Year'])\
-             .filter('(CRSDepTime > 750)') \
-             .split(0.5)
+The image shows the DAG created by COMPSs during the execution. The operations `select(), clean_missing(), replace() and filter()` 
+are some of them that are 'one processing stage' and then, the library was capable of group into a single COMPSs task 
+(which was named task_bundle). In this DAG, the other tasks are referring to the operation of `aggregation`. This operations  
+needs certain exchanges of information, so it performs a synchronization of some indices (light data) for submit the
+ minimum amount of tasks from master node. Finally, the last synchronization is performed by `show()` function 
+ (which is an action) to receives the data produced.
 
-data2 = data1[0].sample(10).collect()
-data3 = data1[1].sample(8).collect()
-
-COMPSsContext().run()
-
-print data2.toPandas()
-print data3.toPandas()
- 
-```
-
-### Operations: 
-
-* [ETL Operations](https://github.com/eubr-bigsea/Compss-Python/tree/master/functions/etl):
- 	- Add Columns
- 	- Aggregation
- 	- Attributes Changer
- 	- Clean Missing
- 	- Data Reader
- 	- Data Writer
- 	- Difference
- 	- Distinct (Remove Duplicated Rows)
- 	- Drop
- 	- Intersection
- 	- Join
- 	- Replace Values
- 	- Sample
- 	- Select
- 	- Sort
- 	- Split
- 	- Transform
- 	- Union
-
-* [Machine Learning Operations](https://github.com/eubr-bigsea/Compss-Python/tree/master/functions/ml):
- 	- K-Means Clustering
- 	- DBSCAN Clustering
- 	- K-NN Classifier
- 	- Naive Bayes Classifier
- 	- Svm Classifier
-	- Logistic Regression
- 	- Linear Regression
- 	- Apriori
-	- Save Model
-	- Load Model
-	- PCA
-	- Feature Assembler
-	- MinMax Scaler
-	- MaxAbs Scaler
-    - Standard Scaler
-
-* [Text Operations](https://github.com/eubr-bigsea/Compss-Python/tree/master/functions/text):
- 	- Tokenizer 
- 	- Convert Words to Vector (BoW, TF-IDF)
- 	- Remove Stopwords
- 	- StringIndexer
-
-* [Metrics](https://github.com/eubr-bigsea/Compss-Python/tree/master/functions/ml/metrics):
- 	* Classification Model Evaluation:
- 	- Accuracy
- 	- Precision
- 	- Recall
- 	- F-mesure
- 	* Regression Model Evaluation:
- 	- MSE
- 	- RMSE
- 	- MAE
- 	- R2
-
-* [Geografic Operations](https://github.com/eubr-bigsea/Compss-Python/tree/master/functions/geo):
- 	- Read Shapefile
- 	- Geo Within
- 	- ST-DBSCAN
-
-* [Graph Operations](https://github.com/eubr-bigsea/Compss-Python/tree/master/functions/graph):
- 	- PageRank
+![usecase1](./docs/use_case_1.png)
 
 
-
-### Requirements
-
-Some functions use third-party libraries, install all the dependencies below in order to use them, this can be done using the command `$ pip install -r requirements.txt`.
+Next, we extend the previous code to computate the result also for men and kids. 
 
 
+```python
+from ddf.ddf import DDF
+import pandas as pd
+
+url = 'https://gist.githubusercontent.com/michhar/' \
+      '2dfd2de0d4f8727f873422c5d959fff5/raw/' \
+      'ff414a1bcfcba32481e4d4e8db578e55872a2ca1/titanic.csv'
+df = pd.read_csv(url, sep='\t')
+
+ddf1 = DDF().parallelize(df, num_of_parts=4)\
+    .select(['Sex', 'Age', 'Survived'])\
+    .clean_missing(['Sex', 'Age'], mode='REMOVE_ROW')\
+    .replace({0: 'No', 1: 'Yes'}, subset=['Survived']).cache()
+
+ddf_women = ddf1.filter('(Sex == "female") and (Age >= 18)').\
+    aggregation(group_by=['Survived'],
+                exprs={'Survived': ['count']},
+                aliases={'Survived': ["Women"]})
+
+
+ddf_kids = ddf1.filter('Age < 18').\
+    aggregation(group_by=['Survived'],
+                exprs={'Survived': ['count']},
+                aliases={'Survived': ["Kids"]})
+
+ddf_men = ddf1.filter('(Sex == "male") and (Age >= 18)').\
+    aggregation(group_by=['Survived'],
+                exprs={'Survived': ['count']},
+                aliases={'Survived': ["Men"]})
+
+ddf_final = ddf_women\
+    .join(ddf_men, key1=['Survived'], key2=['Survived'], mode='inner')\
+    .join(ddf_kids, key1=['Survived'], key2=['Survived'], mode='inner')
+
+print ddf_final.show()
 
 ```
-Cython == 0.25.2
+
+This code will produce following result:
+
+
+| Survived  | Women | Men | Kids |
+| ----------|------ | ----|----- |
+| No        |   8   | 63  |  14  |
+| Yes       |  24   | 7   | 10   |
+
+
+
+## Requirements
+
+Besides the PyCOMPSs installation, DDF uses others third-party libraries. If you want to read and save data from HDFS, 
+you need to install [hdfspycompss](https://github.com/eubr-bigsea/compss-hdfs/tree/master/Python) library. The others 
+dependencies can be installed by using the command `$ pip install -r requirements.txt` 
+
+```
 Pyqtree == 0.24
 matplotlib == 1.5.1
 networkx == 1.11
-numpy == 1.11.0
-pandas == 0.20.3
+numpy == 1.16.0
+pandas == 0.23.4
 pyshp == 1.2.11
 python_dateutil == 2.6.1
 ```
+
+## License
+
+Apache License Version 2.0, see [LICENSE](LICENSE)
