@@ -1,10 +1,8 @@
-# Distributed DataFrame (DDF) Library
-
 <h1 align="center">  
     <img src="docs/ddf-logo-h-full.png" alt="Distributed DataFrame (DDF) Library" height="90px">    
 </h1>
 
-<h3 align="center">Distributed DataFrame (DDF) Library.</h3>
+<h3 align="center">A PyCOMPSs library for Big Data scenarios.</h3>
 
 <p align="center"><b>
     <a href="#">Documentation</a> •
@@ -76,9 +74,8 @@ work transparently to the user. The COMPS tasks will be executed in parallel, on
 from ddf.ddf import DDF
 import pandas as pd
 
-url = 'https://gist.githubusercontent.com/michhar/' \
-          '2dfd2de0d4f8727f873422c5d959fff5/raw/' \
-          'ff414a1bcfcba32481e4d4e8db578e55872a2ca1/titanic.csv'
+url = 'https://raw.githubusercontent.com/eubr-bigsea/' \
+      'Compss-Python/compss2.5/ddf/docs/titanic.csv'
 df = pd.read_csv(url, sep='\t')
 
 ddf1 = DDF().parallelize(df, num_of_parts=4)\
@@ -96,7 +93,7 @@ print ddf_women.show()
 
 The image shows the DAG created by COMPSs during the execution. The operations `select(), clean_missing(), replace() and filter()` 
 are some of them that are 'one processing stage' and then, the library was capable of group into a single COMPSs task 
-(which was named task_bundle). In this DAG, the other tasks are referring to the operation of `aggregation`. This operations  
+(which was named task_bundle). In this DAG, the other tasks are referring to the operation of `aggregation()`. This operations  
 needs certain exchanges of information, so it performs a synchronization of some indices (light data) for submit the
  minimum amount of tasks from master node. Finally, the last synchronization is performed by `show()` function 
  (which is an action) to receives the data produced.
@@ -125,7 +122,6 @@ ddf_women = ddf1.filter('(Sex == "female") and (Age >= 18)').\
     aggregation(group_by=['Survived'],
                 exprs={'Survived': ['count']},
                 aliases={'Survived': ["Women"]})
-
 
 ddf_kids = ddf1.filter('Age < 18').\
     aggregation(group_by=['Survived'],
