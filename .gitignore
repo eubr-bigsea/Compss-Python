@@ -1,0 +1,14 @@
+*.pyc
+*.pyo
+~*
+*.txt
+*.sh
+*.zip
+*.ps
+*.log
+
+olds/
+
+benchmark/*
+TestCases/*
+
