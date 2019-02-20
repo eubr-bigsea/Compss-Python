@@ -1,12 +1,12 @@
 <h1 align="center">  
-    <img src="./docs/ddf-logo.png" alt="Distributed DataFrame (DDF) Library" height="90px">    
+    <img src="./docs/source/ddf-logo.png" alt="Distributed DataFrame (DDF) Library" height="90px">    
 </h1>
 
 <h3 align="center">A PyCOMPSs library for Big Data scenarios.</h3>
 
 <p align="center"><b>
     <a href="https://homepages.dcc.ufmg.br/~lucasmsp/ddf/">Documentation</a> •
-    <a href="https://github.com/eubr-bigsea/Compss-Python/tree/compss2.5/releases">Releases</a>
+    <a href="https://github.com/eubr-bigsea/Compss-Python/releases">Releases</a>
 </b>
 
 </p>
@@ -99,7 +99,7 @@ needs certain exchanges of information, so it performs a synchronization of some
  minimum amount of tasks from master node. Finally, the last synchronization is performed by `show()` function 
  (which is an action) to receives the data produced.
 
-![usecase1](./docs/use_case_1.png)
+![usecase1](./docs/source/use_case_1.png)
 
 
 Next, we extend the previous code to computate the result also for men and kids. 
