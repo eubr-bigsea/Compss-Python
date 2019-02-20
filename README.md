@@ -5,7 +5,7 @@
 <h3 align="center">A PyCOMPSs library for Big Data scenarios.</h3>
 
 <p align="center"><b>
-    <a href="https://homepages.dcc.ufmg.br/~lucasmsp/ddf/">Documentation</a> •
+    <a href="https://eubr-bigsea.github.io/Compss-Python/">Documentation</a> •
     <a href="https://github.com/eubr-bigsea/Compss-Python/releases">Releases</a>
 </b>
 
@@ -76,7 +76,7 @@ from ddf.ddf import DDF
 import pandas as pd
 
 url = 'https://raw.githubusercontent.com/eubr-bigsea/' \
-      'Compss-Python/dev/tests/titanic.csv'
+      'Compss-Python/tests/titanic.csv'
 df = pd.read_csv(url, sep='\t')
 
 ddf1 = DDF().parallelize(df, num_of_parts=4)\
@@ -94,7 +94,7 @@ print ddf_women.show()
 
 The image shows the DAG created by COMPSs during the execution. The operations `select(), clean_missing(), replace() and filter()` 
 are some of them that are 'one processing stage' and then, the library was capable of group into a single COMPSs task 
-(which was named task_bundle). In this DAG, the other tasks are referring to the operation of `aggregation()`. This operations  
+(which was named `task_bundle()`). In this DAG, the other tasks are referring to the operation of `aggregation()`. This operations  
 needs certain exchanges of information, so it performs a synchronization of some indices (light data) for submit the
  minimum amount of tasks from master node. Finally, the last synchronization is performed by `show()` function 
  (which is an action) to receives the data produced.
@@ -110,7 +110,7 @@ from ddf.ddf import DDF
 import pandas as pd
 
 url = 'https://raw.githubusercontent.com/eubr-bigsea/' \
-      'Compss-Python/dev/tests/titanic.csv'
+      'Compss-Python/tests/titanic.csv'
 df = pd.read_csv(url, sep='\t')
 
 ddf1 = DDF().parallelize(df, num_of_parts=4)\
@@ -166,6 +166,13 @@ pandas == 0.23.4
 pyshp == 1.2.11
 python_dateutil == 2.6.1
 ```
+
+## Instalation
+
+DDF Library can be installed via pip from PyPI:
+
+    pip install ddf-pycompss
+
 
 ## Publications
 
