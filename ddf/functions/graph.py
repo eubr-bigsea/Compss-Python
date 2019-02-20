@@ -19,8 +19,7 @@ sys.path.append('../../')
 
 
 class PageRank(object):
-    """PageRank.
-
+    """
     PageRank is one of the methods Google uses to determine a page's
     relevance or importance. The idea that Page Rank brought up was that, the
     importance of any web page can be judged by looking at the pages that link
@@ -29,10 +28,21 @@ class PageRank(object):
     PageRank can be utilized in others domains. For example, may also be used
     as a methodology to measure the apparent impact of a community.
 
+    :Example:
+
+    >>> ddf2 = PageRank(inlink_col='col1', outlink_col='col2').transform(ddf1)
     """
 
-    def __init__(self, inlink_col, outlink_col, damping_factor=0.85,
+    def __init__(self, outlink_col, inlink_col, damping_factor=0.85,
                  max_iters=100):
+        """
+        Setup all PageRank's parameters.
+
+        :param outlink_col: Out-link vertex;
+        :param inlink_col: In-link vertex;
+        :param damping_factor: Default damping factor is 0.85;
+        :param max_iters: Maximum number of iterations (default is 100).
+        """
 
         self.settings = dict()
         self.settings['inlink_col'] = inlink_col
@@ -44,9 +54,10 @@ class PageRank(object):
 
     def transform(self, data):
         """
+        Generates the PageRank's result.
 
         :param data: DDF
-        :return: DDF
+        :return: DDF with Vertex and Rank columns
         """
 
         tmp = data.cache()
@@ -85,7 +96,7 @@ class PageRank(object):
             'input': 1
         }
 
-        data.set_n_input(uuid_key, data.settings['input'])
+        data._set_n_input(uuid_key, data.settings['input'])
         return DDF(data.task_list, uuid_key)
 
 

@@ -11,12 +11,11 @@ import pandas as pd
 from itertools import chain, combinations
 from collections import defaultdict
 from pycompss.api.task import task
-from pycompss.api.parameter import INOUT
 from pycompss.functions.reduce import merge_reduce
 from pycompss.api.api import compss_wait_on
-from ddf.ddf import COMPSsContext, DDF, ModelDDS
+from ddf.ddf import COMPSsContext, DDF
 
-__all__ = ['AssociationRules', 'Apriori']
+__all__ = ['Apriori', 'AssociationRules']
 
 
 import uuid
@@ -24,147 +23,26 @@ import sys
 sys.path.append('../../')
 
 
-class AssociationRules(object):
-
-    def __init__(self, col_item='items', col_freq='support',
-                 confidence=0.5, max_rules=-1):
-
-        self.settings = dict()
-        self.settings['col_freq'] = col_freq
-        self.settings['col_item'] = col_item
-        self.settings['confidence'] = confidence
-        self.settings['max_rules'] = max_rules
-
-        self.model = []
-        self.name = 'AssociationRules'
-
-    def set_min_confidence(self, confidence):
-        self.settings['confidence'] = confidence
-
-    def run(self, data):
-        """
-
-        :param data: DDF
-        :return:
-        """
-
-        tmp = data.cache()
-        df = COMPSsContext.tasks_map[tmp.last_uuid]['function'][0]
-        print "LIST:", tmp.task_list
-        nfrag = len(df)
-
-        col_item = self.settings['col_item']
-        col_freq = self.settings['col_freq']
-        min_conf = self.settings['confidence']
-        df_rules = [[] for _ in range(nfrag)]
-        for f in range(nfrag):
-            df_rules[f] = _ar_get_rules(df, col_item, col_freq, f, min_conf)
-
-        # if max_rules > -1:
-        #     conf = ['confidence']
-        #     rules_sorted = sort_byOddEven(df_rules, conf, nfrag)
-        #     count = [_count_transations(rules_sorted[f]) for f in range(nfrag)]
-        #     count_total = mergeReduce(_mergecount, count)
-        #     for f in range(nfrag):
-        #         df_rules[f] = _filter_rules(rules_sorted[f],
-        #                                     count_total, max_rules, f)
-
-        uuid_key = tmp.generate_uuid()
-        COMPSsContext.tasks_map[uuid_key] = \
-            {'name': 'task_associative_rules',
-             'status': 'COMPLETED',
-             'lazy': False,
-             'function': {0: df_rules},
-             'parent': [tmp.last_uuid],
-             'output': 1,
-             'input': 1
-             }
-
-        tmp.set_n_input(uuid_key, tmp.settings['input'])
-        return DDF(tmp.task_list, uuid_key)
-
-
-@task(returns=1)
-def _ar_get_rules(df, col_item, col_freq, i, min_confidence):
-    """Perform a partial rules generation."""
-    list_rules = []
-    for index, row in df[i].iterrows():
-        item = row[col_item]
-        support = row[col_freq]
-        if len(item) > 0:
-            subsets = [list(x) for x in _ar_subsets(item)]
-
-            for element in subsets:
-                remain = list(set(item).difference(element))
-
-                if len(remain) > 0:
-                    num = float(support)
-                    den = _ar_get_support(element, df, col_item, col_freq)
-                    confidence = num/den
-
-                    if confidence > min_confidence:
-                        r = [element, remain, confidence]
-                        list_rules.append(r)
-
-    cols = ['Pre-Rule', 'Post-Rule', 'confidence']
-    rules = pd.DataFrame(list_rules, columns=cols)
-
-    return rules
-
-
-@task(returns=list)
-def _ar_filter_rules(rules, count, max_rules, pos):
-    """Select the first N rules."""
-    total, partial = count
-    if total > max_rules:
-        gets = 0
-        for i in range(pos):
-            gets += partial[i]
-        number = max_rules-gets
-        if number > partial[pos]:
-            number = partial[pos]
-        if number < 0:
-            number = 0
-        return rules.head(number)
-    else:
-        return rules
-
-
-def _ar_subsets(arr):
-    """Return non empty subsets of arr."""
-    return chain(*[combinations(arr, i + 1) for i, a in enumerate(arr)])
-
-
-def _ar_get_support(element, freq_items, col_item, col_freq):
-    """Retrive the support of an item."""
-    for df in freq_items:
-        for t, s in zip(df[col_item].values, df[col_freq].values):
-            if element == t:
-                return s
-    return float("inf")
-
-
-@task(returns=list)
-def _ar_mergeRules(rules1, rules2):
-    """Merge partial rules."""
-    return pd.concat([rules1, rules2])
-
-
-@task(returns=list)
-def _ar_count_transations(rules):
-    """Count the number of rules."""
-    return [len(rules), [len(rules)]]
-
-
-@task(returns=list)
-def _ar_mergecount(c1, c2):
-    """Merge the partial count."""
-    return [c1[0]+c2[0], c1[1]+c2[1]]
-
-
 class Apriori(object):
+    """
+    Apriori is a algorithm to find frequent item sets which carries out a
+    breadth first search on the subset and determines the support of item sets
+    by subset tests.
 
-    def __init__(self, column='', min_support=0.5):
+    :Example:
+
+    >>> apriori = Apriori(column='col_0', min_support=0.10).run(ddf1)
+    >>> itemset = apriori.get_frequent_itemsets()
+    >>> rules = apriori.generate_association_rules(confidence=0.1)
+    """
+
+    def __init__(self, column, min_support=0.5):
+        """
+        Setup all Apriori's parameters.
+
+        :param column: Transactions feature name;
+        :param min_support: minimum support value.
+        """
 
         self.settings = dict()
         self.settings['column'] = column
@@ -176,9 +54,10 @@ class Apriori(object):
 
     def run(self, data):
         """
+        Fit the model.
 
         :param data: DDF
-        :return:
+        :return: a trained model
         """
         col = self.settings.get('column', [])
         minSupport = self.settings.get('min_support', 0.5)
@@ -226,6 +105,11 @@ class Apriori(object):
         return self
 
     def get_frequent_itemsets(self):
+        """
+        Get the frequent item set generated by Apriori.
+
+        :return: DDF
+        """
         if len(self.result) == 0:
 
             if len(self.model) == 0:
@@ -242,14 +126,20 @@ class Apriori(object):
                  'input': 1
                  }
 
-            #df.set_n_input(uuid_key, df.settings['input'])
-            tmp = DDF(self.model[1], uuid_key)
+            tmp = DDF(task_list=self.model[1], last_uuid=uuid_key)
             self.result = [tmp]
             return tmp
         else:
             return self.result[0]
 
     def generate_association_rules(self, confidence=0.5, max_rules=-1):
+        """
+        Generate a DDF with the association rules.
+
+        :param confidence: Minimum confidence (default is 0.5);
+        :param max_rules: Maximum number of output rules, -1 to all (default).
+        :return: DDF with 'Pre-Rule', 'Post-Rule' and 'confidence' columns.
+        """
 
         df = self.get_frequent_itemsets()
         ar = AssociationRules(confidence=confidence, max_rules=max_rules)
@@ -390,10 +280,166 @@ def joiner(itemSets_local1, itemSets_local2, length):
     """Merge only distintics items."""
     sets1 = set(itemSets_local1[0].keys())
     sets2 = set(itemSets_local2[0].keys())
-    itemSets_global = sets1 | sets2
-    joined = set([i.union(j) for i in itemSets_global
-                  for j in itemSets_global if len(i.union(j)) == length])
+    item_sets_global = sets1 | sets2
+    joined = set([i.union(j) for i in item_sets_global
+                  for j in item_sets_global if len(i.union(j)) == length])
 
     return joined
 
 
+class AssociationRules(object):
+    """
+    Association rule learning is a rule-based machine learning method for
+    discovering interesting relations between variables in large databases.
+    It is intended to identify strong rules discovered in databases using
+    some measures of interestingness.
+
+    :Example:
+
+    >>> rules = AssociationRules(confidence=0.10).run(itemset)
+    """
+
+    def __init__(self, col_item='items', col_freq='support',
+                 confidence=0.5, max_rules=-1):
+
+        """
+        Setup all AssociationsRules's parameters.
+
+        :param col_item: Column with the frequent item set (default, *'items'*);
+        :param col_freq: Column with its support (default, *'support'*);
+        :param confidence: Minimum confidence (default is 0.5);
+        :param max_rules: Maximum number of output rules, -1 to all (default).
+        """
+
+        self.settings = dict()
+        self.settings['col_freq'] = col_freq
+        self.settings['col_item'] = col_item
+        self.settings['confidence'] = confidence
+        self.settings['max_rules'] = max_rules
+
+        self.model = []
+        self.name = 'AssociationRules'
+
+    def set_min_confidence(self, confidence):
+        self.settings['confidence'] = confidence
+
+    def run(self, data):
+        """
+        Fit the model.
+
+        :param data: DDF
+        :return: DDF with 'Pre-Rule', 'Post-Rule' and 'confidence' columns
+        """
+
+        tmp = data.cache()
+        df = COMPSsContext.tasks_map[tmp.last_uuid]['function'][0]
+
+        nfrag = len(df)
+
+        col_item = self.settings['col_item']
+        col_freq = self.settings['col_freq']
+        min_conf = self.settings['confidence']
+        df_rules = [[] for _ in range(nfrag)]
+        for f in range(nfrag):
+            df_rules[f] = _ar_get_rules(df, col_item, col_freq, f, min_conf)
+
+        # if max_rules > -1:
+        #     conf = ['confidence']
+        #     rules_sorted = sort_byOddEven(df_rules, conf, nfrag)
+        #     count = [_count_transations(rules_sorted[f]) for f in range(nfrag)]
+        #     count_total = mergeReduce(_mergecount, count)
+        #     for f in range(nfrag):
+        #         df_rules[f] = _filter_rules(rules_sorted[f],
+        #                                     count_total, max_rules, f)
+
+        uuid_key = tmp._generate_uuid()
+        COMPSsContext.tasks_map[uuid_key] = \
+            {'name': 'task_associative_rules',
+             'status': 'COMPLETED',
+             'lazy': False,
+             'function': {0: df_rules},
+             'parent': [tmp.last_uuid],
+             'output': 1,
+             'input': 1
+             }
+
+        tmp._set_n_input(uuid_key, tmp.settings['input'])
+        return DDF(task_list=tmp.task_list, last_uuid=uuid_key)
+
+
+@task(returns=1)
+def _ar_get_rules(df, col_item, col_freq, i, min_confidence):
+    """Perform a partial rules generation."""
+    list_rules = []
+    for index, row in df[i].iterrows():
+        item = row[col_item]
+        support = row[col_freq]
+        if len(item) > 0:
+            subsets = [list(x) for x in _ar_subsets(item)]
+
+            for element in subsets:
+                remain = list(set(item).difference(element))
+
+                if len(remain) > 0:
+                    num = float(support)
+                    den = _ar_get_support(element, df, col_item, col_freq)
+                    confidence = num/den
+
+                    if confidence > min_confidence:
+                        r = [element, remain, confidence]
+                        list_rules.append(r)
+
+    cols = ['Pre-Rule', 'Post-Rule', 'confidence']
+    rules = pd.DataFrame(list_rules, columns=cols)
+
+    return rules
+
+
+@task(returns=list)
+def _ar_filter_rules(rules, count, max_rules, pos):
+    """Select the first N rules."""
+    total, partial = count
+    if total > max_rules:
+        gets = 0
+        for i in range(pos):
+            gets += partial[i]
+        number = max_rules-gets
+        if number > partial[pos]:
+            number = partial[pos]
+        if number < 0:
+            number = 0
+        return rules.head(number)
+    else:
+        return rules
+
+
+def _ar_subsets(arr):
+    """Return non empty subsets of arr."""
+    return chain(*[combinations(arr, i + 1) for i, a in enumerate(arr)])
+
+
+def _ar_get_support(element, freq_items, col_item, col_freq):
+    """Retrive the support of an item."""
+    for df in freq_items:
+        for t, s in zip(df[col_item].values, df[col_freq].values):
+            if element == t:
+                return s
+    return float("inf")
+
+
+@task(returns=list)
+def _ar_mergeRules(rules1, rules2):
+    """Merge partial rules."""
+    return pd.concat([rules1, rules2])
+
+
+@task(returns=list)
+def _ar_count_transations(rules):
+    """Count the number of rules."""
+    return [len(rules), [len(rules)]]
+
+
+@task(returns=list)
+def _ar_mergecount(c1, c2):
+    """Merge the partial count."""
+    return [c1[0]+c2[0], c1[1]+c2[1]]

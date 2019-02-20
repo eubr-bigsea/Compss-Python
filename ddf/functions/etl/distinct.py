@@ -11,10 +11,10 @@ import copy
 
 
 class DistinctOperation(object):
-    """Distinct Operation: Remove duplicates elements."""
 
     def transform(self, data, cols, nfrag):
-        """DistinctOperation.
+        """
+        Returns a new DataFrame containing the distinct rows in this DataFrame.
 
         :param data: A list with nfrag pandas's dataframe;
         :param cols: A list with the columns names to take in count
@@ -32,7 +32,7 @@ class DistinctOperation(object):
 
         x_i, y_i = self.preprocessing(nfrag)
         for x, y in zip(x_i, y_i):
-            _drop_duplicates(result[x], result[y], cols)
+            result[x], result[y] = _drop_duplicates(result[x], result[y], cols)
 
         return result
     
@@ -69,7 +69,7 @@ class DistinctOperation(object):
         return x_i, y_i
         
 
-@task(data1=INOUT, data2=INOUT)
+@task(returns=2)
 def _drop_duplicates(data1, data2, cols):
     """Remove duplicate rows based in two fragments at the time."""
     data = pd.concat([data1, data2], axis=0, ignore_index=True, sort=False)
@@ -109,6 +109,8 @@ def _drop_duplicates(data1, data2, cols):
 
         data1.drop(data1.index[m1:], inplace=True)
         data2.drop(data2.index[m2:], inplace=True)
+
+        return data1, data2
 
 
 def get_column(cols):

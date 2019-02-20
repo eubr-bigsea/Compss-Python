@@ -8,15 +8,10 @@ from pycompss.api.task import task
 
 
 class FilterOperation(object):
-    """FilterOperation.
 
-        Select some rows based in a condition.
-
-        Optimization: Yes
-    """
-
-    def transform(self, data, settings, nfrag):
-        """FilterOperation.
+    def transform(self, data, settings):
+        """
+        Filters rows using the given condition.
 
         :param data: A list with nfrag pandas's dataframe;
         :param settings: A dictionary that contains:
@@ -33,6 +28,7 @@ class FilterOperation(object):
             settings['query'] = "(VEIC == VEIC) and (YEAR > 2000)" to
                 rows where VEIC is not NaN and YEAR is greater than 2000
         """
+        nfrag = len(data)
         result = [[] for _ in range(nfrag)]
         query = self.preprocessing(settings)
         for i in range(nfrag):

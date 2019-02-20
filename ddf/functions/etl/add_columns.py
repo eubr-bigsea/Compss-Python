@@ -6,65 +6,77 @@ __email__ = "lucasmsp@gmail.com"
 
 from pycompss.api.task import task
 from pycompss.api.local import local
-from pycompss.functions.reduce import mergeReduce
+from pycompss.functions.reduce import merge_reduce
 import numpy as np
 import pandas as pd
 
 
 class AddColumnsOperation(object):
-    """AddColumns Operation: Merge two dataframes, column-wise."""
 
-    def transform(self, df1, df2, sufixes, nfrag):
-        """AddColumnsOperation.
+    @staticmethod
+    def transform(df1, df2, suffixes=['_l', '_r']):
+        """
+        Merge two DataFrames, column-wise.
 
-        :param df1: A list with nfrag pandas's dataframe;
-        :param df2: A list with nfrag pandas's dataframe;
-        :param nfrag: The number of fragments;
-        :param sufixes: Suffixes for attributes (a list with 2 values);
+        :param df1: A list with nfrag pandas's DataFrame;
+        :param df2: A list with nfrag pandas's DataFrame;
+        :param suffixes: Suffixes for attributes (a list with 2 values);
         :return: Returns a list with nfrag pandas's dataframe.
         """
-        result = [pd.DataFrame([]) for _ in range(nfrag)]
-        info1 = [len_count(df1[f]) for f in range(nfrag)]
-        info2 = [len_count(df2[f]) for f in range(nfrag)]
-        len1 = mergeReduce(_merge_count, info1)
-        len2 = mergeReduce(_merge_count, info2)
+        nfrag1 = len(df1)
+        nfrag2 = len(df2)
 
-        idxs1, idxs2, len1, len2 = _check_indexes(len1, len2, nfrag)
-        up1 = idxs1[-1][1]
-        up2 = idxs2[-1][1]
-        op = (up2 < up1)
-        startfill = -1
+        # Getting information about the schema and number of rows
+        info1 = [len_count(df1[f]) for f in range(nfrag1)]
+        info2 = [len_count(df2[f]) for f in range(nfrag2)]
+        len1 = merge_reduce(_merge_count, info1)
+        len2 = merge_reduce(_merge_count, info2)
+        len1, len2 = _check_indexes(len1, len2)
 
-        if op:
-            for f in range(nfrag):
-                for j in range(nfrag):
-                    if _is_overlapping(idxs1[f], idxs2[j]):
-                        last = (f == nfrag-1) or (j == nfrag-1)
-                        result[f] = _add_columns(result[f], df1[f],
-                                                 df2[j], idxs1[f],
-                                                 idxs2[j], sufixes,
-                                                 last, op)
-                        startfill = f
+        # The larger dataset will be always df1
+        swap_cols = False
+        if len2[0] > len1[0]:
+            len1, len2 = len2, len1
+            df1, df2 = df2, df1
+            nfrag1, nfrag2 = nfrag2, nfrag1
+            swap_cols = True
 
-            if startfill < nfrag-1:
-                for f in xrange(startfill+1, nfrag):
-                    result[f] = _add_columns_fill(df1[f], len2,
-                                                       op, sufixes)
+        if swap_cols:
+            new_df2 = [pd.DataFrame([], columns=len2[2]) for _ in range(nfrag1)]
         else:
-            for f in range(nfrag):
-                for j in range(nfrag):
-                    if _is_overlapping(idxs1[j], idxs2[f]):
-                        last = (f == nfrag-1) or (j == nfrag-1)
-                        result[f] = _add_columns(result[f], df1[j],
-                                                 df2[f], idxs1[j],
-                                                 idxs2[f], sufixes,
-                                                 last, op)
-                        startfill = f
+            new_df2 = [pd.DataFrame([], columns=len1[2]) for _ in range(nfrag1)]
 
-            if startfill < nfrag-1:
-                for f in xrange(startfill+1, nfrag):
-                    result[f] = _add_columns_fill(df2[f], len1,
-                                                  op, sufixes)
+        # re-organizing df2 to have df1's shape
+        ranges2 = [[0, end] for end in len2[1]]
+        extract_from_df2 = {}
+        for i, left in enumerate(len1[1]):
+            extract_from_df2[i] = [0 for _ in range(nfrag2)]
+
+            for j, (start, end) in enumerate(ranges2):
+                if left <= 0:
+                    break
+                size2 = (end - start)
+                if size2 != 0:
+                    if left < size2:
+                        extract_from_df2[i][j] = [start, start+left]
+                        ranges2[j] = [start+left, start+end]
+                        left = 0
+                    else:
+                        left -= size2
+                        extract_from_df2[i][j] = [start, start + size2]
+                        ranges2[j] = [start + size2, start + size2]
+
+        for f in range(nfrag1):
+            for i, op in enumerate(extract_from_df2[f]):
+                if op != 0:
+                    new_df2[f] = _concatenate_df(new_df2[f], df2[i], op)
+
+        del ranges2
+        del extract_from_df2
+        # 3º merging two DataFrames with same shape
+        result = [[] for _ in range(nfrag1)]
+        for f in range(nfrag1):
+            result[f] = _add_columns(df1[f], new_df2[f], suffixes, swap_cols)
 
         return result
 
@@ -82,79 +94,39 @@ def _merge_count(len1, len2):
     return[len1[0] + len2[0], len1[1] + len2[1], len1[2]]
 
 @local
-def _check_indexes(len1, len2, nfrag):
+def _check_indexes(len1, len2):
     """Retrieve the indexes of each fragment."""
-    indexes1 = [[] for _ in range(nfrag)]
-    indexes2 = [[] for _ in range(nfrag)]
-
-    for f in range(nfrag):
-        indexes1[f] = _reindexing(len1, f)
-        indexes2[f] = _reindexing(len2, f)
-    return indexes1, indexes2, len1, len2
+    return len1, len2
 
 
-def _is_overlapping(indexes1, indexes2):
-    """Check if the both intervals are overlapping."""
-    x1, x2 = indexes1
-    y1, y2 = indexes2
-    over = max([x2, y2]) - min([x1, y1]) < ((x2 - x1) + (y2 - y1))
-    return over
+@task(returns=1)
+def _concatenate_df(new_df, df, op):
+    i1, i2 = op
 
+    df = df.iloc[i1: i2]
 
-def _reindexing(len1, index):
-    """Create the new index interval."""
-    len1 = len1[1]
-    i_start = sum(len1[:index])
-    i_end = i_start + len1[index]
-    return [i_start, i_end]
+    if len(new_df) > 0:
+        new_df = pd.concat([new_df, df])
+    else:
+        new_df = df
+    return new_df
 
 
 @task(returns=list)
-def _add_columns(c, a, b,  idxs1, idxs2, suffixes, last, side):
+def _add_columns(df1, df2, suffixes, swap_cols):
     """Peform a partial add columns."""
-    if len(suffixes) == 0:
-        suffixes = ('_x', '_y')
 
-    a.index = np.arange(idxs1[0], idxs1[1])
-    b.index = np.arange(idxs2[0], idxs2[1])
+    df1.reset_index(drop=True, inplace=True)
+    df2.reset_index(drop=True, inplace=True)
 
-    if not last:
-        tmp = pd.merge(a, b, left_index=True, right_index=True,
-                       how='inner', suffixes=suffixes)
-    else:
-        if side:
-            tmp = pd.merge(a, b, left_index=True, right_index=True,
-                           how='left', suffixes=suffixes)
-        else:
-            tmp = pd.merge(a, b, left_index=True, right_index=True,
-                           how='right', suffixes=suffixes)
+    mode = 'left'
+    if swap_cols:
+        df1, df2 = df2, df1
+        mode = 'right'
 
-    if len(c) != 0:
-        tmp = pd.concat((c, tmp))
-        tmp = tmp.groupby(tmp.index).first()
+    tmp = pd.merge(df1, df2, left_index=True, right_index=True,
+                   how=mode, suffixes=suffixes)
 
+    tmp.reset_index(drop=True, inplace=True)
     return tmp
 
-
-@task(returns=list)
-def _add_columns_fill(df1, info2, op, suffixes):
-    """Fill the columns that is missing."""
-
-    cols2 = info2[2]
-    cols1 = df1.columns
-    if len(suffixes) == 0:
-        suffixes = ('_x', '_y')
-    cols1 = ['{}{}'.format(col, suffixes[0])
-             if col in cols2 else col for col in cols1]
-    cols2 = ['{}{}'.format(col, suffixes[1])
-             if col in df1.columns else col for col in cols2]
-
-    if op:
-        df1.columns = cols1
-        for col in cols2:
-            df1[col] = np.nan
-    else:
-        df1.columns = cols2
-        for col in cols1:
-            df1[col] = np.nan
-    return df1

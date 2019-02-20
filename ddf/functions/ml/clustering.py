@@ -9,11 +9,9 @@ __email__ = "lucasmsp@gmail.com"
 import numpy as np
 import pandas as pd
 from pycompss.api.task import task
-from pycompss.api.parameter import INOUT
 from pycompss.functions.reduce import merge_reduce
-from pycompss.api.api import compss_wait_on
 from pycompss.api.local import *
-from ddf.ddf import COMPSsContext, DDF, ModelDDS
+from ddf.ddf import COMPSsContext, DDF, ModelDDF
 
 __all__ = ['Kmeans', 'DBSCAN']
 
@@ -23,10 +21,46 @@ import sys
 sys.path.append('../../')
 
 
-class Kmeans(object):
+class Kmeans(ModelDDF):
+
+    """
+    K-means clustering is a type of unsupervised learning, which is used when
+    you have unlabeled data (i.e., data without defined categories or groups).
+    The goal of this algorithm is to find groups in the data, with the number of
+    groups represented by the variable K. The algorithm works iteratively to
+    assign each data point to one of K groups based on the features that are
+    provided. Data points are clustered based on feature similarity.
+
+    Two of the most well-known forms of initialization of the set of clusters
+    are: "random" and "k-means||":
+
+     * random: Starting with a set of randomly chosen initial centers;
+     * k-means|| (Bahmani et al., Scalable K-Means++, VLDB 2012): This is a
+       variant of k-means++ that tries to find dissimilar cluster centers by
+       starting with a random center and then doing passes where more centers
+       are chosen with probability proportional to their squared distance to the
+       current cluster set. It results in a provable approximation to an optimal
+       clustering.
+
+    :Example:
+
+    >>> kmeans = Kmeans(feature_col='features', n_clusters=2,
+    >>>                 init_mode='random').fit(ddf1)
+    >>> ddf2 = kmeans.transform(ddf1)
+    """
 
     def __init__(self, feature_col, pred_col=None, n_clusters=3,
-                 max_iters=100, epsilon=0.001, init_mode='k-means||'):
+                 max_iters=100, epsilon=0.01, init_mode='k-means||'):
+        """
+        :param feature_col: Feature column name;
+        :param pred_col: Output prediction column;
+        :param n_clusters: Number of clusters;
+        :param max_iters: Number maximum of iterations;
+        :param epsilon: tolerance value (default, 0.01);
+        :param init_mode: *'random'* or *'k-means||'*.
+        """
+        super(Kmeans, self).__init__()
+
         if not feature_col:
             raise Exception("You must inform the `features` field.")
 
@@ -51,7 +85,6 @@ class Kmeans(object):
 
     def fit(self, data):
         """
-
         :param data: DDF
         :return: trained model
         """
@@ -125,7 +158,7 @@ class Kmeans(object):
                                                   features_col,
                                                   self.model, alias)
 
-        uuid_key = str(uuid.uuid4())
+        uuid_key = tmp._generate_uuid()
         COMPSsContext.tasks_map[uuid_key] = \
             {'name': 'task_transform_kmeans',
              'status': 'COMPLETED',
@@ -136,10 +169,15 @@ class Kmeans(object):
              'input': 1
              }
 
-        tmp.set_n_input(uuid_key, tmp.settings['input'])
-        return DDF(tmp.task_list, uuid_key)
+        tmp._set_n_input(uuid_key, tmp.settings['input'])
+        return DDF(task_list=tmp.task_list, last_uuid=uuid_key)
 
     def compute_cost(self):
+        """
+        Compute the cost of this iteration;
+
+        :return: float
+        """
 
         if self.cost is None:
             raise Exception("Model is not fitted.")
@@ -371,17 +409,31 @@ def _kmeans_merge_cost(info1, info2):
 
 
 class DBSCAN(object):
-    """DBSCAN.
-
+    """
     Density-based spatial clustering of applications with noise (DBSCAN) is
     a data clustering algorithm.  It is a density-based clustering algorithm:
     given a set of points in some space, it groups together points that are
     closely packed together (points with many nearby neighbors), marking as
     outliers points that lie alone in low-density regions (whose nearest
     neighbors are too far away).
+
+    .. warning:: Unstable
+
+    :Example:
+
+    >>> ddf2 = DBSCAN(feature_col='features', eps=0.01,
+    >>>               min_pts=15).fit_predict(ddf1)
     """
 
-    def __init__(self, feature_col, pred_col=None,eps=0.1, min_pts=15):
+    def __init__(self, feature_col, pred_col=None, eps=0.1, min_pts=15):
+        """
+        :param feature_col: Feature column name;
+        :param pred_col: Output predicted column;
+        :param eps: Epsilon distance (default is 0.1);
+        :param min_pts: Minimum number of points to consider as a cluster.
+
+        .. note:: Features need to be normalized.
+        """
 
         if not pred_col:
             pred_col = 'prediction_DBSCAN'
@@ -397,9 +449,10 @@ class DBSCAN(object):
 
     def fit_predict(self, data):
         """
+        Fit and predict.
 
         :param data: DDF
-        :return: trained model
+        :return: DDF
         """
 
         df = data.partitions[0]
@@ -420,7 +473,8 @@ class DBSCAN(object):
                 for f in range(nfrag):
                     frag = _partitionize(df[f], self.settings, grids[t], frag)
 
-                partial[t] = _partial_dbscan(frag, self.settings, "p_{}_".format(t))
+                partial[t] = _partial_dbscan(frag,
+                                             self.settings, "p_{}_".format(t))
                 t += 1
 
         # stage3: combining clusters
@@ -459,7 +513,7 @@ class DBSCAN(object):
 
         data.partitions = {0: result}
         uuid_key = str(uuid.uuid4())
-        ddf.COMPSsContext.tasks_map[uuid_key] = \
+        COMPSsContext.tasks_map[uuid_key] = \
             {'name': 'task_transform_dbscan',
              'status': 'COMPLETED',
              'lazy': False,
@@ -467,8 +521,8 @@ class DBSCAN(object):
              'parent': [data.last_uuid],
              'output': 1, 'input': 1}
 
-        data.set_n_input(uuid_key, data.settings['input'])
-        return ddf.DDF(data.partitions, data.task_list, uuid_key)
+        data._set_n_input(uuid_key, data.settings['input'])
+        return DDF(task_list=data.task_list, last_uuid=uuid_key)
 
 
 # -----------------------------------------------------------------------------

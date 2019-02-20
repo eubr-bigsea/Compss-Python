@@ -12,7 +12,7 @@ from pycompss.api.task import task
 from pycompss.functions.reduce import merge_reduce
 from pycompss.api.api import compss_wait_on
 from pycompss.api.local import *
-from ddf.ddf import COMPSsContext, DDF, ModelDDS
+from ddf.ddf import COMPSsContext, DDF, ModelDDF
 
 __all__ = ['KNearestNeighbors', 'GaussianNB', 'LogisticRegression', 'SVM']
 
@@ -22,15 +22,36 @@ import sys
 sys.path.append('../../')
 
 
-class KNearestNeighbors(object):
+class KNearestNeighbors(ModelDDF):
 
-    """KNN's Methods.
+    """K-Nearest Neighbor is a algorithm used that can be used for both
+    classification and regression predictive problems. However, it is more
+    widely used in classification problems. Is a non parametric lazy learning
+    algorithm. Meaning that it does not use the training data points to do
+    any generalization. In other words, there is no explicit training phase.
+    More precisely, all the training data is needed during the testing phase.
 
-    - fit(): Create a model based in an dataset.
-    - transform(): Predict a dataset based in the model created.
+    In a classification, the algorithm computes from a simple majority vote
+    of the K nearest neighbors of each point present in the training set.
+    The choice of the parameter K is very crucial in this algorithm, and
+    depends on the dataset. However, values of one or tree is more commom.
+
+    :Example:
+
+    >>> knn = KNearestNeighbors(feature_col='features',
+    >>>                         label_col='label', k=1).fit(ddf1)
+    >>> ddf2 = knn.transform(ddf1)
     """
 
     def __init__(self, feature_col, label_col, pred_col=None, k=3):
+        """
+        :param feature_col: Feature column name;
+        :param label_col: Label column name;
+        :param pred_col: Output prediction name (default, *'prediction_kNN'*);
+        :param k: Number of nearest neighbors to majority vote;
+        """
+        super(KNearestNeighbors, self).__init__()
+
         if not feature_col:
             raise Exception("You must inform the `features` field.")
 
@@ -51,6 +72,7 @@ class KNearestNeighbors(object):
 
     def fit(self, data):
         """
+        Fit the model.
 
         :param data: DDF
         :return: trained model
@@ -91,7 +113,7 @@ class KNearestNeighbors(object):
         for i in range(nfrag):
             result[i] = _knn_classify_block_(df[i], self.settings)
 
-        uuid_key = str(uuid.uuid4())
+        uuid_key = tmp._generate_uuid()
         COMPSsContext.tasks_map[uuid_key] = \
             {'name': 'task_transform_knn',
              'status': 'COMPLETED',
@@ -102,8 +124,8 @@ class KNearestNeighbors(object):
              'input': 1
              }
 
-        tmp.set_n_input(uuid_key, tmp.settings['input'])
-        return DDF(tmp.task_list, uuid_key)
+        tmp._set_n_input(uuid_key, tmp.settings['input'])
+        return DDF(task_list=tmp.task_list, last_uuid=uuid_key)
 
 
 @task(returns=list)
@@ -194,14 +216,13 @@ def _knn_get_majority(neighborhood):
     return result
 
 
-class SVM(object):
-    """Support vector machines (SVM).
-
-    SVM is a supervised learning model used for binary classification. Given a
-    set of training examples, each marked as belonging to one or the other of
-    two categories, a SVM training algorithm builds a model that assigns new
-    examples to one category or the other, making it a non-probabilistic binary
-    linear classifier.
+class SVM(ModelDDF):
+    """
+    Support vector machines (SVM) is a supervised learning model used for
+    binary classification. Given a set of training examples, each marked as
+    belonging to one or the other of two categories, a SVM training algorithm
+    builds a model that assigns new examples to one category or the other,
+    making it a non-probabilistic binary linear classifier.
 
     An SVM model is a representation of the examples as points in space, mapped
     so that the examples of the separate categories are divided by a clear gap
@@ -213,10 +234,27 @@ class SVM(object):
 
     The algorithm reads a dataset composed by labels (-1.0 or 1.0) and
     features (numeric fields).
+
+    :Example:
+
+    >>> svm = SVM(feature_col='features', label_col='label',
+    >>>           max_iters=10).fit(ddf1)
+    >>> ddf2 = svm.transform(ddf1)
     """
 
     def __init__(self, feature_col, label_col, pred_col=None,
                  coef_lambda=0.1, coef_lr=0.01, threshold=0.001, max_iters=100):
+        """
+        :param feature_col: Feature column name;
+        :param label_col: Label column name;
+        :param pred_col: Output prediction name (default, *'prediction_SVM'*);
+        :param coef_lambda: Regularization parameter (default, 0.1);
+        :param coef_lr: Learning rate parameter (default, 0.1);
+        :param threshold: Tolerance for stopping criterion (default, 0.001);
+        :param max_iters: Number max of iterations (default, 100).
+        """
+        super(SVM, self).__init__()
+
         if not feature_col:
             raise Exception("You must inform the `features` field.")
 
@@ -240,6 +278,7 @@ class SVM(object):
 
     def fit(self, data):
         """
+        Fit the model.
 
         :param data: DDF
         :return: trained model
@@ -303,7 +342,7 @@ class SVM(object):
             result[f] = _predict_partial(df[f], self.model[0],
                                          predicted_label, features)
 
-        uuid_key = str(uuid.uuid4())
+        uuid_key = tmp._generate_uuid()
         COMPSsContext.tasks_map[uuid_key] = \
             {'name': 'task_transform_svm',
              'status': 'COMPLETED',
@@ -314,8 +353,8 @@ class SVM(object):
              'input': 1
              }
 
-        tmp.set_n_input(uuid_key, tmp.settings['input'])
-        return DDF(tmp.task_list, uuid_key)
+        tmp._set_n_input(uuid_key, tmp.settings['input'])
+        return DDF(task_list=tmp.task_list, last_uuid=uuid_key)
 
 
 @local
@@ -399,7 +438,7 @@ def _predict_partial(data, w, predicted_label, features):
     return data
 
 
-class LogisticRegression(object):
+class LogisticRegression(ModelDDF):
 
     """
     Logistic regression is named for the function used at the core
@@ -418,14 +457,27 @@ class LogisticRegression(object):
     the derivative based on a randomly chosen single example is a random
     approximation to the true derivative based on all the training data.
 
-    Methods:
-        - fit()
-        - transform()
+    :Example:
 
+    >>> logr = LogisticRegression(feature_col='features',
+    >>>                           label_col='label').fit(ddf1)
+    >>> ddf2 = logr.transform(ddf1)
     """
 
     def __init__(self, feature_col, label_col, pred_col=None, alpha=0.1,
                  regularization=0.1, max_iters=100, threshold=0.01):
+        """
+        :param feature_col: Feature column name;
+        :param label_col: Label column name;
+        :param pred_col: Output prediction name (default,
+         *'prediction_LogReg'*);
+        :param alpha: Learning rate parameter (default, 0.1);
+        :param regularization: Regularization parameter (default, 0.1);
+        :param max_iters: Maximum number of iterations (default, 100);
+        :param threshold: Tolerance for stopping criterion (default, 0.01);
+        """
+        super(LogisticRegression, self).__init__()
+
         if not feature_col:
             raise Exception("You must inform the `features` field.")
 
@@ -449,6 +501,7 @@ class LogisticRegression(object):
 
     def fit(self, data):
         """
+        Fit the model.
 
         :param data: DDF
         :return: trained model
@@ -489,7 +542,7 @@ class LogisticRegression(object):
         for i in range(nfrag):
             result[i] = _logr_predict(df[i], self.settings, self.model[0])
 
-        uuid_key = str(uuid.uuid4())
+        uuid_key = tmp._generate_uuid()
         COMPSsContext.tasks_map[uuid_key] = \
             {'name': 'task_transform_logr',
              'status': 'COMPLETED',
@@ -500,8 +553,8 @@ class LogisticRegression(object):
              'input': 1
              }
 
-        tmp.set_n_input(uuid_key, tmp.settings['input'])
-        return DDF(tmp.task_list, uuid_key)
+        tmp._set_n_input(uuid_key, tmp.settings['input'])
+        return DDF(task_list=tmp.task_list, last_uuid=uuid_key)
 
 
 def _logr_sigmoid(x, w):
@@ -614,14 +667,40 @@ def _logr_predict(data, settings, theta):
     return data
 
 
-class GaussianNB(object):
-    """Gaussian Naive Bayes's methods.
+class GaussianNB(ModelDDF):
+    """
+    The Naive Bayes algorithm is an intuitive method that uses the
+    probabilities of each attribute belonged to each class to make a prediction.
+    It is a supervised learning approach that you would  come up with if you
+    wanted to model a predictive probabilistically modeling problem.
 
-    - fit()
-    - transform()
+    Naive bayes simplifies the calculation of probabilities by assuming that
+    the probability of each attribute belonging to a given class value is
+    independent of all other attributes. The probability of a class value given
+    a value of an attribute is called the conditional probability. By
+    multiplying the conditional probabilities together for each attribute for
+    a given class value, we have the probability of a data instance belonging
+    to that class.
+
+    To make a prediction we can calculate probabilities of the instance
+    belonged to each class and select the class value with the highest
+    probability.
+
+    :Example:
+
+    >>> nb = GaussianNB(feature_col='features', label_col='label').fit(ddf1)
+    >>> ddf2 = nb.transform(ddf1)
     """
 
     def __init__(self, feature_col, label_col, pred_col=None):
+        """
+        :param feature_col: Feature column name;
+        :param label_col: Label column name;
+        :param pred_col: Output prediction name
+         (default, *'prediction_GaussianNB'*);
+        """
+        super(GaussianNB, self).__init__()
+
         if not feature_col:
             raise Exception("You must inform the `features` field.")
 
@@ -641,6 +720,7 @@ class GaussianNB(object):
 
     def fit(self, data):
         """
+        Fit the model.
 
         :param data: DDF
         :return: trained model
@@ -671,9 +751,8 @@ class GaussianNB(object):
 
     def transform(self, data):
         """
-
         :param data: DDF
-        :return: trained model
+        :return: DDF
         """
         if len(self.model) == 0:
             raise Exception("Model is not fitted.")
@@ -686,7 +765,7 @@ class GaussianNB(object):
         for i in range(nfrag):
             result[i] = _nb_predict_chunck(df[i], self.model[0], self.settings)
 
-        uuid_key = str(uuid.uuid4())
+        uuid_key = tmp._generate_uuid()
         COMPSsContext.tasks_map[uuid_key] = \
             {'name': 'task_transform_nb',
              'status': 'COMPLETED',
@@ -697,8 +776,8 @@ class GaussianNB(object):
              'input': 1
              }
 
-        tmp.set_n_input(uuid_key, tmp.settings['input'])
-        return DDF(tmp.task_list, uuid_key)
+        tmp._set_n_input(uuid_key, tmp.settings['input'])
+        return DDF(task_list=tmp.task_list, last_uuid=uuid_key)
 
 
 @task(returns=list)

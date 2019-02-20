@@ -6,12 +6,10 @@ __email__ = "lucasmsp@gmail.com"
 
 from pycompss.api.task import task
 from pycompss.functions.reduce import merge_reduce
-from pycompss.api.api import compss_wait_on
 from pycompss.api.local import *
-from ddf.ddf import COMPSsContext, DDF, ModelDDS
+from ddf.ddf import COMPSsContext, DDF, ModelDDF
 import numpy as np
 import pandas as pd
-import uuid
 
 import sys
 sys.path.append('../../')
@@ -22,16 +20,40 @@ __all__ = ['BinaryClassificationMetrics', 'MultilabelMetrics',
 
 class BinaryClassificationMetrics(object):
     """
+    Evaluator for binary classification.
 
-    areaUnderPR: Computes the area under the precision-recall curve.
-    areaUnderROC: Computes the area under the receiver operating characteristic (ROC) curve.
-    ["Accuracy", Accuracy],
-    ["Precision", Precision],
-    ["Recall", Recall],
-    ["F-measure (F1)", F1]
+    * True Positive (TP) - label is positive and prediction is also positive
+    * True Negative (TN) - label is negative and prediction is also negative
+    * False Positive (FP) - label is negative but prediction is positive
+    * False Negative (FN) - label is positive but prediction is negative
+
+    Metrics:
+        * Accuracy
+        * Precision (Positive Predictive Value) = tp / (tp + fp)
+        * Recall (True Positive Rate) = tp / (tp + fn)
+        * F-measure = F1 = 2 * (precision * recall) / (precision + recall)
+        * Confusion matrix
+
+    :Example:
+
+    >>> bin_metrics = BinaryClassificationMetrics(label_col='label',
+    >>>                                           pred_col='pred', data=ddf1)
+    >>> print bin_metrics.get_metrics()
+    >>> # or using:
+    >>> print bin_metrics.confusion_matrix
+    >>> print bin_metrics.accuracy
+    >>> print bin_metrics.recall
+    >>> print bin_metrics.precision
+    >>> print bin_metrics.f1
     """
 
     def __init__(self, label_col, pred_col, data, true_label=1):
+        """
+        :param label_col: Column name of true label values;
+        :param pred_col: Colum name of predicted label values;
+        :param data: DDF;
+        :param true_label: Value of True label (default is 1).
+        """
 
         tmp = data.cache()
         df = COMPSsContext.tasks_map[tmp.last_uuid]['function'][0]
@@ -53,6 +75,9 @@ class BinaryClassificationMetrics(object):
         self.name = 'BinaryClassificationMetrics'
 
     def get_metrics(self):
+        """
+        :return: A pandas DataFrame with metrics.
+        """
         table = pd.DataFrame([
             ["Accuracy", self.accuracy],
             ["Precision", self.precision],
@@ -64,7 +89,7 @@ class BinaryClassificationMetrics(object):
 
 
 class MultilabelMetrics(object):
-    """ClassificationModelEvaluation.
+    """Evaluator for multilabel classification.
 
     * True Positive (TP) - label is positive and prediction is also positive
     * True Negative (TN) - label is negative and prediction is also negative
@@ -76,9 +101,29 @@ class MultilabelMetrics(object):
         * Precision (Positive Predictive Value) = tp / (tp + fp)
         * Recall (True Positive Rate) = tp / (tp + fn)
         * F-measure = F1 = 2 * (precision * recall) / (precision + recall)
+        * Confusion matrix
+        * Precision_recall table
+
+    :Example:
+
+    >>> metrics_multi = MultilabelMetrics(label_col='label',
+    >>>                                   pred_col='prediction', data=ddf1)
+    >>> print metrics_multi.get_metrics()
+    >>> # or using:
+    >>> print metrics_multi.confusion_matrix
+    >>> print metrics_multi.precision_recall
+    >>> print metrics_multi.accuracy
+    >>> print metrics_multi.recall
+    >>> print metrics_multi.precision
+    >>> print metrics_multi.f1
     """
 
     def __init__(self, label_col, pred_col, data):
+        """
+        :param label_col: Column name of true label values;
+        :param pred_col: Colum name of predicted label values;
+        :param data: DDF.
+        """
 
         tmp = data.cache()
         df = COMPSsContext.tasks_map[tmp.last_uuid]['function'][0]
@@ -102,6 +147,9 @@ class MultilabelMetrics(object):
         self.name = 'MultilabelMetrics'
 
     def get_metrics(self):
+        """
+        :return: A pandas DataFrame with metrics.
+        """
         table = pd.DataFrame([
             ["Accuracy", self.accuracy],
             ["Precision", self.precision],
@@ -191,37 +239,52 @@ def CME_stage2_binary(confusion_matrix, true_label):
 class RegressionMetrics(object):
     """RegressionModelEvaluation's methods.
 
-    * Mean Squared Error (MSE): Is an estimator measures the average of the
-    squares of the errors or deviations—that is, the difference between the
-    estimator and what is estimated. MSE is a risk function, corresponding
-    to the expected value of the squared error loss or quadratic loss. In
-    other words, MSE tells you how close a regression line is to a set of
-    points.
+    * **Mean Squared Error (MSE):** Is an estimator measures the average of the
+      squares of the errors or deviations, that is, the difference between the
+      estimator and what is estimated. MSE is a risk function, corresponding
+      to the expected value of the squared error loss or quadratic loss. In
+      other words, MSE tells you how close a regression line is to a set of
+      points.
 
-    * Root Mean Squared Error (RMSE): Is a frequently used measure of the
-    differences between values (sample and population values) predicted by a
-    model or an estimator and the values actually observed. The RMSD
-    represents the sample standard deviation of the differences between
-    predicted values and observed values.
+    * **Root Mean Squared Error (RMSE):** Is a frequently used measure of the
+      differences between values (sample and population values) predicted by a
+      model or an estimator and the values actually observed. The RMSD
+      represents the sample standard deviation of the differences between
+      predicted values and observed values.
 
-    * Mean Absolute Error (MAE): Is a measure of difference between two
-    continuous variables. Assume X and Y are variables of paired
-    observations
-    that express the same phenomenon. Is a quantity used to measure how
-    close
-    forecasts or predictions are to the eventual outcomes.
+    * **Mean Absolute Error (MAE):** Is a measure of difference between two
+      continuous variables. Assume X and Y are variables of paired
+      observations that express the same phenomenon. Is a quantity used to
+      measure how close forecasts or predictions are to the eventual outcomes.
 
-    * Coefficient of Determination (R2): Iis the proportion of the
-    variance in
-    the dependent variable that is predictable from the independent
-    variable(s).
+    * **Coefficient of Determination (R2):** Iis the proportion of the
+      variance in the dependent variable that is predictable from the
+      independent variable(s).
 
-    * Explained Variance: Measures the proportion to which a mathematical
-    model
-    accounts for the variation (dispersion) of a given data set.
+    * **Explained Variance:** Measures the proportion to which a mathematical
+      model accounts for the variation (dispersion) of a given data set.
+
+    :Example:
+
+    >>> reg_metrics = RegressionMetrics(col_features='features',
+    >>>                                 label_col='label', pred_col='pred',
+    >>>                                 data=data)
+    >>> print reg_metrics.get_metrics()
+    >>> # or using:
+    >>> print reg_metrics.r2
+    >>> print reg_metrics.mse
+    >>> print reg_metrics.rmse
+    >>> print reg_metrics.mae
+    >>> print reg_metrics.msr
     """
 
     def __init__(self, col_features, label_col, pred_col, data):
+        """
+        :param col_features: Column name of features values;
+        :param label_col: Column name of true label values;
+        :param pred_col: Colum name of predicted label values;
+        :param data: DDF.
+        """
 
         tmp = data.cache()
         df = COMPSsContext.tasks_map[tmp.last_uuid]['function'][0]
@@ -248,6 +311,9 @@ class RegressionMetrics(object):
         self.name = 'RegressionMetrics'
 
     def get_metrics(self):
+        """
+        :return: A pandas DataFrame with metrics.
+        """
 
         result = pd.DataFrame([
             ["R^2 (Explained Variance)", self.r2],

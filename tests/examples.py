@@ -15,7 +15,7 @@ def ml_feature_text_operations():
     stopswords = DDF().parallelize(df, num_of_parts=2).select(['col'])
 
     data1 = DDF()\
-        .load_fs('/text_data.txt', num_of_parts=4, header=False, sep='\n')\
+        .load_text('/text_data.txt', num_of_parts=4, header=False, sep='\n')\
         .transform(lambda row: row['col_0'], 'col_1')
 
     tokenized = Tokenizer(input_col='col_0').transform(data1)
@@ -29,9 +29,9 @@ def ml_feature_text_operations():
 
     counter = CountVectorizer(input_col='col_1',
                               output_col='col_2', min_tf=0).fit(result)
-
+    counter.save_model('/count_vectorizer')
     result1 = counter.transform(result)
-    df1 = result1.cache().toPandas()
+    df1 = result1.cache().show()
 
     corpus = [
              'This is the first document',
@@ -52,8 +52,9 @@ def ml_feature_text_operations():
 
     counter = TfidfVectorizer(input_col='col_0', output_col='col_2')\
         .fit(tokenized)
+    counter.save_model('/tfidf_vectorizer')
     result = counter.transform(tokenized)
-    df2 = result.cache().toPandas()
+    df2 = result.cache().show()
 
     from ddf.functions.ml.feature import StringIndexer, IndexToString
     data = pd.DataFrame([(0, "a"), (1, "b"), (2, "c"),
@@ -67,14 +68,14 @@ def ml_feature_text_operations():
     converted = model.transform(data)
 
     result = IndexToString(input_col='category_indexed', model=model) \
-        .transform(converted).drop(['id']).cache().toPandas()
+        .transform(converted).drop(['id']).cache().show()
 
     print df1
     print df2
     print "RESULT :", result
 
 
-def ml_classifiers():
+def ml_classifiers_part1():
 
     from ddf.functions.ml.feature import VectorAssembler
     from ddf.functions.ml.classification import KNearestNeighbors, \
@@ -82,25 +83,29 @@ def ml_classifiers():
     from ddf.functions.ml.evaluation import MultilabelMetrics, \
         BinaryClassificationMetrics
 
-    dataset = DDF().load_fs('/iris_test.data', num_of_parts=4)
+    dataset = DDF().load_text('/iris_test.data', num_of_parts=4)
     assembler = VectorAssembler(input_col=["x", "y"], output_col="features")
     assembled = assembler.transform(dataset).drop(['x', 'y'])
 
     knn = KNearestNeighbors(k=1, feature_col='features', label_col='label')\
         .fit(assembled)
+    knn.save_model('/knn')
     classified_knn = knn.transform(assembled)
 
     svm = SVM(feature_col='features', label_col='label',
               max_iters=10).fit(classified_knn)
+    svm.save_model('/svm')
     classified_svm = svm.transform(classified_knn)
 
     logr = LogisticRegression(feature_col='features', label_col='label')\
         .fit(classified_svm)
+    logr.save_model('/logistic_regression')
     classified_logr = logr.transform(classified_svm)
 
     nb = GaussianNB(feature_col='features', label_col='label')\
         .fit(assembled)
-    classified = nb.transform(classified_logr).cache().toPandas()
+    nb.save_model('/gaussian_nb')
+    classified = nb.transform(classified_logr).cache().show()
 
     metrics_bin = BinaryClassificationMetrics(label_col='label',
                                               true_label=1.0,
@@ -118,6 +123,35 @@ def ml_classifiers():
     print metrics_multi.precision_recall
 
 
+def ml_classifiers_part2():
+    from ddf.functions.ml.feature import VectorAssembler
+    from ddf.functions.ml.classification import KNearestNeighbors, \
+        LogisticRegression, GaussianNB, SVM
+
+    dataset = DDF().load_text('/iris_test.data', num_of_parts=4)
+    assembler = VectorAssembler(input_col=["x", "y"], output_col="features")
+    assembled = assembler.transform(dataset).drop(['x', 'y'])
+
+    knn = KNearestNeighbors(k=1, feature_col='features', label_col='label') \
+        .load_model('/knn')
+
+    assembled = knn.transform(assembled)
+
+    svm = SVM(feature_col='features', label_col='label',
+              max_iters=10).load_model('/svm')
+    assembled = svm.transform(assembled)
+
+    logr = LogisticRegression(feature_col='features', label_col='label') \
+        .load_model('/logistic_regression')
+    assembled = logr.transform(assembled)
+
+    nb = GaussianNB(feature_col='features', label_col='label')\
+        .load_model('/gaussian_nb')
+    assembled = nb.transform(assembled).show()
+
+    print 'All classifiers:\n', assembled
+
+
 def ml_clustering():
     from ddf.functions.ml.feature import VectorAssembler
     from ddf.functions.ml.clustering import Kmeans
@@ -133,8 +167,15 @@ def ml_clustering():
                     init_mode='random').fit(assembled)
 
     clustered = kmeans.transform(assembled)
-    df = clustered.cache().toPandas()
-    print "RESULT :", df[:20]
+    df = clustered.cache().show()
+    print "RESULT1 :", df[:20]
+
+    # to test save and load models
+    kmeans.save_model('/kmeans')
+    kmeans = Kmeans(feature_col='features', n_clusters=2,
+                    init_mode='random').load_model('/kmeans')
+    df = kmeans.transform(assembled).show(20)
+    print "RESULT2 :", df
 
 
 def ml_regression():
@@ -142,14 +183,22 @@ def ml_regression():
     from ddf.functions.ml.regression import LinearRegression
     from ddf.functions.ml.evaluation import RegressionMetrics
 
-    dataset = DDF().load_fs('/iris_test.data', num_of_parts=4)
+    dataset = DDF().load_text('/iris_test.data', num_of_parts=4)
     assembler = VectorAssembler(input_col=["x", "label"],
                                 output_col="features")
     assembled = assembler.transform(dataset)
 
     linearreg = LinearRegression('features', 'y', max_iter=15)
     model = linearreg.fit(assembled)
-    regressed = model.transform(assembled).select(['pred_LinearReg']).toPandas()
+    regressed = model.transform(assembled).select(['pred_LinearReg']).show()
+    model.save_model('/linear_reg')
+
+    print "regressed1:", regressed[:20]
+
+    # model = LinearRegression('features', 'y', max_iter=15)\
+    #     .load_model('/linear_reg')
+    # regressed = model.transform(assembled).select(['pred_LinearReg']).show(20)
+    # print "regressed2:", regressed
 
     data = pd.DataFrame([[14, 70, 2, 3.3490],
                          [16, 75, 5, 3.7180],
@@ -170,13 +219,11 @@ def ml_regression():
 
     print metrics.get_metrics()
 
-    print "regressed:", regressed[:20]
-
 
 def ml_fpm():
     from ddf.functions.ml.fpm import AssociationRules, Apriori
     dataset = DDF()\
-        .load_fs('/transactions.txt', num_of_parts=4, header=False, sep='\n')\
+        .load_text('/transactions.txt', num_of_parts=4, header=False, sep='\n')\
         .transform(lambda row: row['col_0'].split(','), 'col_0')
 
     apriori = Apriori(column='col_0', min_support=0.10).run(dataset)
@@ -191,9 +238,9 @@ def ml_fpm():
 
     itemset = itemset.select(['items', 'support'])
 
-    rules1 = rules1.toPandas()[:20]
-    itemset = itemset.cache().toPandas()[:20]
-    rules2 = ar.toPandas()[:20]
+    rules1 = rules1.show()[:20]
+    itemset = itemset.cache().show()[:20]
+    rules2 = ar.show()[:20]
     print 'RESULT itemset:', itemset
     print "RESULT rules1:", rules1
     print "RESULT rules2:", rules2
@@ -211,11 +258,12 @@ def ml_feature_scalers():
 
     data = DDF().parallelize(data, 4)
     assembler = VectorAssembler(input_col=["x", "y"], output_col="features")
-    assembled = assembler.transform(data)
+    assembled_minmax = assembler.transform(data)
 
     scaler = MinMaxScaler(input_col='features', output_col='output')\
-        .fit(assembled)
-    result1 = scaler.transform(assembled).select(['output']).cache()
+        .fit(assembled_minmax)
+    scaler.save_model('/minmax_scaler')
+    result1 = scaler.transform(assembled_minmax).select(['output']).cache()
 
     #  MaxAbsScaler
     data = pd.DataFrame([[1., -1.,  2.], [2.,  0.,  0.], [0.,  1., -1.]],
@@ -224,11 +272,14 @@ def ml_feature_scalers():
     data = DDF().parallelize(data, 4)
     assembler = VectorAssembler(input_col=["x", "y", 'z'],
                                 output_col="features")
-    assembled = assembler.transform(data)
+    assembled_maxabs = assembler.transform(data)
 
     scaler = MaxAbsScaler(input_col='features', output_col='features_norm')\
-        .fit(assembled)
-    result2 = scaler.transform(assembled).select(['features_norm']).cache()
+        .fit(assembled_maxabs)
+    scaler.save_model('/maxabs_scaler')
+    result2 = scaler.transform(assembled_maxabs)\
+        .select(['features_norm']).cache()
+
 
     # Standard Scaler
     data = pd.DataFrame([[0, 0], [0, 0], [1, 1], [1, 1]],
@@ -237,28 +288,49 @@ def ml_feature_scalers():
     data = DDF().parallelize(data, 4)
     assembler = VectorAssembler(input_col=["x", "y"],
                                 output_col="features")
-    assembled = assembler.transform(data)
+    assembled_std = assembler.transform(data)
 
     scaler = StandardScaler(input_col='features', output_col='features_norm',
-                            with_mean=True, with_std=True).fit(assembled)
-    result3 = scaler.transform(assembled).select(['features_norm']).cache()
+                            with_mean=True, with_std=True).fit(assembled_std)
+    result3 = scaler.transform(assembled_std).select(['features_norm']).cache()
+    scaler.save_model('/standard_scaler')
 
-    print "MinMaxScaler :", result1.toPandas()
+    print "MinMaxScaler :", result1.show()
     # [[0.   0.]
     #  [0.25 0.25]
     # [0.5 0.5]
     # [1.   1.]]
 
-    print "MaxAbsScaler :", result2.toPandas()
+    print "MaxAbsScaler :", result2.show()
     # [[0.5, -1., 1.],
     #  [1., 0., 0.],
     #  [0., 1., -0.5]])
 
-    print "StandardScaler :", result3.toPandas()
+    print "StandardScaler :", result3.show()
     # [[-1. - 1.]
     #  [-1. - 1.]
     #  [1.  1.]
     # [1.   1.]]
+
+    # to test: save and load
+    # mlload = StandardScaler(input_col='features',
+    #                         output_col='features_std',
+    #                         with_mean=True, with_std=True)\
+    #     .load_model('/standard_scaler')
+    # df1 = mlload.transform(assembled_std).show()
+    #
+    # mlload = MaxAbsScaler(input_col='features',
+    #                       output_col='features_maxabs') \
+    #     .load_model('/maxabs_scaler')
+    # df2 = mlload.transform(assembled_maxabs).show()
+    #
+    # mlload = MinMaxScaler(input_col='features', output_col='features_minmax') \
+    #     .load_model('/minmax_scaler')
+    # df3 = mlload.transform(assembled_minmax).show()
+    #
+    # print "MinMaxScaler :\n", df3
+    # print "MaxAbsScaler :\n", df2
+    # print "StandardScaler :\n", df1
 
 
 def ml_feature_dimensionality():
@@ -276,15 +348,25 @@ def ml_feature_dimensionality():
 
     pca = PCA(input_col='features',
               output_col='features_pca', n_components=2).fit(assembled)
-    assembled = pca.transform(assembled).select(['features_pca'])
+    assembled = pca.transform(assembled).select(['features', 'features_pca1'])
 
-    print "RESULT :", assembled.cache().toPandas()
+
+
+    print "RESULT :", assembled.cache().show()
     # [[1.38340578, 0.2935787],
     #  [2.22189802, -0.25133484],
     #  [3.6053038, 0.04224385],
     #  [-1.38340578, -0.2935787],
     #  [-2.22189802, 0.25133484],
     #  [-3.6053038, -0.04224385]]
+
+
+    # Save and load model
+    # pca.save_model('/pca')
+    # pca2 = PCA(input_col='features',
+    #            output_col='features_pca2', n_components=2).load_model('/pca')
+    # assembled = pca2.transform(assembled).select(['features_pca2'])
+    # print "RESULT :", assembled.cache().show()
 
 
 def geographic():
@@ -307,19 +389,51 @@ def geographic():
         .geo_within(ddf1, 'LATITUDE', 'LONGITUDE', 'points')\
         .select(['LATITUDE', 'LONGITUDE'])\
         .cache()
-    print "> Print results: ", ddf2.toPandas()[:10]
+    print "> Print results: ", ddf2.show()[:10]
 
 
 def graph_pagerank():
 
     from ddf.functions.graph import PageRank
-    data1 = DDF().load_fs('/edgelist_PageRank.csv', num_of_parts=4)\
+    data1 = DDF().load_text('/edgelist_PageRank.csv', num_of_parts=4)\
         .select(['inlink', 'outlink'])
 
     result = PageRank(inlink_col='inlink', outlink_col='outlink')\
         .transform(data1).select(['Vertex', 'Rank'])
 
-    print "RESULT :", result.cache().toPandas()[:20]
+    print "RESULT :", result.cache().show()[:20]
+
+
+def use_case_1():
+    url = 'https://raw.githubusercontent.com/eubr-bigsea/' \
+          'Compss-Python/dev/ddf/docs/titanic.csv'
+    df = pd.read_csv(url, sep='\t')
+
+    ddf1 = DDF().parallelize(df, num_of_parts=4)\
+        .select(['Sex', 'Age', 'Survived'])\
+        .clean_missing(['Sex', 'Age'], mode='REMOVE_ROW')\
+        .replace({0: 'No', 1: 'Yes'}, subset=['Survived']).cache()
+
+    ddf_women = ddf1.filter('(Sex == "female") and (Age >= 18)').\
+        aggregation(group_by=['Survived'],
+                    exprs={'Survived': ['count']},
+                    aliases={'Survived': ["Women"]})
+
+    ddf_kids = ddf1.filter('Age < 18').\
+        aggregation(group_by=['Survived'],
+                    exprs={'Survived': ['count']},
+                    aliases={'Survived': ["Kids"]})
+
+    ddf_men = ddf1.filter('(Sex == "male") and (Age >= 18)').\
+        aggregation(group_by=['Survived'],
+                    exprs={'Survived': ['count']},
+                    aliases={'Survived': ["Men"]})
+
+    ddf_final = ddf_women\
+        .join(ddf_men, key1=['Survived'], key2=['Survived'], mode='inner')\
+        .join(ddf_kids, key1=['Survived'], key2=['Survived'], mode='inner')
+
+    print ddf_final.show()
 
 
 def simple_etl():
@@ -334,12 +448,25 @@ def simple_etl():
     data2 = pd.DataFrame([[i, i + 5, 0] for i in xrange(5, 15)],
                          columns=['a', 'b', 'c'])
 
+
+    print "\n|-------- Add Column --------|\n"
+    ddf_1a = DDF().parallelize(data1, 4)
+    ddf_1b = DDF().parallelize(data2, 5)
+    df1 = ddf_1a.add_column(ddf_1b).show()
+
+    # res_agg = pd.DataFrame([[0, 10, 5, 14]],
+    #                        columns=['c', 'COUNT', 'col_First', 'col_Last'])
+    # assert_frame_equal(df1, res_agg, check_index_type=False)
+    print df1
+    return 0
+    print "etl_test - add column - OK",
+
     print "\n|-------- Aggregation --------|\n"
     express = {'a': ['count'], 'b': ['first', 'last']}
     aliases = {'a': ["COUNT"], 'b': ['col_First', 'col_Last']}
     ddf_1 = DDF().parallelize(data, 4)\
         .aggregation(['c'], exprs=express, aliases=aliases)
-    df1 = ddf_1.cache().toPandas()
+    df1 = ddf_1.cache().show()
 
     res_agg = pd.DataFrame([[0, 10, 5, 14]],
                            columns=['c', 'COUNT', 'col_First', 'col_Last'])
@@ -350,7 +477,7 @@ def simple_etl():
     ddf_1a = DDF().parallelize(data, 4)
     ddf_1b = DDF().parallelize(data2, 4)
     ddf_2 = ddf_1a.difference(ddf_1b)
-    df1 = ddf_2.cache().toPandas()
+    df1 = ddf_2.cache().show()
     res_diff = pd.DataFrame([[0, 5, 0], [1, 6, 0], [2, 7, 0],
                              [3, 8, 0], [4, 9, 0]], columns=['a', 'b', 'c'])
     assert_frame_equal(df1, res_diff, check_index_type=False)
@@ -358,7 +485,7 @@ def simple_etl():
 
     print "\n|-------- Distinct --------|\n"
     ddf_1 = DDF().parallelize(data, 4).distinct(['c'])
-    df1 = ddf_1.cache().toPandas()
+    df1 = ddf_1.cache().show()
 
     res_dist = pd.DataFrame([[0, 5, 0]], columns=['a', 'b', 'c'])
     assert_frame_equal(df1, res_dist, check_index_type=False)
@@ -366,7 +493,7 @@ def simple_etl():
 
     print "\n|-------- Drop --------|\n"
     ddf_1 = DDF().parallelize(data, 4).drop(['a'])
-    df1 = ddf_1.cache().toPandas()
+    df1 = ddf_1.cache().show()
     res_drop = pd.DataFrame([[5, 0], [6, 0], [7, 0], [8, 0], [9, 0],
                              [10, 0], [11, 0], [12, 0],
                              [13, 0], [14, 0]], columns=['b', 'c'])
@@ -377,7 +504,7 @@ def simple_etl():
     ddf_1a = DDF().parallelize(data, 4)
     ddf_1b = DDF().parallelize(data2, 4)
     ddf_2 = ddf_1a.intersect(ddf_1b)
-    df1 = ddf_2.cache().toPandas()
+    df1 = ddf_2.cache().show()
     res_int = pd.DataFrame([[5, 10, 0], [6, 11, 0], [7, 12, 0],
                             [8, 13, 0], [9, 14, 0]], columns=['a', 'b', 'c'])
     assert_frame_equal(df1, res_int, check_index_type=False)
@@ -385,7 +512,7 @@ def simple_etl():
 
     print "\n|-------- Filter --------|\n"
     ddf_1 = DDF().parallelize(data, 4).filter('a > 5')
-    df1 = ddf_1.cache().toPandas()
+    df1 = ddf_1.cache().show()
     res_fil = pd.DataFrame([[6, 11, 0], [7, 12, 0],
                             [8, 13, 0], [9, 14, 0]], columns=['a', 'b', 'c'])
     assert_frame_equal(df1, res_fil, check_index_type=False)
@@ -395,7 +522,7 @@ def simple_etl():
     ddf_1a = DDF().parallelize(data, 4)
     ddf_1b = DDF().parallelize(data, 4)
     ddf_2 = ddf_1a.join(ddf_1b, key1=['a'], key2=['a'])
-    df1 = ddf_2.cache().toPandas()
+    df1 = ddf_2.cache().show()
     res_join = pd.DataFrame([[0, 5, 0, 5, 0], [1, 6, 0, 6, 0],
                              [2, 7, 0, 7, 0], [3, 8, 0, 8, 0],
                              [4, 9, 0, 9, 0], [5, 10, 0, 10, 0],
@@ -407,7 +534,7 @@ def simple_etl():
 
     print "\n|-------- Replace Values --------|\n"
     ddf_1 = DDF().parallelize(data, 4).replace({'c': [[0], [42]]})
-    df1 = ddf_1.cache().toPandas()
+    df1 = ddf_1.cache().show()
     res_rep = pd.DataFrame([[0, 5, 42], [1, 6, 42], [2, 7, 42], [4, 8, 42],
                             [5, 9, 42], [6, 10, 42], [6, 11, 42], [7, 12, 42],
                             [8, 13, 42], [9, 14, 42]], columns=['a', 'b', 'c'])
@@ -416,14 +543,14 @@ def simple_etl():
 
     print "\n|-------- Sample --------|\n"
     ddf_1 = DDF().parallelize(data, 4).sample(7)
-    df1 = ddf_1.cache().toPandas()
+    df1 = ddf_1.cache().show()
     if len(df1) != 7:
         raise Exception("Sample error")
     print "etl_test - sample - OK"
 
     print "\n|-------- Select --------|\n"
     ddf_1 = DDF().parallelize(data, 4).select(['a'])
-    df1 = ddf_1.cache().toPandas()
+    df1 = ddf_1.cache().show()
     res_rep = pd.DataFrame([[0], [1], [2], [3], [4],  [5], [6], [7],
                             [8], [9]], columns=['a'])
     assert_frame_equal(df1, res_rep, check_index_type=False)
@@ -431,7 +558,7 @@ def simple_etl():
 
     print "\n|-------- Sort --------|\n"
     ddf_1 = DDF().parallelize(data, 4).sort(['a'], ascending=[False])
-    df1 = ddf_1.cache().toPandas()
+    df1 = ddf_1.cache().show()
     res_sor = pd.DataFrame([[9, 14, 0], [8, 13, 0],  [7, 12, 0],
                             [6, 11, 0], [5, 10, 0], [4, 9, 0],
                             [3, 8, 0], [2, 7, 0], [1, 6, 0],
@@ -441,8 +568,8 @@ def simple_etl():
 
     print "\n|-------- Split --------|\n"
     ddf_1a, ddf_1b = DDF().parallelize(data, 4).split(0.5)
-    df1 = ddf_1a.cache().toPandas()
-    df2 = ddf_1b.cache().toPandas()
+    df1 = ddf_1a.cache().show()
+    df2 = ddf_1b.cache().show()
     cond = any(pd.concat([df1, df2]).duplicated(['a', 'b', 'c']).values)
     if cond:
         raise Exception("Split")
@@ -450,7 +577,7 @@ def simple_etl():
 
     print "\n|-------- Take --------|\n"
     ddf_1 = DDF().parallelize(data, 4).take(3)
-    df1 = ddf_1.cache().toPandas()
+    df1 = ddf_1.cache().show()
     res_tak = pd.DataFrame([[0, 5, 42], [1, 6, 42], [2, 7, 42]],
                            columns=['a', 'b', 'c'])
     assert_frame_equal(df1, res_tak, check_index_type=False)
@@ -459,7 +586,7 @@ def simple_etl():
     print "\n|-------- Transform --------|\n"
     f = lambda col: 7 if col['a'] > 5 else col['a']
     ddf_1 = DDF().parallelize(data, 4).transform(f, 'a')
-    df1 = ddf_1.cache().toPandas()
+    df1 = ddf_1.cache().show()
     res_tra = pd.DataFrame([[0, 5, 0], [1, 6, 0], [2, 7, 0], [3, 8, 0],
                             [4, 9, 0], [5, 10, 0], [7, 11, 0], [7, 12, 0],
                             [7, 13, 0], [7, 14, 0]], columns=['a', 'b', 'c'])
@@ -470,7 +597,7 @@ def simple_etl():
     ddf_1a = DDF().parallelize(data, 4)
     ddf_1b = DDF().parallelize(data1, 4)
     ddf_2 = ddf_1a.union(ddf_1b)
-    df1 = ddf_2.cache().toPandas()
+    df1 = ddf_2.cache().show()
     res_uni = pd.DataFrame([[0, 5, 0.0], [1, 6, 0.0], [2, 7, 0.0],
                             [0, 5, None], [1, 6, None], [3, 8, 0.0],
                             [4, 9, 0.0], [5, 10, 0.0], [2, 7, None],
@@ -482,7 +609,7 @@ def simple_etl():
 
     print "\n|-------- With_column --------|\n"
     ddf_1 = DDF().parallelize(data, 4).with_column('a', 'A')
-    df1 = ddf_1.cache().toPandas()
+    df1 = ddf_1.cache().show()
     res_with = pd.DataFrame([[0, 5, 0], [1, 6, 0], [2, 7, 0], [3, 8, 0],
                             [4, 9, 0], [5, 10, 0], [6, 11, 0], [7, 12, 0],
                             [8, 13, 0], [9, 14, 0]], columns=['A', 'b', 'c'])
@@ -509,13 +636,13 @@ def etl():
         etl_test_1: Avaliar a capacidade de multiplos caches
         """
 
-    df = data1.cache().toPandas()
+    df = data1.cache().show()
     print "etl_test_1a:", df[0:5]
 
-    df = data2.cache().toPandas()
+    df = data2.cache().show()
     print "etl_test_1b:", df[0:5]
 
-    df = data1.cache().toPandas()
+    df = data1.cache().show()
     print "etl_test_1c:", df[0:5]
 
     print """
@@ -528,9 +655,9 @@ def etl():
     data3 = data1.drop(['length', 'diam']).cache()
     print "DATA1", data1.task_list
     print "DATA3", data3.task_list
-    df1 = data1.toPandas()
-    df2 = data2.toPandas()
-    df3 = data3.toPandas()
+    df1 = data1.show()
+    df2 = data2.show()
+    df3 = data3.show()
 
     print "etl_test_2a:", df1[0:5]
     print "etl_test_2b:", df2[0:5]
@@ -544,7 +671,7 @@ def etl():
     data4 = data2.drop(['length']).drop(['diam'])\
         .replace({'rings': [[15], [42]]})
 
-    df = data4.cache().toPandas()
+    df = data4.cache().show()
     print "etl_test_3:", df[0:5]
 
     print """
@@ -554,10 +681,10 @@ def etl():
 
     data5a, data5b = data4.split(0.5)
 
-    df = data5b.cache().toPandas()
+    df = data5b.cache().show()
     print "etl_test_4a:", df[0:5]
 
-    df = data5a.cache().toPandas()
+    df = data5a.cache().show()
     print "etl_test_4b:", df[0:5]
 
     print """
@@ -569,22 +696,22 @@ def etl():
                   .select(['sex_l', 'height_l', 'weight_l', 'rings'])\
                   .filter('(rings > 8)')
 
-    df = data6.cache().toPandas()
+    df = data6.cache().show()
     print "etl_test_5a len({}): {}".format(len(df), df[0:5])
 
     data7 = data6.sample(10).sort(['rings'], [True])
     data8 = data6.join(data7, ['rings'], ['rings'])
 
     print "data8", data8.task_list
-    df = data8.cache().toPandas()
+    df = data8.cache().show()
     print "etl_test_5b len({}): {}".format(len(df), df[0:5])
 
     print """
     ----------------------------------------------------------------------------
         etl_test_6: Avaliar capacidade de gerar resultado sem salvar varivel
     """
-    df = data1.distinct(['rings']).cache().toPandas()
-    df2 = data1.cache().toPandas()
+    df = data1.distinct(['rings']).cache().show()
+    df2 = data1.cache().show()
     print "etl_test_6a:", df
     print "etl_test_6b:", df2
 
@@ -594,7 +721,7 @@ def etl():
     """
 
     v = data1.select(['rings']).count()
-    df = data1.select(['rings']).take(10).cache().toPandas()
+    df = data1.select(['rings']).take(10).cache().show()
 
     print "etl_test_7a:", v
     print "etl_test_7b:", len(df)
@@ -603,10 +730,12 @@ def etl():
 def main():
     print "_____EXAMPLES_____"
 
-    etl()
-    # simple_etl()
+    # use_case_1()
+    # etl()
+    simple_etl()
     # ml_feature_text_operations()
-    # ml_classifiers()
+    # ml_classifiers_part1()
+    # ml_classifiers_part2()
     # ml_clustering()
     # ml_regression()
     # ml_fpm()
@@ -614,6 +743,7 @@ def main():
     # ml_feature_dimensionality()
     # geographic()
     # graph_pagerank()
+
 
 if __name__ == '__main__':
     main()

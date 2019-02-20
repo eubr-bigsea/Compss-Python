@@ -11,7 +11,7 @@ import math
 
 
 class CleanMissingOperation(object):
-    """Clean Missing Operation: Clean missing fields from data set."""
+    """Cleans missing rows or columns fields from data set."""
 
     def transform(self, data, params, nfrag):
         """CleanMissingOperation.

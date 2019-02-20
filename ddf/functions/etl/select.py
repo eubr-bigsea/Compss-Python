@@ -8,22 +8,17 @@ from pycompss.api.task import task
 
 
 class SelectOperation(object):
-    """Select Operation.
 
-    Function which do a Projection with the columns choosed.
-
-    Optimization: Yes
-    """
-
-    def transform(self, data, columns, nfrag):
-        """SelectOperation.
+    def transform(self, data, columns):
+        """
+        Projects a set of expressions and returns a new DataFrame.
 
         :param data: A list with nfrag pandas's dataframe;
         :param columns: A list with the columns names which will be selected;
-        :param nfrag: A number of fragments;
         :return: A list with nfrag pandas's dataframe with only the
             columns choosed.
         """
+        nfrag = len(data)
         result = [[] for _ in range(nfrag)]
         columns = self.preprocessing(columns)
         for f in range(nfrag):

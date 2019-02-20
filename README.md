@@ -5,7 +5,7 @@
 <h3 align="center">A PyCOMPSs library for Big Data scenarios.</h3>
 
 <p align="center"><b>
-    <a href="#">Documentation</a> •
+    <a href="https://homepages.dcc.ufmg.br/~lucasmsp/ddf/">Documentation</a> •
     <a href="https://github.com/eubr-bigsea/Compss-Python/tree/compss2.5/releases">Releases</a>
 </b>
 
@@ -41,22 +41,22 @@ operations to a single task COMPSs and stacking operations until an action opera
  
 ## Algorithms and operations available:
 
- - ETL: Add Columns, Aggregation, Change attribute, Clean Missing Values, Difference, Distinct (Remove Duplicated Rows), 
+ - **ETL**: Add Columns, Aggregation, Change attribute, Clean Missing Values, Difference, Distinct (Remove Duplicated Rows), 
  Drop Columns, Set-Intersect, Join (Inner, Left or Right), Load Data, Replace Values, Sample Rows, Save data, 
  Select Columns, Sort, Split, Transform (Map operations), Union
- - ML:
-   - Evaluator Models: Binary Classification Metrics, Multi-label Metrics and Regression Metrics
-   - Feature Operations: Vector Assembler, Simple Tokenizer, Regex Tokenizer, Remove Stop-Words,
+ - **ML**:
+   - **Evaluator Models**: Binary Classification Metrics, Multi-label Metrics and Regression Metrics
+   - **Feature Operations**: Vector Assembler, Simple Tokenizer, Regex Tokenizer, Remove Stop-Words,
            Count Vectorizer, Tf-idf Vectorizer, String Indexer,
            Index To String, Max-Abs Scaler, Min-Max Scaler, Standard Scaler, PCA
    
-   - Frequent Pattern Mining: Apriori and Association Rules
-   - Classification: K-Nearest Neighbors, Gaussian Naive Bayes, Logistic Regression, SVM
-   - Clustering: K-means (using random or k-means|| initialization method), DBSCAN
-   - Regression: Linear Regression using method of least squares (works only for 2-D data) or using 
+   - **Frequent Pattern Mining**: Apriori and Association Rules
+   - **Classification**: K-Nearest Neighbors, Gaussian Naive Bayes, Logistic Regression, SVM
+   - **Clustering**: K-means (using random or k-means|| initialization method), DBSCAN
+   - **Regression**: Linear Regression using method of least squares (works only for 2-D data) or using 
    Stochastic Gradient Descent
-  - Geographic Operations: Load data from shapefile, Geo Within (Select rows that exists within a specified shape)
-  - Graph Operations: Initially, only Page Rank are present
+  - **Geographic Operations**: Load data from shapefile, Geo Within (Select rows that exists within a specified shape)
+  - **Graph Operations**: Initially, only Page Rank are present
 
  
 ### Example of use:
@@ -76,7 +76,7 @@ from ddf.ddf import DDF
 import pandas as pd
 
 url = 'https://raw.githubusercontent.com/eubr-bigsea/' \
-      'Compss-Python/compss2.5/ddf/docs/titanic.csv'
+      'Compss-Python/dev/tests/titanic.csv'
 df = pd.read_csv(url, sep='\t')
 
 ddf1 = DDF().parallelize(df, num_of_parts=4)\
@@ -109,9 +109,8 @@ Next, we extend the previous code to computate the result also for men and kids.
 from ddf.ddf import DDF
 import pandas as pd
 
-url = 'https://gist.githubusercontent.com/michhar/' \
-      '2dfd2de0d4f8727f873422c5d959fff5/raw/' \
-      'ff414a1bcfcba32481e4d4e8db578e55872a2ca1/titanic.csv'
+url = 'https://raw.githubusercontent.com/eubr-bigsea/' \
+      'Compss-Python/dev/tests/titanic.csv'
 df = pd.read_csv(url, sep='\t')
 
 ddf1 = DDF().parallelize(df, num_of_parts=4)\

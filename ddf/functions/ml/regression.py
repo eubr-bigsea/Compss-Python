@@ -11,19 +11,16 @@ import pandas as pd
 from pycompss.api.task import task
 from pycompss.functions.reduce import merge_reduce
 from pycompss.api.api import compss_wait_on
-from ddf.ddf import COMPSsContext, DDF, ModelDDS
+from ddf.ddf import COMPSsContext, DDF, ModelDDF
 
 __all__ = ['LinearRegression']
 
-
-import uuid
 import sys
 sys.path.append('../../')
 
 
-class LinearRegression(object):
-    """Linear regression.
-
+class LinearRegression(ModelDDF):
+    """
     Linear regression is a linear model, e.g. a model that assumes a linear
     relationship between the input variables and the single output variable.
     More specifically, that y can be calculated from a linear combination of the
@@ -36,10 +33,25 @@ class LinearRegression(object):
 
     b1 = (sum(x*y) + n*m_x*m_y) / (sum(x²) -n*(m_x²))
     b0 = m_y - b1*m_x
+
+    :Example:
+
+    >>> model = LinearRegression('features', 'y').fit(ddf1)
+    >>> ddf2 = model.transform(ddf1)
     """
 
     def __init__(self, feature_col, label_col, pred_col='pred_LinearReg',
                  mode='SDG', max_iter=100, alpha=0.01):
+        """
+
+        :param feature_col: Feature column name;
+        :param label_col: Label column name;
+        :param pred_col: Output prediction column (default, *'pred_LinearReg'*);
+        :param mode: *'simple'* to use method of least squares (works only
+         for 2-D data) or *'SDG'* to using Stochastic Gradient Descent;
+        :param max_iter: Maximum number of iterations (default, 100);
+        :param alpha: *'SDG'* learning rate parameter  (default, 0.01).
+        """
         if not feature_col:
             raise Exception("You must inform the `features` field.")
 
@@ -62,6 +74,7 @@ class LinearRegression(object):
 
     def fit(self, data):
         """
+        Fit the model.
 
         :param data: DDF
         :return: trained model
@@ -112,7 +125,6 @@ class LinearRegression(object):
 
     def transform(self, data):
         """
-
         :param data: DDF
         :return: DDF
         """
@@ -130,7 +142,7 @@ class LinearRegression(object):
         for f in range(nfrag):
             result[f] = _predict(df[f], features, pred_col, self.model[0])
 
-        uuid_key = str(uuid.uuid4())
+        uuid_key = tmp._generate_uuid()
         COMPSsContext.tasks_map[uuid_key] = \
             {'name': 'task_transform_linear_reg',
              'status': 'COMPLETED',
@@ -139,8 +151,8 @@ class LinearRegression(object):
              'parent': [tmp.last_uuid],
              'output': 1, 'input': 1}
 
-        tmp.set_n_input(uuid_key, tmp.settings['input'])
-        return DDF(tmp.task_list, uuid_key)
+        tmp._set_n_input(uuid_key, tmp.settings['input'])
+        return DDF(task_list=tmp.task_list, last_uuid=uuid_key)
 
 
 # --------------
