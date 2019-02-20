@@ -34,7 +34,7 @@ operations to a single task COMPSs and stacking operations until an action opera
 
 - [Algorithms and operations currently available](#algorithms-and-operations-available)
 - [Example of use](#example-of-use)
-- [Requirements](#requirements)
+- [Installation](#Installation)
 - [Publications](#publications)
 - [License](#license)
 
@@ -150,12 +150,18 @@ This code will produce following result:
 | Yes       |  24   | 7   | 10   |
 
 
+## Installation
 
-## Requirements
+DDF Library can be installed via pip from PyPI:
+
+    pip install ddf-pycompss
+
+
+### Requirements
 
 Besides the PyCOMPSs installation, DDF uses others third-party libraries. If you want to read and save data from HDFS, 
 you need to install [hdfspycompss](https://github.com/eubr-bigsea/compss-hdfs/tree/master/Python) library. The others 
-dependencies can be installed by using the command `$ pip install -r requirements.txt` 
+dependencies will be installed automatically from PyPI or can be manually installed by using the command `$ pip install -r requirements.txt` 
 
 ```
 Pyqtree == 0.24
@@ -167,11 +173,6 @@ pyshp == 1.2.11
 python_dateutil == 2.6.1
 ```
 
-## Instalation
-
-DDF Library can be installed via pip from PyPI:
-
-    pip install ddf-pycompss
 
 
 ## Publications
