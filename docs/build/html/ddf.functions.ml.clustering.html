@@ -1,0 +1,329 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>ML.Clustering &#8212; DDF</title>
+    <link rel="stylesheet" href="_static/nature.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <script type="text/javascript" src="_static/language_data.js"></script>
+    <link rel="shortcut icon" href="_static/favicon.ico"/>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="ML.Evaluation" href="ddf.functions.ml.evaluation.html" />
+    <link rel="prev" title="ML.Classification" href="ddf.functions.ml.classification.html" /> 
+  </head><body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="ddf.functions.ml.evaluation.html" title="ML.Evaluation"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="ddf.functions.ml.classification.html" title="ML.Classification"
+             accesskey="P">previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="index.html">DDF</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="api.html" >API Reference</a> &#187;</li>
+          <li class="nav-item nav-item-2"><a href="ddf.html" accesskey="U">DDF operations</a> &#187;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="module-ddf.functions.ml.clustering">
+<span id="ml-clustering"></span><h1>ML.Clustering<a class="headerlink" href="#module-ddf.functions.ml.clustering" title="Permalink to this headline">¶</a></h1>
+<dl class="class">
+<dt id="ddf.functions.ml.clustering.Kmeans">
+<em class="property">class </em><code class="descclassname">ddf.functions.ml.clustering.</code><code class="descname">Kmeans</code><span class="sig-paren">(</span><em>feature_col</em>, <em>pred_col=None</em>, <em>n_clusters=3</em>, <em>max_iters=100</em>, <em>epsilon=0.01</em>, <em>init_mode='k-means||'</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf.functions.ml.clustering.Kmeans" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">ddf.ddf.ModelDDF</span></code></p>
+<p>K-means clustering is a type of unsupervised learning, which is used when
+you have unlabeled data (i.e., data without defined categories or groups).
+The goal of this algorithm is to find groups in the data, with the number of
+groups represented by the variable K. The algorithm works iteratively to
+assign each data point to one of K groups based on the features that are
+provided. Data points are clustered based on feature similarity.</p>
+<p>Two of the most well-known forms of initialization of the set of clusters
+are: “random” and “k-means||”:</p>
+<blockquote>
+<div><ul class="simple">
+<li>random: Starting with a set of randomly chosen initial centers;</li>
+<li>k-means|| (Bahmani et al., Scalable K-Means++, VLDB 2012): This is a
+variant of k-means++ that tries to find dissimilar cluster centers by
+starting with a random center and then doing passes where more centers
+are chosen with probability proportional to their squared distance to the
+current cluster set. It results in a provable approximation to an optimal
+clustering.</li>
+</ul>
+</div></blockquote>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Example:</th><td class="field-body"></td>
+</tr>
+</tbody>
+</table>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">kmeans</span> <span class="o">=</span> <span class="n">Kmeans</span><span class="p">(</span><span class="n">feature_col</span><span class="o">=</span><span class="s1">&#39;features&#39;</span><span class="p">,</span> <span class="n">n_clusters</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
+<span class="gp">&gt;&gt;&gt; </span>                <span class="n">init_mode</span><span class="o">=</span><span class="s1">&#39;random&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">ddf1</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">ddf2</span> <span class="o">=</span> <span class="n">kmeans</span><span class="o">.</span><span class="n">transform</span><span class="p">(</span><span class="n">ddf1</span><span class="p">)</span>
+</pre></div>
+</div>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>feature_col</strong> – Feature column name;</li>
+<li><strong>pred_col</strong> – Output prediction column;</li>
+<li><strong>n_clusters</strong> – Number of clusters;</li>
+<li><strong>max_iters</strong> – Number maximum of iterations;</li>
+<li><strong>epsilon</strong> – tolerance value (default, 0.01);</li>
+<li><strong>init_mode</strong> – <em>‘random’</em> or <em>‘k-means||’</em>.</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+<dl class="method">
+<dt id="ddf.functions.ml.clustering.Kmeans.compute_cost">
+<code class="descname">compute_cost</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#ddf.functions.ml.clustering.Kmeans.compute_cost" title="Permalink to this definition">¶</a></dt>
+<dd><p>Compute the cost of this iteration;</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">float</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="ddf.functions.ml.clustering.Kmeans.fit">
+<code class="descname">fit</code><span class="sig-paren">(</span><em>data</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf.functions.ml.clustering.Kmeans.fit" title="Permalink to this definition">¶</a></dt>
+<dd><table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>data</strong> – DDF</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">trained model</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="ddf.functions.ml.clustering.Kmeans.load_model">
+<code class="descname">load_model</code><span class="sig-paren">(</span><em>filepath</em>, <em>storage='hdfs'</em>, <em>namenode='localhost'</em>, <em>port=9000</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf.functions.ml.clustering.Kmeans.load_model" title="Permalink to this definition">¶</a></dt>
+<dd><p>Load a machine learning model from a binary file in a storage.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>filepath</strong> – The absolute path name;</li>
+<li><strong>storage</strong> – <em>‘hdfs’</em> to load from HDFS storage or <em>‘fs’</em> to load
+from common file system;</li>
+<li><strong>storage</strong> – <em>‘hdfs’</em> to save in HDFS storage or <em>‘fs’</em> to save in
+common file system;</li>
+<li><strong>namenode</strong> – IP or DNS address to NameNode (default, <em>‘localhost’</em>).
+Note: Only if storage is <em>‘hdfs’</em>;</li>
+<li><strong>port</strong> – NameNode port (default, 9000). Note: Only if storage is
+<em>‘hdfs’</em>;</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">self</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Example:</th><td class="field-body"></td>
+</tr>
+</tbody>
+</table>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">ml_model</span> <span class="o">=</span> <span class="n">ml_algorithm</span><span class="p">()</span><span class="o">.</span><span class="n">load_model</span><span class="p">(</span><span class="s1">&#39;/saved_model&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="method">
+<dt id="ddf.functions.ml.clustering.Kmeans.save_model">
+<code class="descname">save_model</code><span class="sig-paren">(</span><em>filepath</em>, <em>storage='hdfs'</em>, <em>overwrite=True</em>, <em>namenode='localhost'</em>, <em>port=9000</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf.functions.ml.clustering.Kmeans.save_model" title="Permalink to this definition">¶</a></dt>
+<dd><p>Save a machine learning model as a binary file in a storage.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>filepath</strong> – The output absolute path name;</li>
+<li><strong>storage</strong> – <em>‘hdfs’</em> to save in HDFS storage or <em>‘fs’</em> to save in
+common file system;</li>
+<li><strong>overwrite</strong> – Overwrite if file already exists (default, True);</li>
+<li><strong>namenode</strong> – IP or DNS address to NameNode (default, <em>‘localhost’</em>);</li>
+<li><strong>port</strong> – NameNode port (default, 9000);</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">self</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Example:</th><td class="field-body"></td>
+</tr>
+</tbody>
+</table>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">ml_model</span><span class="o">.</span><span class="n">save_model</span><span class="p">(</span><span class="s1">&#39;/trained_model&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="method">
+<dt id="ddf.functions.ml.clustering.Kmeans.transform">
+<code class="descname">transform</code><span class="sig-paren">(</span><em>data</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf.functions.ml.clustering.Kmeans.transform" title="Permalink to this definition">¶</a></dt>
+<dd><table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>data</strong> – DDF</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">trained model</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="ddf.functions.ml.clustering.DBSCAN">
+<em class="property">class </em><code class="descclassname">ddf.functions.ml.clustering.</code><code class="descname">DBSCAN</code><span class="sig-paren">(</span><em>feature_col</em>, <em>pred_col=None</em>, <em>eps=0.1</em>, <em>min_pts=15</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf.functions.ml.clustering.DBSCAN" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>Density-based spatial clustering of applications with noise (DBSCAN) is
+a data clustering algorithm.  It is a density-based clustering algorithm:
+given a set of points in some space, it groups together points that are
+closely packed together (points with many nearby neighbors), marking as
+outliers points that lie alone in low-density regions (whose nearest
+neighbors are too far away).</p>
+<div class="admonition warning">
+<p class="first admonition-title">Warning</p>
+<p class="last">Unstable</p>
+</div>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Example:</th><td class="field-body"></td>
+</tr>
+</tbody>
+</table>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">ddf2</span> <span class="o">=</span> <span class="n">DBSCAN</span><span class="p">(</span><span class="n">feature_col</span><span class="o">=</span><span class="s1">&#39;features&#39;</span><span class="p">,</span> <span class="n">eps</span><span class="o">=</span><span class="mf">0.01</span><span class="p">,</span>
+<span class="gp">&gt;&gt;&gt; </span>              <span class="n">min_pts</span><span class="o">=</span><span class="mi">15</span><span class="p">)</span><span class="o">.</span><span class="n">fit_predict</span><span class="p">(</span><span class="n">ddf1</span><span class="p">)</span>
+</pre></div>
+</div>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>feature_col</strong> – Feature column name;</li>
+<li><strong>pred_col</strong> – Output predicted column;</li>
+<li><strong>eps</strong> – Epsilon distance (default is 0.1);</li>
+<li><strong>min_pts</strong> – Minimum number of points to consider as a cluster.</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">Features need to be normalized.</p>
+</div>
+<dl class="method">
+<dt id="ddf.functions.ml.clustering.DBSCAN.fit_predict">
+<code class="descname">fit_predict</code><span class="sig-paren">(</span><em>data</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf.functions.ml.clustering.DBSCAN.fit_predict" title="Permalink to this definition">¶</a></dt>
+<dd><p>Fit and predict.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>data</strong> – DDF</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">DDF</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+  <h4>Previous topic</h4>
+  <p class="topless"><a href="ddf.functions.ml.classification.html"
+                        title="previous chapter">ML.Classification</a></p>
+  <h4>Next topic</h4>
+  <p class="topless"><a href="ddf.functions.ml.evaluation.html"
+                        title="next chapter">ML.Evaluation</a></p>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="ddf.functions.ml.evaluation.html" title="ML.Evaluation"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="ddf.functions.ml.classification.html" title="ML.Classification"
+             >previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="index.html">DDF</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="api.html" >API Reference</a> &#187;</li>
+          <li class="nav-item nav-item-2"><a href="ddf.html" >DDF operations</a> &#187;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2019, Lucas M Ponce.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.8.4.
+    </div>
+  </body>
+</html>

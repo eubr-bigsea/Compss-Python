@@ -1,0 +1,197 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>Example of use: Titanic &#8212; DDF</title>
+    <link rel="stylesheet" href="_static/nature.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <script type="text/javascript" src="_static/language_data.js"></script>
+    <link rel="shortcut icon" href="_static/favicon.ico"/>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="API Reference" href="api.html" />
+    <link rel="prev" title="Installation" href="install.html" /> 
+  </head><body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="api.html" title="API Reference"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="install.html" title="Installation"
+             accesskey="P">previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="index.html">DDF</a> &#187;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="example-of-use-titanic">
+<h1>Example of use: Titanic<a class="headerlink" href="#example-of-use-titanic" title="Permalink to this headline">¶</a></h1>
+<p>The following code is an example of how to use this library for Data Science purposes. In this example, we want
+to know the number of men, women and children who survived or died in the Titanic crash.</p>
+<p>In the first part, we will perform some pre-processing (remove some columns, clean some rows that
+have missing values, replace some value and filter rows) and after that, aggregate the information for adult women.</p>
+<p>For explanatory aspects, the input data (Pandas DataFrame) is distributed by COMPSs in 4 fragments using <cite>parallelize()</cite>.
+At this point, the programmer no longer has to worry about partitioning the data. All operations will be able to
+work transparently to the user. The COMPS tasks will be executed in parallel, one for each fragment.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">ddf.ddf</span> <span class="kn">import</span> <span class="n">DDF</span>
+<span class="kn">import</span> <span class="nn">pandas</span> <span class="kn">as</span> <span class="nn">pd</span>
+
+<span class="n">url</span> <span class="o">=</span> <span class="s1">&#39;https://raw.githubusercontent.com/eubr-bigsea/Compss-Python/dev/docs/titanic.csv&#39;</span>
+<span class="n">df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_csv</span><span class="p">(</span><span class="n">url</span><span class="p">,</span> <span class="n">sep</span><span class="o">=</span><span class="s1">&#39;</span><span class="se">\t</span><span class="s1">&#39;</span><span class="p">)</span>
+
+<span class="n">ddf1</span> <span class="o">=</span> <span class="n">DDF</span><span class="p">()</span><span class="o">.</span><span class="n">parallelize</span><span class="p">(</span><span class="n">df</span><span class="p">,</span> <span class="n">num_of_parts</span><span class="o">=</span><span class="mi">4</span><span class="p">)</span>\
+    <span class="o">.</span><span class="n">select</span><span class="p">([</span><span class="s1">&#39;Sex&#39;</span><span class="p">,</span> <span class="s1">&#39;Age&#39;</span><span class="p">,</span> <span class="s1">&#39;Survived&#39;</span><span class="p">])</span>\
+    <span class="o">.</span><span class="n">clean_missing</span><span class="p">([</span><span class="s1">&#39;Sex&#39;</span><span class="p">,</span> <span class="s1">&#39;Age&#39;</span><span class="p">],</span> <span class="n">mode</span><span class="o">=</span><span class="s1">&#39;REMOVE_ROW&#39;</span><span class="p">)</span>\
+    <span class="o">.</span><span class="n">replace</span><span class="p">({</span><span class="mi">0</span><span class="p">:</span> <span class="s1">&#39;No&#39;</span><span class="p">,</span> <span class="mi">1</span><span class="p">:</span> <span class="s1">&#39;Yes&#39;</span><span class="p">},</span> <span class="n">subset</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;Survived&#39;</span><span class="p">])</span>
+
+<span class="n">ddf_women</span> <span class="o">=</span> <span class="n">ddf1</span><span class="o">.</span><span class="n">filter</span><span class="p">(</span><span class="s1">&#39;(Sex == &quot;female&quot;) and (Age &gt;= 18)&#39;</span><span class="p">)</span><span class="o">.</span>\
+    <span class="n">aggregation</span><span class="p">(</span><span class="n">group_by</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;Survived&#39;</span><span class="p">],</span>
+                <span class="n">exprs</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;Survived&#39;</span><span class="p">:</span> <span class="p">[</span><span class="s1">&#39;count&#39;</span><span class="p">]},</span>
+                <span class="n">aliases</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;Survived&#39;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;Women&quot;</span><span class="p">]})</span>
+
+<span class="k">print</span> <span class="n">ddf_women</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>The image shows the DAG created by COMPSs during the execution. The operations <cite>select(), clean_missing(), replace() and filter()</cite>
+are some of them that are ‘one processing stage’ and then, the library was capable of group into a single COMPSs task
+(which was named task_bundle). In this DAG, the other tasks are referring to the operation of <cite>aggregation()</cite>. This operations
+needs certain exchanges of information, so it performs a synchronization of some indices (light data) for submit the minimum amount of tasks from master node. Finally, the last synchronization is performed by <cite>show()</cite> function (which is an action) to receives the data produced.</p>
+<div class="figure align-center">
+<img alt="_images/use_case_1.png" src="_images/use_case_1.png" />
+</div>
+<p>Next, we extend the previous code to computate the result also for men and kids.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">ddf.ddf</span> <span class="kn">import</span> <span class="n">DDF</span>
+<span class="kn">import</span> <span class="nn">pandas</span> <span class="kn">as</span> <span class="nn">pd</span>
+
+<span class="n">url</span> <span class="o">=</span> <span class="s1">&#39;https://raw.githubusercontent.com/eubr-bigsea/Compss-Python/dev/docs/titanic.csv&#39;</span>
+<span class="n">df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_csv</span><span class="p">(</span><span class="n">url</span><span class="p">,</span> <span class="n">sep</span><span class="o">=</span><span class="s1">&#39;</span><span class="se">\t</span><span class="s1">&#39;</span><span class="p">)</span>
+
+<span class="n">ddf1</span> <span class="o">=</span> <span class="n">DDF</span><span class="p">()</span><span class="o">.</span><span class="n">parallelize</span><span class="p">(</span><span class="n">df</span><span class="p">,</span> <span class="n">num_of_parts</span><span class="o">=</span><span class="mi">4</span><span class="p">)</span>\
+    <span class="o">.</span><span class="n">select</span><span class="p">([</span><span class="s1">&#39;Sex&#39;</span><span class="p">,</span> <span class="s1">&#39;Age&#39;</span><span class="p">,</span> <span class="s1">&#39;Survived&#39;</span><span class="p">])</span>\
+    <span class="o">.</span><span class="n">clean_missing</span><span class="p">([</span><span class="s1">&#39;Sex&#39;</span><span class="p">,</span> <span class="s1">&#39;Age&#39;</span><span class="p">],</span> <span class="n">mode</span><span class="o">=</span><span class="s1">&#39;REMOVE_ROW&#39;</span><span class="p">)</span>\
+    <span class="o">.</span><span class="n">replace</span><span class="p">({</span><span class="mi">0</span><span class="p">:</span> <span class="s1">&#39;No&#39;</span><span class="p">,</span> <span class="mi">1</span><span class="p">:</span> <span class="s1">&#39;Yes&#39;</span><span class="p">},</span> <span class="n">subset</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;Survived&#39;</span><span class="p">])</span><span class="o">.</span><span class="n">cache</span><span class="p">()</span>
+
+<span class="n">ddf_women</span> <span class="o">=</span> <span class="n">ddf1</span><span class="o">.</span><span class="n">filter</span><span class="p">(</span><span class="s1">&#39;(Sex == &quot;female&quot;) and (Age &gt;= 18)&#39;</span><span class="p">)</span><span class="o">.</span>\
+    <span class="n">aggregation</span><span class="p">(</span><span class="n">group_by</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;Survived&#39;</span><span class="p">],</span>
+                <span class="n">exprs</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;Survived&#39;</span><span class="p">:</span> <span class="p">[</span><span class="s1">&#39;count&#39;</span><span class="p">]},</span>
+                <span class="n">aliases</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;Survived&#39;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;Women&quot;</span><span class="p">]})</span>
+
+<span class="n">ddf_kids</span> <span class="o">=</span> <span class="n">ddf1</span><span class="o">.</span><span class="n">filter</span><span class="p">(</span><span class="s1">&#39;Age &lt; 18&#39;</span><span class="p">)</span><span class="o">.</span>\
+    <span class="n">aggregation</span><span class="p">(</span><span class="n">group_by</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;Survived&#39;</span><span class="p">],</span>
+                <span class="n">exprs</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;Survived&#39;</span><span class="p">:</span> <span class="p">[</span><span class="s1">&#39;count&#39;</span><span class="p">]},</span>
+                <span class="n">aliases</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;Survived&#39;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;Kids&quot;</span><span class="p">]})</span>
+
+<span class="n">ddf_men</span> <span class="o">=</span> <span class="n">ddf1</span><span class="o">.</span><span class="n">filter</span><span class="p">(</span><span class="s1">&#39;(Sex == &quot;male&quot;) and (Age &gt;= 18)&#39;</span><span class="p">)</span><span class="o">.</span>\
+    <span class="n">aggregation</span><span class="p">(</span><span class="n">group_by</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;Survived&#39;</span><span class="p">],</span>
+                <span class="n">exprs</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;Survived&#39;</span><span class="p">:</span> <span class="p">[</span><span class="s1">&#39;count&#39;</span><span class="p">]},</span>
+                <span class="n">aliases</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;Survived&#39;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;Men&quot;</span><span class="p">]})</span>
+
+<span class="n">ddf_final</span> <span class="o">=</span> <span class="n">ddf_women</span>\
+    <span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">ddf_men</span><span class="p">,</span> <span class="n">key1</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;Survived&#39;</span><span class="p">],</span> <span class="n">key2</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;Survived&#39;</span><span class="p">],</span> <span class="n">mode</span><span class="o">=</span><span class="s1">&#39;inner&#39;</span><span class="p">)</span>\
+    <span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">ddf_kids</span><span class="p">,</span> <span class="n">key1</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;Survived&#39;</span><span class="p">],</span> <span class="n">key2</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;Survived&#39;</span><span class="p">],</span> <span class="n">mode</span><span class="o">=</span><span class="s1">&#39;inner&#39;</span><span class="p">)</span>
+
+<span class="k">print</span> <span class="n">ddf_final</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>This code will produce following result:</p>
+<table border="1" class="docutils">
+<colgroup>
+<col width="38%" />
+<col width="24%" />
+<col width="17%" />
+<col width="21%" />
+</colgroup>
+<thead valign="bottom">
+<tr class="row-odd"><th class="head">Survived</th>
+<th class="head">Women</th>
+<th class="head">Men</th>
+<th class="head">Kids</th>
+</tr>
+</thead>
+<tbody valign="top">
+<tr class="row-even"><td>No</td>
+<td>8</td>
+<td>63</td>
+<td>14</td>
+</tr>
+<tr class="row-odd"><td>Yes</td>
+<td>24</td>
+<td>7</td>
+<td>10</td>
+</tr>
+</tbody>
+</table>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+  <h4>Previous topic</h4>
+  <p class="topless"><a href="install.html"
+                        title="previous chapter">Installation</a></p>
+  <h4>Next topic</h4>
+  <p class="topless"><a href="api.html"
+                        title="next chapter">API Reference</a></p>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="api.html" title="API Reference"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="install.html" title="Installation"
+             >previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="index.html">DDF</a> &#187;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2019, Lucas M Ponce.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.8.4.
+    </div>
+  </body>
+</html>

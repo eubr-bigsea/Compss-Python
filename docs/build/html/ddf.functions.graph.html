@@ -1,0 +1,150 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>Graph Operations &#8212; DDF</title>
+    <link rel="stylesheet" href="_static/nature.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <script type="text/javascript" src="_static/language_data.js"></script>
+    <link rel="shortcut icon" href="_static/favicon.ico"/>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="prev" title="ML.Regression" href="ddf.functions.ml.regression.html" /> 
+  </head><body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="ddf.functions.ml.regression.html" title="ML.Regression"
+             accesskey="P">previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="index.html">DDF</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="api.html" >API Reference</a> &#187;</li>
+          <li class="nav-item nav-item-2"><a href="ddf.html" accesskey="U">DDF operations</a> &#187;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="module-ddf.functions.graph">
+<span id="graph-operations"></span><h1>Graph Operations<a class="headerlink" href="#module-ddf.functions.graph" title="Permalink to this headline">¶</a></h1>
+<dl class="class">
+<dt id="ddf.functions.graph.PageRank">
+<em class="property">class </em><code class="descclassname">ddf.functions.graph.</code><code class="descname">PageRank</code><span class="sig-paren">(</span><em>outlink_col</em>, <em>inlink_col</em>, <em>damping_factor=0.85</em>, <em>max_iters=100</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf.functions.graph.PageRank" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>PageRank is one of the methods Google uses to determine a page’s
+relevance or importance. The idea that Page Rank brought up was that, the
+importance of any web page can be judged by looking at the pages that link
+to it.</p>
+<p>PageRank can be utilized in others domains. For example, may also be used
+as a methodology to measure the apparent impact of a community.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Example:</th><td class="field-body"></td>
+</tr>
+</tbody>
+</table>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">ddf2</span> <span class="o">=</span> <span class="n">PageRank</span><span class="p">(</span><span class="n">inlink_col</span><span class="o">=</span><span class="s1">&#39;col1&#39;</span><span class="p">,</span> <span class="n">outlink_col</span><span class="o">=</span><span class="s1">&#39;col2&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">transform</span><span class="p">(</span><span class="n">ddf1</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Setup all PageRank’s parameters.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>outlink_col</strong> – Out-link vertex;</li>
+<li><strong>inlink_col</strong> – In-link vertex;</li>
+<li><strong>damping_factor</strong> – Default damping factor is 0.85;</li>
+<li><strong>max_iters</strong> – Maximum number of iterations (default is 100).</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+<dl class="method">
+<dt id="ddf.functions.graph.PageRank.transform">
+<code class="descname">transform</code><span class="sig-paren">(</span><em>data</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf.functions.graph.PageRank.transform" title="Permalink to this definition">¶</a></dt>
+<dd><p>Generates the PageRank’s result.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>data</strong> – DDF</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">DDF with Vertex and Rank columns</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+  <h4>Previous topic</h4>
+  <p class="topless"><a href="ddf.functions.ml.regression.html"
+                        title="previous chapter">ML.Regression</a></p>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="ddf.functions.ml.regression.html" title="ML.Regression"
+             >previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="index.html">DDF</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="api.html" >API Reference</a> &#187;</li>
+          <li class="nav-item nav-item-2"><a href="ddf.html" >DDF operations</a> &#187;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2019, Lucas M Ponce.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.8.4.
+    </div>
+  </body>
+</html>

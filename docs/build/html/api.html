@@ -1,0 +1,235 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>API Reference &#8212; DDF</title>
+    <link rel="stylesheet" href="_static/nature.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <script type="text/javascript" src="_static/language_data.js"></script>
+    <link rel="shortcut icon" href="_static/favicon.ico"/>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="DDF operations" href="ddf.html" />
+    <link rel="prev" title="Example of use: Titanic" href="guide.html" /> 
+  </head><body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="ddf.html" title="DDF operations"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="guide.html" title="Example of use: Titanic"
+             accesskey="P">previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="index.html">DDF</a> &#187;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="module-ddf">
+<span id="api-reference"></span><h1>API Reference<a class="headerlink" href="#module-ddf" title="Permalink to this headline">¶</a></h1>
+<p>This page gives an overview of all public DDF objects, functions and methods. All classes and functions exposed in ddf namespace are public.</p>
+<div class="toctree-wrapper compound">
+</div>
+<div class="section" id="contents">
+<h2>Contents<a class="headerlink" href="#contents" title="Permalink to this headline">¶</a></h2>
+<ul class="simple">
+<li><a class="reference internal" href="#etl-anchor"><span class="std std-ref">ETL</span></a></li>
+<li><a class="reference internal" href="#ml-anchor"><span class="std std-ref">ML</span></a></li>
+</ul>
+<blockquote>
+<div><ul class="simple">
+<li><a class="reference internal" href="#classification-anchor"><span class="std std-ref">ML.Classification</span></a></li>
+<li><a class="reference internal" href="#clustering-anchor"><span class="std std-ref">ML.Clustering</span></a></li>
+<li><a class="reference internal" href="#feature-anchor"><span class="std std-ref">ML.Feature</span></a></li>
+<li><a class="reference internal" href="#fpm-anchor"><span class="std std-ref">ML.Frequent Pattern Mining</span></a></li>
+<li><a class="reference internal" href="#evaluation-anchor"><span class="std std-ref">ML.Evaluation</span></a></li>
+<li><a class="reference internal" href="#regression-anchor"><span class="std std-ref">ML.Regression</span></a></li>
+</ul>
+</div></blockquote>
+<ul class="simple">
+<li><a class="reference internal" href="#geo-anchor"><span class="std std-ref">Geographic Operations</span></a></li>
+<li><a class="reference internal" href="#graph-anchor"><span class="std std-ref">Graph Algorithms</span></a></li>
+</ul>
+<div class="section" id="etl">
+<span id="etl-anchor"></span><h3>ETL<a class="headerlink" href="#etl" title="Permalink to this headline">¶</a></h3>
+<p><a class="reference internal" href="ddf.html#ddf.ddf.DDF.add_column" title="ddf.ddf.DDF.add_column"><code class="xref py py-func docutils literal notranslate"><span class="pre">DDF.add_column</span></code></a> - Merges two dataframes, column-wise.</p>
+<p><a class="reference internal" href="ddf.html#ddf.ddf.DDF.aggregation" title="ddf.ddf.DDF.aggregation"><code class="xref py py-func docutils literal notranslate"><span class="pre">DDF.aggreation</span></code></a> - Computes aggregates and returns the result as a DDF.</p>
+<p><a class="reference internal" href="ddf.html#ddf.ddf.DDF.cache" title="ddf.ddf.DDF.cache"><code class="xref py py-func docutils literal notranslate"><span class="pre">DDF.cache</span></code></a> - Forces the computation of all tasks in the current stack.</p>
+<p><a class="reference internal" href="ddf.html#ddf.ddf.DDF.clean_missing" title="ddf.ddf.DDF.clean_missing"><code class="xref py py-func docutils literal notranslate"><span class="pre">DDF.clean_missing</span></code></a> - Cleans missing rows or columns fields.</p>
+<p><a class="reference internal" href="ddf.html#ddf.ddf.DDF.count" title="ddf.ddf.DDF.count"><code class="xref py py-func docutils literal notranslate"><span class="pre">DDF.count</span></code></a> - Returns a number of rows in this DDF.</p>
+<p><a class="reference internal" href="ddf.html#ddf.ddf.DDF.difference" title="ddf.ddf.DDF.difference"><code class="xref py py-func docutils literal notranslate"><span class="pre">DDF.difference</span></code></a> - Returns a new set with containing rows in the first frame but not in the second one.</p>
+<p><a class="reference internal" href="ddf.html#ddf.ddf.DDF.distinct" title="ddf.ddf.DDF.distinct"><code class="xref py py-func docutils literal notranslate"><span class="pre">DDF.distinct</span></code></a> - Returns a new DDF with non duplicated rows.</p>
+<p><a class="reference internal" href="ddf.html#ddf.ddf.DDF.drop" title="ddf.ddf.DDF.drop"><code class="xref py py-func docutils literal notranslate"><span class="pre">DDF.drop</span></code></a> - Remove some columns from DDF.</p>
+<p><a class="reference internal" href="ddf.html#ddf.ddf.DDF.filter" title="ddf.ddf.DDF.filter"><code class="xref py py-func docutils literal notranslate"><span class="pre">DDF.filter</span></code></a> - Filters elements based on a condition.</p>
+<p><a class="reference internal" href="ddf.html#ddf.ddf.DDF.intersect" title="ddf.ddf.DDF.intersect"><code class="xref py py-func docutils literal notranslate"><span class="pre">DDF.intersect</span></code></a> - Returns a new DDF containing rows in both DDF.</p>
+<p><a class="reference internal" href="ddf.html#ddf.ddf.DDF.join" title="ddf.ddf.DDF.join"><code class="xref py py-func docutils literal notranslate"><span class="pre">DDF.join</span></code></a> - Joins two DDF using the given join expression.</p>
+<p><a class="reference internal" href="ddf.html#ddf.ddf.DDF.load_text" title="ddf.ddf.DDF.load_text"><code class="xref py py-func docutils literal notranslate"><span class="pre">DDF.load_text</span></code></a> - Create a DDF from a commom file system or from HDFS.</p>
+<p><a class="reference internal" href="ddf.html#ddf.ddf.DDF.parallelize" title="ddf.ddf.DDF.parallelize"><code class="xref py py-func docutils literal notranslate"><span class="pre">DDF.parallelize</span></code></a> - Distributes a DataFrame into DDF.</p>
+<p><a class="reference internal" href="ddf.html#ddf.ddf.DDF.replace" title="ddf.ddf.DDF.replace"><code class="xref py py-func docutils literal notranslate"><span class="pre">DDF.replace</span></code></a> - Replaces one or more values to new ones.</p>
+<p><a class="reference internal" href="ddf.html#ddf.ddf.DDF.sample" title="ddf.ddf.DDF.sample"><code class="xref py py-func docutils literal notranslate"><span class="pre">DDF.sample</span></code></a> - Returns a sampled subset.</p>
+<p><a class="reference internal" href="ddf.html#ddf.ddf.DDF.save" title="ddf.ddf.DDF.save"><code class="xref py py-func docutils literal notranslate"><span class="pre">DDF.save</span></code></a> - Saves the data in the storage.</p>
+<p><a class="reference internal" href="ddf.html#ddf.ddf.DDF.select" title="ddf.ddf.DDF.select"><code class="xref py py-func docutils literal notranslate"><span class="pre">DDF.select</span></code></a> - Performs a projection of selected columns.</p>
+<p><a class="reference internal" href="ddf.html#ddf.ddf.DDF.show" title="ddf.ddf.DDF.show"><code class="xref py py-func docutils literal notranslate"><span class="pre">DDF.show</span></code></a> - Collect the current DDF into a single DataFrame.</p>
+<p><a class="reference internal" href="ddf.html#ddf.ddf.DDF.sort" title="ddf.ddf.DDF.sort"><code class="xref py py-func docutils literal notranslate"><span class="pre">DDF.sort</span></code></a> - Returns a sorted DDF by the specified column(s).</p>
+<p><a class="reference internal" href="ddf.html#ddf.ddf.DDF.split" title="ddf.ddf.DDF.split"><code class="xref py py-func docutils literal notranslate"><span class="pre">DDF.split</span></code></a> - Randomly splits a DDF into two DDF.</p>
+<p><a class="reference internal" href="ddf.html#ddf.ddf.DDF.take" title="ddf.ddf.DDF.take"><code class="xref py py-func docutils literal notranslate"><span class="pre">DDF.take</span></code></a> - Returns the first num rows.</p>
+<p><a class="reference internal" href="ddf.html#ddf.ddf.DDF.transform" title="ddf.ddf.DDF.transform"><code class="xref py py-func docutils literal notranslate"><span class="pre">DDF.transform</span></code></a> - Applies a function to each row of this data set.</p>
+<p><a class="reference internal" href="ddf.html#ddf.ddf.DDF.union" title="ddf.ddf.DDF.union"><code class="xref py py-func docutils literal notranslate"><span class="pre">DDF.union</span></code></a> - Combines two DDF (concatenate).</p>
+<p><a class="reference internal" href="ddf.html#ddf.ddf.DDF.with_column" title="ddf.ddf.DDF.with_column"><code class="xref py py-func docutils literal notranslate"><span class="pre">DDF.with_column</span></code></a> - Renames or changes the data’s type of some columns.</p>
+</div>
+<div class="section" id="ml">
+<span id="ml-anchor"></span><h3>ML<a class="headerlink" href="#ml" title="Permalink to this headline">¶</a></h3>
+<p>Machine learning algorithms is divided in: classifiers, clusterings, feature extractor operations, frequent pattern mining algorithms, evaluators and regressors.</p>
+<div class="section" id="ml-classification">
+<span id="classification-anchor"></span><h4>ML.Classification<a class="headerlink" href="#ml-classification" title="Permalink to this headline">¶</a></h4>
+<p>The <strong>ml.classification</strong> module includes some supervised classifiers algorithms:</p>
+<p><a class="reference internal" href="ddf.functions.ml.classification.html#ddf.functions.ml.classification.KNearestNeighbors" title="ddf.functions.ml.classification.KNearestNeighbors"><code class="xref py py-class docutils literal notranslate"><span class="pre">ml.classification.KNearestNeighbors</span></code></a> - K-Nearest Neighbor is a algorithm used that can be used for both classification and regression predictive problems. However, it is more widely used in classification problems. To do a classification, the algorithm computes from a simple majority vote of the K nearest neighbors of each point present in the training set. The choice of the parameter K is very crucial in this algorithm, and depends on the dataset. However, values of one or tree is more commom.</p>
+<p><a class="reference internal" href="ddf.functions.ml.classification.html#ddf.functions.ml.classification.GaussianNB" title="ddf.functions.ml.classification.GaussianNB"><code class="xref py py-class docutils literal notranslate"><span class="pre">ml.classification.GaussianNB</span></code></a> - The Naive Bayes algorithm is an intuitive method that uses the probabilities of each attribute belonged to each class to make a prediction. It is a supervised learning approach that you would  come up with if you wanted to model a predictive probabilistically modeling problem.</p>
+<p><a class="reference internal" href="ddf.functions.ml.classification.html#ddf.functions.ml.classification.LogisticRegression" title="ddf.functions.ml.classification.LogisticRegression"><code class="xref py py-class docutils literal notranslate"><span class="pre">ml.classification.LogisticRegression</span></code></a> - Logistic regression is named for the function used at the core of the method, the logistic function. It is the go-to method for binary classification problems (problems with two class values).</p>
+<p><a class="reference internal" href="ddf.functions.ml.classification.html#ddf.functions.ml.classification.SVM" title="ddf.functions.ml.classification.SVM"><code class="xref py py-class docutils literal notranslate"><span class="pre">ml.classification.SVM</span></code></a> - Support vector machines (SVM) is a supervised learning model used for binary classification. Given a set of training examples, each marked as belonging to one or the other of two categories, a SVM training algorithm builds a model that assigns new points to one category or the other, making it a non-probabilistic binary linear classifier.</p>
+</div>
+<div class="section" id="ml-clustering">
+<span id="clustering-anchor"></span><h4>ML.Clustering<a class="headerlink" href="#ml-clustering" title="Permalink to this headline">¶</a></h4>
+<p>The <strong>ml.clustering</strong> module gathers popular unsupervised clustering algorithms:</p>
+<p><a class="reference internal" href="ddf.functions.ml.clustering.html#ddf.functions.ml.clustering.Kmeans" title="ddf.functions.ml.clustering.Kmeans"><code class="xref py py-class docutils literal notranslate"><span class="pre">ml.clustering.Kmeans</span></code></a> - The algorithm works iteratively to assign each data point to one of K groups based on the features that are provided. Data points are clustered based on feature similarity.</p>
+<p><a class="reference internal" href="ddf.functions.ml.clustering.html#ddf.functions.ml.clustering.DBSCAN" title="ddf.functions.ml.clustering.DBSCAN"><code class="xref py py-class docutils literal notranslate"><span class="pre">ml.clustering.DBSCAN</span></code></a> - A density-based clustering algorithm: given a set of points in some space, it groups together points that are closely packed together (points with many nearby neighbors), marking as outliers points that lie alone in low-density regions (whose nearest neighbors are too far away).</p>
+</div>
+<div class="section" id="ml-evaluation">
+<span id="evaluation-anchor"></span><h4>ML.Evaluation<a class="headerlink" href="#ml-evaluation" title="Permalink to this headline">¶</a></h4>
+<p>The <strong>ml.evaluation</strong> module includes score functions and performance metrics:</p>
+<p><a class="reference internal" href="ddf.functions.ml.evaluation.html#ddf.functions.ml.evaluation.BinaryClassificationMetrics" title="ddf.functions.ml.evaluation.BinaryClassificationMetrics"><code class="xref py py-class docutils literal notranslate"><span class="pre">ml.evaluation.BinaryClassificationMetrics</span></code></a> - Evaluator for binary classification.</p>
+<p><a class="reference internal" href="ddf.functions.ml.evaluation.html#ddf.functions.ml.evaluation.MultilabelMetrics" title="ddf.functions.ml.evaluation.MultilabelMetrics"><code class="xref py py-class docutils literal notranslate"><span class="pre">ml.evaluation.MultilabelMetrics</span></code></a> - Evaluator for multilabel classification.</p>
+<p><a class="reference internal" href="ddf.functions.ml.evaluation.html#ddf.functions.ml.evaluation.RegressionMetrics" title="ddf.functions.ml.evaluation.RegressionMetrics"><code class="xref py py-class docutils literal notranslate"><span class="pre">ml.evaluation.RegressionMetrics</span></code></a> - Evaluator for regression.</p>
+</div>
+<div class="section" id="ml-feature">
+<span id="feature-anchor"></span><h4>ML.Feature<a class="headerlink" href="#ml-feature" title="Permalink to this headline">¶</a></h4>
+<p>The <strong>ml.feature</strong> covers algorithms for working with features to extracting features from “raw” data, scaling, converting or modifying features:
+Selection: Selecting a subset from a larger set of features:</p>
+<p><a class="reference internal" href="ddf.functions.ml.feature.html#ddf.functions.ml.feature.VectorAssembler" title="ddf.functions.ml.feature.VectorAssembler"><code class="xref py py-class docutils literal notranslate"><span class="pre">ml.feature.VectorAssembler</span></code></a> - Vector Assembler is a transformer that combines a given list of columns into a single vector column.</p>
+<p><a class="reference internal" href="ddf.functions.ml.feature.html#ddf.functions.ml.feature.Tokenizer" title="ddf.functions.ml.feature.Tokenizer"><code class="xref py py-class docutils literal notranslate"><span class="pre">ml.feature.Tokenizer</span></code></a> - Tokenization is the process of taking text (such as a sentence) and breaking it into individual terms (usually words). A simple Tokenizer class provides this functionality.</p>
+<p><a class="reference internal" href="ddf.functions.ml.feature.html#ddf.functions.ml.feature.RegexTokenizer" title="ddf.functions.ml.feature.RegexTokenizer"><code class="xref py py-class docutils literal notranslate"><span class="pre">ml.feature.RegexTokenizer</span></code></a> - A regex based tokenizer that extracts tokens either by using the provided regex pattern (in Java dialect) to split the text.</p>
+<p><a class="reference internal" href="ddf.functions.ml.feature.html#ddf.functions.ml.feature.RemoveStopWords" title="ddf.functions.ml.feature.RemoveStopWords"><code class="xref py py-class docutils literal notranslate"><span class="pre">ml.feature.RemoveStopWords</span></code></a> - Remove stop-words is a operation to remove words which should be excluded from the input, typically because the words appear frequently and don’t carry as much meaning.</p>
+<p><a class="reference internal" href="ddf.functions.ml.feature.html#ddf.functions.ml.feature.CountVectorizer" title="ddf.functions.ml.feature.CountVectorizer"><code class="xref py py-class docutils literal notranslate"><span class="pre">ml.feature.CountVectorizer</span></code></a> - Converts a collection of text documents to a matrix of token counts.</p>
+<p><a class="reference internal" href="ddf.functions.ml.feature.html#ddf.functions.ml.feature.TfidfVectorizer" title="ddf.functions.ml.feature.TfidfVectorizer"><code class="xref py py-class docutils literal notranslate"><span class="pre">ml.feature.TfidfVectorizer</span></code></a> - Term frequency-inverse document frequency (TF-IDF) is a numerical statistic transformation that is intended to reflect how important a word is to a document in a collection or corpus.</p>
+<p><a class="reference internal" href="ddf.functions.ml.feature.html#ddf.functions.ml.feature.StringIndexer" title="ddf.functions.ml.feature.StringIndexer"><code class="xref py py-class docutils literal notranslate"><span class="pre">ml.feature.StringIndexer</span></code></a> - StringIndexer indexes a feature by encoding a string column as a column containing indexes.</p>
+<p><a class="reference internal" href="ddf.functions.ml.feature.html#ddf.functions.ml.feature.IndexToString" title="ddf.functions.ml.feature.IndexToString"><code class="xref py py-class docutils literal notranslate"><span class="pre">ml.feature.IndexToString</span></code></a> - Symmetrically to StringIndexer, IndexToString maps a column of label indices back to a column containing the original labels as strings.</p>
+<p><a class="reference internal" href="ddf.functions.ml.feature.html#ddf.functions.ml.feature.MaxAbsScaler" title="ddf.functions.ml.feature.MaxAbsScaler"><code class="xref py py-class docutils literal notranslate"><span class="pre">ml.feature.MaxAbsScaler</span></code></a> - MaxAbsScaler transforms a dataset of features rows, rescaling each feature to range [-1, 1] by dividing through the maximum absolute value in each feature.</p>
+<p><a class="reference internal" href="ddf.functions.ml.feature.html#ddf.functions.ml.feature.MinMaxScaler" title="ddf.functions.ml.feature.MinMaxScaler"><code class="xref py py-class docutils literal notranslate"><span class="pre">ml.feature.MinMaxScaler</span></code></a> - MinMaxScaler transforms a dataset of features rows, rescaling each feature to a specific range (often [0, 1]).</p>
+<p><a class="reference internal" href="ddf.functions.ml.feature.html#ddf.functions.ml.feature.StandardScaler" title="ddf.functions.ml.feature.StandardScaler"><code class="xref py py-class docutils literal notranslate"><span class="pre">ml.feature.StandardScaler</span></code></a> - StandardScaler transforms a dataset of features rows, reascaling each feature by the standard score.</p>
+<p><a class="reference internal" href="ddf.functions.ml.feature.html#ddf.functions.ml.feature.PCA" title="ddf.functions.ml.feature.PCA"><code class="xref py py-class docutils literal notranslate"><span class="pre">ml.feature.PCA</span></code></a> - Principal component analysis (PCA) is used widely in dimensionality reduction.</p>
+</div>
+<div class="section" id="ml-frequent-pattern-mining">
+<span id="fpm-anchor"></span><h4>ML.Frequent Pattern Mining<a class="headerlink" href="#ml-frequent-pattern-mining" title="Permalink to this headline">¶</a></h4>
+<p><a class="reference internal" href="ddf.functions.ml.fpm.html#ddf.functions.ml.fpm.Apriori" title="ddf.functions.ml.fpm.Apriori"><code class="xref py py-class docutils literal notranslate"><span class="pre">ml.fpm.Apriori</span></code></a> - Apriori is a algorithm to find frequent item sets.</p>
+<p><code class="xref py py-class docutils literal notranslate"><span class="pre">ml.feature.AssociationRules</span></code> - AssociationRules implements a parallel rule generation algorithm for constructing rules that have a single item as the consequent.</p>
+</div>
+<div class="section" id="ml-regression">
+<span id="regression-anchor"></span><h4>ML.Regression<a class="headerlink" href="#ml-regression" title="Permalink to this headline">¶</a></h4>
+<p><a class="reference internal" href="ddf.functions.ml.regression.html#ddf.functions.ml.regression.LinearRegression" title="ddf.functions.ml.regression.LinearRegression"><code class="xref py py-class docutils literal notranslate"><span class="pre">ml.regression.LinearRegression</span></code></a> - Linear Regression using method of least squares (works only for 2-D data) or using Stochastic Gradient Descent.</p>
+</div>
+</div>
+<div class="section" id="geographic-operations">
+<span id="geo-anchor"></span><h3>Geographic Operations<a class="headerlink" href="#geographic-operations" title="Permalink to this headline">¶</a></h3>
+<p><a class="reference internal" href="ddf.html#ddf.ddf.DDF.load_shapefile" title="ddf.ddf.DDF.load_shapefile"><code class="xref py py-func docutils literal notranslate"><span class="pre">DDF.load_shapefile</span></code></a> - Create a DDF from a shapefile.</p>
+<p><a class="reference internal" href="ddf.html#ddf.ddf.DDF.geo_within" title="ddf.ddf.DDF.geo_within"><code class="xref py py-func docutils literal notranslate"><span class="pre">DDF.geo_within</span></code></a> - Returns the sectors that the each point belongs.</p>
+</div>
+<div class="section" id="graph-algorithms">
+<span id="graph-anchor"></span><h3>Graph Algorithms<a class="headerlink" href="#graph-algorithms" title="Permalink to this headline">¶</a></h3>
+<p><a class="reference internal" href="ddf.functions.graph.html#ddf.functions.graph.PageRank" title="ddf.functions.graph.PageRank"><code class="xref py py-class docutils literal notranslate"><span class="pre">graph.PageRank</span></code></a> - Perform PageRank.</p>
+</div>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+  <h3><a href="index.html">Table of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">API Reference</a><ul>
+<li><a class="reference internal" href="#contents">Contents</a><ul>
+<li><a class="reference internal" href="#etl">ETL</a></li>
+<li><a class="reference internal" href="#ml">ML</a><ul>
+<li><a class="reference internal" href="#ml-classification">ML.Classification</a></li>
+<li><a class="reference internal" href="#ml-clustering">ML.Clustering</a></li>
+<li><a class="reference internal" href="#ml-evaluation">ML.Evaluation</a></li>
+<li><a class="reference internal" href="#ml-feature">ML.Feature</a></li>
+<li><a class="reference internal" href="#ml-frequent-pattern-mining">ML.Frequent Pattern Mining</a></li>
+<li><a class="reference internal" href="#ml-regression">ML.Regression</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#geographic-operations">Geographic Operations</a></li>
+<li><a class="reference internal" href="#graph-algorithms">Graph Algorithms</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+  <h4>Previous topic</h4>
+  <p class="topless"><a href="guide.html"
+                        title="previous chapter">Example of use: Titanic</a></p>
+  <h4>Next topic</h4>
+  <p class="topless"><a href="ddf.html"
+                        title="next chapter">DDF operations</a></p>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="ddf.html" title="DDF operations"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="guide.html" title="Example of use: Titanic"
+             >previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="index.html">DDF</a> &#187;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2019, Lucas M Ponce.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.8.4.
+    </div>
+  </body>
+</html>
