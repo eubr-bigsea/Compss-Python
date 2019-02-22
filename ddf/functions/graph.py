@@ -6,7 +6,7 @@ __email__ = "lucasmsp@gmail.com"
 
 import pandas as pd
 import numpy as np
-from ddf.ddf import COMPSsContext, DDF
+from ddf.ddf import DDF, DDFSketch
 
 from pycompss.api.task import task
 from pycompss.functions.reduce import merge_reduce
@@ -17,7 +17,7 @@ import sys
 sys.path.append('../../')
 
 
-class PageRank(object):
+class PageRank(DDFSketch):
     """
     PageRank is one of the methods Google uses to determine a page's
     relevance or importance. The idea that Page Rank brought up was that, the
@@ -43,6 +43,7 @@ class PageRank(object):
         :param damping_factor: Default damping factor is 0.85;
         :param max_iters: Maximum number of iterations (default is 100).
         """
+        super(PageRank, self).__init__()
 
         self.settings = dict()
         self.settings['inlink_col'] = inlink_col
@@ -60,9 +61,7 @@ class PageRank(object):
         :return: DDF with Vertex and Rank columns
         """
 
-        tmp = data.cache()
-        df = COMPSsContext.tasks_map[tmp.last_uuid]['function'][0]
-        nfrag = len(df)
+        df, nfrag, tmp = self._ddf_inital_setup(data)
 
         inlink = self.settings['inlink_col']
         outlink = self.settings['outlink_col']
@@ -105,19 +104,14 @@ class PageRank(object):
         merged_table = merge_reduce(_merge_ranks, table)
         result = _split(merged_table, nfrag)
 
-        uuid_key = data._generate_uuid()
-        COMPSsContext.tasks_map[uuid_key] = {
-            'name': 'task_transform_pagerank',
-            'status': 'COMPLETED',
-            'lazy': False,
-            'function': {0: result},
-            'parent': [data.last_uuid],
-            'output': 1,
-            'input': 1
-        }
+        uuid_key = self._ddf_add_task(task_name='task_transform_pagerank',
+                                      status='COMPLETED', lazy=False,
+                                      function={0: result},
+                                      parent=[tmp.last_uuid],
+                                      n_output=1, n_input=1)
 
-        data._set_n_input(uuid_key, 0)
-        return DDF(task_list=data.task_list, last_uuid=uuid_key)
+        self._set_n_input(uuid_key, 0)
+        return DDF(task_list=tmp.task_list, last_uuid=uuid_key)
 
 
 @task(returns=3)

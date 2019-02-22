@@ -11,7 +11,7 @@ import pandas as pd
 from pycompss.api.task import task
 from pycompss.functions.reduce import merge_reduce
 from pycompss.api.local import *
-from ddf.ddf import COMPSsContext, DDF, ModelDDF
+from ddf.ddf import DDF, ModelDDF
 
 __all__ = ['Kmeans', 'DBSCAN']
 
@@ -86,9 +86,7 @@ class Kmeans(ModelDDF):
         :return: trained model
         """
 
-        tmp = data.cache()
-        df = COMPSsContext.tasks_map[tmp.last_uuid]['function'][0]
-        nfrag = len(df)
+        df, nfrag, tmp = self._ddf_inital_setup(data)
 
         # print compss_wait_on(df)
 
@@ -155,9 +153,7 @@ class Kmeans(ModelDDF):
         if len(self.model) == 0:
             raise Exception("Model is not fitted.")
 
-        tmp = data.cache()
-        df = COMPSsContext.tasks_map[tmp.last_uuid]['function'][0]
-        nfrag = len(df)
+        df, nfrag, tmp = self._ddf_inital_setup(data)
 
         features_col = self.settings['feature_col']
         alias = self.settings['pred_col']
@@ -168,18 +164,13 @@ class Kmeans(ModelDDF):
                                                   features_col,
                                                   self.model, alias)
 
-        uuid_key = tmp._generate_uuid()
-        COMPSsContext.tasks_map[uuid_key] = \
-            {'name': 'task_transform_kmeans',
-             'status': 'COMPLETED',
-             'lazy': False,
-             'function': {0: result},
-             'parent': [tmp.last_uuid],
-             'output': 1,
-             'input': 1
-             }
+        uuid_key = self._ddf_add_task(task_name='task_transform_kmeans',
+                                      status='COMPLETED', lazy=False,
+                                      function={0: result},
+                                      parent=[tmp.last_uuid],
+                                      n_output=1, n_input=1)
 
-        tmp._set_n_input(uuid_key, 0)
+        self._set_n_input(uuid_key, 0)
         return DDF(task_list=tmp.task_list, last_uuid=uuid_key)
 
     def compute_cost(self):
@@ -521,15 +512,11 @@ class DBSCAN(object):
         for f in range(nfrag):
             result[f] = _update_clusters(partial[f], components, grids[f])
 
-        data.partitions = {0: result}
-        uuid_key = str(uuid.uuid4())
-        COMPSsContext.tasks_map[uuid_key] = \
-            {'name': 'task_transform_dbscan',
-             'status': 'COMPLETED',
-             'lazy': False,
-             'function': result,
-             'parent': [data.last_uuid],
-             'output': 1, 'input': 1}
+        uuid_key = self._ddf_add_task(task_name='task_transform_dbscan',
+                                      status='COMPLETED', lazy=False,
+                                      function={0: result},
+                                      parent=[data.last_uuid],
+                                      n_output=1, n_input=1)
 
         data._set_n_input(uuid_key, data.settings['input'])
         return DDF(task_list=data.task_list, last_uuid=uuid_key)

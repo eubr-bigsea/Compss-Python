@@ -32,8 +32,25 @@ class COMPSsContext(object):
     """
     Controls the execution of DDF tasks
     """
-    tasks_map = OrderedDict()
     adj_tasks = dict()
+    tasks_map = OrderedDict()
+    """
+    task_map: a dictionary to stores all following information about a task:
+     
+     - name: task name;
+     - status: WAIT or COMPLETED;
+     - parent: a list with its parents uuid;
+     - output: number of output;
+     - input: number of input;
+     - lazy: Currently, only True or False. True if this task could be 
+       grouped with others in a COMPSs task;
+     - function: 
+       - if status is WAIT: a list with the function and its parameters;
+       - if status is COMPLETED: a dictionary with the results. The keys of 
+         this dictionary is index that represents the output (to handle with 
+         multiple outputs, like split task);
+     - n_input: a ordered list that informs the id key of its parent output
+    """
 
     def get_var_by_task(self, variables, uuid):
         """
@@ -324,7 +341,74 @@ def task_bundle(data, functions, id_frag):
     return data
 
 
-class DDF(object):
+class DDFSketch(object):
+
+    def __init__(self):
+        pass
+
+    @staticmethod
+    def _merge_tasks_list(seq):
+        """
+        Merge two list of tasks removing duplicated tasks
+
+        :param seq: list with possible duplicated elements
+        :return:
+        """
+        seen = set()
+        return [x for x in seq if x not in seen and not seen.add(x)]
+
+    @staticmethod
+    def _generate_uuid():
+        """
+        Generate a unique id
+        :return: uuid
+        """
+        new_state_uuid = str(uuid.uuid4())
+        while new_state_uuid in COMPSsContext.tasks_map:
+            new_state_uuid = str(uuid.uuid4())
+        return new_state_uuid
+
+    @staticmethod
+    def _set_n_input(state_uuid, idx):
+        """
+        Method to inform the index of the input data
+
+        :param state_uuid: id of the current task
+        :param idx: idx of input data
+        :return:
+        """
+
+        if 'n_input' not in COMPSsContext.tasks_map[state_uuid]:
+            COMPSsContext.tasks_map[state_uuid]['n_input'] = []
+        COMPSsContext.tasks_map[state_uuid]['n_input'].append(idx)
+
+    @staticmethod
+    def _ddf_inital_setup(data):
+        tmp = data.cache()
+        n_input = COMPSsContext.tasks_map[tmp.last_uuid]['n_input'][0]
+        if n_input == -1:
+            n_input = 0
+        df = COMPSsContext.tasks_map[tmp.last_uuid]['function'][n_input]
+        nfrag = len(df)
+        return df, nfrag, tmp
+
+    def _ddf_add_task(self, task_name, status, lazy, function,
+                      parent, n_output, n_input):
+
+        uuid_key = self._generate_uuid()
+        COMPSsContext.tasks_map[uuid_key] = {
+            'name': task_name,
+            'status': status,
+            'lazy': lazy,
+            'function': function,
+            'parent': parent,
+            'output': n_output,
+            'input': n_input
+        }
+        return uuid_key
+
+
+class DDF(DDFSketch):
     """
     Distributed DataFrame Handler.
 
@@ -363,42 +447,6 @@ class DDF(object):
                  }
 
         self.last_uuid = last_uuid
-
-    @staticmethod
-    def _merge_tasks_list(seq):
-        """
-        Merge two list of tasks removing duplicated tasks
-
-        :param seq: list with possible duplicated elements
-        :return:
-        """
-        seen = set()
-        return [x for x in seq if x not in seen and not seen.add(x)]
-
-    @staticmethod
-    def _generate_uuid():
-        """
-        Generate a unique id
-        :return: uuid
-        """
-        new_state_uuid = str(uuid.uuid4())
-        while new_state_uuid in COMPSsContext.tasks_map:
-            new_state_uuid = str(uuid.uuid4())
-        return new_state_uuid
-
-    @staticmethod
-    def _set_n_input(state_uuid, idx):
-        """
-        Method to inform the index of the input data
-
-        :param state_uuid: id of the current task
-        :param idx: idx of input data
-        :return:
-        """
-
-        if 'n_input' not in COMPSsContext.tasks_map[state_uuid]:
-            COMPSsContext.tasks_map[state_uuid]['n_input'] = []
-        COMPSsContext.tasks_map[state_uuid]['n_input'].append(idx)
 
     def _task_others(self, f):
         """
@@ -1578,12 +1626,13 @@ class DDF(object):
         return DDF(task_list=new_list, last_uuid=new_state_uuid)
 
 
-class ModelDDF(object):
+class ModelDDF(DDFSketch):
 
     def __init__(self):
+        super(ModelDDF, self).__init__()
 
         self.settings = dict()
-        self.model = []
+        self.model = {}
         self.name = ''
 
     def save_model(self, filepath, storage='hdfs', overwrite=True,
@@ -1641,6 +1690,10 @@ class ModelDDF(object):
             self.model = load_model_hdfs(filepath, namenode, port)
         else:
             self.model = load_model_fs(filepath)
+
+
+        # if self.model['algorithm'] is not self.name:
+        #     raise Exception("The loaded model do not belong to this algorithm.")
 
         return self
 

@@ -12,7 +12,7 @@ from pycompss.api.task import task
 from pycompss.functions.reduce import merge_reduce
 from pycompss.api.api import compss_wait_on
 from pycompss.api.local import *
-from ddf.ddf import COMPSsContext, DDF, ModelDDF
+from ddf.ddf import DDF, ModelDDF
 
 __all__ = ['KNearestNeighbors', 'GaussianNB', 'LogisticRegression', 'SVM']
 
@@ -71,9 +71,7 @@ class KNearestNeighbors(ModelDDF):
         :return: trained model
         """
 
-        tmp = data.cache()
-        df = COMPSsContext.tasks_map[tmp.last_uuid]['function'][0]
-        nfrag = len(df)
+        df, nfrag, tmp = self._ddf_inital_setup(data)
 
         col_label = self.settings['label_col']
         col_feature = self.settings['feature_col']
@@ -111,26 +109,19 @@ class KNearestNeighbors(ModelDDF):
 
         self.settings['model'] = self.model[0]
 
-        tmp = data.cache()
-        df = COMPSsContext.tasks_map[tmp.last_uuid]['function'][0]
-        nfrag = len(df)
+        df, nfrag, tmp = self._ddf_inital_setup(data)
 
         result = [[] for _ in range(nfrag)]
         for i in range(nfrag):
             result[i] = _knn_classify_block_(df[i], self.settings)
 
-        uuid_key = tmp._generate_uuid()
-        COMPSsContext.tasks_map[uuid_key] = \
-            {'name': 'task_transform_knn',
-             'status': 'COMPLETED',
-             'lazy': False,
-             'function': {0: result},
-             'parent': [tmp.last_uuid],
-             'output': 1,
-             'input': 1
-             }
+        uuid_key = self._ddf_add_task(task_name='task_transform_knn',
+                                      status='COMPLETED', lazy=False,
+                                      function={0: result},
+                                      parent=[tmp.last_uuid],
+                                      n_output=1, n_input=1)
 
-        tmp._set_n_input(uuid_key, 0)
+        self._set_n_input(uuid_key, 0)
         return DDF(task_list=tmp.task_list, last_uuid=uuid_key)
 
 
@@ -289,9 +280,7 @@ class SVM(ModelDDF):
         coef_threshold = float(self.settings.get('coef_threshold', 0.001))
         coef_max_iter = int(self.settings.get('coef_maxIters', 100))
 
-        tmp = data.cache()
-        df = COMPSsContext.tasks_map[tmp.last_uuid]['function'][0]
-        nfrag = len(df)
+        df, nfrag, tmp = self._ddf_inital_setup(data)
 
         col_label = self.settings['label_col']
         col_feature = self.settings['feature_col']
@@ -346,27 +335,20 @@ class SVM(ModelDDF):
         predicted_label = self.settings['pred_col']
         features = self.settings['feature_col']
 
-        tmp = data.cache()
-        df = COMPSsContext.tasks_map[tmp.last_uuid]['function'][0]
-        nfrag = len(df)
+        df, nfrag, tmp = self._ddf_inital_setup(data)
 
         result = [[] for _ in range(nfrag)]
         for f in range(nfrag):
             result[f] = _predict_partial(df[f], self.model[0],
                                          predicted_label, features)
 
-        uuid_key = tmp._generate_uuid()
-        COMPSsContext.tasks_map[uuid_key] = \
-            {'name': 'task_transform_svm',
-             'status': 'COMPLETED',
-             'lazy': False,
-             'function': {0: result},
-             'parent': [tmp.last_uuid],
-             'output': 1,
-             'input': 1
-             }
+        uuid_key = self._ddf_add_task(task_name='task_transform_svm',
+                                      status='COMPLETED', lazy=False,
+                                      function={0: result},
+                                      parent=[tmp.last_uuid],
+                                      n_output=1, n_input=1)
 
-        tmp._set_n_input(uuid_key, 0)
+        self._set_n_input(uuid_key, 0)
         return DDF(task_list=tmp.task_list, last_uuid=uuid_key)
 
 
@@ -514,9 +496,7 @@ class LogisticRegression(ModelDDF):
         :return: trained model
         """
 
-        tmp = data.cache()
-        df = COMPSsContext.tasks_map[tmp.last_uuid]['function'][0]
-        nfrag = len(df)
+        df, nfrag, tmp = self._ddf_inital_setup(data)
 
         col_label = self.settings['label_col']
         col_feature = self.settings['feature_col']
@@ -554,26 +534,19 @@ class LogisticRegression(ModelDDF):
         if len(self.model) == 0:
             raise Exception("Model is not fitted.")
 
-        tmp = data.cache()
-        df = COMPSsContext.tasks_map[tmp.last_uuid]['function'][0]
-        nfrag = len(df)
+        df, nfrag, tmp = self._ddf_inital_setup(data)
 
         result = [[] for _ in range(nfrag)]
         for i in range(nfrag):
             result[i] = _logr_predict(df[i], self.settings, self.model[0])
 
-        uuid_key = tmp._generate_uuid()
-        COMPSsContext.tasks_map[uuid_key] = \
-            {'name': 'task_transform_logr',
-             'status': 'COMPLETED',
-             'lazy': False,
-             'function': {0: result},
-             'parent': [tmp.last_uuid],
-             'output': 1,
-             'input': 1
-             }
+        uuid_key = self._ddf_add_task(task_name='task_transform_logr',
+                                      status='COMPLETED', lazy=False,
+                                      function={0: result},
+                                      parent=[tmp.last_uuid],
+                                      n_output=1, n_input=1)
 
-        tmp._set_n_input(uuid_key, 0)
+        self._set_n_input(uuid_key, 0)
         return DDF(task_list=tmp.task_list, last_uuid=uuid_key)
 
 
@@ -740,9 +713,7 @@ class GaussianNB(ModelDDF):
         :return: trained model
         """
 
-        tmp = data.cache()
-        df = COMPSsContext.tasks_map[tmp.last_uuid]['function'][0]
-        nfrag = len(df)
+        df, nfrag, tmp = self._ddf_inital_setup(data)
 
         col_label = self.settings['label_col']
         col_feature = self.settings['feature_col']
@@ -784,26 +755,19 @@ class GaussianNB(ModelDDF):
         if len(self.model) == 0:
             raise Exception("Model is not fitted.")
 
-        tmp = data.cache()
-        df = COMPSsContext.tasks_map[tmp.last_uuid]['function'][0]
-        nfrag = len(df)
+        df, nfrag, tmp = self._ddf_inital_setup(data)
 
         result = [[] for _ in range(nfrag)]
         for i in range(nfrag):
             result[i] = _nb_predict_chunck(df[i], self.model[0], self.settings)
 
-        uuid_key = tmp._generate_uuid()
-        COMPSsContext.tasks_map[uuid_key] = \
-            {'name': 'task_transform_nb',
-             'status': 'COMPLETED',
-             'lazy': False,
-             'function': {0: result},
-             'parent': [tmp.last_uuid],
-             'output': 1,
-             'input': 1
-             }
+        uuid_key = self._ddf_add_task(task_name='task_transform_nb',
+                                      status='COMPLETED', lazy=False,
+                                      function={0: result},
+                                      parent=[tmp.last_uuid],
+                                      n_output=1, n_input=1)
 
-        tmp._set_n_input(uuid_key, 0)
+        self._set_n_input(uuid_key, 0)
         return DDF(task_list=tmp.task_list, last_uuid=uuid_key)
 
 

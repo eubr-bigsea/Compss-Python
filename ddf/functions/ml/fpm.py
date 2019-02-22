@@ -13,17 +13,15 @@ from collections import defaultdict
 from pycompss.api.task import task
 from pycompss.functions.reduce import merge_reduce
 from pycompss.api.api import compss_wait_on
-from ddf.ddf import COMPSsContext, DDF
+from ddf.ddf import DDF, DDFSketch
 
 __all__ = ['Apriori', 'AssociationRules']
 
-
-import uuid
 import sys
 sys.path.append('../../')
 
 
-class Apriori(object):
+class Apriori(DDFSketch):
     """
     Apriori is a algorithm to find frequent item sets which carries out a
     breadth first search on the subset and determines the support of item sets
@@ -43,7 +41,7 @@ class Apriori(object):
         :param column: Transactions feature name;
         :param min_support: minimum support value.
         """
-
+        super(Apriori, self).__init__()
         self.settings = dict()
         self.settings['column'] = column
         self.settings['min_support'] = min_support
@@ -63,9 +61,7 @@ class Apriori(object):
         minSupport = self.settings.get('min_support', 0.5)
         large_set = []
 
-        tmp = data.cache()
-        df = COMPSsContext.tasks_map[tmp.last_uuid]['function'][0]
-        nfrag = len(df)
+        df, nfrag, tmp = self._ddf_inital_setup(data)
 
         # pruning candidates
         currentCSet_reduced = \
@@ -115,16 +111,11 @@ class Apriori(object):
             if len(self.model) == 0:
                 raise Exception("Model is not fitted.")
 
-            uuid_key = str(uuid.uuid4())
-            COMPSsContext.tasks_map[uuid_key] = \
-                {'name': 'task_apriori',
-                 'status': 'COMPLETED',
-                 'lazy': False,
-                 'function': {0: self.model[0]},
-                 'parent': [self.model[2]],
-                 'output': 1,
-                 'input': 1
-                 }
+            uuid_key = self._ddf_add_task(task_name='task_apriori',
+                                          status='COMPLETED', lazy=False,
+                                          function={0: self.model[0]},
+                                          parent=[self.model[2]],
+                                          n_output=1, n_input=1)
 
             tmp = DDF(task_list=self.model[1], last_uuid=uuid_key)
             self.result = [tmp]
@@ -287,7 +278,7 @@ def joiner(itemSets_local1, itemSets_local2, length):
     return joined
 
 
-class AssociationRules(object):
+class AssociationRules(DDFSketch):
     """
     Association rule learning is a rule-based machine learning method for
     discovering interesting relations between variables in large databases.
@@ -330,11 +321,8 @@ class AssociationRules(object):
         :param data: DDF
         :return: DDF with 'Pre-Rule', 'Post-Rule' and 'confidence' columns
         """
-
-        tmp = data.cache()
-        df = COMPSsContext.tasks_map[tmp.last_uuid]['function'][0]
-
-        nfrag = len(df)
+        super(AssociationRules, self).__init__()
+        df, nfrag, tmp = self._ddf_inital_setup(data)
 
         col_item = self.settings['col_item']
         col_freq = self.settings['col_freq']
@@ -352,18 +340,13 @@ class AssociationRules(object):
         #         df_rules[f] = _filter_rules(rules_sorted[f],
         #                                     count_total, max_rules, f)
 
-        uuid_key = tmp._generate_uuid()
-        COMPSsContext.tasks_map[uuid_key] = \
-            {'name': 'task_associative_rules',
-             'status': 'COMPLETED',
-             'lazy': False,
-             'function': {0: df_rules},
-             'parent': [tmp.last_uuid],
-             'output': 1,
-             'input': 1
-             }
+        uuid_key = self._ddf_add_task(task_name='task_associative_rules',
+                                      status='COMPLETED', lazy=False,
+                                      function={0: df_rules},
+                                      parent=[tmp.last_uuid],
+                                      n_output=1, n_input=1)
 
-        tmp._set_n_input(uuid_key, tmp.settings['input'])
+        self._set_n_input(uuid_key, 0)
         return DDF(task_list=tmp.task_list, last_uuid=uuid_key)
 
 

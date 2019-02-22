@@ -162,6 +162,11 @@ def use_case2():
                                               pred_col='out_logr',
                                               data=ddf_test)
 
+    print ddf_train.show(10)
+    print ddf_test.show(10)
+    print "Number of rows to fit the model:", ddf_train.count()
+    print "Number of rows to test the model:", ddf_test.count()
+
     print "Metrics:\n", metrics_bin.get_metrics()
     print "\nConfusion Matrix:\n", metrics_bin.confusion_matrix
 

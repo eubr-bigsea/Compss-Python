@@ -4,7 +4,6 @@
 from ddf.ddf import DDF
 import pandas as pd
 
-
 def ml_feature_scalers():
     print "_____Testing Feature Scalers_____"
 
@@ -68,20 +67,17 @@ def ml_feature_scalers():
 
 
 def ml_feature_dimensionality():
+
     print "\n_____Testing PCA_____\n"
 
-    url = ('https://archive.ics.uci.edu/ml/machine-learning-databases/'
-           'iris/iris.data')
-    df = pd.read_csv(url, header=None, sep=',')
-
-    df.columns = ['sepal_len', 'sepal_wid', 'petal_len', 'petal_wid', 'class']
+    df = pd.read_csv('tests/iris-dataset.csv', sep=',')
     df.dropna(how="all", inplace=True)
+    columns = df.columns.tolist()
+    columns.remove('class')
 
     ddf = DDF().parallelize(df, 4)
     from ddf.functions.ml.feature import VectorAssembler
-    assembler = VectorAssembler(input_col=['sepal_len', 'sepal_wid',
-                                           'petal_len', 'petal_wid'],
-                                output_col="features")
+    assembler = VectorAssembler(input_col=columns, output_col="features")
     ddf = assembler.transform(ddf)
 
     from ddf.functions.ml.feature import StandardScaler
@@ -92,8 +88,8 @@ def ml_feature_dimensionality():
     pca = PCA(input_col='features_norm', output_col='features_pca',
               n_components=2)
     ddf_pca = pca.fit_transform(ddf_std).select(['features', 'features_pca'])
-    print "Eigenvectors:\n", pca.model[0]['eig_vecs']
-    print "Eigenvalues:\n", pca.model[0]['eig_vals']
+    print "Eigenvectors:\n", pca.model['eig_vecs']
+    print "Eigenvalues:\n", pca.model['eig_vals']
     """
     Eigenvectors:
     [[ 0.52237162 -0.37231836 -0.72101681  0.26199559]
@@ -107,31 +103,30 @@ def ml_feature_dimensionality():
 
     print "PCA output :\n", ddf_pca.show()
     """
-    [[-2.26454173  0.505703903]
-     [-2.08642550 -0.655404729]
-     [-2.36795045 -0.318477311]
-     [-2.30419716 -0.575367713]
-     [-2.38877749  0.674767397]
-     [-2.07053681  1.51854856]
-     [-2.44571134  0.0745626750]
-     [-2.23384186  0.247613932]
-     [-2.34195768 -1.09514636]
-     [-2.18867576 -0.448629048]
-     [-2.16348656  1.07059558]
-     [-2.32737775  0.158587455]
-     [-2.22408272 -0.709118158]
-     [-2.63971626 -0.938281982]
-     [-2.19229151  1.88997851]
-     [-2.25146521  2.72237108]
-     [-2.20275048  1.51375028]
-     [-2.19017916  0.514304308]
-     [-1.89407429  1.43111071]
-     [-2.33994907  1.15803343]
-     [-1.91455639  0.430465163]    
+    [[-2.26454173 -0.505703903]
+     [-2.08642550  0.655404729]
+     [-2.36795045  0.318477311]
+     [-2.30419716  0.575367713]
+     [-2.38877749 -0.674767397]
+     [-2.07053681 -1.51854856]
+     [-2.44571134 -0.0745626750]
+     [-2.23384186 -0.247613932]
+     [-2.34195768  1.09514636]
+     [-2.18867576  0.448629048]
+     [-2.16348656 -1.07059558]
+     [-2.32737775 -0.158587455]
+     [-2.22408272  0.709118158]
+     [-2.63971626  0.938281982]
+     [-2.19229151 -1.88997851]
+     [-2.25146521 -2.72237108]
+     [-2.20275048 -1.51375028]
+     [-2.19017916 -0.514304308]
+     [-1.89407429 -1.43111071]
+     [-2.33994907 -1.15803343] 
     """
 
 
 if __name__ == '__main__':
 
-    #ml_feature_scalers()
+    # ml_feature_scalers()
     ml_feature_dimensionality()

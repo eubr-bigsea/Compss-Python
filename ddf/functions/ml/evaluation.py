@@ -7,7 +7,7 @@ __email__ = "lucasmsp@gmail.com"
 from pycompss.api.task import task
 from pycompss.functions.reduce import merge_reduce
 from pycompss.api.local import *
-from ddf.ddf import COMPSsContext, DDF, ModelDDF
+from ddf.ddf import COMPSsContext, DDF, DDFSketch
 import numpy as np
 import pandas as pd
 
@@ -18,7 +18,7 @@ __all__ = ['BinaryClassificationMetrics', 'MultilabelMetrics',
            'RegressionMetrics']
 
 
-class BinaryClassificationMetrics(object):
+class BinaryClassificationMetrics(DDFSketch):
     """
     Evaluator for binary classification.
 
@@ -54,10 +54,9 @@ class BinaryClassificationMetrics(object):
         :param data: DDF;
         :param true_label: Value of True label (default is 1).
         """
+        super(BinaryClassificationMetrics, self).__init__()
 
-        tmp = data.cache()
-        df = COMPSsContext.tasks_map[tmp.last_uuid]['function'][0]
-        nfrag = len(df)
+        df, nfrag, tmp = self._ddf_inital_setup(data)
 
         stage1 = [CME_stage1(df[f], label_col, pred_col)
                   for f in range(nfrag)]
@@ -87,7 +86,7 @@ class BinaryClassificationMetrics(object):
         return table
 
 
-class MultilabelMetrics(object):
+class MultilabelMetrics(DDFSketch):
     """Evaluator for multilabel classification.
 
     * True Positive (TP) - label is positive and prediction is also positive
@@ -124,9 +123,9 @@ class MultilabelMetrics(object):
         :param data: DDF.
         """
 
-        tmp = data.cache()
-        df = COMPSsContext.tasks_map[tmp.last_uuid]['function'][0]
-        nfrag = len(df)
+        super(MultilabelMetrics, self).__init__()
+
+        df, nfrag, tmp = self._ddf_inital_setup(data)
 
         stage1 = [CME_stage1(df[f], label_col, pred_col)
                   for f in range(nfrag)]
@@ -235,7 +234,7 @@ def CME_stage2_binary(confusion_matrix, true_label):
     return [confusion_matrix, Accuracy, Precision, Recall, F1]
 
 
-class RegressionMetrics(object):
+class RegressionMetrics(DDFSketch):
     """RegressionModelEvaluation's methods.
 
     * **Mean Squared Error (MSE):** Is an estimator measures the average of the
@@ -285,9 +284,9 @@ class RegressionMetrics(object):
         :param data: DDF.
         """
 
-        tmp = data.cache()
-        df = COMPSsContext.tasks_map[tmp.last_uuid]['function'][0]
-        nfrag = len(df)
+        super(RegressionMetrics, self).__init__()
+
+        df, nfrag, tmp = self._ddf_inital_setup(data)
 
         cols = [label_col, pred_col, col_features]
         partial = [RME_stage1(df[f], cols) for f in range(nfrag)]

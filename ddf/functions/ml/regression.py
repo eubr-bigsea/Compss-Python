@@ -12,7 +12,7 @@ from pycompss.api.task import task
 from pycompss.api.local import *
 from pycompss.functions.reduce import merge_reduce
 from pycompss.api.api import compss_wait_on
-from ddf.ddf import COMPSsContext, DDF, ModelDDF
+from ddf.ddf import DDF, ModelDDF
 
 __all__ = ['LinearRegression']
 
@@ -76,9 +76,8 @@ class LinearRegression(ModelDDF):
         :return: trained model
         """
 
-        tmp = data.cache()
-        df = COMPSsContext.tasks_map[tmp.last_uuid]['function'][0]
-        nfrag = len(df)
+        df, nfrag, tmp = self._ddf_inital_setup(data)
+
         features = self.settings['feature_col']
         label = self.settings['label_col']
         mode = self.settings.get('mode', 'SDG')
@@ -138,23 +137,18 @@ class LinearRegression(ModelDDF):
         features = self.settings['feature_col']
         pred_col = self.settings['pred_col']
 
-        tmp = data.cache()
-        df = COMPSsContext.tasks_map[tmp.last_uuid]['function'][0]
-        nfrag = len(df)
+        df, nfrag, tmp = self._ddf_inital_setup(data)
+
         result = [[] for _ in range(nfrag)]
         for f in range(nfrag):
             result[f] = _predict(df[f], features, pred_col, self.model[0])
 
-        uuid_key = tmp._generate_uuid()
-        COMPSsContext.tasks_map[uuid_key] = \
-            {'name': 'task_transform_linear_reg',
-             'status': 'COMPLETED',
-             'lazy': False,
-             'function': {0: result},
-             'parent': [tmp.last_uuid],
-             'output': 1, 'input': 1}
-
-        tmp._set_n_input(uuid_key, 0)
+        uuid_key = self._ddf_add_task(task_name='task_transform_linear_reg',
+                                      status='COMPLETED', lazy=False,
+                                      function={0: result},
+                                      parent=[tmp.last_uuid],
+                                      n_output=1, n_input=1)
+        self._set_n_input(uuid_key, 0)
         return DDF(task_list=tmp.task_list, last_uuid=uuid_key)
 
 
