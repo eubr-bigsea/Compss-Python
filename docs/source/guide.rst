@@ -103,7 +103,7 @@ This code will produce following result:
 .. _use2-anchor:
 
 ***************************************************************
-Example of use: Predictiong the survival of Titanic passengers
+Example of use: Predicting the survival of Titanic passengers
 ***************************************************************
 
 In this second challenge, based in this `blog-post <https://towardsdatascience.com/predicting-the-survival-of-titanic-passengers-30870ccc7e8>`_,
