@@ -64,7 +64,6 @@ class BinaryClassificationMetrics(object):
         merged_stage1 = merge_reduce(mergeStage1, stage1)
 
         result = CME_stage2_binary(merged_stage1, true_label)
-        result = compss_wait_on(result)
         confusion_matrix, accuracy, precision, recall, f1 = result
 
         self.confusion_matrix = confusion_matrix
@@ -217,10 +216,10 @@ def CME_stage2(confusion_matrix):
     return [confusion_matrix, Accuracy, Precision, Recall, F1, precision_recall]
 
 
-@task(returns=list)
+@local
 def CME_stage2_binary(confusion_matrix, true_label):
     """Generate the final evaluation (for binary classification)."""
-    N = confusion_matrix.sum().sum()
+    total_size = confusion_matrix.sum().sum()
     labels = confusion_matrix.index
     acertos = 0
 
@@ -230,7 +229,7 @@ def CME_stage2_binary(confusion_matrix, true_label):
     TP = confusion_matrix[true_label].ix[true_label]
     Precision = float(TP) / confusion_matrix.ix[true_label].sum()
     Recall = float(TP) / confusion_matrix[true_label].sum()
-    Accuracy = float(acertos) / N
+    Accuracy = float(acertos) / total_size
     F1 = 2 * (Precision * Recall) / (Precision + Recall)
 
     return [confusion_matrix, Accuracy, Precision, Recall, F1]
@@ -293,12 +292,6 @@ class RegressionMetrics(object):
         cols = [label_col, pred_col, col_features]
         partial = [RME_stage1(df[f], cols) for f in range(nfrag)]
         statistics = merge_reduce(mergeRME, partial)
-
-        # partial_ssy = [RME_stage2(df[f], cols, statistics)
-        #                for f in range(nfrag)]
-        # ssy = merge_reduce(merge_stage2, partial_ssy)
-
-
         result = RME_stage2(statistics)
 
         r2, mse, rmse, mae, msr = result
@@ -330,7 +323,7 @@ def RME_stage1(df, cols):
     """Generate the partial statistics of each fragment."""
     dim = 1
     col_test, col_predicted, col_features = cols
-    SSE_partial = SSY_partial = abs_error = sum_y = 0
+    sse_partial = ssy_partial = abs_error = sum_y = 0.0
 
     if len(df) > 0:
         df.reset_index(drop=True, inplace=True)
@@ -339,16 +332,15 @@ def RME_stage1(df, cols):
             dim = len(head)
 
         error = (df[col_test] - df[col_predicted]).values
-        SSE_partial = np.sum(np.square(error))
+
+        sse_partial = np.sum(error**2)
         abs_error = np.sum(np.absolute(error))
 
-        for y, yi in zip(df[col_test].values, df[col_predicted].values):
-            sum_y += y
-            SSY_partial += np.square(yi)
+        sum_y = df[col_test].sum()
+        ssy_partial = np.sum(df[col_test]**2)
 
     size = len(df)
-    table = np.array([size, SSE_partial, SSY_partial, abs_error, sum_y])
-    table = table.astype(float)
+    table = np.array([size, sse_partial, ssy_partial, abs_error, sum_y])
     return [table, dim]
 
 
@@ -366,18 +358,20 @@ def RME_stage2(statistics):
     """Generate the final evaluation."""
     dim = statistics[1]
     N, SSE, SSY, abs_error, sum_y = statistics[0]
-    y_mean = sum_y / N
-    SS0 = N*(y_mean)**2
 
-    SST = SSY - SS0
-    SSR = SST - SSE
+    y_mean = float(sum_y) / N
+    SS0 = N*np.square(y_mean)
+
+    SST = SSY - SS0  # SST is the total sum of squares
+    SSR = float(SST - SSE)
+
     R2 = SSR/SST
 
     # MSE = Mean Square Errors = Error Mean Square = Residual Mean Square
-    MSE = SSE/(N-dim-1)
+    MSE = float(SSE)/(N-dim-1)
     RMSE = np.sqrt(MSE)
 
-    MAE = abs_error/(N-dim-1)
+    MAE = float(abs_error)/(N-dim-1)
 
     # MSR = MSRegression = Mean Square of Regression
     MSR = SSR/dim

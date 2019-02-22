@@ -9,6 +9,7 @@ import math
 import numpy as np
 import pandas as pd
 from pycompss.api.task import task
+from pycompss.api.local import *
 from pycompss.functions.reduce import merge_reduce
 from pycompss.api.api import compss_wait_on
 from ddf.ddf import COMPSsContext, DDF, ModelDDF
@@ -43,7 +44,6 @@ class LinearRegression(ModelDDF):
     def __init__(self, feature_col, label_col, pred_col='pred_LinearReg',
                  mode='SDG', max_iter=100, alpha=0.01):
         """
-
         :param feature_col: Feature column name;
         :param label_col: Label column name;
         :param pred_col: Output prediction column (default, *'pred_LinearReg'*);
@@ -52,11 +52,7 @@ class LinearRegression(ModelDDF):
         :param max_iter: Maximum number of iterations (default, 100);
         :param alpha: *'SDG'* learning rate parameter  (default, 0.01).
         """
-        if not feature_col:
-            raise Exception("You must inform the `features` field.")
-
-        if not label_col:
-            raise Exception("You must inform the `label` field.")
+        super(LinearRegression, self).__init__()
 
         if mode not in ['simple', 'SDG']:
             raise Exception("You must inform a valid `mode`.")
@@ -93,35 +89,42 @@ class LinearRegression(ModelDDF):
         parameters = 0
 
         if mode == "SDG":
-            alpha = self.settings.get('alpha', 0.01)
-            iters = self.settings.get('max_iter', 100)
+            alpha = self.settings['alpha']
+            max_iter = self.settings['max_iter']
 
             parameters = _gradient_descent(df, features, label,
-                                           alpha, iters, nfrag)
+                                           alpha, max_iter, nfrag)
         elif mode == 'simple':
             """
                 Simple Linear Regression: This mode is useful only if
                 you have a small dataset.
             """
+            cols = [features, label]
 
-            xs = [[] for _ in range(nfrag)]
-            ys = [[] for _ in range(nfrag)]
-            xys = [[] for _ in range(nfrag)]
+            calcs = [[] for _ in range(nfrag)]
             for f in range(nfrag):
-                xs[f] = _computation_xs(df[f], features)
-                ys[f] = _computation_xs(df[f], label)
-                xys[f] = _computation_XYs(df[f], features, label)
+                calcs[f] = _lr_computation_xs(df[f], cols)
 
-            rx = merge_reduce(_merge_calcs, xs)
-            ry = merge_reduce(_merge_calcs, ys)
-            rxy = merge_reduce(_merge_calcs, xys)
-
-            parameters = _compute_line_2D(rx, ry, rxy)
+            calcs = merge_reduce(_lr_merge_calcs, calcs)
+            parameters = _lr_compute_line_2d(calcs)
 
         parameters = compss_wait_on(parameters)
 
         self.model = [parameters]
         return self
+
+    def fit_transform(self, data):
+        """
+        Fit the model and transform.
+
+        :param data: DDF
+        :return: DDF
+        """
+
+        self.fit(data)
+        ddf = self.transform(data)
+
+        return ddf
 
     def transform(self, data):
         """
@@ -151,7 +154,7 @@ class LinearRegression(ModelDDF):
              'parent': [tmp.last_uuid],
              'output': 1, 'input': 1}
 
-        tmp._set_n_input(uuid_key, tmp.settings['input'])
+        tmp._set_n_input(uuid_key, 0)
         return DDF(task_list=tmp.task_list, last_uuid=uuid_key)
 
 
@@ -159,38 +162,51 @@ class LinearRegression(ModelDDF):
 # Simple Linear Regression
 
 
-@task(returns=list)
-def _computation_xs(data, col):
+@task(returns=1)
+def _lr_computation_xs(data, cols):
     """Partial calculation."""
-    sum_x = data[col].sum()
-    square_x = (data[col]**2).sum()
-    return [sum_x, len(data[col]), square_x]
+    col1, col2 = cols
+    x = np.array(data[col1].tolist()).flatten()
+
+    sum_x = x.sum()
+    square_x = (x**2).sum()
+    col1 = [sum_x, len(x), square_x]
+
+    y = data[col2].values
+    sum_y = y.sum()
+    square_y = (y**2).sum()
+    col2 = [sum_y, len(y), square_y]
+
+    xy = np.inner(x, y)
+    return [col1, col2, [0, 0, xy]]
 
 
-@task(returns=list)
-def _computation_XYs(xy, col1, col2):
-    """Second stage of the calculation."""
-    r = sum([x*y for x, y in zip(xy[col1], xy[col2])])
-    return [0, 0, r]
-
-
-@task(returns=list)
-def _merge_calcs(p1, p2):
+@task(returns=1)
+def _lr_merge_calcs(calcs1, calcs2):
     """Merge calculation."""
-    sum_t = p1[0] + p2[0]
-    t = p1[1] + p2[1]
-    square_t = p1[2] + p2[2]
-    return [sum_t, t, square_t]
+    calcs = []
+    for p1, p2 in zip(calcs1, calcs2):
+        sum_t = p1[0] + p2[0]
+        size_t = p1[1] + p2[1]
+        square_t = p1[2] + p2[2]
+        calcs.append([sum_t, size_t, square_t])
+    return calcs
 
 
-@task(returns=list)
-def _compute_line_2D(rx, ry, rxy):
+@task(returns=1)
+def _lr_compute_line_2d(calcs):
     """Generate the regression."""
-    n = rx[1]
-    m_x = (float(rx[0])/n)
-    m_y = (float(ry[0])/n)
-    b1 = float(rxy[2] - n*m_x*m_y)/(rx[2] - rx[1] * (m_x**2))
-    b0 = m_y - b1*m_y
+    rx, ry, rxy = calcs
+
+    sum_x, n, square_x = rx
+    sum_y, _, square_y = ry
+    _, _, sum_xy = rxy
+
+    m_x = float(sum_x)/n
+    m_y = float(sum_y)/n
+    b1 = float(sum_xy - n*m_x*m_y)/(square_x - n * (m_x**2))
+
+    b0 = m_y - b1*m_x
 
     return [b0, b1]
 
@@ -202,26 +218,20 @@ def _gradient_descent(data, features, label, alpha, iters, nfrag):
     """Regression by using gradient Descent."""
     theta = np.array([0, 0, 0])
 
-    # cost = np.zeros(iters)
-
     for i in range(iters):
-        stage1 = [_first_stage(data[f], [features, label], theta)
+        stage1 = [_lr_sgb_first_stage(data[f], [features, label], theta)
                   for f in range(nfrag)]
-        grad = merge_reduce(_agg_SGD, stage1)
-        theta = _theta_computation(grad, alpha)
+        grad = merge_reduce(_lr_sgb_agg, stage1)
+        theta = _lr_sgb_theta_computation(grad, alpha)
 
-        # cost[i] = [computeCost(data[f],features,label, theta)
-        #            for f in range(nfrag)]
-        theta = compss_wait_on(theta)
-
-    return theta  # ,cost
+    return theta
 
 
 @task(returns=1)
-def _first_stage(data, attr, theta):
+def _lr_sgb_first_stage(data, cols, theta):
     """Peform the partial gradient generation."""
     size = len(data)
-    features, label = attr
+    features, label = cols
 
     if size > 0:
         if isinstance(data.iloc[0][features], list):
@@ -232,6 +242,7 @@ def _first_stage(data, attr, theta):
         if (dim+1) != len(theta):
             theta = np.array([0 for _ in range(dim+1)])
 
+        # Translates slice objects to concatenation along the second axis.
         xs = np.c_[np.ones(size), np.array(data[features].tolist())]
         partial_error = np.dot(xs, theta.T) - data[label].values
 
@@ -244,37 +255,28 @@ def _first_stage(data, attr, theta):
 
 
 @task(returns=list)
-def _agg_SGD(error1, error2):
+def _lr_sgb_agg(error1, error2):
     """Merge the partial gradients."""
-    dim1 = error1[2]
-    dim2 = error2[2]
+    grad1, size1, dim1, theta1 = error1
+    grad2, size2, dim2, theta2 = error2
 
-    if dim1 > 0:
-        sum_grad = error1[0]+error2[0]
-        size = error2[1]+error2[1]
-        dim = dim1
-        theta = error1[3]
-    elif dim2 > 0:
-        sum_grad = error1[0]+error2[0]
-        size = error2[1]+error2[1]
+    theta = theta1
+    dim = dim1
+    if dim2 > dim1:
+        # meaning that partition1 is empty
         dim = dim2
-        theta = error2[3]
-    else:
-        sum_grad = 0
-        size = 0
-        dim = -1
-        theta = 0
+        theta = theta2
+
+    sum_grad = grad1 + grad2
+    size = size1 + size2
 
     return [sum_grad, size, dim, theta]
 
 
-@task(returns=list)
-def _theta_computation(info, alpha):
+@local
+def _lr_sgb_theta_computation(info, alpha):
     """Generate new theta."""
-    grad = info[0]
-    size = info[1]
-    dim = info[2]
-    theta = info[3]
+    grad, size, dim, theta = info
 
     temp = np.zeros(theta.shape)
     for j in range(dim+1):
@@ -299,12 +301,13 @@ def _predict_(data, features, target, model):
 
         if dim > 1:
             for row in data[features].values:
-                y = row[0]
-                for j in xrange(1, len(row)):
-                    y += row[j]*model[j]
+                y = model[0]
+                for j in range(len(row)-1):
+                    y += row[j]*model[j+1]
                 tmp.append(y)
         else:
-            tmp = [model[0] + model[1]*row for row in data[features].values]
+            xys = np.array(data[features].tolist()).flatten()
+            tmp = [model[0] + model[1]*row for row in xys]
 
     data[target] = tmp
     return data

@@ -7,6 +7,7 @@ __email__ = "lucasmsp@gmail.com"
 import pandas as pd
 import numpy as np
 from pycompss.api.task import task
+from pycompss.api.local import *
 from pycompss.functions.reduce import merge_reduce
 import pyqtree
 
@@ -31,7 +32,8 @@ class ReadShapeFileOperation(object):
                 empty to use all fields;
             - lat_long: True  if the coordenates is (lat,log),
                 False if is (long,lat). Default is True;
-        Note: pip install pyshp
+
+        .. note:: pip install pyshp
         """
         import shapefile
         from io import BytesIO, StringIO
@@ -101,12 +103,12 @@ class ReadShapeFileOperation(object):
 
 
 class GeoWithinOperation(object):
-    """Geo Within Operation: returns the sectors that the each point belongs."""
+    """
+    Returns the sectors that the each point belongs.
+    """
 
     def transform(self, data, shp_object, settings):
         """
-        GeoWithinOperation.
-
         :param data: A list of pandas dataframe;
         :param shp_object: The dataframe created by the function ReadShapeFile;
         :param settings: A dictionary that contains:
@@ -120,7 +122,6 @@ class GeoWithinOperation(object):
                     (default, empty);
             - alias: Alias for shapefile attributes
                 (default, 'sector_position');
-        :param nfrag: The number of fragments;
         :return: Returns a list of pandas daraframe.
         """
 
@@ -138,9 +139,12 @@ class GeoWithinOperation(object):
             raise Exception("Please inform, at least, the fields: "
                             "`lat_col` and `lon_col`")
 
+        shp_object = merge_reduce(_merge_shapefile, shp_object)
+
         settings = self.prepare_spindex(settings, shp_object)
         return settings
 
+    @local
     def prepare_spindex(self, settings, shp_object):
         polygon = settings.get('polygon', 'points')
         if settings.get('lat_long', True):
@@ -154,10 +158,6 @@ class GeoWithinOperation(object):
         ymin = float('+inf')
         xmax = float('-inf')
         ymax = float('-inf')
-
-        from pycompss.api.api import compss_wait_on
-        shp_object = merge_reduce(_merge_shapefile, shp_object)
-        shp_object = compss_wait_on(shp_object)
 
         for i, sector in shp_object.iterrows():
             for point in sector[polygon]:
@@ -201,8 +201,6 @@ def _get_sectors(data_input, settings):
     shp_object = settings['shp_object']
     spindex = settings['spindex']
 
-    print "[INFO - Geo Within] - length shp_object:", len(shp_object)
-
     from matplotlib.path import Path
     alias = settings.get('alias', '_sector_position')
     attributes = settings.get('attributes', shp_object.columns)
@@ -243,8 +241,6 @@ def _get_sectors(data_input, settings):
 
     data_input = data_input.reset_index(drop=True)
 
-    print "[INFO - Geo Within] - columns:", list(data_input.columns)
-    print "[INFO - Geo Within] - length:", len(data_input)
     return data_input
 
 

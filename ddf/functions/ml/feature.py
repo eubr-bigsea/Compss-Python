@@ -47,9 +47,6 @@ class VectorAssembler(object):
         :param output_col: Output column name.
         """
 
-        if len(input_col) == 0:
-            raise Exception("You must inform an `input_col` field.")
-
         if not output_col:
             output_col = 'features'
 
@@ -142,9 +139,6 @@ class Tokenizer(object):
         :param to_lowercase: To convert words to lowercase (default is True).
         """
 
-        if len(input_col) == 0:
-            raise Exception("You must inform an `input_col` field.")
-
         if not output_col:
             output_col = input_col
 
@@ -198,9 +192,6 @@ class RegexTokenizer(object):
         :param min_token_length: Minimum tokens length (default is 2);
         :param to_lowercase: To convert words to lowercase (default is True).
         """
-
-        if len(input_col) == 0:
-            raise Exception("You must inform an `input_col` field.")
 
         if not output_col:
             output_col = input_col
@@ -295,9 +286,6 @@ class RemoveStopWords(object):
         :param stops_words_list: Optional, a list of words to be removed.
         """
 
-        if not input_col:
-            raise Exception("You must inform the `input_col` field.")
-
         if not isinstance(input_col, list):
             input_col = [input_col]
             if not output_col:
@@ -323,8 +311,6 @@ class RemoveStopWords(object):
         :param data: DDF with a column of stop-words;
         :param input_col: Stop-words column name;
         """
-        if not input_col:
-            raise Exception("You must inform the `input_col` field.")
 
         # It assumes that stopwords's dataframe can fit in memmory
         tmp = data.cache()
@@ -433,7 +419,7 @@ class CountVectorizer(ModelDDF):
     >>> ddf2 = cv.transform(ddf1)
     """
 
-    def __init__(self, input_col, output_col, vocab_size=-1, min_tf=1.0,
+    def __init__(self, input_col, output_col=None, vocab_size=-1, min_tf=1.0,
                  min_df=1.0, binary=True):
         """
         :param input_col: Input column name with the tokens;
@@ -451,9 +437,6 @@ class CountVectorizer(ModelDDF):
         :param binary: If True, all nonzero counts are set to 1.
         """
         super(CountVectorizer, self).__init__()
-
-        if not input_col:
-            raise Exception("You must inform the `input_col` field.")
 
         if not output_col:
             output_col = input_col
@@ -489,14 +472,28 @@ class CountVectorizer(ModelDDF):
         for f in range(nfrag):
             result_p[f] = wordCount(df[f], self.settings)
         word_dic = merge_reduce(merge_wordCount, result_p)
+
         vocabulary = create_vocabulary(word_dic)
 
         if any([min_tf > 0, min_df > 0, vocab_size > 0]):
             vocabulary = filter_words(vocabulary, self.settings)
 
-        self.model = [compss_wait_on(vocabulary)]
+        self.model = [vocabulary]
 
         return self
+
+    def fit_transform(self, data):
+        """
+        Fit the model and transform.
+
+        :param data: DDF
+        :return: DDF
+        """
+
+        self.fit(data)
+        ddf = self.transform(data)
+
+        return ddf
 
     def transform(self, data):
         """
@@ -527,7 +524,7 @@ class CountVectorizer(ModelDDF):
              'input': 1
              }
 
-        tmp._set_n_input(uuid_key, tmp.settings['input'])
+        tmp._set_n_input(uuid_key, 0)
         return DDF(task_list=tmp.task_list, last_uuid=uuid_key)
 
 
@@ -553,7 +550,7 @@ def wordCount(data, params):
     return wordcount
 
 
-@task(returns=dict)
+@task(returns=1)
 def merge_wordCount(dic1, dic2):
     """Merge the wordcounts."""
     for k in dic2:
@@ -565,14 +562,14 @@ def merge_wordCount(dic1, dic2):
     return dic1
 
 
-@task(returns=list)
+@task(returns=1)
 def merge_lists(list1, list2):
     """Auxiliar method."""
     list1 = list1+list2
     return list1
 
 
-@task(returns=list)
+@local
 def create_vocabulary(word_dic):
     """Create a partial mode."""
     docs_list = [[i[0], i[1][0], i[1][1]] for i in word_dic.items()]
@@ -582,7 +579,6 @@ def create_vocabulary(word_dic):
     return voc
 
 
-@task(returns=list)
 def filter_words(vocabulary, params):
     """Filter words."""
     min_df = params['min_df']
@@ -599,7 +595,7 @@ def filter_words(vocabulary, params):
     return vocabulary
 
 
-@task(returns=list)
+@task(returns=1)
 def _transform_BoW(data, vocabulary, params):
     alias = params['output_col']
     columns = params['input_col']
@@ -636,7 +632,7 @@ class TfidfVectorizer(ModelDDF):
     >>> ddf2 = tfidf.transform(ddf1)
     """
 
-    def __init__(self, input_col, output_col, vocab_size=-1, min_tf=1.0,
+    def __init__(self, input_col, output_col=None, vocab_size=-1, min_tf=1.0,
                  min_df=1.0):
         """
         :param input_col: Input column name with the tokens;
@@ -653,9 +649,6 @@ class TfidfVectorizer(ModelDDF):
          (of times the term must appear in the document);
         """
         super(TfidfVectorizer, self).__init__()
-
-        if not input_col:
-            raise Exception("You must inform the `input_col` field.")
 
         if not output_col:
             output_col = input_col
@@ -695,9 +688,22 @@ class TfidfVectorizer(ModelDDF):
         if any([min_tf > 0, min_df > 0, vocab_size > 0]):
             vocabulary = filter_words(vocabulary, self.settings)
 
-        self.model = [compss_wait_on(vocabulary)]
+        self.model = [vocabulary]
 
         return self
+
+    def fit_transform(self, data):
+        """
+        Fit the model and transform.
+
+        :param data: DDF
+        :return: DDF
+        """
+
+        self.fit(data)
+        ddf = self.transform(data)
+
+        return ddf
 
     def transform(self, data):
         """
@@ -732,7 +738,7 @@ class TfidfVectorizer(ModelDDF):
              'input': 1
              }
 
-        tmp._set_n_input(uuid_key, tmp.settings['input'])
+        tmp._set_n_input(uuid_key, 0)
         return DDF(task_list=tmp.task_list, last_uuid=uuid_key)
 
 
@@ -819,9 +825,6 @@ class MinMaxScaler(ModelDDF):
         """
         super(MinMaxScaler, self).__init__()
 
-        if not input_col:
-            raise Exception("You must inform the `input_col` field.")
-
         if not output_col:
             output_col = input_col
 
@@ -860,6 +863,19 @@ class MinMaxScaler(ModelDDF):
         self.model = [minmax]
         return self
 
+    def fit_transform(self, data):
+        """
+        Fit the model and transform.
+
+        :param data: DDF
+        :return: DDF
+        """
+
+        self.fit(data)
+        ddf = self.transform(data)
+
+        return ddf
+
     def transform(self, data):
         """
         :param data: DDF
@@ -887,7 +903,7 @@ class MinMaxScaler(ModelDDF):
              'input': 1
              }
 
-        tmp._set_n_input(uuid_key, tmp.settings['input'])
+        tmp._set_n_input(uuid_key, 0)
         return DDF(task_list=tmp.task_list, last_uuid=uuid_key)
 
 
@@ -895,9 +911,10 @@ class MinMaxScaler(ModelDDF):
 def _agg_maxmin(df, columns):
     """Generate a list of min and max values, excluding NaN values."""
     min_max_p = []
-    for col in columns:
-        p = [np.min(df[col].values, axis=0), np.max(df[col].values, axis=0)]
-        min_max_p.append(p)
+    if len(df) > 0:
+        for col in columns:
+            p = [np.min(df[col].values, axis=0), np.max(df[col].values, axis=0)]
+            min_max_p.append(p)
     return min_max_p
 
 
@@ -905,11 +922,16 @@ def _agg_maxmin(df, columns):
 def _merge_maxmin(minmax1, minmax2):
     """Merge min and max values."""
     minmax = []
-    for feature in zip(minmax1, minmax2):
-        di, dj = feature
-        minimum = di[0] if di[0] < dj[0] else dj[0]
-        maximum = di[1] if di[1] > dj[1] else dj[1]
-        minmax.append([minimum, maximum])
+    if len(minmax1) > 0 and len(minmax2) > 0:
+        for feature in zip(minmax1, minmax2):
+            di, dj = feature
+            minimum = di[0] if di[0] < dj[0] else dj[0]
+            maximum = di[1] if di[1] > dj[1] else dj[1]
+            minmax.append([minimum, maximum])
+    elif len(minmax1) == 0:
+        minmax = minmax2
+    else:
+        minmax = minmax1
     return minmax
 
 
@@ -966,9 +988,6 @@ class MaxAbsScaler(ModelDDF):
         """
         super(MaxAbsScaler, self).__init__()
 
-        if not input_col:
-            raise Exception("You must inform the `input_col` field.")
-
         if not output_col:
             output_col = input_col
 
@@ -1002,6 +1021,19 @@ class MaxAbsScaler(ModelDDF):
         self.model = [minmax]
         return self
 
+    def fit_transform(self, data):
+        """
+        Fit the model and transform.
+
+        :param data: DDF
+        :return: DDF
+        """
+
+        self.fit(data)
+        ddf = self.transform(data)
+
+        return ddf
+
     def transform(self, data):
         """
         :param data: DDF
@@ -1027,7 +1059,7 @@ class MaxAbsScaler(ModelDDF):
              'parent': [tmp.last_uuid],
              'output': 1, 'input': 1}
 
-        tmp._set_n_input(uuid_key, tmp.settings['input'])
+        tmp._set_n_input(uuid_key, 0)
         return DDF(task_list=tmp.task_list, last_uuid=uuid_key)
 
 
@@ -1118,9 +1150,6 @@ class StandardScaler(ModelDDF):
         """
         super(StandardScaler, self).__init__()
 
-        if not input_col:
-            raise Exception("You must inform the `input_col` field.")
-
         if not output_col:
             output_col = input_col
 
@@ -1164,6 +1193,19 @@ class StandardScaler(ModelDDF):
 
         return self
 
+    def fit_transform(self, data):
+        """
+        Fit the model and transform.
+
+        :param data: DDF
+        :return: DDF
+        """
+
+        self.fit(data)
+        ddf = self.transform(data)
+
+        return ddf
+
     def transform(self, data):
         """
         :param data: DDF
@@ -1191,11 +1233,11 @@ class StandardScaler(ModelDDF):
              'parent': [tmp.last_uuid],
              'output': 1, 'input': 1}
 
-        tmp._set_n_input(uuid_key, tmp.settings['input'])
+        tmp._set_n_input(uuid_key, 0)
         return DDF(task_list=tmp.task_list, last_uuid=uuid_key)
 
 
-@task(returns=list)
+@task(returns=1)
 def _agg_sum(df, features):
     """Pre-compute some values."""
     sum_partial = []
@@ -1221,7 +1263,7 @@ def _merge_sum(sum1, sum2):
     return sum_count
 
 
-@task(returns=list)
+@task(returns=1)
 def _agg_sse(df, features, sum_count):
     """Perform a partial SSE calculation."""
     sum_sse = []
@@ -1309,9 +1351,6 @@ class StringIndexer(ModelDDF):
         """
         super(StringIndexer, self).__init__()
 
-        if not input_col:
-            raise Exception("You must inform the `input_col` field.")
-
         if not output_col:
             output_col = "{}_indexed".format(input_col)
 
@@ -1341,6 +1380,19 @@ class StringIndexer(ModelDDF):
 
         self.model = [compss_wait_on(mapper)]
         return self
+
+    def fit_transform(self, data):
+        """
+        Fit the model and transform.
+
+        :param data: DDF
+        :return: DDF
+        """
+
+        self.fit(data)
+        ddf = self.transform(data)
+
+        return ddf
 
     def transform(self, data):
         """
@@ -1372,7 +1424,7 @@ class StringIndexer(ModelDDF):
              'parent': [data.last_uuid],
              'output': 1, 'input': 1}
 
-        tmp._set_n_input(uuid_key, tmp.settings['input'])
+        tmp._set_n_input(uuid_key, 0)
         return DDF(task_list=tmp.task_list, last_uuid=uuid_key)
 
 
@@ -1417,9 +1469,6 @@ class IndexToString(ModelDDF):
         """
         super(IndexToString, self).__init__()
 
-        if not input_col:
-            raise Exception("You must inform the `input_col` field.")
-
         if not output_col:
             output_col = "{}_converted".format(input_col)
 
@@ -1456,7 +1505,7 @@ class IndexToString(ModelDDF):
              'parent': [tmp.last_uuid],
              'output': 1, 'input': 1}
 
-        tmp._set_n_input(uuid_key, tmp.settings['input'])
+        tmp._set_n_input(uuid_key, 0)
         return DDF(task_list=tmp.task_list, last_uuid=uuid_key)
 
 
@@ -1513,21 +1562,18 @@ class PCA(ModelDDF):
         df = COMPSsContext.tasks_map[tmp.last_uuid]['function'][0]
         nfrag = len(df)
 
-        NComponents = self.settings.get('n_components')
+        n_components = self.settings.get('n_components')
         cols = self.settings.get('input_col')
 
-        partial_count = [[] for _ in range(nfrag)]
+        partial_count = [pca_count(df[f], cols) for f in range(nfrag)]
+        merged_count = merge_reduce(pca_merge_count, partial_count)
+
         for f in range(nfrag):
-            partial_count[f] = pca_count(df[f], cols)
+            partial_count[f] = partial_multiply(df[f], cols, merged_count)
 
-        mergedCount = merge_reduce(pca_mergeCount, partial_count)
-        mergedCount = meanCalc(mergedCount)
-        for f in range(nfrag):
-            partial_count[f] = partial_multiply(df[f], cols, mergedCount)
+        merged_cov = merge_reduce(pca_cov_merger, partial_count)
 
-        mergedcov = merge_reduce(pca_mergeCov, partial_count)
-
-        info = pca_eigendecomposition(mergedcov, mergedCount, NComponents)
+        info = pca_eigen_decomposition(merged_cov, n_components)
         info = compss_wait_on(info)
 
         self.model = [dict()]
@@ -1538,6 +1584,19 @@ class PCA(ModelDDF):
         self.model[0]['model'] = info[3]
 
         return self
+
+    def fit_transform(self, data):
+        """
+        Fit the model and transform.
+
+        :param data: DDF
+        :return: DDF
+        """
+
+        self.fit(data)
+        ddf = self.transform(data)
+
+        return ddf
 
     def transform(self, data):
         """
@@ -1553,11 +1612,11 @@ class PCA(ModelDDF):
 
         model = self.model[0]['model']
         features_col = self.settings['input_col']
-        predCol = self.settings['output_col']
+        pred_col = self.settings['output_col']
 
         result = [[] for _ in range(nfrag)]
         for f in range(nfrag):
-            result[f] = _pca_transform(df[f], features_col, predCol, model)
+            result[f] = _pca_transform(df[f], features_col, pred_col, model)
 
         uuid_key = tmp._generate_uuid()
         COMPSsContext.tasks_map[uuid_key] = \
@@ -1570,94 +1629,85 @@ class PCA(ModelDDF):
              'input': 1
              }
 
-        tmp._set_n_input(uuid_key, tmp.settings['input'])
+        tmp._set_n_input(uuid_key, 0)
         return DDF(task_list=tmp.task_list, last_uuid=uuid_key)
 
 
-@task(returns=list)
+@task(returns=1)
 def pca_count(data, cols):
     """Partial count."""
-    N = len(data)
-    partialsum = 0
-    if N > 0:
+    partial_size = len(data)
+    partial_sum = 0
+    if partial_size > 0:
         data = data[cols].values
-        partialsum = reduce(lambda l1, l2: np.add(l1, l2), data)
-    return [N, partialsum]
+        partial_sum = reduce(lambda l1, l2: np.add(l1, l2), data)
+    return [partial_size, partial_sum]
 
 
-@task(returns=list)
-def pca_mergeCount(count1, count2):
+@task(returns=1)
+def pca_merge_count(count1, count2):
     """Merge partial counts."""
-    N = count1[0] + count2[0]
-    partialsum = np.add(count1[1], count2[1])
-    return [N, partialsum]
+    partial_size = count1[0] + count2[0]
+    partial_sum = np.add(count1[1], count2[1])
+    return [partial_size, partial_sum]
 
 
-# @local
-@task(returns=list, priority=True)
-def meanCalc(mergedCount):
-    """Generate the mean value."""
-    # This method could be executed nfrag times inside each next function
-    # with this, we can remove this function
-
-    N = mergedCount[0]
-    mean = np.array(map(lambda x: float(x)/N, mergedCount[1]))
-    return [mean, N]
-
-
-@task(returns=list)
-def partial_multiply(data, col, mean):
+@task(returns=1)
+def partial_multiply(data, col, info):
     """Perform partial calculation."""
     cov_mat = 0
+    total_size = info[0]
 
     if len(data) > 0:
-        mean_vec = mean[0]
-        X_std = data[col].values
-        X_std = np.array(X_std.tolist())
+        mean_vec = np.array(map(lambda x: float(x) / total_size, info[1]))
 
-        first_part = X_std - mean_vec
+        x_std = data[col].values
+        x_std = np.array(x_std.tolist())
+
+        first_part = x_std - mean_vec
         cov_mat = first_part.T.dot(first_part)
 
-    return cov_mat
+    return [cov_mat, total_size]
 
 
-@task(returns=list)
-def pca_mergeCov(cov1, cov2):
+@task(returns=1)
+def pca_cov_merger(info1, info2):
     """Merge covariance."""
-    return np.add(cov1, cov2)
+    cov1, total_size = info1
+    cov2, _ = info2
 
+    return [np.add(cov1, cov2), total_size]
 
-#@task(returns=list, priority=True)
 @local
-def pca_eigendecomposition(cov_mat, mean, n_components):
-    """Generate a eigen decomposition."""
-    N = mean[1]
-    M = len(cov_mat)
-    cov_mat = cov_mat / (N-1)
+def pca_eigen_decomposition(info, n_components):
+    """Generate an eigen decomposition."""
+    cov_mat, total_size = info
+    dim = len(cov_mat)
+    cov_mat = cov_mat / (total_size-1)
     eig_vals, eig_vecs = np.linalg.eig(cov_mat)
 
     # Sort the eigenvalue and vecs tuples from high to low
     inds = eig_vals.argsort()[::-1]
-    sortedEighVals = eig_vals[inds]
-    sortedEighVecs = eig_vecs[inds]
+    sorted_eigh_vals = eig_vals[inds]
+    sorted_eigh_vectors = eig_vecs[inds]
 
     tot = sum(eig_vals)
-    var_exp = [(i / tot)*100 for i in sortedEighVals]
+    var_exp = [(i / tot)*100 for i in sorted_eigh_vals]
     cum_var_exp = np.cumsum(var_exp)
 
-    n_components = min([n_components, M])
+    n_components = min([n_components, dim])
 
-    matrix_w = sortedEighVecs[:, 0:n_components]
+    matrix_w = sorted_eigh_vals[:, 0:n_components]
 
-    return [cum_var_exp, sortedEighVals, sortedEighVecs, matrix_w]
+    return [cum_var_exp, sorted_eigh_vals, sorted_eigh_vectors, matrix_w]
 
 
-@task(returns=list)
-def _pca_transform(data, features, predCol, model):
+@task(returns=1)
+def _pca_transform(data, features, pred_col, model):
     """Reduce the dimensionality based in the created model."""
     tmp = []
     if len(data) > 0:
         tmp = np.array(data[features].values.tolist()).dot(model).tolist()
 
-    data[predCol] = tmp
+    data[pred_col] = tmp
     return data

@@ -17,7 +17,6 @@ from ddf.ddf import COMPSsContext, DDF, ModelDDF
 __all__ = ['KNearestNeighbors', 'GaussianNB', 'LogisticRegression', 'SVM']
 
 
-import uuid
 import sys
 sys.path.append('../../')
 
@@ -51,12 +50,6 @@ class KNearestNeighbors(ModelDDF):
         :param k: Number of nearest neighbors to majority vote;
         """
         super(KNearestNeighbors, self).__init__()
-
-        if not feature_col:
-            raise Exception("You must inform the `features` field.")
-
-        if not label_col:
-            raise Exception("You must inform the `label` field.")
 
         if not pred_col:
             pred_col = 'prediction_kNN'
@@ -93,6 +86,19 @@ class KNearestNeighbors(ModelDDF):
         self.model = [compss_wait_on(model)]
         return self
 
+    def fit_transform(self, data):
+        """
+        Fit the model and transform.
+
+        :param data: DDF
+        :return: DDF
+        """
+
+        self.fit(data)
+        ddf = self.transform(data)
+
+        return ddf
+
     def transform(self, data):
         """
 
@@ -124,7 +130,7 @@ class KNearestNeighbors(ModelDDF):
              'input': 1
              }
 
-        tmp._set_n_input(uuid_key, tmp.settings['input'])
+        tmp._set_n_input(uuid_key, 0)
         return DDF(task_list=tmp.task_list, last_uuid=uuid_key)
 
 
@@ -255,12 +261,6 @@ class SVM(ModelDDF):
         """
         super(SVM, self).__init__()
 
-        if not feature_col:
-            raise Exception("You must inform the `features` field.")
-
-        if not label_col:
-            raise Exception("You must inform the `label` field.")
-
         if not pred_col:
             pred_col = 'prediction_SVM'
 
@@ -320,6 +320,19 @@ class SVM(ModelDDF):
 
         return self
 
+    def fit_transform(self, data):
+        """
+        Fit the model and transform.
+
+        :param data: DDF
+        :return: DDF
+        """
+
+        self.fit(data)
+        ddf = self.transform(data)
+
+        return ddf
+
     def transform(self, data):
         """
 
@@ -353,7 +366,7 @@ class SVM(ModelDDF):
              'input': 1
              }
 
-        tmp._set_n_input(uuid_key, tmp.settings['input'])
+        tmp._set_n_input(uuid_key, 0)
         return DDF(task_list=tmp.task_list, last_uuid=uuid_key)
 
 
@@ -478,12 +491,6 @@ class LogisticRegression(ModelDDF):
         """
         super(LogisticRegression, self).__init__()
 
-        if not feature_col:
-            raise Exception("You must inform the `features` field.")
-
-        if not label_col:
-            raise Exception("You must inform the `label` field.")
-
         if not pred_col:
             pred_col = 'prediction_LogReg'
 
@@ -524,6 +531,19 @@ class LogisticRegression(ModelDDF):
         self.model = [compss_wait_on(parameters)]
         return self
 
+    def fit_transform(self, data):
+        """
+        Fit the model and transform.
+
+        :param data: DDF
+        :return: DDF
+        """
+
+        self.fit(data)
+        ddf = self.transform(data)
+
+        return ddf
+
     def transform(self, data):
         """
 
@@ -553,7 +573,7 @@ class LogisticRegression(ModelDDF):
              'input': 1
              }
 
-        tmp._set_n_input(uuid_key, tmp.settings['input'])
+        tmp._set_n_input(uuid_key, 0)
         return DDF(task_list=tmp.task_list, last_uuid=uuid_key)
 
 
@@ -701,12 +721,6 @@ class GaussianNB(ModelDDF):
         """
         super(GaussianNB, self).__init__()
 
-        if not feature_col:
-            raise Exception("You must inform the `features` field.")
-
-        if not label_col:
-            raise Exception("You must inform the `label` field.")
-
         if not pred_col:
             pred_col = 'prediction_GaussianNB'
 
@@ -749,6 +763,19 @@ class GaussianNB(ModelDDF):
         self.model = [compss_wait_on(summaries)]
         return self
 
+    def fit_transform(self, data):
+        """
+        Fit the model and transform.
+
+        :param data: DDF
+        :return: DDF
+        """
+
+        self.fit(data)
+        ddf = self.transform(data)
+
+        return ddf
+
     def transform(self, data):
         """
         :param data: DDF
@@ -776,7 +803,7 @@ class GaussianNB(ModelDDF):
              'input': 1
              }
 
-        tmp._set_n_input(uuid_key, tmp.settings['input'])
+        tmp._set_n_input(uuid_key, 0)
         return DDF(task_list=tmp.task_list, last_uuid=uuid_key)
 
 

@@ -11,7 +11,7 @@ import math
 
 
 class CleanMissingOperation(object):
-    """Cleans missing rows or columns fields from data set."""
+    """Functionality for working with missing data."""
 
     def transform(self, data, params, nfrag):
         """CleanMissingOperation.
@@ -43,6 +43,7 @@ class CleanMissingOperation(object):
         return result
 
     def preprocessing(self, data, params, nfrag):
+
         if not isinstance(params['attributes'], list):
             params['attributes'] = [params['attributes']]
 

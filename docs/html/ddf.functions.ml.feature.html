@@ -270,7 +270,7 @@ the words appear frequently and don’t carry as much meaning.</p>
 
 <dl class="class">
 <dt id="ddf.functions.ml.feature.CountVectorizer">
-<em class="property">class </em><code class="descclassname">ddf.functions.ml.feature.</code><code class="descname">CountVectorizer</code><span class="sig-paren">(</span><em>input_col</em>, <em>output_col</em>, <em>vocab_size=-1</em>, <em>min_tf=1.0</em>, <em>min_df=1.0</em>, <em>binary=True</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf.functions.ml.feature.CountVectorizer" title="Permalink to this definition">¶</a></dt>
+<em class="property">class </em><code class="descclassname">ddf.functions.ml.feature.</code><code class="descname">CountVectorizer</code><span class="sig-paren">(</span><em>input_col</em>, <em>output_col=None</em>, <em>vocab_size=-1</em>, <em>min_tf=1.0</em>, <em>min_df=1.0</em>, <em>binary=True</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf.functions.ml.feature.CountVectorizer" title="Permalink to this definition">¶</a></dt>
 <dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">ddf.ddf.ModelDDF</span></code></p>
 <p>Converts a collection of text documents to a matrix of token counts.</p>
 <table class="docutils field-list" frame="void" rules="none">
@@ -319,6 +319,22 @@ are ignored. If this is an integer &gt;= 1, then this specifies a count
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>data</strong> – DDF</td>
 </tr>
 <tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">a trained model</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="ddf.functions.ml.feature.CountVectorizer.fit_transform">
+<code class="descname">fit_transform</code><span class="sig-paren">(</span><em>data</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf.functions.ml.feature.CountVectorizer.fit_transform" title="Permalink to this definition">¶</a></dt>
+<dd><p>Fit the model and transform.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>data</strong> – DDF</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">DDF</td>
 </tr>
 </tbody>
 </table>
@@ -406,7 +422,7 @@ common file system;</li>
 
 <dl class="class">
 <dt id="ddf.functions.ml.feature.TfidfVectorizer">
-<em class="property">class </em><code class="descclassname">ddf.functions.ml.feature.</code><code class="descname">TfidfVectorizer</code><span class="sig-paren">(</span><em>input_col</em>, <em>output_col</em>, <em>vocab_size=-1</em>, <em>min_tf=1.0</em>, <em>min_df=1.0</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf.functions.ml.feature.TfidfVectorizer" title="Permalink to this definition">¶</a></dt>
+<em class="property">class </em><code class="descclassname">ddf.functions.ml.feature.</code><code class="descname">TfidfVectorizer</code><span class="sig-paren">(</span><em>input_col</em>, <em>output_col=None</em>, <em>vocab_size=-1</em>, <em>min_tf=1.0</em>, <em>min_df=1.0</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf.functions.ml.feature.TfidfVectorizer" title="Permalink to this definition">¶</a></dt>
 <dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">ddf.ddf.ModelDDF</span></code></p>
 <p>Term frequency-inverse document frequency (TF-IDF) is a numerical
 statistic transformation that is intended to reflect how important a word
@@ -456,6 +472,22 @@ are ignored. If this is an integer &gt;= 1, then this specifies a count
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>data</strong> – DDF</td>
 </tr>
 <tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">trained model</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="ddf.functions.ml.feature.TfidfVectorizer.fit_transform">
+<code class="descname">fit_transform</code><span class="sig-paren">(</span><em>data</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf.functions.ml.feature.TfidfVectorizer.fit_transform" title="Permalink to this definition">¶</a></dt>
+<dd><p>Fit the model and transform.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>data</strong> – DDF</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">DDF</td>
 </tr>
 </tbody>
 </table>
@@ -582,6 +614,22 @@ column containing indexes.</p>
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>data</strong> – DDF</td>
 </tr>
 <tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">a trained model</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="ddf.functions.ml.feature.StringIndexer.fit_transform">
+<code class="descname">fit_transform</code><span class="sig-paren">(</span><em>data</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf.functions.ml.feature.StringIndexer.fit_transform" title="Permalink to this definition">¶</a></dt>
+<dd><p>Fit the model and transform.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>data</strong> – DDF</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">DDF</td>
 </tr>
 </tbody>
 </table>
@@ -821,6 +869,22 @@ and thus does not destroy any sparsity.</p>
 </dd></dl>
 
 <dl class="method">
+<dt id="ddf.functions.ml.feature.MaxAbsScaler.fit_transform">
+<code class="descname">fit_transform</code><span class="sig-paren">(</span><em>data</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf.functions.ml.feature.MaxAbsScaler.fit_transform" title="Permalink to this definition">¶</a></dt>
+<dd><p>Fit the model and transform.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>data</strong> – DDF</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">DDF</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
 <dt id="ddf.functions.ml.feature.MaxAbsScaler.load_model">
 <code class="descname">load_model</code><span class="sig-paren">(</span><em>filepath</em>, <em>storage='hdfs'</em>, <em>namenode='localhost'</em>, <em>port=9000</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf.functions.ml.feature.MaxAbsScaler.load_model" title="Permalink to this definition">¶</a></dt>
 <dd><p>Load a machine learning model from a binary file in a storage.</p>
@@ -946,6 +1010,22 @@ each feature to a specific range (often [0, 1])</p>
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>data</strong> – DDF</td>
 </tr>
 <tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">trained model</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="ddf.functions.ml.feature.MinMaxScaler.fit_transform">
+<code class="descname">fit_transform</code><span class="sig-paren">(</span><em>data</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf.functions.ml.feature.MinMaxScaler.fit_transform" title="Permalink to this definition">¶</a></dt>
+<dd><p>Fit the model and transform.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>data</strong> – DDF</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">DDF</td>
 </tr>
 </tbody>
 </table>
@@ -1086,6 +1166,22 @@ training samples (default is True).</li>
 </dd></dl>
 
 <dl class="method">
+<dt id="ddf.functions.ml.feature.StandardScaler.fit_transform">
+<code class="descname">fit_transform</code><span class="sig-paren">(</span><em>data</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf.functions.ml.feature.StandardScaler.fit_transform" title="Permalink to this definition">¶</a></dt>
+<dd><p>Fit the model and transform.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>data</strong> – DDF</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">DDF</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
 <dt id="ddf.functions.ml.feature.StandardScaler.load_model">
 <code class="descname">load_model</code><span class="sig-paren">(</span><em>filepath</em>, <em>storage='hdfs'</em>, <em>namenode='localhost'</em>, <em>port=9000</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf.functions.ml.feature.StandardScaler.load_model" title="Permalink to this definition">¶</a></dt>
 <dd><p>Load a machine learning model from a binary file in a storage.</p>
@@ -1210,6 +1306,22 @@ principal components. PCA is used widely in dimensionality reduction.</p>
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>data</strong> – DDF</td>
 </tr>
 <tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">trained model</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="ddf.functions.ml.feature.PCA.fit_transform">
+<code class="descname">fit_transform</code><span class="sig-paren">(</span><em>data</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf.functions.ml.feature.PCA.fit_transform" title="Permalink to this definition">¶</a></dt>
+<dd><p>Fit the model and transform.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>data</strong> – DDF</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">DDF</td>
 </tr>
 </tbody>
 </table>

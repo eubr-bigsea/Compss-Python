@@ -460,6 +460,34 @@ common file sytem;</li>
 </dd></dl>
 
 <dl class="method">
+<dt id="ddf.ddf.DDF.map">
+<code class="descname">map</code><span class="sig-paren">(</span><em>f</em>, <em>alias</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf.ddf.DDF.map" title="Permalink to this definition">¶</a></dt>
+<dd><p>Apply a function to each row of this DDF.</p>
+<p>Is it a Lazy function: Yes</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>f</strong> – Lambda function that will take each element of this data
+set as a parameter;</li>
+<li><strong>alias</strong> – name of column to put the result;</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">DDF</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Example:</th><td class="field-body"></td>
+</tr>
+</tbody>
+</table>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">ddf1</span><span class="o">.</span><span class="n">map</span><span class="p">(</span><span class="k">lambda</span> <span class="n">row</span><span class="p">:</span> <span class="n">row</span><span class="p">[</span><span class="s1">&#39;col_0&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;,&#39;</span><span class="p">),</span> <span class="s1">&#39;col_0_new&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="method">
 <dt id="ddf.ddf.DDF.num_of_partitions">
 <code class="descname">num_of_partitions</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#ddf.ddf.DDF.num_of_partitions" title="Permalink to this definition">¶</a></dt>
 <dd><p>Returns the number of data partitions (Task parallelism).</p>
@@ -703,34 +731,6 @@ is ascending (True) for each column;</li>
 </tbody>
 </table>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">ddf1</span><span class="o">.</span><span class="n">take</span><span class="p">(</span><span class="mi">10</span><span class="p">)</span>
-</pre></div>
-</div>
-</dd></dl>
-
-<dl class="method">
-<dt id="ddf.ddf.DDF.transform">
-<code class="descname">transform</code><span class="sig-paren">(</span><em>f</em>, <em>alias</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf.ddf.DDF.transform" title="Permalink to this definition">¶</a></dt>
-<dd><p>Apply a function to each row of this DDF.</p>
-<p>Is it a Lazy function: Yes</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
-<li><strong>f</strong> – Lambda function that will take each element of this data
-set as a parameter;</li>
-<li><strong>alias</strong> – name of column to put the result;</li>
-</ul>
-</td>
-</tr>
-<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">DDF</p>
-</td>
-</tr>
-<tr class="field-odd field"><th class="field-name">Example:</th><td class="field-body"></td>
-</tr>
-</tbody>
-</table>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">ddf1</span><span class="o">.</span><span class="n">transform</span><span class="p">(</span><span class="k">lambda</span> <span class="n">row</span><span class="p">:</span> <span class="n">row</span><span class="p">[</span><span class="s1">&#39;col_0&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;,&#39;</span><span class="p">),</span> <span class="s1">&#39;col_0_new&#39;</span><span class="p">)</span>
 </pre></div>
 </div>
 </dd></dl>

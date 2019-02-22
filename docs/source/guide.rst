@@ -1,7 +1,17 @@
+##################
+Use Cases
+##################
 
-******************************
-Example of use: Titanic
-******************************
+* :ref:`use1-anchor`
+
+* :ref:`use2-anchor`
+
+
+.. _use1-anchor:
+
+**********************************************
+Example of use: Titanic's statistics by gender
+**********************************************
 
 The following code is an example of how to use this library for Data Science purposes. In this example, we want
 to know the number of men, women and children who survived or died in the Titanic crash.
@@ -18,8 +28,7 @@ work transparently to the user. The COMPS tasks will be executed in parallel, on
     from ddf.ddf import DDF
     import pandas as pd
 
-    url = 'https://raw.githubusercontent.com/eubr-bigsea/Compss-Python/dev/docs/titanic.csv'
-    df = pd.read_csv(url, sep='\t')
+    df = pd.read_csv('tests/titanic.csv', sep='\t')
 
     ddf1 = DDF().parallelize(df, num_of_parts=4)\
         .select(['Sex', 'Age', 'Survived'])\
@@ -51,8 +60,7 @@ Next, we extend the previous code to computate the result also for men and kids.
     from ddf.ddf import DDF
     import pandas as pd
 
-    url = 'https://raw.githubusercontent.com/eubr-bigsea/Compss-Python/dev/docs/titanic.csv'
-    df = pd.read_csv(url, sep='\t')
+    df = pd.read_csv('tests/titanic.csv', sep='\t')
 
     ddf1 = DDF().parallelize(df, num_of_parts=4)\
         .select(['Sex', 'Age', 'Survived'])\
@@ -90,3 +98,145 @@ This code will produce following result:
 +-----------+-------+-----+------+
 | Yes       |  24   | 7   | 10   |
 +-----------+-------+-----+------+
+
+
+.. _use2-anchor:
+
+***************************************************************
+Example of use: Predictiong the survival of Titanic passengers
+***************************************************************
+
+In this second challenge, based in this `blog-post <https://towardsdatascience.com/predicting-the-survival-of-titanic-passengers-30870ccc7e8>`_,
+we want to predict whether a passenger on the titanic would have been survived or not.
+
+First of all, we need to remove some columns (Passenger id, Cabin number and Ticket number) and remove rows with missing values. After that, we need 
+to convert the Sex column to numeric. Because we know all possible values (male or female), we can use a simple replace function to convert them. 
+Name, Age and Fare columns had their values categorized. And finally, we used a StringIndexer to convert Embarked to convert this column to indexes.
+
+
+After that, we put together all columns (except Survived, which will be the label) in a feature vector and normalize them using Standardscaler.
+Finally, we divide this data into one part with 70% and 30%. The first part (70%) is used in the classifier (LogisticRegression) training stage and 
+the others 30% is used to test the fitted model. At end, the model can be evaluated by some binary metrics.
+
+
+.. code-block:: python
+
+    df = pd.read_csv('tests/titanic.csv', sep='\t')
+
+    titles = {"Mr": 1, "Miss": 2, "Mrs": 3, "Master": 4, "Rare": 5}
+
+    def title_checker(row):
+        for title in titles:
+            if title in row['Name']:
+                return titles[title]
+        return -1
+
+    def age_categorizer(row):
+        category = 7
+
+        if row['Age'] <= 11:
+            category = 0
+        elif (row['Age'] > 11) and (row['Age'] <= 18):
+            category = 1
+        elif (row['Age'] > 18) and (row['Age'] <= 22):
+            category = 2
+        elif (row['Age'] > 22) and (row['Age'] <= 27):
+            category = 3
+        elif (row['Age'] > 27) and (row['Age'] <= 33):
+            category = 4
+        elif (row['Age'] > 33) and (row['Age'] <= 40):
+            category = 5
+        elif (row['Age'] > 40) and (row['Age'] <= 66):
+            category = 6
+
+        return category
+
+    def fare_categorizer(row):
+        category = 5
+        if row['Fare'] <= 7.91:
+            category = 0
+        elif (row['Fare'] > 7.91) and (row['Fare'] <= 14.454):
+            category = 1
+        elif (row['Fare'] > 14.454) and (row['Fare'] <= 31):
+            category = 2
+        elif (row['Fare'] > 31) and (row['Fare'] <= 99):
+            category = 3
+        elif (row['Fare'] > 99) and (row['Fare'] <= 250):
+            category = 4
+        return category
+
+    features = ['Pclass', 'Sex', 'Age', 'SibSp', 'Parch', 'Fare', 'Embarked']
+    all_columns = features + ['Survived']
+
+    ddf1 = DDF().parallelize(df, num_of_parts=4)\
+        .drop(['PassengerId', 'Cabin', 'Ticket'])\
+        .clean_missing(all_columns, mode='REMOVE_ROW')\
+        .replace({'male': 1, 'female': 0}, subset=['Sex'])\
+        .map(title_checker, 'Name')\
+        .map(age_categorizer, 'Age')\
+        .map(fare_categorizer, 'Fare')
+
+    from ddf.functions.ml.feature import StringIndexer
+    ddf1 = StringIndexer(input_col='Embarked',
+                         output_col='Embarked').fit_transform(ddf1)
+
+    # assembling a group of attributes as features and removing them after
+    from ddf.functions.ml.feature import VectorAssembler
+    assembler = VectorAssembler(input_col=features, output_col="features")
+    ddf1 = assembler.transform(ddf1).drop(features)
+
+    # scaling using StandardScaler
+    from ddf.functions.ml.feature import StandardScaler
+    ddf1 = StandardScaler(input_col='features', output_col='features')\
+        .fit_transform(ddf1)
+
+    # 70% to train the model and 30% to test
+    ddf_train, ddf_test = ddf1.split(0.7)
+
+    print "Number of rows to fit the model:", ddf_train.count()
+    print "Number of rows to test the model:", ddf_test.count()
+
+    from ddf.functions.ml.classification import LogisticRegression
+    logr = LogisticRegression(feature_col='features', label_col='Survived',
+                              max_iters=10, pred_col='out_logr').fit(ddf_train)
+
+    ddf_test = logr.transform(ddf_test).select(['Survived', 'out_logr'])
+
+    from ddf.functions.ml.evaluation import BinaryClassificationMetrics
+
+    metrics_bin = BinaryClassificationMetrics(label_col='Survived',
+                                              true_label=1.0,
+                                              pred_col='out_logr',
+                                              data=ddf_test)
+
+    print "Metrics:\n", metrics_bin.get_metrics()
+    print "\nConfusion Matrix:\n", metrics_bin.confusion_matrix
+
+
+This code will produce following result:
+
+Metrics:
+
++-----------------+------------+
+| Metric          | Value      |
++=================+============+
+| Accuracy        |   0.850575 |
++-----------------+------------+
+| Precision       |  0.653846  |
++-----------------+------------+
+| Recall          |  0.809524  |
++-----------------+------------+
+| F-measure (F1)  |  0.723404  |
++-----------------+------------+
+
+Confusion Matrix:
+
++---------+-------+-------+
+|         | 0.0   |  1.0  |
++=========+=======+=======+
+|  0.0    |  57   |   4   |    
++---------+-------+-------+
+| 1.0     |  9    |   17  |
++---------+-------+-------+
+
+

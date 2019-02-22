@@ -61,9 +61,6 @@ class Kmeans(ModelDDF):
         """
         super(Kmeans, self).__init__()
 
-        if not feature_col:
-            raise Exception("You must inform the `features` field.")
-
         if not pred_col:
             pred_col = 'prediction_kmeans'
 
@@ -135,6 +132,19 @@ class Kmeans(ModelDDF):
                                   columns=["Clusters"])
         return self
 
+    def fit_transform(self, data):
+        """
+        Fit the model and transform.
+
+        :param data: DDF
+        :return: DDF
+        """
+
+        self.fit(data)
+        ddf = self.transform(data)
+
+        return ddf
+
     def transform(self, data):
         """
 
@@ -169,7 +179,7 @@ class Kmeans(ModelDDF):
              'input': 1
              }
 
-        tmp._set_n_input(uuid_key, tmp.settings['input'])
+        tmp._set_n_input(uuid_key, 0)
         return DDF(task_list=tmp.task_list, last_uuid=uuid_key)
 
     def compute_cost(self):

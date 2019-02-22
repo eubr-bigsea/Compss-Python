@@ -19,8 +19,6 @@ import pandas as pd
 import numpy as np
 from pycompss.api.task import task
 from pycompss.api.api import compss_wait_on
-
-from pycompss.api.parameter import FILE_IN, FILE_OUT
 import cPickle as pickle
 
 from collections import OrderedDict, deque
@@ -684,7 +682,7 @@ class DDF(object):
         COMPSsContext.tasks_map[new_state_uuid] = \
             {'name': 'count',
              'status': 'WAIT',
-             'lazy': False,
+             'lazy': True,
              'function': [task_count, {}],
              'parent': [self.last_uuid],
              'output': 1,
@@ -1388,7 +1386,10 @@ class DDF(object):
 
         COMPSsContext.tasks_map[self.last_uuid]['function'][n_input] = res
         COMPSsContext.tasks_map[last_last_uuid]['function'][n_input] = res
-        return pd.concat(res, sort=True)[:abs(n)]
+
+        df = pd.concat(res, sort=True)[:abs(n)]
+        df.reset_index(drop=True, inplace=True)
+        return df
 
     def sort(self, cols,  ascending=[]):
         """
@@ -1505,7 +1506,7 @@ class DDF(object):
         self._set_n_input(new_state_uuid, self.settings['input'])
         return DDF(task_list=self.task_list, last_uuid=new_state_uuid)
 
-    def transform(self, f, alias):
+    def map(self, f, alias):
         """
         Apply a function to each row of this DDF.
 
@@ -1518,22 +1519,22 @@ class DDF(object):
 
         :Example:
 
-        >>> ddf1.transform(lambda row: row['col_0'].split(','), 'col_0_new')
+        >>> ddf1.map(lambda row: row['col_0'].split(','), 'col_0_new')
         """
 
         settings = {'function': f, 'alias': alias}
 
         from functions.etl.transform import TransformOperation
 
-        def task_transform(df, params):
+        def task_map(df, params):
             return TransformOperation().transform(df, params)
 
         new_state_uuid = self._generate_uuid()
         COMPSsContext.tasks_map[new_state_uuid] = \
-            {'name': 'transform',
+            {'name': 'map',
              'status': 'WAIT',
              'lazy': True,
-             'function': [task_transform, settings],
+             'function': [task_map, settings],
              'parent': [self.last_uuid],
              'output': 1,
              'input': 1}
