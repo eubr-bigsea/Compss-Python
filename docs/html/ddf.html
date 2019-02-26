@@ -660,7 +660,7 @@ a integer or float N to sample a N random records;</li>
 
 <dl class="method">
 <dt id="ddf.ddf.DDF.sort">
-<code class="descname">sort</code><span class="sig-paren">(</span><em>cols</em>, <em>ascending=[]</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf.ddf.DDF.sort" title="Permalink to this definition">¶</a></dt>
+<code class="descname">sort</code><span class="sig-paren">(</span><em>cols</em>, <em>ascending=None</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf.ddf.DDF.sort" title="Permalink to this definition">¶</a></dt>
 <dd><p>Returns a sorted DDF by the specified column(s).</p>
 <p>Is it a Lazy function: No</p>
 <table class="docutils field-list" frame="void" rules="none">
@@ -670,7 +670,7 @@ a integer or float N to sample a N random records;</li>
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
 <li><strong>cols</strong> – list of columns to be sorted;</li>
 <li><strong>ascending</strong> – list indicating whether the sort order
-is ascending (True) for each column;</li>
+is ascending (True) for each column (Default, True);</li>
 </ul>
 </td>
 </tr>
@@ -681,7 +681,7 @@ is ascending (True) for each column;</li>
 </tr>
 </tbody>
 </table>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">dd1</span><span class="o">.</span><span class="n">sort</span><span class="p">([</span><span class="s1">&#39;col_1&#39;</span><span class="p">,</span> <span class="s1">&#39;col_2&#39;</span><span class="p">],</span> <span class="n">ascending</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;True&#39;</span><span class="p">,</span> <span class="s1">&#39;False&#39;</span><span class="p">])</span>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">dd1</span><span class="o">.</span><span class="n">sort</span><span class="p">([</span><span class="s1">&#39;col_1&#39;</span><span class="p">,</span> <span class="s1">&#39;col_2&#39;</span><span class="p">],</span> <span class="n">ascending</span><span class="o">=</span><span class="p">[</span><span class="kc">True</span><span class="p">,</span> <span class="kc">False</span><span class="p">])</span>
 </pre></div>
 </div>
 </dd></dl>

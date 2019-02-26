@@ -48,6 +48,7 @@ Contents
 
 * :doc:`Installation <install>`
 * :doc:`Example of use: Titanic <guide>`
+* :doc:`DDF vs PySpark DataFrame <comparison>`
 * :doc:`API Reference <api>`
 
 
@@ -58,6 +59,7 @@ Contents
 
    install.rst
    guide.rst
+   comparison.rst
    api.rst
 
 
