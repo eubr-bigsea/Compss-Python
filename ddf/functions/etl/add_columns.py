@@ -22,6 +22,8 @@ class AddColumnsOperation(object):
         :param df2: A list with nfrag pandas's DataFrame;
         :param suffixes: Suffixes for attributes (a list with 2 values);
         :return: Returns a list with nfrag pandas's dataframe.
+
+        :note: Need schema as input
         """
         nfrag1 = len(df1)
         nfrag2 = len(df2)

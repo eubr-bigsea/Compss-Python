@@ -9,61 +9,45 @@ from pycompss.api.task import task
 import pandas as pd
 
 
-class AttributesChangerOperation(object):
-    """Attributes Changer Operation.
+def attributes_changer(data, settings):
+    """
+    Rename or change the data's type of some columns.
 
-     Rename or change the data's type of some columns.
-     """
+    :param data: A list with numFrag pandas's dataframe;
+    :param settings: A dictionary that contains:
+        - attributes: A list of column(s) to be changed (or renamed).
+        - new_name: A list of alias with the same size of attributes.
+        If empty, the operation will overwrite all columns in attributes
+        (default, empty);
+        - new_data_type: The new type of the selected columns:
+            * 'keep' - (default);
+            * 'integer';
+            * 'string';
+            * 'double';
+            * 'Date';
+            * 'Date/time';
 
-    def transform(self, data, settings, nfrag):
-        """AttributesChangerOperation.
+    :return: Returns a list with numFrag pandas's dataframe.
+    """
 
-        :param data: A list with numFrag pandas's dataframe;
-        :param settings: A dictionary that contains:
-            - attributes: A list of column(s) to be changed (or renamed).
-            - new_name: A list of alias with the same size of attributes.
-            If empty, the operation will overwrite all columns in attributes
-            (default, empty);
-            - new_data_type: The new type of the selected columns:
-                * 'keep' - (default);
-                * 'integer';
-                * 'string';
-                * 'double';
-                * 'Date';
-                * 'Date/time';
-        :param nfrag: The number of fragments;
-        :return: Returns a list with numFrag pandas's dataframe.
-        """
-
-        settings = self.preprocessing(settings)
-        result = [[] for _ in range(nfrag)]
-        for f in range(nfrag):
-            result[f] = _change_attribute(data[f], settings)
-        return result
-
-    def preprocessing(self, settings):
-        """Validate the parameters"""
-        if 'attributes' not in settings:
-            raise Exception("You must inform an `attributes` column.")
-
-        attributes = settings['attributes']
-        alias = settings.get('new_name', attributes)
-        if len(alias) > 0 and (len(alias) != len(attributes)):
-            raise Exception("Alias and attributes must have the same length, "
-                            " or Alias must be a empty list.")
-        return settings
-
-    def transform_serial(self, data, settings):
-        """Peform an attribute changer in each fragment."""
-        return _change_attribute_(data, settings)
+    result, info = _change_attribute(data, settings)
+    return result
 
 
-@task(returns=list)
+def preprocessing(settings):
+    """Validate the parameters"""
+    if 'attributes' not in settings:
+        raise Exception("You must inform an `attributes` column.")
+
+    attributes = settings['attributes']
+    alias = settings.get('new_name', attributes)
+    if len(alias) > 0 and (len(alias) != len(attributes)):
+        raise Exception("Alias and attributes must have the same length, "
+                        " or Alias must be a empty list.")
+    return settings
+
+
 def _change_attribute(data, settings):
-    return _change_attribute_(data, settings)
-
-
-def _change_attribute_(data, settings):
     """Peform an attribute changer in each fragment."""
 
     attributes = settings['attributes']
@@ -94,7 +78,9 @@ def _change_attribute_(data, settings):
     # second, rename the columns
     mapper = dict(zip(attributes, new_name))
     data.rename(columns=mapper, inplace=True)
-    return data
+
+    info = [data.columns.tolist(), data.dtypes.values, [len(data)]]
+    return data, info
 
 
 def convertToDate(col):

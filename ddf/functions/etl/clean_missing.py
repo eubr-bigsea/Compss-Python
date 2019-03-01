@@ -10,6 +10,9 @@ import pandas as pd
 import math
 
 
+# dropna(how='any', thresh=None, subset=None)
+# fillna(value, subset=None)
+
 class CleanMissingOperation(object):
     """Functionality for working with missing data."""
 
@@ -37,10 +40,13 @@ class CleanMissingOperation(object):
         """
         params = self.preprocessing(data, params, nfrag)
         result = [[] for _ in range(nfrag)]
+        info = [[] for _ in range(nfrag)]
         for f in range(nfrag):
-                result[f] = _clean_missing(data[f], params)
+                result[f], info[f] = _clean_missing(data[f], params)
 
-        return result
+        output = {'key_data': ['data'], 'key_info': ['info'],
+                  'data': result, 'info': info}
+        return output
 
     def preprocessing(self, data, params, nfrag):
 
@@ -55,7 +61,8 @@ class CleanMissingOperation(object):
             params = merge_reduce(merge_clean_options, params)
         return params
 
-    def transform_serial(self, data, params):
+    @staticmethod
+    def transform_serial(data, params):
         """Perform REMOVE_ROW, REMOVE_COLUMN, VALUE, MEAN, MODE and MEDIAN."""
         attributes = params['attributes']
         cleaning_mode = params['cleaning_mode']
@@ -70,7 +77,9 @@ class CleanMissingOperation(object):
         else:
             raise Exception("Invalid option mode in Clean Missing Operation")
         data.reset_index(drop=True, inplace=True)
-        return data
+
+        info = [data.columns.tolist(), data.dtypes.values, [len(data)]]
+        return data, info
 
 
 @task(returns=dict)
@@ -128,7 +137,7 @@ def merge_clean_options(params1, params2):
     return params1
 
 
-@task(returns=list)
+@task(returns=2)
 def _clean_missing(data, params):
     """Perform REMOVE_ROW, REMOVE_COLUMN, VALUE, MEAN, MODE and MEDIAN."""
     attributes = params['attributes']
@@ -186,4 +195,6 @@ def _clean_missing(data, params):
             data[att] = data[att].fillna(value=m)
 
     data.reset_index(drop=True, inplace=True)
-    return data
+
+    info = [data.columns.tolist(), data.dtypes.values, [len(data)]]
+    return data, info

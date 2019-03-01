@@ -102,13 +102,13 @@ class PageRank(DDFSketch):
         table = [_print_result(rank_list[i], col1, col2) for i in range(nfrag)]
 
         merged_table = merge_reduce(_merge_ranks, table)
-        result = _split(merged_table, nfrag)
+        result, info = _pagerank_split(merged_table, nfrag)
 
         uuid_key = self._ddf_add_task(task_name='task_transform_pagerank',
                                       status='COMPLETED', lazy=False,
                                       function={0: result},
                                       parent=[tmp.last_uuid],
-                                      n_output=1, n_input=1)
+                                      n_output=1, n_input=1, info=info)
 
         self._set_n_input(uuid_key, 0)
         return DDF(task_list=tmp.task_list, last_uuid=uuid_key)
@@ -224,14 +224,20 @@ def _merge_ranks(df1, df2):
     result.reset_index(drop=True, inplace=True)
     return result
 
+
 @local
-def _split(merged_table, nfrag):
+def _pagerank_split(merged_table, nfrag):
     """Split the list of vertex into nfrag parts.
 
     Note: the list of unique vertex and their ranks must be fit in memory.
     """
+    info = [[merged_table.columns.tolist(), merged_table.dtypes.values, []]
+            for _ in range(nfrag)]
     result = np.array_split(merged_table, nfrag)
-    return result
+    for f, table in enumerate(merged_table):
+        info[f][2].append(len(table))
+
+    return result, info
 
 
 

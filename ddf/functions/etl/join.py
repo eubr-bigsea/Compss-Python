@@ -53,8 +53,11 @@ class JoinOperation(object):
         :return: Returns a list with nfrag pandas's dataframe.
 
         :Note: sort with case
+
+        :note: Need schema as input
         """
         result = [[] for _ in range(nfrag)]
+        info = [[] for _ in range(nfrag)]
         key1, key2, option = self.preprocessing(params)
 
         sorted_idx1, sorted_idx2 = _generate_idxs(data1, data2,
@@ -68,11 +71,13 @@ class JoinOperation(object):
                 for f2 in range(nfrag):
                     over, last = overlapping[f1][f2]
                     if over:
-                        result[f1] = _join(result[f1], data2[f1], data1[f2],
-                                           params, last)
+                        result[f1], info[f1] = \
+                            _join(result[f1], data2[f1], data1[f2],
+                                  params, last)
                         filled = True
                 if not filled:
-                    result[f1] = fix_columns(data2[f1], sorted_idx1[0], params)
+                    result[f1], info[f1] = fix_columns(data2[f1],
+                                                       sorted_idx1[0], params)
         else:
             overlapping = overlap(sorted_idx1, sorted_idx2, nfrag)
 
@@ -81,13 +86,16 @@ class JoinOperation(object):
                 for f2 in range(nfrag):
                     over, last = overlapping[f1][f2]
                     if over:
-                        result[f1] = _join(result[f1], data1[f1], data2[f2],
-                                           params, last)
+                        result[f1], info[f1] = _join(result[f1], data1[f1],
+                                                     data2[f2], params, last)
                         filled = True
                 if not filled:
-                    result[f1] = fix_columns(data1[f1], sorted_idx2[0], params)
+                    result[f1], info[f1] = fix_columns(data1[f1],
+                                                       sorted_idx2[0], params)
 
-        return result
+        output = {'key_data': ['data'], 'key_info': ['info'],
+                  'data': result, 'info': info}
+        return output
 
 
 def _generate_idxs(data1, data2, key1, key2, nfrag):
@@ -207,7 +215,7 @@ def check_dtypes(data1, data2, key1, key2):
     return data1, data2
 
 
-@task(returns=list)
+@task(returns=2)
 def _join(result, data1, data2, params, last):
     """Peform a join and a concatenation with the previosly join."""
     case_sensitive = params.get('case', True)
@@ -294,10 +302,12 @@ def _join(result, data1, data2, params, last):
 
     print "[INFO - JOIN] - columns:", list(data1.columns)
     print "[INFO - JOIN] - length:", len(data1)
-    return data1
+
+    info = [data1.columns.tolist(), data1.dtypes.values, [len(data1)]]
+    return data1, info
 
 
-@task(returns=list)
+@task(returns=2)
 def fix_columns(data1, cols2, params):
     """It is necessary change same columns names in empty partitions."""
     keep = params.get('keep_keys', False)
@@ -330,4 +340,6 @@ def fix_columns(data1, cols2, params):
 
     if not keep:
         data1 = data1.drop(key2, axis=1)
-    return data1
+
+    info = [data1.columns.tolist(), data1.dtypes.values, [len(data1)]]
+    return data1, info

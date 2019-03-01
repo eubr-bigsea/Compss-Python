@@ -12,7 +12,8 @@ from pycompss.api.task import task
 from pycompss.api.local import *
 from pycompss.functions.reduce import merge_reduce
 from pycompss.api.api import compss_wait_on
-from ddf.ddf import DDF, ModelDDF
+from ddf.ddf import DDF
+from ddf.ddf_model import ModelDDF
 
 __all__ = ['LinearRegression']
 
@@ -140,15 +141,18 @@ class LinearRegression(ModelDDF):
         df, nfrag, tmp = self._ddf_inital_setup(data)
 
         result = [[] for _ in range(nfrag)]
+        info = [[] for _ in range(nfrag)]
         for f in range(nfrag):
-            result[f] = _predict(df[f], features, pred_col, self.model[0])
+            result[f], info[f] = _predict(df[f], features, pred_col,
+                                          self.model[0])
 
         uuid_key = self._ddf_add_task(task_name='task_transform_linear_reg',
                                       status='COMPLETED', lazy=False,
                                       function={0: result},
                                       parent=[tmp.last_uuid],
-                                      n_output=1, n_input=1)
-        self._set_n_input(uuid_key, 0)
+                                      n_output=1, n_input=1, info=info)
+
+        self._set_n_input(uuid_key, 0)  #TODO: dont need !?
         return DDF(task_list=tmp.task_list, last_uuid=uuid_key)
 
 
@@ -279,7 +283,7 @@ def _lr_sgb_theta_computation(info, alpha):
     return temp
 
 
-@task(returns=list)
+@task(returns=2)
 def _predict(data, x, y, model):
     return _predict_(data, x, y, model)
 
@@ -304,4 +308,6 @@ def _predict_(data, features, target, model):
             tmp = [model[0] + model[1]*row for row in xys]
 
     data[target] = tmp
-    return data
+
+    info = [data.columns.tolist(), data.dtypes.values, [len(data)]]
+    return data, info

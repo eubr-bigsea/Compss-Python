@@ -11,7 +11,8 @@ import pandas as pd
 from pycompss.api.task import task
 from pycompss.functions.reduce import merge_reduce
 from pycompss.api.local import *
-from ddf.ddf import DDF, ModelDDF
+from ddf.ddf import DDF
+from ddf.ddf_model import ModelDDF
 
 __all__ = ['Kmeans', 'DBSCAN']
 
@@ -159,16 +160,17 @@ class Kmeans(ModelDDF):
         alias = self.settings['pred_col']
 
         result = [[] for _ in range(nfrag)]
+        info = [[] for _ in range(nfrag)]
         for f in range(nfrag):
-            result[f] = _kmeans_assigment_cluster(df[f],
-                                                  features_col,
-                                                  self.model, alias)
+            result[f], info[f] = _kmeans_assigment_cluster(df[f],
+                                                           features_col,
+                                                           self.model, alias)
 
         uuid_key = self._ddf_add_task(task_name='task_transform_kmeans',
                                       status='COMPLETED', lazy=False,
                                       function={0: result},
                                       parent=[tmp.last_uuid],
-                                      n_output=1, n_input=1)
+                                      n_output=1, n_input=1, info=info)
 
         self._set_n_input(uuid_key, 0)
         return DDF(task_list=tmp.task_list, last_uuid=uuid_key)
@@ -250,7 +252,7 @@ def _kmeans_compute_centroids(centroids):
     return centroids
 
 
-@task(returns=list)
+@task(returns=2)
 def _kmeans_assigment_cluster(data, columns, model, alias):
 
     mu = model['Clusters'].tolist()
@@ -263,7 +265,9 @@ def _kmeans_assigment_cluster(data, columns, model, alias):
         values.append(best_cluster)
 
     data[alias] = values
-    return data
+    
+    info = [data.columns.tolist(), data.dtypes.values, [len(data)]]
+    return data, info
 
 
 def _kmeans_distance(x, clusters):

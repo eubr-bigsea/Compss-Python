@@ -17,275 +17,254 @@ unique csv file.
 
 from pycompss.api.task import task
 from pycompss.api.parameter import FILE_IN
-from hdfspycompss.Block import Block
-from hdfspycompss.HDFS import HDFS
+from pycompss.functions.reduce import merge_reduce
 import pandas as pd
 
 
-class ReadOperationFs(object):
-    """Method to load a pandas DataFrame in parallel from a csv or json file.
+class DataReader(object):
 
-        :param filename: The absolute path where the dataset is stored. Each
-        dataset is expected to be in a specific folder. The folder will have
-        the name of the dataset with the suffix "_folder".
-        NOTE: It assumes that dataset is already divided into N files.
-        :param settings: A dictionary with the following parameters:
-          - 'format': File format, csv or json
-          - 'infer':
-            *"NO": Do not infer the data type of each field;
-            *"FROM_VALUES": Try to infer the data type of each field (default);
-            *"FROM_LIMONERO": !! NOT IMPLEMENTED YET!!
-          - to CSV files:
-            - 'separator': Value used to separate fields (default, ',');
-            - 'header': True (default) if the first line is a header;
-            - 'na_values': A list with the all nan caracteres. Default list:
-                '', '#N/A', '#N/A N/A', '#NA', '-1.#IND', '-1.#QNAN', '-NaN',
-                '-nan', '1.#IND', '1.#QNAN', 'N/A', 'NA', 'NULL', 'NaN', 'nan'
+    def __init__(self, filepath, nfrag=4, format='csv', storage='hdfs',
+                 distributed=True, dtype='str', separator=',',
+                 error_bad_lines=True, header=True, na_values='',
+                 host='localhost', port=9000):
+        """
+        Loads a pandas DataFrame from a csv, txt or json file.
+
+        :param filepath: The absolute path where the dataset is stored;
+        :param nfrag: Number of partitions to split the loaded data,
+         if distribuited option is False (default, 4);
+        :param format: File format, csv, json or txt;
+        :param storage: Where the file is, `fs` to commom file system or
+         `hdfs`. Default is `hdfs`;
+        :param distributed: if the absolute path represents a unique file or
+         a folder with multiple files;
+        :param dtype: Type name or dict of column (default, 'str'). Data type
+         for data or columns. E.g. {‘a’: np.float64, ‘b’: np.int32, ‘c’:
+         ‘Int64’} Use str or object together with suitable na_values settings
+         to preserve and not interpret dtype;
+        :param separator: Value used to separate fields (default, ',');
+        :param error_bad_lines: Lines with too many fields (e.g. a csv line
+         with too many commas) will by default cause an exception to be raised,
+         and no DataFrame will be returned. If False, then these “bad lines”
+         will dropped from the DataFrame that is returned.
+        :param header:  True (default) if the first line is a header;
+        :param na_values: A list with the all nan caracteres. Default list:
+         ['', '#N/A', '#N/A N/A', '#NA', '-1.#IND', '-1.#QNAN', '-NaN',
+         '-nan', '1.#IND', '1.#QNAN', 'N/A', 'NA', 'NULL', 'NaN', 'nan']
+        :param host: Namenode host if storage is `hdfs` (default, 'localhost');
+        :param port: Port to Namenode host if storage is `hdfs` (default, 9000);
+
         :return A DataFrame splitted in a list with length N.
 
-        Example:
-        $ ls /var/workspace/dataset_folder
-            dataset_00     dataset_02
-            dataset_01     dataset_03
+
+        ..see also: `Dtype information <https://docs.scipy.org/doc/numpy-1.15
+         .0/reference/arrays.dtypes.html>`_.
+
         """
 
-    def transform(self, filename, settings):
+        self.filepath = filepath
+        self.nfrag = nfrag
 
-        settings = self.preprocessing(settings)
-        import os.path
-        path = filename + "_folder"
-        files = sorted(os.listdir(path))
-        result = [[] for _ in range(len(files))]
-        for f, name in enumerate(files):
-            obj = "{}/{}".format(path, name)
-            result[f] = _read_from_fs(obj, settings)
+        self.format = format
+        if self.format not in ['csv', 'json', 'txt']:
+            raise Exception("Only `csv`, `json` and `txt` are suppported.")
 
-        return result
+        self.storage = storage
+        if self.storage not in ['fs', 'hdfs']:
+            raise Exception("Only `fs` and `hdfs` are suppported.")
 
-    def preprocessing(self, settings):
-        format_type = settings.get('format', 'csv')
-        if format_type is 'csv':
-            settings['separator'] = settings.get('separator', ',')
-            settings['header'] = settings.get('header', True)
-            settings['infer'] = settings.get('infer', 'FROM_VALUES')
-            na_values = ['', '#N/A', '#N/A N/A', '#NA', '-1.#IND',
-                         '-1.#QNAN', '-NaN', '-nan', '1.#IND', '1.#QNAN',
-                         'N/A', 'NA', 'NULL', 'NaN', 'nan']
-            if 'na_values' not in settings:
-                settings['na_values'] = na_values
-            if settings['infer'] == "FROM_LIMONERO":
-                settings['infer'] = "FROM_VALUES"
+        self.distributed = distributed
+        self.dtype = [dtype]
 
-            if settings['infer'] not in ['NO', 'FROM_VALUES', 'FROM_LIMONERO']:
-                raise Exception("Please inform a valid `infer` type.")
-
-            # BUG: There is a COMPSs bug when separator is "\n".
-            # Because of that,  use a mask "<new_line>" instead in these cases.
-            if settings['separator'] == '\n':
-                settings['separator'] = '<new_line>'
-
-        elif format_type is 'json':
-            settings['infer'] = settings.get('infer', 'FROM_VALUES')
-            if settings['infer'] == "FROM_LIMONERO":
-                settings['infer'] = "FROM_VALUES"
-        else:
-            raise Exception("Please inform a valid `format` type.")
-
-        return settings
-
-
-@task(returns=list, filename=FILE_IN)
-def _read_from_fs(filename, settings):
-    """Load a fragment of a csv or json file in a pandas DataFrame."""
-
-    format_type = settings.get('format', 'csv')
-    infer = settings['infer']
-
-    if format_type is 'csv':
-        separator = settings['separator']
-        header = settings['header']
-        na_values = settings['na_values']
-
-        if separator == "<new_line>":
-            separator = "\n"
-        if header:
-            header = 'infer'
-        else:
+        # if format is `txt`
+        if self.format is 'txt':
+            separator = '\n'
             header = None
 
-        if infer == "NO":
-            df = pd.read_csv(filename, sep=separator, na_values=na_values,
-                             header=header, dtype='str')
+        # if format file are `csv` or `txt`
+        self.separator = [separator]
+        self.header = header if header else None
 
-        elif infer == "FROM_VALUES":
-            df = pd.read_csv(filename, sep=separator, na_values=na_values,
-                             header=header)
+        na_values_default = ['', '#N/A', '#N/A N/A', '#NA', '-1.#IND',
+                             '-1.#QNAN', '-NaN', '-nan', '1.#IND', '1.#QNAN',
+                             'N/A', 'NA', 'NULL', 'NaN', 'nan']
 
-        elif infer == "FROM_LIMONERO":
-            df = pd.DataFrame([])
+        self.na_values = na_values if len(na_values) > 0 else na_values_default
+
+        self.error_bad_lines = error_bad_lines
+        # if storage is `hdfs`
+        self.host = host
+        self.port = port
+
+        if self.storage is 'hdfs':
+            self.blocks = self.preprocessing_hdfs()
+        else:
+            self.blocks = self.preprocessing_fs()
+
+    def preprocessing_hdfs(self):
+        from hdfspycompss.HDFS import HDFS
+
+        if not self.distributed:
+
+            if self.nfrag > 0:
+                blocks = HDFS(host=self.host, port=self.port)\
+                    .findNBlocks(self.filepath, self.nfrag)
+            else:
+                blocks = HDFS(host=self.host, port=self.port)\
+                    .findBlocks(self.filepath)
+        else:
+            # TODO
+            blocks = []
+
+        return blocks
+
+    def preprocessing_fs(self):
+
+        blocks = []
+        if self.distributed:
+            import os.path
+            files = sorted(os.listdir(self.filepath))
+            for f, name in enumerate(files):
+                obj = "{}/{}".format(self.filepath, name)
+                blocks.append(obj)
+        else:
+            blocks.append(self.filepath)
+
+        return blocks
+
+    def get_blocks(self):
+        return self.blocks
+
+    def transform(self, block=None):
+
+        if block:
+            blocks = [block]
+        else:
+            blocks = self.blocks
+
+        result = [[] for _ in blocks]
+        info = [[] for _ in blocks]
+
+        if self.storage is 'fs':
+            if self.distributed:
+
+                for f, blk in enumerate(blocks):
+                    result[f], info[f] = _read_fs_task(blk, self.format,
+                                                       self.separator,
+                                                       self.header,
+                                                       self.na_values,
+                                                       self.dtype,
+                                                       self.error_bad_lines)
+
+                info = merge_reduce(merge_schema, info)
+            else:
+                from parallelize import parallelize
+                result, info[0] = _read_fs(self.blocks[0], self.format,
+                                           self.separator,
+                                           self.header, self.na_values,
+                                           self.dtype, self.error_bad_lines)
+                result = parallelize(result, self.nfrag)
+        else:
+            if not self.distributed:
+
+                for f, block in enumerate(blocks):
+                    result[f], info[f] = _read_hdfs_task(block,
+                                                         self.format,
+                                                         self.separator,
+                                                         self.header,
+                                                         self.na_values,
+                                                         self.dtype,
+                                                         self.error_bad_lines)
+
+                info = merge_reduce(merge_schema, info)
+
+            else:
+                raise Exception("Not implemeted yet! ")
+
+        return result, info
+
+    def read_hdfs_serial(self, block, param):
+        # param is only to make compatibility interface
+
+        if not self.distributed:
+            result, info = _read_hdfs(block, self.format, self.separator,
+                                      self.header, self.na_values,
+                                      self.dtype, self.error_bad_lines)
+
+        else:
+            #TODO
+            raise Exception("Not implemeted yet! ")
+
+        return result, info
+
+
+def _read_fs(filename, format_type,separator, header, na_values,
+             dtype, error_bad_lines):
+    """Load a fragment of a csv or json file in a pandas DataFrame."""
+
+    if format_type in ['csv', 'txt']:
+        separator = separator[0]
+        # if separator == "<new_line>":
+        #     separator = "\n"
+        if header:
+            header = 'infer'
+
+        df = pd.read_csv(filename, sep=separator, na_values=na_values,
+                         header=header, dtype=dtype[0],
+                         error_bad_lines=error_bad_lines)
 
         if not header:
             n_cols = len(df.columns)
             new_columns = ['col_{}'.format(i) for i in range(n_cols)]
             df.columns = new_columns
+
     else:
 
-        if infer == "NO":
-            df = pd.read_json(filename, orient='records', dtype='str',
-                              lines=True)
-        else:
-            df = pd.read_json(filename, orient='records', lines=True)
+        df = pd.read_json(filename, orient='records', dtype=dtype[0],
+                          lines=True)
 
-    return df
+    info = [df.columns.tolist(), df.dtypes.values, [len(df)]]
+    return df, info
 
 
-class ReadOperationHDFS(object):
-    """Method to load a pandas DataFrame in parallel from a csv or json file.
-
-        :param filename: The absolute path where the dataset is stored. Each
-        dataset is expected to be in a specific folder. The folder will have
-        the name of the dataset with the suffix "_folder".
-        NOTE: It assumes that dataset is already divided into N files.
-        :param settings: A dictionary with the following parameters:
-          - 'format': File format, CSV or JSON
-          - 'infer':
-            *"NO": Do not infer the data type of each field;
-            *"FROM_VALUES": Try to infer the data type of each field (default);
-            *"FROM_LIMONERO": !! NOT IMPLEMENTED YET!!
-          - to CSV files:
-            - 'separator': Value used to separate fields (default, ',');
-            - 'header': True (default) if the first line is a header;
-            - 'na_values': A list with the all nan caracteres. Default list:
-                '', '#N/A', '#N/A N/A', '#NA', '-1.#IND', '-1.#QNAN', '-NaN',
-                '-nan', '1.#IND', '1.#QNAN', 'N/A', 'NA', 'NULL', 'NaN', 'nan'
-        :return A DataFrame splitted in a list with length N.
-        """
-
-    def transform(self, filename, settings, nfrag):
-
-        blocks, settings = self.preprocessing(filename, settings, nfrag)
-        data = [[] for _ in blocks]
-        info = [[] for _ in blocks]
-        for f, block in enumerate(blocks):
-            data[f], info[f] = _read_from_hdfs(block, settings)
-
-        return data, info
-
-    def preprocessing(self, filename, settings, nfrag):
-        format_type = settings.get('format', 'csv')
-
-        if format_type is 'csv':
-            settings['separator'] = settings.get('separator', ',')
-            settings['header'] = settings.get('header', True)
-            settings['infer'] = settings.get('infer', 'FROM_VALUES')
-            na_values = ['', '#N/A', '#N/A N/A', '#NA', '-1.#IND',
-                         '-1.#QNAN', '-NaN', '-nan', '1.#IND', '1.#QNAN',
-                         'N/A', 'NA', 'NULL', 'NaN', 'nan']
-            if 'na_values' not in settings:
-                settings['na_values'] = na_values
-            if settings['infer'] == "FROM_LIMONERO":
-                settings['infer'] = "FROM_VALUES"
-
-            if settings['infer'] not in ['NO', 'FROM_VALUES', 'FROM_LIMONERO']:
-                raise Exception("Please inform a valid `infer` type.")
-
-            # BUG: There is a COMPSs bug when separator is "\n".
-            # Because of that,  use a mask "<new_line>" instead in these cases.
-            if settings['separator'] == '\n':
-                settings['separator'] = '<new_line>'
-
-        elif format_type is 'json':
-            settings['infer'] = settings.get('infer', 'FROM_VALUES')
-            if settings['infer'] == "FROM_LIMONERO":
-                settings['infer'] = "FROM_VALUES"
-        else:
-            raise Exception("Please inform a valid `format` type.")
-
-        host = settings['host']
-        port = settings['port']
-        if nfrag > 0:
-            blocks = HDFS(host=host, port=port).findNBlocks(filename, nfrag)
-        else:
-            blocks = HDFS(host=host, port=port).findBlocks(filename)
-
-        return blocks, settings
-
-    def transform_serial(self, blk, csv_options):
-        return _read_from_hdfs_(blk, csv_options)
-
-
-def _read_from_hdfs_(blk, csv_options):
+def _read_hdfs(blk, format_type, separator, header, na_values, dtype,
+               error_bad_lines):
     """Load a dataframe from a HDFS file."""
-    df = Block(blk).readDataFrame(csv_options)
-    # df = df.infer_objects()
-    print "[INFO - ReadOperationHDFS] - ", df.info(verbose=False)
+    from hdfspycompss.Block import Block
+    print "[INFO - ReadOperationHDFS] - ", blk
+    separator = separator[0]
 
-    return df, [len(df)]
+    df = Block(blk).readDataFrame(format_file=format_type, infer=False,
+                                  separator=separator, dtype=dtype[0],
+                                  header=header, na_values=na_values,
+                                  error_bad_lines=error_bad_lines)
+
+    info = [df.columns.tolist(), df.dtypes.values, [len(df)]]
+    return df, info
+
+
+@task(returns=2, filename=FILE_IN)
+def _read_fs_task(filename, format_type, separator, header,
+                  na_values, dtype, error_bad_lines):
+    return _read_fs(filename, format_type, separator, header,
+                    na_values, dtype, error_bad_lines)
 
 
 @task(returns=2)
-def _read_from_hdfs(blk, csv_options):
-    """Load a dataframe from a HDFS file."""
-    print "[INFO - ReadOperationHDFS] - ", blk
-    if csv_options.get('separator', '') == '<new_line>':
-        csv_options['separator'] = '\n'
-
-    data, info = _read_from_hdfs_(blk, csv_options)
-
-    return data, info
+def _read_hdfs_task(blk, format_type, separator, header,
+                    na_values, dtype, error_bad_lines):
+    return _read_hdfs(blk, format_type, separator, header,
+                      na_values, dtype, error_bad_lines)
 
 
-def ReadOneCSVOperation(filename, settings):
-    """Method used to load a pandas DataFrame from a unique csv file.
+@task(returns=1)
+def merge_schema(schema1, schema2):
 
-    :param filename:  The absolute path where the dataset is stored.
-    :param settings: A dictionary with the following parameters:
-      - 'separator': Value used to separate fields (default, ',');
-      - 'header': True (default) if the first line is a header;
-      - 'infer':
-        *"NO": Do not infer the data type of each field;
-        *"FROM_VALUES": Try to infer the data type of each field (default);
-        *"FROM_LIMONERO": !! NOT IMPLEMENTED YET!!
-      - 'na_values': A list with the all nan caracteres. Default list:
-        '', '#N/A', '#N/A N/A', '#NA', '-1.#IND', '-1.#QNAN', '-NaN', '-nan',
-        '1.#IND', '1.#QNAN', 'N/A', 'NA', 'NULL', 'NaN', 'nan'
-    :return A DataFrame splitted in a list with length N.
-    """
-    separator = settings.get('separator', ',')
-    header = settings.get('header', True)
-    infer = settings.get('infer', 'FROM_VALUES')
-    na_values = ['', '#N/A', '#N/A N/A', '#NA', '-1.#IND',
-                 '-1.#QNAN', '-NaN', '-nan', '1.#IND', '1.#QNAN',
-                 'N/A', 'NA', 'NULL', 'NaN', 'nan']
-    if 'na_values' in settings:
-        na_values = settings['na_values']
-    if infer == "FROM_LIMONERO":
-        infer = "FROM_VALUES"
+    columns1, dtypes1,  p1 = schema1
+    columns2, dtypes2,  p2 = schema2
 
-    if infer not in ['NO', 'FROM_VALUES', 'FROM_LIMONERO']:
-        raise Exception("Please inform a valid `infer` type.")
+    schema = [columns1, dtypes1, p1+p2]
+    return schema
 
-    if separator == "<new_line>":
-        separator = "\n"
 
-    if header:
-        header = 'infer'
-    else:
-        header = None
 
-    if infer == "NO":
-        df = pd.read_csv(filename, sep=separator, na_values=na_values,
-                         header=header, dtype='str')
-
-    elif infer == "FROM_VALUES":
-        df = pd.read_csv(filename, sep=separator, na_values=na_values,
-                         header=header)
-
-    elif infer == "FROM_LIMONERO":
-        df = pd.DataFrame([])
-
-    if not header:
-        n_cols = len(df.columns)
-        new_columns = ['col_{}'.format(i) for i in range(n_cols)]
-        df.columns = new_columns
-    return df

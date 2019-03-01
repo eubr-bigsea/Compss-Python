@@ -4,72 +4,75 @@
 __author__ = "Lucas Miguel S Ponce"
 __email__ = "lucasmsp@gmail.com"
 
-from pycompss.api.parameter import INOUT
 from pycompss.api.task import task
 import pandas as pd
-import copy
 
 
-class DistinctOperation(object):
+def distinct(data, cols):
+    """
+    Returns a new DataFrame containing the distinct rows in this DataFrame.
 
-    def transform(self, data, cols, nfrag):
-        """
-        Returns a new DataFrame containing the distinct rows in this DataFrame.
+    :param data: A list with nfrag pandas's dataframe;
+    :param cols: A list with the columns names to take in count
+                (if no field is choosen, all fields are used).
+    :return: Returns a list with nfrag pandas's dataframe.
+    """
+    nfrag = len(data)
 
-        :param data: A list with nfrag pandas's dataframe;
-        :param cols: A list with the columns names to take in count
-                    (if no field is choosen, all fields are used).
-        :param nfrag: The number of fragments;
-        :return: Returns a list with nfrag pandas's dataframe.
-        """
+    if isinstance(data[0], pd.DataFrame):
+        # it is necessary to perform a deepcopy if data is not a FutureObject
+        # to enable multiple branches executions
+        import copy
+        result = copy.deepcopy(data)
+    else:
+        result = data[:]
 
-        if isinstance(data[0], pd.DataFrame):
-            result = copy.deepcopy(data)
-        else:
-            # when using deepcopy and variable is FutureObject
-            # list, COMPSs is not able to restore in worker
-            result = data[:]
+    info = [[] for _ in result]
 
-        x_i, y_i = self.preprocessing(nfrag)
-        for x, y in zip(x_i, y_i):
-            result[x], result[y] = _drop_duplicates(result[x], result[y], cols)
+    x_i, y_i = generate_pairs(nfrag)
+    for x, y in zip(x_i, y_i):
+        result[x], result[y], info[x], info[y] = \
+            _drop_duplicates(result[x], result[y], cols)
 
-        return result
-    
-    def preprocessing(self, nfrag):
-        import itertools
-        buff = list(itertools.combinations([x for x in range(nfrag)], 2))
+    output = {'key_data': ['data'], 'key_info': ['info'],
+              'data': result, 'info': info}
+    return output
 
-        def disjoint(a, b):
-            return set(a).isdisjoint(b)
 
-        x_i = []
-        y_i = []
+def generate_pairs(nfrag):
+    import itertools
+    buff = list(itertools.combinations([x for x in range(nfrag)], 2))
 
-        while len(buff) > 0:
-            x = buff[0][0]
-            step_list_i = []
-            step_list_j = []
-            if x >= 0:
-                y = buff[0][1]
-                step_list_i.append(x)
-                step_list_j.append(y)
-                buff[0] = [-1, -1]
-                for j in range(len(buff)):
-                    tuples = buff[j]
-                    if tuples[0] >= 0:
-                        if disjoint(tuples, step_list_i):
-                            if disjoint(tuples, step_list_j):
-                                step_list_i.append(tuples[0])
-                                step_list_j.append(tuples[1])
-                                buff[j] = [-1, -1]
-            del buff[0]
-            x_i.extend(step_list_i)
-            y_i.extend(step_list_j)
-        return x_i, y_i
+    def disjoint(a, b):
+        return set(a).isdisjoint(b)
+
+    x_i = []
+    y_i = []
+
+    while len(buff) > 0:
+        x = buff[0][0]
+        step_list_i = []
+        step_list_j = []
+        if x >= 0:
+            y = buff[0][1]
+            step_list_i.append(x)
+            step_list_j.append(y)
+            buff[0] = [-1, -1]
+            for j in range(len(buff)):
+                tuples = buff[j]
+                if tuples[0] >= 0:
+                    if disjoint(tuples, step_list_i):
+                        if disjoint(tuples, step_list_j):
+                            step_list_i.append(tuples[0])
+                            step_list_j.append(tuples[1])
+                            buff[j] = [-1, -1]
+        del buff[0]
+        x_i.extend(step_list_i)
+        y_i.extend(step_list_j)
+    return x_i, y_i
         
 
-@task(returns=2)
+@task(returns=4)
 def _drop_duplicates(data1, data2, cols):
     """Remove duplicate rows based in two fragments at the time."""
     data = pd.concat([data1, data2], axis=0, ignore_index=True, sort=False)
@@ -110,7 +113,10 @@ def _drop_duplicates(data1, data2, cols):
         data1.drop(data1.index[m1:], inplace=True)
         data2.drop(data2.index[m2:], inplace=True)
 
-        return data1, data2
+        info1 = [data1.columns.tolist(), data1.dtypes.values, [len(data1)]]
+        info2 = [data2.columns.tolist(), data2.dtypes.values, [len(data2)]]
+
+        return data1, data2, info1, info2
 
 
 def get_column(cols):

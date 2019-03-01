@@ -8,43 +8,39 @@ from pycompss.api.task import task
 import pandas as pd
 
 
-class UnionOperation(object):
-    """Union Operation.
+def union(data1, data2):
+    """
+    Function which do a union between two pandas DataFrame.
 
-    Function which do a union between two pandas dataframes.
+    :param data1:   A list with nfrag pandas's dataframe;
+    :param data2:   Other list with nfrag pandas's dataframe;
+    :return:        Returns a list with nfrag pandas's dataframe.
+
+    :note: Need schema as input
     """
 
-    def transform(self, data1, data2):
-        """UnionOperation.
+    nfrag = len(data1)
+    result = [[] for _ in range(nfrag)]
+    info = [[] for _ in range(nfrag)]
+    for f in range(nfrag):
+        result[f] = _union(data1[f], data2[f])
 
-        :param data1:   A list with nfrag pandas's dataframe;
-        :param data2:   Other list with nfrag pandas's dataframe;
-        :param nfrag: The number of fragments;
-        :return:        Returns a list with nfrag pandas's dataframe.
-        """
-
-        nfrag = len(data1)
-        result = [[] for _ in range(nfrag)]
-        for f in range(nfrag):
-            result[f] = _union(data1[f], data2[f])
-        return result
-
-    def transform_serial(self, list1, list2):
-        """Perform a partil union."""
-        return _union_(list1, list2)
+    output = {'key_data': ['data'], 'key_info': ['info'],
+              'data': result, 'info': info}
+    return output
 
 
-@task(returns=list)
-def _union(list1, list2):
+@task(returns=2)
+def _union(df1, df2):
     """Perform a partil union."""
-    return _union_(list1, list2)
 
-
-def _union_(list1, list2):
-    """Perform a partil union."""
-    if len(list1) == 0:
-        return list2
-    elif len(list2) == 0:
-        return list1
+    if len(df1) == 0:
+        result = df2
+    elif len(df2) == 0:
+        result = df1
     else:
-        return pd.concat([list1, list2], ignore_index=True)
+        result = pd.concat([df1, df2], ignore_index=True)
+
+    info = [result.columns.tolist(), result.dtypes.values, [len(result)]]
+    return result, info
+

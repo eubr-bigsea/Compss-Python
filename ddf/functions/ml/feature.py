@@ -7,7 +7,8 @@ __email__ = "lucasmsp@gmail.com"
 from pycompss.api.task import task
 from pycompss.functions.reduce import merge_reduce
 from pycompss.api.api import compss_wait_on
-from ddf.ddf import DDF, ModelDDF, DDFSketch
+from ddf.ddf import DDF, DDFSketch
+from ddf.ddf_model import ModelDDF
 from pycompss.api.local import *
 import numpy as np
 import pandas as pd
@@ -85,21 +86,22 @@ def _feature_assemble_(df, settings):
 
     if len(df) == 0:
         df[name] = np.nan
-        return df
-
-    # get the first row to see the type format of each column
-    rows = df[cols].iloc[0].values.tolist()
-    is_list, not_list = checkfields(rows, cols)
-
-    if len(is_list) == 0:
-        df[name] = df[cols].values.tolist()
     else:
-        tmp1 = df[not_list].values
-        tmp2 = np.array(df[is_list].sum(axis=1).values.tolist())
 
-        df[name] = np.concatenate((tmp1, tmp2), axis=1).tolist()
+        # get the first row to see the type format of each column
+        rows = df[cols].iloc[0].values.tolist()
+        is_list, not_list = checkfields(rows, cols)
 
-    return df
+        if len(is_list) == 0:
+            df[name] = df[cols].values.tolist()
+        else:
+            tmp1 = df[not_list].values
+            tmp2 = np.array(df[is_list].sum(axis=1).values.tolist())
+
+            df[name] = np.concatenate((tmp1, tmp2), axis=1).tolist()
+
+    info = [df.columns.tolist(), df.dtypes.values, [len(df)]]
+    return df, info
 
 
 def checkfields(rows, cols):
@@ -211,7 +213,6 @@ class RegexTokenizer(object):
                                       parent=[data.last_uuid],
                                       n_output=1, n_input=1)
 
-
         data._set_n_input(uuid_key, data.settings['input'])
         return DDF(task_list=data.task_list, last_uuid=uuid_key)
 
@@ -250,7 +251,8 @@ def _tokenizer_(data, settings):
     else:
         data[output_col] = np.ravel(result)
 
-    return data
+    info = [data.columns.tolist(), data.dtypes.values, [len(data)]]
+    return data, info
 
 
 class RemoveStopWords(DDFSketch):
@@ -324,14 +326,16 @@ class RemoveStopWords(DDFSketch):
         df, nfrag, tmp = self._ddf_inital_setup(data)
 
         result = [[] for _ in range(nfrag)]
+        info = [[] for _ in range(nfrag)]
         for f in range(nfrag):
-            result[f] = _remove_stopwords(df[f], self.settings, self.stopwords)
+            result[f], info[f] = _remove_stopwords(df[f], self.settings,
+                                                   self.stopwords)
 
         uuid_key = self._ddf_add_task(task_name='task_transform_stopwords',
                                       status='COMPLETED', lazy=False,
                                       function={0: result},
                                       parent=[tmp.last_uuid],
-                                      n_output=1, n_input=1)
+                                      n_output=1, n_input=1, info=info)
 
         self._set_n_input(uuid_key, 0)
         return DDF(task_list=tmp.task_list, last_uuid=uuid_key)
@@ -353,7 +357,7 @@ def merge_stopwords(data1, data2):
     return data1
 
 
-@task(returns=list)
+@task(returns=2)
 def _remove_stopwords(data, settings, stopwords):
     """Remove stopwords from a column."""
     columns = settings['input_col']
@@ -388,7 +392,9 @@ def _remove_stopwords(data, settings, stopwords):
                 new_data.append(col)
 
         data[alias] = np.reshape(new_data, -1, order='C')
-    return data
+
+    info = [data.columns.tolist(), data.dtypes.values, [len(data)]]
+    return data, info
 
 
 class CountVectorizer(ModelDDF):
@@ -488,14 +494,16 @@ class CountVectorizer(ModelDDF):
         df, nfrag, tmp = self._ddf_inital_setup(data)
 
         result = [[] for _ in range(nfrag)]
+        info = [[] for _ in range(nfrag)]
         for f in range(nfrag):
-            result[f] = _transform_BoW(df[f], vocabulary, self.settings)
+            result[f], info[f] = _transform_BoW(df[f], vocabulary,
+                                                self.settings)
 
         uuid_key = self._ddf_add_task(task_name='transform_count_vectorizer',
                                       status='COMPLETED', lazy=False,
                                       function={0: result},
                                       parent=[tmp.last_uuid],
-                                      n_output=1, n_input=1)
+                                      n_output=1, n_input=1, info=info)
 
         self._set_n_input(uuid_key, 0)
         return DDF(task_list=tmp.task_list, last_uuid=uuid_key)
@@ -568,7 +576,7 @@ def filter_words(vocabulary, params):
     return vocabulary
 
 
-@task(returns=1)
+@task(returns=2)
 def _transform_BoW(data, vocabulary, params):
     alias = params['output_col']
     columns = params['input_col']
@@ -590,7 +598,9 @@ def _transform_BoW(data, vocabulary, params):
                 vector[i][e] = (lines == w).sum()
 
     data[alias] = vector.tolist()
-    return data
+
+    info = [data.columns.tolist(), data.dtypes.values, [len(data)]]
+    return data, info
 
 
 class TfidfVectorizer(ModelDDF):
@@ -692,15 +702,16 @@ class TfidfVectorizer(ModelDDF):
         count = merge_reduce(mergeCount, counts)
 
         result = [[] for _ in range(nfrag)]
+        info = [[] for _ in range(nfrag)]
         for f in range(nfrag):
-            result[f] = \
+            result[f], info[f] = \
                 construct_tf_idf(df[f], vocabulary, self.settings, count)
 
         uuid_key = self._ddf_add_task(task_name='task_transform_tfidf',
                                       status='COMPLETED', lazy=False,
                                       function={0: result},
                                       parent=[tmp.last_uuid],
-                                      n_output=1, n_input=1)
+                                      n_output=1, n_input=1, info=info)
 
         self._set_n_input(uuid_key, 0)
         return DDF(task_list=tmp.task_list, last_uuid=uuid_key)
@@ -718,7 +729,7 @@ def mergeCount(data1, data2):
     return data1 + data2
 
 
-@task(returns=list)
+@task(returns=2)
 def construct_tf_idf(data, vocabulary, params, num_doc):
     """Construct the tf-idf feature.
 
@@ -760,7 +771,8 @@ def construct_tf_idf(data, vocabulary, params, num_doc):
 
     data[alias] = vector.tolist()
 
-    return data
+    info = [data.columns.tolist(), data.dtypes.values, [len(data)]]
+    return data, info
 
 
 class MinMaxScaler(ModelDDF):
@@ -851,14 +863,16 @@ class MinMaxScaler(ModelDDF):
         df, nfrag, tmp = self._ddf_inital_setup(data)
 
         result = [[] for _ in range(nfrag)]
+        info = [[] for _ in range(nfrag)]
         for f in range(nfrag):
-            result[f] = _minmax_scaler(df[f], self.settings, self.model[0])
+            result[f], info[f] = _minmax_scaler(df[f], self.settings,
+                                                self.model[0])
 
         uuid_key = self._ddf_add_task(task_name='task_transform_minmax_scaler',
                                       status='COMPLETED', lazy=False,
                                       function={0: result},
                                       parent=[tmp.last_uuid],
-                                      n_output=1, n_input=1)
+                                      n_output=1, n_input=1, info=info)
 
         self._set_n_input(uuid_key, 0)
         return DDF(task_list=tmp.task_list, last_uuid=uuid_key)
@@ -892,7 +906,7 @@ def _merge_maxmin(minmax1, minmax2):
     return minmax
 
 
-@task(returns=list)
+@task(returns=2)
 def _minmax_scaler(data, settings, minmax):
     """Normalize by min max mode."""
     features = settings['input_col']
@@ -917,7 +931,9 @@ def _minmax_scaler(data, settings, minmax):
         minimum, maximum = minmax[i]
         data[alias] = data[col].apply(
                 lambda xs: calculation(xs, minimum, maximum, min_r, max_r))
-    return data
+
+    info = [data.columns.tolist(), data.dtypes.values, [len(data)]]
+    return data, info
 
 
 class MaxAbsScaler(ModelDDF):
@@ -1002,14 +1018,16 @@ class MaxAbsScaler(ModelDDF):
         df, nfrag, tmp = self._ddf_inital_setup(data)
 
         result = [[] for _ in range(nfrag)]
+        info = [[] for _ in range(nfrag)]
         for f in range(nfrag):
-            result[f] = _maxabs_scaler(df[f], self.model[0], self.settings)
+            result[f], info[f] = _maxabs_scaler(df[f], self.model[0],
+                                                self.settings)
 
         uuid_key = self._ddf_add_task(task_name='task_transform_maxabs_scaler',
                                       status='COMPLETED', lazy=False,
                                       function={0: result},
                                       parent=[tmp.last_uuid],
-                                      n_output=1, n_input=1)
+                                      n_output=1, n_input=1, info=info)
 
         self._set_n_input(uuid_key, 0)
         return DDF(task_list=tmp.task_list, last_uuid=uuid_key)
@@ -1047,7 +1065,7 @@ def _merge_maxabs(minmax1, minmax2):
     return maxabs
 
 
-@task(returns=list)
+@task(returns=2)
 def _maxabs_scaler(data, minmax, settings):
     """Normalize by range mode."""
     features = settings['input_col']
@@ -1071,7 +1089,8 @@ def _maxabs_scaler(data, minmax, settings):
         data[alias] = data[col].apply(
                 lambda xs: calculation(xs, minimum, maximum))
 
-    return data
+    info = [data.columns.tolist(), data.dtypes.values, [len(data)]]
+    return data, info
 
 
 class StandardScaler(ModelDDF):
@@ -1169,14 +1188,16 @@ class StandardScaler(ModelDDF):
 
         mean, sse = self.model[0]
         result = [[] for _ in range(nfrag)]
+        info = [[] for _ in range(nfrag)]
         for f in range(nfrag):
-            result[f] = _stardard_scaler(df[f], self.settings, mean, sse)
+            result[f], info[f] = _stardard_scaler(df[f], self.settings,
+                                                  mean, sse)
 
         uuid_key = self._ddf_add_task(task_name='transform_standard_scaler',
                                       status='COMPLETED', lazy=False,
                                       function={0: result},
                                       parent=[tmp.last_uuid],
-                                      n_output=1, n_input=1)
+                                      n_output=1, n_input=1, info=info)
 
         self._set_n_input(uuid_key, 0)
         return DDF(task_list=tmp.task_list, last_uuid=uuid_key)
@@ -1186,6 +1207,7 @@ class StandardScaler(ModelDDF):
 def _agg_sum(df, features):
     """Pre-compute some values."""
     sum_partial = []
+    print "DDDF", df
     for feature in features:
         sum_p = [np.nansum(df[feature].values.tolist(), axis=0),
                  len(df[feature])]
@@ -1240,7 +1262,7 @@ def _merge_sse(sum1, sum2):
     return sum_count
 
 
-@task(returns=list)
+@task(returns=2)
 def _stardard_scaler(data, settings, mean, sse):
     """Normalize by Standard mode."""
     features = settings['input_col']
@@ -1274,7 +1296,8 @@ def _stardard_scaler(data, settings, mean, sse):
         data[alias] = data[col] \
             .apply(lambda xs: computation_scaler(xs, means, stds))
 
-    return data
+    info = [data.columns.tolist(), data.dtypes.values, [len(data)]]
+    return data, info
 
 
 class StringIndexer(ModelDDF):
@@ -1303,7 +1326,7 @@ class StringIndexer(ModelDDF):
         self.settings['input_col'] = input_col
         self.settings['output_col'] = output_col
 
-        self.model = []
+        self.model = {}
         self.name = 'StringIndexer'
 
     def fit(self, data):
@@ -1321,7 +1344,7 @@ class StringIndexer(ModelDDF):
         mapper = [get_indexes(df[f], in_col) for f in range(nfrag)]
         mapper = merge_reduce(merge_mapper, mapper)
 
-        self.model = [compss_wait_on(mapper)]
+        self.model['model'] = compss_wait_on(mapper)
         return self
 
     def fit_transform(self, data):
@@ -1352,15 +1375,16 @@ class StringIndexer(ModelDDF):
         df, nfrag, tmp = self._ddf_inital_setup(data)
 
         result = [[] for _ in range(nfrag)]
+        info = [[] for _ in range(nfrag)]
         for f in range(nfrag):
-            result[f] = _string_to_indexer(df[f], in_col, out_col,
-                                           self.model[0])
+            result[f], info[f] = _string_to_indexer(df[f], in_col, out_col,
+                                                    self.model['model'])
 
         uuid_key = self._ddf_add_task(task_name='transform_string_indexer',
                                       status='COMPLETED', lazy=False,
                                       function={0: result},
                                       parent=[tmp.last_uuid],
-                                      n_output=1, n_input=1)
+                                      n_output=1, n_input=1, info=info)
 
         self._set_n_input(uuid_key, 0)
         return DDF(task_list=tmp.task_list, last_uuid=uuid_key)
@@ -1379,13 +1403,15 @@ def merge_mapper(data1, data2):
     return np.unique(data1)
 
 
-@task(returns=list)
+@task(returns=2)
 def _string_to_indexer(data, in_col, out_col, mapper):
     """Convert string to index based in the model."""
     news = [i for i in range(len(mapper))]
     mapper = mapper.tolist()
     data[out_col] = data[in_col].replace(to_replace=mapper, value=news)
-    return data
+
+    info = [data.columns.tolist(), data.dtypes.values, [len(data)]]
+    return data, info
 
 
 class IndexToString(ModelDDF):
@@ -1414,7 +1440,7 @@ class IndexToString(ModelDDF):
         self.settings['input_col'] = input_col
         self.settings['output_col'] = output_col
 
-        self.model = [model.model[0]]
+        self.model = model.model
         self.name = 'IndexToString'
 
     def transform(self, data):
@@ -1428,27 +1454,31 @@ class IndexToString(ModelDDF):
         df, nfrag, tmp = self._ddf_inital_setup(data)
 
         result = [[] for _ in range(nfrag)]
+        info = [[] for _ in range(nfrag)]
         for f in range(nfrag):
-            result[f] = _index_to_string(df[f], input_col,
-                                         output_col, self.model[0])
+            result[f], info[f] = _index_to_string(df[f], input_col,
+                                                  output_col,
+                                                  self.model['model'])
 
         uuid_key = self._ddf_add_task(task_name='transform_indextostring',
                                       status='COMPLETED', lazy=False,
                                       function={0: result},
                                       parent=[tmp.last_uuid],
-                                      n_output=1, n_input=1)
+                                      n_output=1, n_input=1, info=info)
 
         self._set_n_input(uuid_key, 0)
         return DDF(task_list=tmp.task_list, last_uuid=uuid_key)
 
 
-@task(returns=list)
+@task(returns=2)
 def _index_to_string(data, inputCol, outputCol, mapper):
     """Convert index to string based in the model."""
     news = [i for i in range(len(mapper))]
     mapper = mapper.tolist()
     data[outputCol] = data[inputCol].replace(to_replace=news, value=mapper)
-    return data
+
+    info = [data.columns.tolist(), data.dtypes.values, [len(data)]]
+    return data, info
 
 
 class PCA(ModelDDF):
@@ -1548,14 +1578,16 @@ class PCA(ModelDDF):
         pred_col = self.settings['output_col']
 
         result = [[] for _ in range(nfrag)]
+        info = [[] for _ in range(nfrag)]
         for f in range(nfrag):
-            result[f] = _pca_transform(df[f], features_col, pred_col, model)
+            result[f], info[f] = _pca_transform(df[f], features_col,
+                                                pred_col, model)
 
         uuid_key = self._ddf_add_task(task_name='transform_pca',
                                       status='COMPLETED', lazy=False,
                                       function={0: result},
                                       parent=[tmp.last_uuid],
-                                      n_output=1, n_input=1)
+                                      n_output=1, n_input=1, info=info)
 
         # a ml.transform will always have cache() before
         self._set_n_input(uuid_key, 0)
@@ -1631,7 +1663,7 @@ def pca_eigen_decomposition(info, n_components):
     return var_exp, eig_vals, eig_vecs, matrix_w
 
 
-@task(returns=1)
+@task(returns=2)
 def _pca_transform(data, features, pred_col, matrix_w):
     """Reduce the dimensionality based in the created model."""
     tmp = []
@@ -1640,4 +1672,6 @@ def _pca_transform(data, features, pred_col, matrix_w):
         tmp = array.dot(matrix_w).tolist()
 
     data[pred_col] = tmp
-    return data
+
+    info = [data.columns.tolist(), data.dtypes.values, [len(data)]]
+    return data, info

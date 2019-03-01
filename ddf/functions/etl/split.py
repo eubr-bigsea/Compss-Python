@@ -1,71 +1,67 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 
+from pycompss.api.local import local
 from pycompss.api.task import task
-from pycompss.functions.reduce import merge_reduce
 import numpy as np
 import math
 
 
-class SplitOperation(object):
-    """Split Operation: Randomly splits a Data Frame into two dataframes."""
+def split(data, settings):
+    """
+    Randomly splits a DataFrame into two distintics DataFrames.
 
-    def transform(self, data, settings, nfrag):
-        """SplitOperation.
+    :param data: A list with nfrag pandas's DataFrame;
+    :param settings: A dictionary that contains:
+      - 'percentage': Percentage to split the data (default, 0.5);
+      - 'seed': Optional, seed in case of deterministic random operation;
+      - 'info': information generated from others tasks (automatic);
+    :return: Returns two lists with nfrag pandas's DataFrame with
+     distincts subsets of the input.
 
-        :param data: A list with nfrag pandas's dataframe;
-        :param settings: A dictionary that contains:
-          - 'percentage': Percentage to split the data (default, 0.5);
-          - 'seed': Optional, seed in case of deterministic random operation.
-        :param nfrag: A number of fragments;
-        :return: Returns two lists with nfrag pandas's dataframe with
-                 distincts subsets of the input.
+    ..note: The operation consists of two stages: first, we define the
+     distribution; and the second we split the data. The first part cannot be
+     grouped with others stages because we need information about the
+     size in each partition. The second part cannot be grouped as well because
+     generates two differents outputs data.
+    """
+    nfrag = len(data)
 
-        Note: if percentage = 0.25, the final dataframes
-              will have respectively, 25% and 75%.
-        """
+    idxs = _preprocessing(settings, nfrag)
+    out1 = [[] for _ in range(nfrag)]
+    out2 = [[] for _ in range(nfrag)]
+    info1 = [[] for _ in range(nfrag)]
+    info2 = [[] for _ in range(nfrag)]
 
-        idxs = self.preprocessing(settings, data, nfrag)
-        splits1 = [[] for _ in range(nfrag)]
-        splits2 = [[] for _ in range(nfrag)]
-        for i in range(nfrag):
-            splits1[i], splits2[i] = _get_splits(data[i], idxs, i)
-        return [splits1, splits2]
+    for i, fraction in enumerate(idxs):
+        out1[i], out2[i], info1[i], info2[i] = _split_get(data[i], fraction)
 
-    def preprocessing(self, settings, data, nfrag):
-        percentage = settings.get('percentage', 0.5)
-        seed = settings.get('seed', None)
-
-        if percentage < 0 or percentage > 1:
-            raise Exception("Please inform a valid percentage [0, 1].")
-
-        # count the size of each fragment and create a mapping
-        # of the elements to be selected.
-        partial_counts = [_count_record(d) for d in data]
-        total = merge_reduce(_merge_count, partial_counts)
-        idxs = _define_splits(total, percentage, seed, nfrag)
-        return idxs
+    output = {'key_data': ['data1', 'data2'],
+              'key_info': ['info1', 'info2'],
+              'data1': out1, 'info1': info1,
+              'data2': out2, 'info2': info2}
+    return output
 
 
-@task(returns=list, priority=True)
-def _count_record(data):
-    """Count the partial length."""
-    size = len(data)
-    return [size, [size]]
+def _preprocessing(settings, nfrag):
+    percentage = settings.get('percentage', 0.5)
+    seed = settings.get('seed', None)
+    info = settings['info'][0]
+
+    if percentage < 0 or percentage > 1:
+        raise Exception("Please inform a valid percentage [0, 1].")
+
+    idxs = _split_allocate(info, percentage, seed, nfrag)
+    return idxs
 
 
-@task(returns=list, priority=True)
-def _merge_count(df1, df2):
-    """Merge the partial lengths."""
-    return [df1[0]+df2[0], np.concatenate((df1[1], df2[1]), axis=0)]
-
-
-# from pycompss.api.local import local
-# or @local
-@task(returns=list)
-def _define_splits(total, percentage, seed, nfrag):
+@local
+def _split_allocate(info, percentage, seed, nfrag):
     """Define a list of indexes to be splitted."""
-    total, n_list = total
+
+    n_list = info[2]
+    total = sum(n_list)
+
     size = int(math.floor(total*percentage))
 
     np.random.seed(seed)
@@ -84,11 +80,14 @@ def _define_splits(total, percentage, seed, nfrag):
     return list_ids
 
 
-@task(returns=2)
-def _get_splits(data, indexes, frag):
+@task(returns=4)
+def _split_get(data, indexes):
     """Retrieve the split."""
     data.reset_index(drop=True, inplace=True)
-    idx = data.index.isin(indexes[frag])
+    idx = data.index.isin(indexes)
     split1 = data.loc[idx]
-    data.drop(index=indexes[frag], inplace=True)
-    return split1, data
+    data.drop(index=indexes, inplace=True)
+
+    info1 = [split1.columns.tolist(), split1.dtypes.values, [len(split1)]]
+    info2 = [data.columns.tolist(), data.dtypes.values, [len(data)]]
+    return split1, data, info1, info2

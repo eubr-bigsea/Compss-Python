@@ -22,7 +22,16 @@ class IntersectionOperation(object):
 
         .. note:: Rows with NA elements will not be take in count.
         """
-        result = data1[:]
+        if isinstance(data1[0], pd.DataFrame):
+            # it is necessary to perform a deepcopy if data is not a
+            # FutureObject
+            # to enable multiple branches executions
+            import copy
+            result = copy.deepcopy(data1)
+        else:
+            result = data1[:]
+
+        info = [[] for _ in result]
 
         nfrag1 = len(data1)
         nfrag2 = len(data2)
@@ -30,13 +39,15 @@ class IntersectionOperation(object):
         for f1 in xrange(nfrag1):
             for f2 in xrange(nfrag2):
                 last = (f2 == (nfrag2-1))
-                result[f1] = _intersection(result[f1], data2[f2],
-                                           f2, last)
+                result[f1], info[f1] = _intersection(result[f1], data2[f2],
+                                                     f2, last)
 
-        return result
+        output = {'key_data': ['data'], 'key_info': ['info'],
+                  'data': result, 'info': info}
+        return output
 
 
-@task(returns=list)
+@task(returns=2)
 def _intersection(df1, df2, index, last):
     """Perform a partial intersection."""
     if len(df1) > 0:
@@ -66,7 +77,9 @@ def _intersection(df1, df2, index, last):
 
         if last:
             df1 = df1.loc[df1['_merge'] == 'both', keys]
-    return df1
+
+    info = [df1.columns.tolist(), df1.dtypes.values, [len(df1)]]
+    return df1, info
 
 
 

@@ -5,108 +5,107 @@ __author__ = "Lucas Miguel S Ponce"
 __email__ = "lucasmsp@gmail.com"
 
 from pycompss.api.task import task
-from pycompss.functions.reduce import merge_reduce
 import numpy as np
 import math
 
 
-class SampleOperation(object):
-    """Sample Operation.
-
-    Returns a sampled subset of the input panda's dataFrame.
+def take(data, settings):
     """
+    Returns the first n elements of the input panda's DataFrame.
 
-    def transform(self, data, params, nfrag):
-        """SampleOperation.
+    :param data: A list of pandas's DataFrame;
+    :param settings: dictionary that contains:
+     - value: integer value to be sampled;
+     - info: information generated from others tasks (automatic);
+    :return: A list of pandas's DataFrame.
 
-        :param data: A list with nfrag pandas's dataframe;
-        :param params: dictionary that contains:
-            - type:
-                * 'percent': Sample a random amount of records (default)
-                * 'value': Sample a N random records
-                * 'head': Sample the N firsts records of the dataframe
-            - seed : Optional, seed for the random operation.
-            - int_value: Value N to be sampled (in 'value' or 'head' type)
-            - per_value: Percentage to be sampled (in 'value' or 'head' type)
-        :param nfrag: The number of fragments;
-        :return: A list with nfrag pandas's dataframe.
-        """
+    .. note: This operations contains two stages: the first one is to define
+     the distribution; and the second is to create the sample itself. The first
+     part cannot be grouped with others tasks because this function needs
+     the schema information. The second part could be grouped.
 
-        idxs = self.preprocessing(params, data, nfrag)
+    TODO: rebalance the list, group the second stage
+    """
+    nfrag = len(data)
 
-        result = [[] for _ in range(nfrag)]
-        for f in range(nfrag):
-            result[f] = _get_samples(data[f], idxs, f)
+    info = settings['info'][0]
+    value = settings['value']
 
-        return result
+    idxs = _take_define_sample(info, value, nfrag)
 
-    def preprocessing(self, params, data, nfrag):
-        """Check the settings."""
-        TYPE = params.get("type", 'percent')
-        if TYPE not in ['percent', 'value', 'head']:
-            raise Exception('You must inform a valid sampling type.')
+    result = [[] for _ in range(nfrag)]
+    info = [[] for _ in range(nfrag)]
 
-        value = -1
-        op = 'int'
-        if TYPE == 'head' or TYPE == 'value':
-            if 'int_value' in params:
-                value = params['int_value']
-                op = 'int'
-                if not isinstance(value, int) and value < 0:
-                    raise Exception('`int_value` must be a positive integer.')
-            elif 'per_value' in params:
-                value = params['per_value']
-                op = 'per'
-                if value > 1 or value < 0:
-                    raise Exception('Percentage value must between 0 and 1.0.')
-            else:
-                raise Exception('Using `Head` or `value` sampling type you '
-                                'need to set `int_value` or `per_value` '
-                                'setting as well.')
+    for f in range(nfrag):
+        result[f], info[f] = _get_samples(data[f], idxs, f)
 
-        partial_counts = [_count_records(data[i]) for i in range(nfrag)]
-        info = merge_reduce(_merge_counts, partial_counts)
-
-        if TYPE == 'percent':
-            seed = params.get('seed', None)
-            idxs = _define_n_sample(info, None, seed, True, 'null', nfrag)
-
-        elif TYPE == 'value':
-            seed = params.get('seed', None)
-            idxs = _define_n_sample(info, value, seed, False, op, nfrag)
-
-        elif TYPE == 'head':
-            idxs = _define_head_sample(info, value, op, nfrag)
-
-        return idxs
-
-    def transform_serial(self, data, indexes, i):
-        """Perform a partial sampling."""
-        indexes = indexes[i]
-        data = data.reset_index(drop=True)
-        sample = data.loc[data.index.isin(indexes)]
-
-        return [sample, len(sample)]
+    output = {'key_data': ['data'], 'key_info': ['info'],
+              'data': result, 'info': info}
+    return output
 
 
-@task(returns=list)
-def _count_records(data):
-    """It is necessary count the distribuition of the data in each fragment."""
-    size = len(data)
-    return [size, [size]]
+def sample(data, params):
+    """
+    Returns a sampled subset of the input panda's DataFrame.
+
+    :param data: A list of pandas's DataFrame;
+    :param params: dictionary that contains:
+      - type: 'percent' to sample a random amount of records (default) or
+       'value' to sample a N random records;
+      - seed : Optional, seed for the random operation.
+      - int_value: Value N to be sampled (in 'value' or 'head' type)
+      - per_value: Percentage to be sampled (in 'value' or 'head' type)
+      - info: information generated from others tasks (automatic);
+    :return: A list of pandas's DataFrame.
+
+    .. note: This operations contains two stages: the first one is to define
+     the distribution; and the second is to create the sample itself. The first
+     part cannot be grouped with others tasks because this function needs
+     the schema information. The second part could be grouped.
+
+    TODO: rebalance the list, group the second stage
+    """
+    nfrag = len(data)
+    idxs = _sample_preprocessing(params, nfrag)
+
+    result = [[] for _ in range(nfrag)]
+    info = [[] for _ in range(nfrag)]
+    for f in range(nfrag):
+        result[f], info[f] = _get_samples(data[f], idxs, f)
+
+    output = {'key_data': ['data'], 'key_info': ['info'],
+              'data': result, 'info': info}
+    return output
 
 
-@task(returns=list)
-def _merge_counts(data1, data2):
-    """Merge the partial counts."""
-    return [data1[0]+data2[0], np.concatenate((data1[1], data2[1]), axis=0)]
+def _sample_preprocessing(params, nfrag):
+    """Check the settings."""
+    sample_type = params.get("type", 'percent')
+    seed = params.get('seed', None)
+    info = params['info'][0]
+    value = abs(params['value'])
+    op = 'int' if isinstance(value, int) else 'per'
+
+    if sample_type == 'percent':
+        idxs = _define_n_sample(info, None, seed, True, 'null', nfrag)
+
+    else:
+        if op is 'per':
+            if value > 1 or value < 0:
+                raise Exception('Percentage value must between 0 and 1.0.')
+
+        idxs = _define_n_sample(info, value, seed, False, op, nfrag)
+
+    return idxs
 
 
-@task(returns=list)
-def _define_n_sample(n_list, value, seed, random, int_per, nfrag):
+@task(returns=1)
+def _define_n_sample(info, value, seed, random, int_per, nfrag):
     """Define the N random indexes to be sampled."""
 
-    total, n_list = n_list
+    n_list = info[2]
+    total = sum(n_list)
+
     if int_per == 'int':
         if total < value:
             value = total
@@ -133,15 +132,14 @@ def _define_n_sample(n_list, value, seed, random, int_per, nfrag):
     return list_ids
 
 
-@task(returns=list)
-def _define_head_sample(n_list, head, int_per, nfrag):
+@task(returns=1)
+def _take_define_sample(info, head, nfrag):
     """Define the head N indexes to be sampled."""
-    total, n_list = n_list
-    if int_per == 'int':
-        if total < head:
-            head = total
-    elif int_per == 'per':
-        head = int(math.ceil(total*head))
+    n_list = info[2]
+    total = sum(n_list)
+
+    if total < head:
+        head = total
 
     list_ids = [[] for _ in range(nfrag)]
 
@@ -160,12 +158,15 @@ def _define_head_sample(n_list, head, int_per, nfrag):
     return list_ids
 
 
-@task(returns=list)
+@task(returns=2)
 def _get_samples(data, indexes, i):
     """Perform a partial sampling."""
     indexes = indexes[i]
     data.reset_index(drop=True, inplace=True)
-    return data.loc[data.index.isin(indexes)]
+    result = data.loc[data.index.isin(indexes)]
+
+    info = [result.columns.tolist(), result.dtypes.values, [len(result)]]
+    return result, info
 
 
 

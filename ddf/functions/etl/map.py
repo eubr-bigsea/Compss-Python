@@ -5,55 +5,35 @@ __author__ = "Lucas Miguel S Ponce"
 __email__ = "lucasmsp@gmail.com"
 
 import numpy as np
-import pandas as pd
-
-# basic imports:
 import datetime
-import time
-from dateutil.parser import parse
 
 
-"""
-
-"""
-
-#TODO: check apply method
-class TransformOperation(object):
+def map(data, settings):
     """
     Returns a new DataFrame applying the expression to the specified column.
-    """
 
-    def transform(self, data, settings):
-        """
-        :param data:  A list with nfrag pandas's dataframe;
-        :param settings: A dictionary that contains:
-            - function: A lambda function;
-            - alias: New column name;
-        :return: Returns a list with nfrag pandas's dataframe with
-                   the news columns.
-        """
+    :param data:  A pandas's DataFrame;
+    :param settings: A dictionary that contains:
+        - function: A lambda function;
+        - alias: New column name;
+    :return: Returns pandas's DataFrame with the news columns.
 
-        return _apply(data, settings)
-
-
-def _apply(df, settings):
-    """Apply the Transformation operation in each row."""
-
-    """
-    see also: 
+    .. seealso::
     https://engineering.upside.com/a-beginners-guide-to-optimizing-pandas-
     code-for-speed-c09ef2c6a4d6
     """
     function = settings['function']
     new_column = settings['alias']
 
-    if len(df) > 0:
+    if len(data) > 0:
         # vectorized_function = np.vectorize(function)
-        df[new_column] = df.apply(function, axis=1)
+        data[new_column] = data.apply(function, axis=1)
 
     else:
-        df[new_column] = np.nan
-    return df
+        data[new_column] = np.nan
+
+    info = [data.columns.tolist(), data.dtypes.values, [len(data)]]
+    return data, info
 
 
 def group_datetime(d, interval):

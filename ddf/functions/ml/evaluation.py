@@ -7,7 +7,8 @@ __email__ = "lucasmsp@gmail.com"
 from pycompss.api.task import task
 from pycompss.functions.reduce import merge_reduce
 from pycompss.api.local import *
-from ddf.ddf import COMPSsContext, DDF, DDFSketch
+from ddf.ddf import DDFSketch
+
 import numpy as np
 import pandas as pd
 
@@ -195,8 +196,8 @@ def CME_stage2(confusion_matrix):
     for i in labels:
         acertos += confusion_matrix[i].ix[i]
         TP = confusion_matrix[i].ix[i]
-        Precisions.append(float(TP) / confusion_matrix.ix[i].sum())
-        Recalls.append(float(TP) / confusion_matrix[i].sum())
+        Precisions.append(np.divide(float(TP), confusion_matrix.ix[i].sum()))
+        Recalls.append(np.divide(float(TP), confusion_matrix[i].sum()))
 
     Accuracy = float(acertos) / N
 

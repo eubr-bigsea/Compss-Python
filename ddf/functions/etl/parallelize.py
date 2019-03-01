@@ -6,9 +6,8 @@ import math
 import pandas as pd
 
 
-def Partitionize(data, nfrag):
-    """Partitionize.
-
+def parallelize(data, nfrag):
+    """
        Method to split the data in nfrag parts. This method simplifies
        the use of chunks.
 
@@ -21,11 +20,16 @@ def Partitionize(data, nfrag):
 
     new_size = int(math.ceil(float(len(data))/nfrag))
     result = [d for d in chunks(data, new_size)]
+
     while len(result) < nfrag:
         result.append(pd.DataFrame(columns=result[0].columns))
-    if len(result) > nfrag:
-        raise Exception("Error in Partitione data function")
 
-    return result
+    info = []
+    for r in result:
+        info.append([r.columns.tolist(), r.dtypes.values, [len(r)]])
+    if len(result) > nfrag:
+        raise Exception("Error in parallelize function")
+
+    return result, info
 
 

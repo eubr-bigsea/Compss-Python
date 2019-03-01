@@ -5,60 +5,49 @@ __author__ = "Lucas Miguel S Ponce"
 __email__ = "lucasmsp@gmail.com"
 
 from pycompss.api.task import task
+import pandas as pd
+import string
+import random
 
 
-class CrossJoinOperation(object):
+def crossjoin(data1, data2):
+    """
+    Returns the cartesian product with another DataFrame.
 
-    def transform(self, data1, data2):
-        """
-        Returns the cartesian product with another DataFrame.
+    :param data1: A list of pandas's dataframe;
+    :param data2: A list of pandas's dataframe;
+    :return: Returns a list of pandas's dataframe.
+    """
 
-        :param data1: A list with nfrag pandas's dataframe;
-        :param data2: A list with nfrag pandas's dataframe;
-        :return: Returns a list with nfrag pandas's dataframe.
-        """
+    nfrag = len(data1)
+    result = [[] for _ in range(nfrag)]
+    info = [[] for _ in range(nfrag)]
 
-        if isinstance(data[0], pd.DataFrame):
-            result = copy.deepcopy(data)
-        else:
-            # when using deepcopy and variable is FutureObject
-            # list, COMPSs is not able to restore in worker
-            result = data[:]
+    for f, df1 in enumerate(data1):
+        for df2 in data2:
+            result[f], info[f] = _crossjoin(result[f], df1, df2)
 
-        x_i, y_i = self.preprocessing(nfrag)
-        for x, y in zip(x_i, y_i):
-            result[x], result[y] = _drop_duplicates(result[x], result[y], cols)
+    output = {'key_data': ['data'], 'key_info': ['info'],
+              'data': result, 'info': info}
+    return output
 
-        return result
 
-    def preprocessing(self, nfrag):
-        import itertools
-        buff = list(itertools.combinations([x for x in range(nfrag)], 2))
+@task(returns=2)
+def _crossjoin(result, df1, df2):
 
-        def disjoint(a, b):
-            return set(a).isdisjoint(b)
+    key = 'key'
+    while key in df1.columns or key in df2.columns:
+        key = ''.join([random.choice(string.ascii_letters) for _ in xrange(10)])
 
-        x_i = []
-        y_i = []
+    df1[key] = 1
+    df2[key] = 1
 
-        while len(buff) > 0:
-            x = buff[0][0]
-            step_list_i = []
-            step_list_j = []
-            if x >= 0:
-                y = buff[0][1]
-                step_list_i.append(x)
-                step_list_j.append(y)
-                buff[0] = [-1, -1]
-                for j in range(len(buff)):
-                    tuples = buff[j]
-                    if tuples[0] >= 0:
-                        if disjoint(tuples, step_list_i):
-                            if disjoint(tuples, step_list_j):
-                                step_list_i.append(tuples[0])
-                                step_list_j.append(tuples[1])
-                                buff[j] = [-1, -1]
-            del buff[0]
-            x_i.extend(step_list_i)
-            y_i.extend(step_list_j)
-        return x_i, y_i
+    product = df1.merge(df2, on=key).drop(key, axis=1)
+
+    if len(result) == 0:
+        result = product
+    else:
+        result = pd.concat([result, product], sort=True)
+
+    info = [result.columns.tolist(), result.dtypes.values, [len(result)]]
+    return result, info

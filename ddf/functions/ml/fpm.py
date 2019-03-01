@@ -46,7 +46,7 @@ class Apriori(DDFSketch):
         self.settings['column'] = column
         self.settings['min_support'] = min_support
 
-        self.model = []
+        self.model = {}
         self.name = 'Apriori'
         self.result = []
 
@@ -93,10 +93,15 @@ class Apriori(DDFSketch):
         large_set = np.array_split(large_set, nfrag)
 
         result = []
+        info = []
+        cols = ['items', 'support']
         for subset in large_set:
-            result.append(pd.DataFrame(subset, columns=['items', 'support']))
+            sub = pd.DataFrame(subset, columns=cols)
+            result.append(sub)
+            info.append([cols, sub.dtypes.values, [len(sub)]])
 
-        self.model = [result, tmp.task_list, tmp.last_uuid]
+        self.model = {'data': result, 'info': info, 'tasklist': tmp.task_list,
+                      'last_uuid': tmp.last_uuid}
 
         return self
 
@@ -113,11 +118,12 @@ class Apriori(DDFSketch):
 
             uuid_key = self._ddf_add_task(task_name='task_apriori',
                                           status='COMPLETED', lazy=False,
-                                          function={0: self.model[0]},
-                                          parent=[self.model[2]],
-                                          n_output=1, n_input=1)
+                                          function={0: self.model['data']},
+                                          parent=[self.model['last_uuid']],
+                                          n_output=1, n_input=1,
+                                          info=self.model['info'])
 
-            tmp = DDF(task_list=self.model[1], last_uuid=uuid_key)
+            tmp = DDF(task_list=self.model['tasklist'], last_uuid=uuid_key)
             self.result = [tmp]
             return tmp
         else:
@@ -327,9 +333,12 @@ class AssociationRules(DDFSketch):
         col_item = self.settings['col_item']
         col_freq = self.settings['col_freq']
         min_conf = self.settings['confidence']
-        df_rules = [[] for _ in range(nfrag)]
+
+        info = [[] for _ in range(nfrag)]
+        result = [[] for _ in range(nfrag)]
         for f in range(nfrag):
-            df_rules[f] = _ar_get_rules(df, col_item, col_freq, f, min_conf)
+            result[f], info[f] = _ar_get_rules(df, col_item, col_freq,
+                                               f, min_conf)
 
         # if max_rules > -1:
         #     conf = ['confidence']
@@ -342,15 +351,15 @@ class AssociationRules(DDFSketch):
 
         uuid_key = self._ddf_add_task(task_name='task_associative_rules',
                                       status='COMPLETED', lazy=False,
-                                      function={0: df_rules},
+                                      function={0: result},
                                       parent=[tmp.last_uuid],
-                                      n_output=1, n_input=1)
+                                      n_output=1, n_input=1, info=info)
 
         self._set_n_input(uuid_key, 0)
         return DDF(task_list=tmp.task_list, last_uuid=uuid_key)
 
 
-@task(returns=1)
+@task(returns=2)
 def _ar_get_rules(df, col_item, col_freq, i, min_confidence):
     """Perform a partial rules generation."""
     list_rules = []
@@ -375,7 +384,9 @@ def _ar_get_rules(df, col_item, col_freq, i, min_confidence):
     cols = ['Pre-Rule', 'Post-Rule', 'confidence']
     rules = pd.DataFrame(list_rules, columns=cols)
 
-    return rules
+    info = [cols, rules.dtypes.values, [len(rules)]]
+    return rules, info
+
 
 
 @task(returns=list)

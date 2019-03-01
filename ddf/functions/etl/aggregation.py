@@ -63,7 +63,7 @@ class AggregationOperation(object):
         #     params['operation'][key].append()
         #
 
-
+        info = [[] for _ in range(nfrag)]
         tmp = [[] for _ in range(nfrag)]
         idx = [[] for _ in range(nfrag)]
         for f in range(nfrag):
@@ -77,9 +77,12 @@ class AggregationOperation(object):
         for f1 in range(nfrag):
             for f2 in range(nfrag):
                 if f1 != f2 and overlapping[f1][f2]:
-                    result[f1] = _merge_aggregation(result[f1], tmp[f2],
+                    result[f1], info[f1] = _merge_aggregation(result[f1], tmp[f2],
                                                     params, f1, f2)
-        return result
+
+        output = {'key_data': ['data'], 'key_info': ['info'],
+                  'data': result, 'info': info}
+        return output
 
 
 def overlap(sorted_idx):
@@ -155,7 +158,7 @@ def _aggregate(data, params, idx):
     return data
 
 
-@task(returns=list)
+@task(returns=2)
 def _merge_aggregation(data1, data2, params, f1, f2):
     """Combining the aggregation with other fragment.
 
@@ -196,8 +199,8 @@ def _merge_aggregation(data1, data2, params, f1, f2):
         # remove the different level
         data1.reset_index(inplace=True)
 
-        return data1
-    return data1
+    info = [data1.columns.tolist(), data1.dtypes.values, [len(data1)]]
+    return data1, info
 
 
 def check_dtypes(data1, data2):

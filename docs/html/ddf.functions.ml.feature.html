@@ -271,7 +271,7 @@ the words appear frequently and don’t carry as much meaning.</p>
 <dl class="class">
 <dt id="ddf.functions.ml.feature.CountVectorizer">
 <em class="property">class </em><code class="descclassname">ddf.functions.ml.feature.</code><code class="descname">CountVectorizer</code><span class="sig-paren">(</span><em>input_col</em>, <em>output_col=None</em>, <em>vocab_size=-1</em>, <em>min_tf=1.0</em>, <em>min_df=1.0</em>, <em>binary=True</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf.functions.ml.feature.CountVectorizer" title="Permalink to this definition">¶</a></dt>
-<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">ddf.ddf.ModelDDF</span></code></p>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">ddf.ddf_model.ModelDDF</span></code></p>
 <p>Converts a collection of text documents to a matrix of token counts.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
@@ -423,7 +423,7 @@ common file system;</li>
 <dl class="class">
 <dt id="ddf.functions.ml.feature.TfidfVectorizer">
 <em class="property">class </em><code class="descclassname">ddf.functions.ml.feature.</code><code class="descname">TfidfVectorizer</code><span class="sig-paren">(</span><em>input_col</em>, <em>output_col=None</em>, <em>vocab_size=-1</em>, <em>min_tf=1.0</em>, <em>min_df=1.0</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf.functions.ml.feature.TfidfVectorizer" title="Permalink to this definition">¶</a></dt>
-<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">ddf.ddf.ModelDDF</span></code></p>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">ddf.ddf_model.ModelDDF</span></code></p>
 <p>Term frequency-inverse document frequency (TF-IDF) is a numerical
 statistic transformation that is intended to reflect how important a word
 is to a document in a collection or corpus.</p>
@@ -576,7 +576,7 @@ common file system;</li>
 <dl class="class">
 <dt id="ddf.functions.ml.feature.StringIndexer">
 <em class="property">class </em><code class="descclassname">ddf.functions.ml.feature.</code><code class="descname">StringIndexer</code><span class="sig-paren">(</span><em>input_col</em>, <em>output_col=None</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf.functions.ml.feature.StringIndexer" title="Permalink to this definition">¶</a></dt>
-<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">ddf.ddf.ModelDDF</span></code></p>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">ddf.ddf_model.ModelDDF</span></code></p>
 <p>StringIndexer indexes a feature by encoding a string column as a
 column containing indexes.</p>
 <table class="docutils field-list" frame="void" rules="none">
@@ -718,7 +718,7 @@ common file system;</li>
 <dl class="class">
 <dt id="ddf.functions.ml.feature.IndexToString">
 <em class="property">class </em><code class="descclassname">ddf.functions.ml.feature.</code><code class="descname">IndexToString</code><span class="sig-paren">(</span><em>input_col</em>, <em>model</em>, <em>output_col=None</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf.functions.ml.feature.IndexToString" title="Permalink to this definition">¶</a></dt>
-<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">ddf.ddf.ModelDDF</span></code></p>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">ddf.ddf_model.ModelDDF</span></code></p>
 <p>Symmetrically to StringIndexer, IndexToString maps a column of
 label indices back to a column containing the original labels as strings.</p>
 <table class="docutils field-list" frame="void" rules="none">
@@ -819,7 +819,7 @@ common file system;</li>
 <dl class="class">
 <dt id="ddf.functions.ml.feature.MaxAbsScaler">
 <em class="property">class </em><code class="descclassname">ddf.functions.ml.feature.</code><code class="descname">MaxAbsScaler</code><span class="sig-paren">(</span><em>input_col</em>, <em>output_col</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf.functions.ml.feature.MaxAbsScaler" title="Permalink to this definition">¶</a></dt>
-<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">ddf.ddf.ModelDDF</span></code></p>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">ddf.ddf_model.ModelDDF</span></code></p>
 <p>MaxAbsScaler transforms a dataset of features rows,
 rescaling each feature to range [-1, 1] by dividing through
 the maximum absolute value in each feature.</p>
@@ -967,7 +967,7 @@ common file system;</li>
 <dl class="class">
 <dt id="ddf.functions.ml.feature.MinMaxScaler">
 <em class="property">class </em><code class="descclassname">ddf.functions.ml.feature.</code><code class="descname">MinMaxScaler</code><span class="sig-paren">(</span><em>input_col</em>, <em>output_col</em>, <em>feature_range=(0</em>, <em>1)</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf.functions.ml.feature.MinMaxScaler" title="Permalink to this definition">¶</a></dt>
-<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">ddf.ddf.ModelDDF</span></code></p>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">ddf.ddf_model.ModelDDF</span></code></p>
 <p>MinMaxScaler transforms a dataset of features rows, rescaling
 each feature to a specific range (often [0, 1])</p>
 <p>The rescaled value for a feature E is calculated as:</p>
@@ -1114,7 +1114,7 @@ common file system;</li>
 <dl class="class">
 <dt id="ddf.functions.ml.feature.StandardScaler">
 <em class="property">class </em><code class="descclassname">ddf.functions.ml.feature.</code><code class="descname">StandardScaler</code><span class="sig-paren">(</span><em>input_col</em>, <em>output_col=None</em>, <em>with_mean=True</em>, <em>with_std=True</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf.functions.ml.feature.StandardScaler" title="Permalink to this definition">¶</a></dt>
-<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">ddf.ddf.ModelDDF</span></code></p>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">ddf.ddf_model.ModelDDF</span></code></p>
 <p>The standard score of a sample x is calculated as:</p>
 <blockquote>
 <div>z = (x - u) / s</div></blockquote>
@@ -1264,7 +1264,7 @@ common file system;</li>
 <dl class="class">
 <dt id="ddf.functions.ml.feature.PCA">
 <em class="property">class </em><code class="descclassname">ddf.functions.ml.feature.</code><code class="descname">PCA</code><span class="sig-paren">(</span><em>input_col</em>, <em>n_components</em>, <em>output_col=None</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf.functions.ml.feature.PCA" title="Permalink to this definition">¶</a></dt>
-<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">ddf.ddf.ModelDDF</span></code></p>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">ddf.ddf_model.ModelDDF</span></code></p>
 <p>Principal component analysis (PCA) is a statistical method to find
 a rotation such that the first coordinate has the largest variance
 possible, and each succeeding coordinate in turn has the largest

@@ -179,6 +179,11 @@ to remove entire column;</li>
 </dd></dl>
 
 <dl class="method">
+<dt id="ddf.ddf.DDF.columns">
+<code class="descname">columns</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#ddf.ddf.DDF.columns" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
 <dt id="ddf.ddf.DDF.count">
 <code class="descname">count</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#ddf.ddf.DDF.count" title="Permalink to this definition">¶</a></dt>
 <dd><p>Return a number of rows in this DDF.</p>
@@ -193,6 +198,51 @@ to remove entire column;</li>
 </tbody>
 </table>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="nb">print</span> <span class="n">ddf1</span><span class="o">.</span><span class="n">count</span><span class="p">()</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="method">
+<dt id="ddf.ddf.DDF.cross_join">
+<code class="descname">cross_join</code><span class="sig-paren">(</span><em>data2</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf.ddf.DDF.cross_join" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns the cartesian product with another DDF.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>data2</strong> – Right side of the cartesian product;</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">DDF.</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Example:</th><td class="field-body"></td>
+</tr>
+</tbody>
+</table>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">ddf1</span><span class="o">.</span><span class="n">cross_join</span><span class="p">(</span><span class="n">ddf2</span><span class="p">)</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="method">
+<dt id="ddf.ddf.DDF.describe">
+<code class="descname">describe</code><span class="sig-paren">(</span><em>columns=None</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf.ddf.DDF.describe" title="Permalink to this definition">¶</a></dt>
+<dd><p>Computes basic statistics for numeric and string columns. This include
+count, mean, number of NaN, stddev, min, and max.</p>
+<p>Is it a Lazy function: No</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>columns</strong> – A list of columns, if no columns are given,
+this function computes statistics for all numerical or string columns;</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">A pandas DataFrame</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Example:</th><td class="field-body"></td>
+</tr>
+</tbody>
+</table>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">ddf1</span><span class="o">.</span><span class="n">describe</span><span class="p">([</span><span class="s1">&#39;col_1&#39;</span><span class="p">])</span>
 </pre></div>
 </div>
 </dd></dl>
@@ -431,7 +481,7 @@ empty to use all fields;</li>
 
 <dl class="method">
 <dt id="ddf.ddf.DDF.load_text">
-<code class="descname">load_text</code><span class="sig-paren">(</span><em>filename</em>, <em>num_of_parts=4</em>, <em>header=True</em>, <em>sep='</em>, <em>'</em>, <em>storage='hdfs'</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf.ddf.DDF.load_text" title="Permalink to this definition">¶</a></dt>
+<code class="descname">load_text</code><span class="sig-paren">(</span><em>filename</em>, <em>num_of_parts=4</em>, <em>header=True</em>, <em>sep='</em>, <em>'</em>, <em>storage='hdfs'</em>, <em>host='localhost'</em>, <em>port=9000</em>, <em>distributed=False</em>, <em>dtype='str'</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf.ddf.DDF.load_text" title="Permalink to this definition">¶</a></dt>
 <dd><p>Create a DDF from a commom file system or from HDFS.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
@@ -441,15 +491,30 @@ empty to use all fields;</li>
 <li><strong>filename</strong> – Input file name;</li>
 <li><strong>num_of_parts</strong> – number of partitions (default, 4);</li>
 <li><strong>header</strong> – Use the first line as DataFrame header (default, True);</li>
+<li><strong>dtype</strong> – Type name or dict of column (default, ‘str’). Data type
+for data or columns. E.g. {‘a’: np.float64, ‘b’: np.int32, ‘c’:
+‘Int64’} Use str or object together with suitable na_values settings
+to preserve and not interpret dtype;</li>
 <li><strong>sep</strong> – separator delimiter (default, ‘,’);</li>
 <li><strong>storage</strong> – <em>‘hdfs’</em> to use HDFS as storage or <em>‘fs’</em> to use the
 common file sytem;</li>
+<li><strong>distributed</strong> – if the absolute path represents a unique file or
+a folder with multiple files;</li>
+<li><strong>host</strong> – Namenode host if storage is <cite>hdfs</cite> (default, ‘localhost’);</li>
+<li><strong>port</strong> – Port to Namenode host if storage is <cite>hdfs</cite> (default, 9000);</li>
 </ul>
 </td>
 </tr>
-<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">DDF.</p>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">DDF.</p>
 </td>
 </tr>
+</tbody>
+</table>
+<p>..see also: Visit this <a class="reference external" href="https://docs.scipy.org/doc/numpy-1.15.0/reference/arrays.dtypes.html">link</a> to more information about dtype.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
 <tr class="field-odd field"><th class="field-name">Example:</th><td class="field-body"></td>
 </tr>
 </tbody>
@@ -614,6 +679,11 @@ a integer or float N to sample a N random records;</li>
 </tbody>
 </table>
 </dd></dl>
+
+<dl class="method">
+<dt id="ddf.ddf.DDF.schema">
+<code class="descname">schema</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#ddf.ddf.DDF.schema" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
 
 <dl class="method">
 <dt id="ddf.ddf.DDF.select">

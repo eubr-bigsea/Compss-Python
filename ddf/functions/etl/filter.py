@@ -4,57 +4,26 @@
 __author__ = "Lucas Miguel S Ponce"
 __email__ = "lucasmsp@gmail.com"
 
-from pycompss.api.task import task
 
+def filter(data, query):
+    """
+    Filters rows using the given condition.
 
-class FilterOperation(object):
+    :param data: A pandas's DataFrame;
+    :param query: A valid query.
+    :return: A pandas's DataFrame.
 
-    def transform(self, data, settings):
-        """
-        Filters rows using the given condition.
+    .. seealso:: Visit this `link <https://pandas.pydata.org/pandas-docs/
+         stable/generated/pandas.DataFrame.query.html>`__ to more
+         information about query options.
+    """
 
-        :param data: A list with nfrag pandas's dataframe;
-        :param settings: A dictionary that contains:
-            - 'query': A valid query.
-        :param nfrag: The number of fragments;
-        :return: Returns a list with nfrag pandas's dataframe.
+    if len(query) == 0:
+        raise Exception("You should pass at least one query.")
 
-        Note: Visit the link bellow to more information about the query.
-        https://pandas.pydata.org/pandas-docs/stable/generated/
-        pandas.DataFrame.query.html
+    result = data.query(query)
+    info = [result.columns.tolist(), result.dtypes.values, [len(result)]]
+    return result, info
 
-        example:
-            settings['query'] = "(VEIC == 'CARX')" to rows where VEIC is CARX
-            settings['query'] = "(VEIC == VEIC) and (YEAR > 2000)" to
-                rows where VEIC is not NaN and YEAR is greater than 2000
-        """
-        nfrag = len(data)
-        result = [[] for _ in range(nfrag)]
-        query = self.preprocessing(settings)
-        for i in range(nfrag):
-            result[i] = _filter(data[i], query)
-        return result
-
-    def preprocessing(self, settings):
-        query = settings.get('query', "")
-        if len(query) == 0:
-            raise Exception("You should pass at least one query.")
-        return query
-
-    def transform_serial(self, data, query):
-        """Perform partial filter."""
-        return _filter_(data, query)
-
-
-@task(returns=list)
-def _filter(data, query):
-    """Perform partial filter."""
-    return _filter_(data, query)
-
-
-def _filter_(data, query):
-    """Perform partial filter."""
-    data.query(query, inplace=True)
-    return data
 
 
