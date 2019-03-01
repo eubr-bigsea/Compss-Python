@@ -8,7 +8,7 @@ def ml_fpm():
     from ddf.functions.ml.fpm import AssociationRules, Apriori
     dataset = DDF()\
         .load_text('/transactions.txt', num_of_parts=4, header=False, sep='\n')\
-        .transform(lambda row: row['col_0'].split(','), 'col_0')
+        .map(lambda row: row['col_0'].split(','), 'col_0')
 
     apriori = Apriori(column='col_0', min_support=0.10).run(dataset)
 

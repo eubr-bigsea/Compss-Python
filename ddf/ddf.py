@@ -215,9 +215,9 @@ class DDF(DDFSketch):
         :param port: Port to Namenode host if storage is `hdfs` (default, 9000);
         :return: DDF.
 
-        ..see also: `Dtype information <https://docs.scipy.org/doc/numpy-1.15
-         .0/reference/arrays.dtypes.html>`_.
-
+        ..see also: Visit this `link <https://docs.scipy.org/doc/numpy-1.15
+        .0/reference/arrays.dtypes.html>`__ to more information about dtype.
+         
         :Example:
 
         >>> ddf1 = DDF().load_text('/titanic.csv', num_of_parts=4)

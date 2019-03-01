@@ -2,17 +2,30 @@
 # -*- coding: utf-8 -*-
 
 from ddf.ddf import DDF
+import numpy as np
 
 
 def ml_classifiers_part1():
 
     # loading a csv file from HDFS
-    ddf = DDF().load_text('/iris.csv', num_of_parts=4)
+    ddf = DDF().load_text('/iris-dataset.csv', num_of_parts=4, sep=',',
+                          dtype={'class': np.dtype('O'),  # string
+                                 'sepal_length': np.float64,
+                                 'sepal_width':  np.float64,
+                                 'petal_length': np.float64,
+                                 'petal_width':  np.float64
+                                 }) \
+        .replace({'Iris-setosa': 1.0,
+                  'Iris-versicolor': -1.0,
+                  'Iris-virginica': 1.0}, subset=['class'])
 
     # assembling a group of attributes as features and removing them after
     from ddf.functions.ml.feature import VectorAssembler
-    assembler = VectorAssembler(input_col=["x", "y"], output_col="features")
-    ddf = assembler.transform(ddf).drop(['x', 'y'])
+    assembler = VectorAssembler(input_col=["sepal_length", "sepal_width",
+                                           "petal_length", "petal_width"],
+                                output_col="features")
+    ddf = assembler.transform(ddf).drop(["sepal_length", "sepal_width",
+                                         "petal_length", "petal_width"])
 
     # scaling using StandardScaler
     from ddf.functions.ml.feature import StandardScaler
@@ -23,39 +36,39 @@ def ml_classifiers_part1():
     ddf_train, ddf_test = ddf.split(0.25)
 
     from ddf.functions.ml.classification import GaussianNB
-    nb = GaussianNB(feature_col='features', label_col='label')\
+    nb = GaussianNB(feature_col='features', label_col='class')\
         .fit(ddf_train)
     nb.save_model('/gaussian_nb')  # save this fitted model in HDFS
     ddf_test = nb.transform(ddf_test)
 
     from ddf.functions.ml.classification import KNearestNeighbors
-    knn = KNearestNeighbors(k=1, feature_col='features', label_col='label')\
+    knn = KNearestNeighbors(k=1, feature_col='features', label_col='class')\
         .fit(ddf_train)
     knn.save_model('/knn')
     ddf_test = knn.transform(ddf_test)
 
     from ddf.functions.ml.classification import LogisticRegression
-    logr = LogisticRegression(feature_col='features', label_col='label',
+    logr = LogisticRegression(feature_col='features', label_col='class',
                               max_iters=10).fit(ddf_train)
     logr.save_model('/logistic_regression')
     f = lambda row: -1.0 if row['prediction_LogReg'] == 0.0 else 1.0
     ddf_test = logr.transform(ddf_test).map(f, 'prediction_LogReg')
 
     from ddf.functions.ml.classification import SVM
-    svm = SVM(feature_col='features', label_col='label',
+    svm = SVM(feature_col='features', label_col='class',
               max_iters=10).fit(ddf_train)
     svm.save_model('/svm')
     ddf_test = svm.transform(ddf_test)
-
+    #
     from ddf.functions.ml.evaluation import MultilabelMetrics, \
         BinaryClassificationMetrics
 
-    metrics_bin = BinaryClassificationMetrics(label_col='label',
+    metrics_bin = BinaryClassificationMetrics(label_col='class',
                                               true_label=1.0,
                                               pred_col='prediction_LogReg',
                                               data=ddf_test)
 
-    metrics_multi = MultilabelMetrics(label_col='label',
+    metrics_multi = MultilabelMetrics(label_col='class',
                                       pred_col='prediction_GaussianNB',
                                       data=ddf_test)
 
@@ -75,12 +88,24 @@ def ml_classifiers_part1():
 def ml_classifiers_part2():
 
     # loading a csv file from HDFS
-    ddf = DDF().load_text('/iris.csv', num_of_parts=4)
+    ddf = DDF().load_text('/iris-dataset.csv', num_of_parts=4, sep=',',
+                          dtype={'class': np.dtype('O'),  # string
+                                 'sepal_length': np.float64,
+                                 'sepal_width': np.float64,
+                                 'petal_length': np.float64,
+                                 'petal_width': np.float64
+                                 }) \
+        .replace({'Iris-setosa': 1.0,
+                  'Iris-versicolor': -1.0,
+                  'Iris-virginica': 1.0}, subset=['class'])
 
     # assembling a group of attributes as features and removing them after
     from ddf.functions.ml.feature import VectorAssembler
-    assembler = VectorAssembler(input_col=["x", "y"], output_col="features")
-    ddf = assembler.transform(ddf).drop(['x', 'y'])
+    assembler = VectorAssembler(input_col=["sepal_length", "sepal_width",
+                                           "petal_length", "petal_width"],
+                                output_col="features")
+    ddf = assembler.transform(ddf).drop(["sepal_length", "sepal_width",
+                                         "petal_length", "petal_width"])
 
     # scaling using StandardScaler
     from ddf.functions.ml.feature import StandardScaler

@@ -164,6 +164,7 @@ def use_case2():
 
     print ddf_train.show(10)
     print ddf_test.show(10)
+
     print "Number of rows to fit the model:", ddf_train.count()
     print "Number of rows to test the model:", ddf_test.count()
 
@@ -190,5 +191,5 @@ def use_case2():
 
 if __name__ == '__main__':
     print "_____Titanic's use case_____"
-    # use_case1()
-    use_case2()
+    use_case1()
+    # use_case2()

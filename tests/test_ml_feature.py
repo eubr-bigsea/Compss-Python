@@ -128,5 +128,5 @@ def ml_feature_dimensionality():
 
 if __name__ == '__main__':
 
-    # ml_feature_scalers()
-    ml_feature_dimensionality()
+    ml_feature_scalers()
+    #ml_feature_dimensionality()

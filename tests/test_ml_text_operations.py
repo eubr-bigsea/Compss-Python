@@ -15,7 +15,7 @@ def ml_feature_text_operations():
 
     data1 = DDF()\
         .load_text('/text_data.txt', num_of_parts=4, header=False, sep='\n')\
-        .transform(lambda row: row['col_0'], 'col_1')
+        .map(lambda row: row['col_0'], 'col_1')
 
     tokenized = Tokenizer(input_col='col_0').transform(data1)
 

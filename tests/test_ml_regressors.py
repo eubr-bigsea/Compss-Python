@@ -31,7 +31,7 @@ def ml_regression_simple():
     model = LinearRegression('features', 'y', mode='simple').fit(ddf_train)
     ddf_test = model.transform(ddf_test)
 
-    print "Simple linear regressor result:\n", ddf_test.show(100)
+    print "Simple linear regressor result:\n", ddf_test.show(10)
 
     from ddf.functions.ml.evaluation import RegressionMetrics
     metrics = RegressionMetrics(col_features='features', label_col='y',
@@ -123,6 +123,6 @@ def ml_regression_sgb():
 
 if __name__ == '__main__':
     print "_____Testing Machine Learning Regressors_____"
-    # ml_regression_simple()
+    ml_regression_simple()
     # ml_regression_metrics()
-    ml_regression_sgb()
+    #ml_regression_sgb()
