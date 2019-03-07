@@ -32,6 +32,7 @@ class DropNaN(object):
     def preprocessing(self, data):
 
         # we need to take in count others rows/fragments
+
         params = [_clean_missing_pre(df, self.settings) for df in data]
         self.settings = merge_reduce(merge_clean_options, params)
 
@@ -74,7 +75,8 @@ class FillNa(object):
 
         if self.settings['cleaning_mode'] is not 'MEDIAN':
             # we need to generate mean value
-            params = [_clean_missing_pre(df, self.settings) for df in data]
+            settings = copy.deepcopy(self.settings)
+            params = [_clean_missing_pre(df, settings) for df in data]
             self.settings = merge_reduce(merge_clean_options, params)
         else:
             """
