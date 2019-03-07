@@ -14,7 +14,7 @@ def use_case1():
 
     ddf1 = DDF().parallelize(df, num_of_parts=4)\
         .select(['Sex', 'Age', 'Survived'])\
-        .clean_missing(['Sex', 'Age'], mode='REMOVE_ROW')\
+        .dropna(['Sex', 'Age'], mode='REMOVE_ROW')\
         .replace({0: 'No', 1: 'Yes'}, subset=['Survived']).cache()
 
     ddf_women = ddf1.filter('(Sex == "female") and (Age >= 18)').\
@@ -106,7 +106,7 @@ def use_case2():
 
     ddf1 = DDF().parallelize(df, num_of_parts=4)\
         .drop(['PassengerId', 'Cabin', 'Ticket'])\
-        .clean_missing(all_columns, mode='REMOVE_ROW')\
+        .dropna(all_columns, how='any')\
         .replace({'male': 1, 'female': 0}, subset=['Sex'])\
         .map(title_checker, 'Name')\
         .map(age_categorizer, 'Age')\
@@ -191,5 +191,5 @@ def use_case2():
 
 if __name__ == '__main__':
     print "_____Titanic's use case_____"
-    use_case1()
-    # use_case2()
+    #use_case1()
+    use_case2()

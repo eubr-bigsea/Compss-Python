@@ -139,13 +139,24 @@ def simple_etl():
     data3 = pd.DataFrame([[i, i + 5, 'hello'] for i in xrange(5, 15)],
                          columns=['a', 'b', 'c'])
 
-    data3.loc[0, ['c']] = np.nan
+    data3.loc[15, ['b']] = np.nan
+    data3.loc[0:2, ['c']] = 'Hi'
+    data3.loc[6:9, ['c']] = 'world'
+    data3['d'] = [10,  12, 13, 19, 19,19,19,19,19, 19, np.nan]
+    data3['e'] = [10,  10, 10, 10, 10, 10, 10, 10, 10, 10, np.nan]
+
+    data3['f'] = [10, 10, 10, 10, 10, 10, 10, 10, 10, np.nan, np.nan]
+    data3['g'] = [10, 12, 13, 19, 19, 19, 19, 19, 19, np.nan, np.nan]
+
+    data3['h'] = [10, 12, 13, 19, 5, 5, 5, 5, 5, np.nan, np.nan]
+    data3['i'] = [5, 12, 13, 19, 19, 19, 5, 5, 5, 5, np.nan]
 
     # print "\n|-------- Read Data --------|\n"
     # ddf_1 = DDF().load_text('/test-read_data.csv', header=True,
     #                         sep=',', dtype={'la1el': np.dtype('O'),
     #                                         'x': np.float64,
     #                                         'y': np.float64}).select(['x', 'y'])
+
     #
     # print "Schema: \n", ddf_1.schema()
     # return 0
@@ -185,6 +196,38 @@ def simple_etl():
     # assert_frame_equal(df1, res_agg, check_index_type=False)
     # print "etl_test - aggregation - OK",
 
+    # print "\n|-------- DropNaN --------|\n"
+    # ddf_1 = DDF().parallelize(data3, 4)
+    # df1a = ddf_1.dropna(['c'], mode='REMOVE_COLUMN', how='all', thresh=1)
+    #
+    # df1b = ddf_1.dropna(['c'], mode='REMOVE_ROW', how='any')
+    # print df1a.show()
+    # print df1b.show()
+    # return 0
+
+
+    print "\n|-------- FillNaN --------|\n"
+    print data3
+    ddf_1 = DDF().parallelize(data3, 4)
+    #df1a = ddf_1.clean_missing(mode='VALUE', value=42),
+    #df1a = ddf_1.clean_missing(mode='VALUE', value={'c': 42})
+
+    #df1a = ddf_1.clean_missing(['a', 'b'], mode='MEAN')
+
+    #df1a = ddf_1.clean_missing(['c'], mode='MODE')
+
+    df1a = ddf_1.fillna(['a', 'b', 'd','e','f','g', 'h', 'i'], mode='MEDIAN')
+
+
+    print df1a.show()
+    print "A: 9.5 - B: 14.5 - D: 19.0 - E: 10.0 - G: 19.0 - H: 5.0 - I: 8.5"
+
+
+
+
+    return 0
+
+
     # print "\n|-------- CrossJoin --------|\n"
     # ddf_1a = DDF().parallelize(data1, 4)
     # ddf_1b = DDF().parallelize(data2, 4)
@@ -192,13 +235,10 @@ def simple_etl():
     # df1 = ddf_2.cache().show(50)
     #
     #
-    print "\n|-------- Describe --------|\n"
-    df1 = DDF().parallelize(data3, 4).describe()
-    print df1
-
-    print "etl_test - difference - OK"
-
-    return 0
+    # print "\n|-------- Describe --------|\n"
+    # df1 = DDF().parallelize(data3, 4).describe()
+    # print df1
+    # print "etl_test - difference - OK"
 
     # print "\n|-------- Difference --------|\n"
     # ddf_1a = DDF().parallelize(data, 4)
@@ -346,5 +386,5 @@ def simple_etl():
 
 if __name__ == '__main__':
     print "_____ETL_____"
-    simple_etl()
-    # etl()
+    #simple_etl()
+    etl()

@@ -7,14 +7,10 @@ __email__ = "lucasmsp@gmail.com"
 """
 DDF is a Library for PyCOMPSs.
 
-Public classes:
 
-  - :class:`DDF`:
-      Distributed DataFrame (DDF), the abstraction of this library.
 """
 
 from pycompss.api.task import task
-from pycompss.api.api import compss_wait_on
 from pycompss.functions.reduce import merge_reduce
 from collections import OrderedDict, deque
 import ddf
@@ -59,13 +55,13 @@ class COMPSsContext(object):
         """
         return [i for i, v in enumerate(variables) if uuid in v.task_list]
 
-    def show_workflow(self, tasks_to_in_count):
+    def show_workflow(self, selected_tasks):
         """
         Show the final workflow. Only to debug
-        :param tasks_to_in_count: list of tasks to be executed in this flow.
+        :param selected_tasks: list of tasks to be executed in this flow.
         """
         print("Relevant tasks:")
-        for uuid in tasks_to_in_count:
+        for uuid in selected_tasks:
             print("\t{} - ({})".format(self.tasks_map[uuid]['name'], uuid[:8]))
         print ("\n")
 
@@ -113,7 +109,8 @@ class COMPSsContext(object):
                 order.appendleft(node)
                 state[node] = BLACK
 
-            while enter: dfs(enter.pop())
+            while enter:
+                dfs(enter.pop())
             return order
 
         for k in self.adj_tasks:
@@ -126,12 +123,8 @@ class COMPSsContext(object):
 
         return result
 
-    def run_workflow(self, wanted=-1):
+    def get_taskslist(self, wanted):
         import gc
-
-        if DEBUG:
-            self.show_tasks()
-
         # mapping all tasks that produce a final result
         action_tasks = []
         if wanted is not -1:
@@ -155,146 +148,195 @@ class COMPSsContext(object):
                         variables.append(copy.deepcopy(obj))
 
         # list all tasks used in these variables
-        tasks_to_in_count = list()
+        selected_tasks = list()
         for var in variables:
-            tasks_to_in_count.extend(var.task_list)
+            selected_tasks.extend(var.task_list)
 
-        # and perform a topological sort to create a DAG
-        topological_tasks = self.create_adj_tasks(tasks_to_in_count)
-        if DEBUG:
-            print "topological_tasks: ", topological_tasks
-        # print("Number of variables: {}".format(len(variables)))
-        # print("Total of variables: {}".format(n_vars))
-        # self.show_workflow(tasks_to_in_count)
+        return selected_tasks, variables
 
-        # iterate over all filtered and sorted tasks
-        for current_task in topological_tasks:
-            # print("\n* Current task: {} ({}) -> {}".format(
-            #         self.tasks_map[current_task]['name'], current_task[:8],
-            #         self.tasks_map[current_task]['status']))
+    def get_task_name(self, uuid_task):
+        return self.tasks_map[uuid_task]['name']
 
-            if self.tasks_map[current_task]['status'] == 'COMPLETED':
-                continue
-            # get its variable and related tasks
-            if DEBUG:
-                print "look for: ", current_task
-            id_var = self.get_var_by_task(variables, current_task)
-            if len(id_var) == 0:
-                raise Exception("\nVariable was deleted")
+    def get_task_lazyness(self, uuid_task):
+        return self.tasks_map[uuid_task].get('lazy', False)
 
-            id_var = id_var[0]
-            tasks_list = variables[id_var].task_list
-            id_task = tasks_list.index(current_task)
-            tasks_list = tasks_list[id_task:]
+    def get_task_function(self, uuid_task, id_in=None):
+        if id_in is not None:
+            return self.tasks_map[uuid_task].get('function', [0])[id_in]
+        return self.tasks_map[uuid_task]['function']
 
-            for i_task, child_task in enumerate(tasks_list):
-                id_parents = self.tasks_map[child_task]['parent']
-                n_input = self.tasks_map[child_task].get('n_input', [0])
+    def set_task_function(self, uuid_task, data, id_in=None):
+        if id_in is not None:
+            self.tasks_map[uuid_task]['function'][id_in] = data
+        else:
+            self.tasks_map[uuid_task]['function'] = data
 
-                if self.tasks_map[child_task]['status'] == 'WAIT':
-                    if DEBUG:
-                        print(" - task {} ({})  parents:{}" \
-                              .format(self.tasks_map[child_task]['name'],
-                                      child_task[:8], id_parents))
+    def get_task_status(self, uuid_task):
+        return self.tasks_map[uuid_task]['status']
 
-                        print "id_parents: {} and n_input: {}".format(
-                                id_parents, n_input)
+    def set_task_status(self, uuid_task, status):
+        self.tasks_map[uuid_task]['status'] = status
 
-                    # when has parents: wait all parents tasks be completed
-                    if not all([self.tasks_map[p]['status'] == 'COMPLETED'
-                                for p in id_parents]):
-                        break
+    def get_task_parents(self, uuid_task):
+        return self.tasks_map[uuid_task]['parent']
 
-                    # get input data from parents
-                    inputs = {}
-                    for d, (id_p, id_in) in enumerate(zip(id_parents, n_input)):
-                        # if id_in == -1:
-                        #     id_in = 0
-                        #     print "NUNCA SERA EXCECUTADA"
-                        inputs[d] = self.tasks_map[id_p].get('function',
-                                                             [0])[id_in]
-                    variables[id_var].partitions = inputs
+    def get_task_ninput(self, uuid_task):
+        return self.tasks_map[uuid_task].get('n_input', [0])
 
-                    # end the path
-                    if self.tasks_map[child_task]['name'] == 'sync':
-                        if DEBUG:
-                            print "RUNNING sync ({}) - condition 2." \
-                                .format(child_task)
-                        # sync tasks always will have only one parent
-                        id_p = id_parents[0]
-                        id_in = n_input[0]
+    def set_auxiliary_variables(self, variables, current_task):
+        id_var = self.get_var_by_task(variables, current_task)
+        if len(id_var) == 0:
+            raise Exception("\nVariable was deleted")
 
-                        self.tasks_map[child_task]['function'] = \
-                            self.tasks_map[id_p]['function']
+        id_var = id_var[0]
+        tasks_list = variables[id_var].task_list
+        id_task = tasks_list.index(current_task)
+        tasks_list = tasks_list[id_task:]
 
-                        self.schemas_map[child_task] = self.schemas_map[id_p]
+        return id_var, tasks_list
 
-                        result = inputs[0]
-                        if id_in == -1:
-                            self.tasks_map[id_p]['function'][0] = result
-                            self.tasks_map[child_task]['function'][0] = result
+    def set_input(self, id_parents, n_input):
 
-                        else:
-                            self.tasks_map[id_p]['function'][id_in] = result
-                            self.tasks_map[child_task]['function'][id_in] = \
-                                result
+        inputs = {}
+        for d, (id_p, id_in) in enumerate(zip(id_parents, n_input)):
+            inputs[d] = self.get_task_function(id_p, id_in)
 
-                        self.tasks_map[child_task]['status'] = 'COMPLETED'
-                        self.tasks_map[id_p]['status'] = 'COMPLETED'
+        return inputs
 
-                        break
+    def is_ready_to_run(self, id_parents):
+        return all([self.get_task_status(p) == 'COMPLETED' for p in id_parents])
 
-                    # non lazy tasks that need to be executed separated
-                    elif not self.tasks_map[child_task].get('lazy', False):
-                        self.run_non_lazy_tasks(child_task, variables, id_var,
-                                                id_parents, n_input)
-
-                    elif self.tasks_map[child_task]['lazy']:
-                        self.run_serial_lazy_tasks(i_task, child_task,
-                                                   tasks_list,
-                                                   tasks_to_in_count, id_var,
-                                                   variables)
-
-    def run_non_lazy_tasks(self, child_task, variables, id_var,
-                           id_parents, n_input):
-        # Execute f and put result in variables
-        if DEBUG:
-            print "RUNNING {} ({}) - condition 3.".format(
-                    self.tasks_map[child_task]['name'],
-                    child_task)
+    def set_operation(self, child_task, id_parents, n_input):
 
         # get the operation to be executed
-        operation = self.tasks_map[child_task]['function']
+        operation = self.get_task_function(child_task)
 
         # some operations need a prior information
         if self.tasks_map[child_task].get('info', False):
             operation[1]['info'] = []
             for p, i in zip(id_parents, n_input):
                 sc = self.schemas_map[p][i]
+                if isinstance(sc, list):
+                    if not isinstance(sc[0], list):
+                        sc = merge_reduce(merge_schema, sc)
                 operation[1]['info'].append(sc)
 
+        return operation
+
+    def run_workflow(self, wanted=-1):
+        """
+        Find flow of tasks non executed with an action (show, save, cache, etc)
+        and execute each flow until a 'sync' is found. Action tasks represents
+        operations which its results will be saw by the user.
+
+        :param wanted: uuid of an specific task
+        """
+
+        # list all tasks that must be executed and its ddf variables
+        selected_tasks, ddf_variables = self.get_taskslist(wanted)
+        # and perform a topological sort to create a DAG
+        topological_tasks = self.create_adj_tasks(selected_tasks)
+
+        if DEBUG:
+            self.show_tasks()
+            self.show_workflow(selected_tasks)
+            print "topological_tasks: ", topological_tasks
+
+        # iterate over all sorted tasks
+        for current_task in topological_tasks:
+
+            if self.get_task_status(current_task) == 'COMPLETED':
+                continue
+
+            # get its variable and related tasks
+            id_var, tasks_list = self.set_auxiliary_variables(ddf_variables,
+                                                              current_task)
+            for i_task, child_task in enumerate(tasks_list):
+
+                if self.get_task_status(child_task) == 'COMPLETED':
+                    continue
+
+                id_parents = self.get_task_parents(child_task)
+                n_input = self.get_task_ninput(child_task)
+
+                if DEBUG:
+                    print(" - task {} ({})".format(
+                            self.get_task_name(child_task), child_task[:8]))
+                    print "id_parents: {} and n_input: {}".format(
+                            id_parents, n_input)
+
+                # when has parents: wait all parents tasks be completed
+                if not self.is_ready_to_run(id_parents):
+                    break
+
+                # get input data from parents
+                inputs = self.set_input(id_parents, n_input)
+
+                # end this path
+                if self.get_task_name(child_task) == 'sync':
+                    self.run_sync(child_task, id_parents, n_input, inputs)
+                    break
+
+                # non lazy tasks that need to be executed separated
+                elif not self.get_task_lazyness(child_task):
+                    self.run_non_lazy_tasks(child_task, id_parents,
+                                            n_input, inputs)
+
+                # lazy tasks that could be executed in group
+                elif self.get_task_lazyness(child_task):
+                    self.run_serial_lazy_tasks(i_task, child_task, tasks_list,
+                                               selected_tasks, inputs)
+
+    def run_sync(self, child_task, id_parents, n_input, inputs):
+        """
+        Execute the sync task, in this context, it means that all COMPSs tasks
+        until this current sync will be executed. This do not
+        represent a COMPSs synchronization.
+        """
+        if DEBUG:
+            print "RUNNING sync ({}) - condition 2." \
+                .format(child_task)
+
+        # sync tasks always will have only one parent
+        id_p = id_parents[0]
+        id_in = n_input[0]
+        result = inputs[0]
+
+        self.set_task_function(child_task, self.get_task_function(id_p))
+        self.schemas_map[child_task] = self.schemas_map[id_p]
+
+        self.set_task_function(id_p, result, id_in)
+        self.set_task_function(child_task, result, id_in)
+
+        self.set_task_status(child_task, 'COMPLETED')
+        self.set_task_status(id_p, 'COMPLETED')
+
+    def run_non_lazy_tasks(self, child_task, id_parents, n_input, inputs):
+        """
+        The current operation can not be grouped with other operations, so,
+        it must be executed separated.
+        """
+
+        if DEBUG:
+            print "RUNNING {} ({}) - condition 3.".format(
+                    self.tasks_map[child_task]['name'],
+                    child_task)
+
+        operation = self.set_operation(child_task, id_parents, n_input)
+
         # execute this operation that returns a dictionary
-        output_dict = variables[id_var]._execute_task(operation)
-        keys_data = output_dict['key_data']
-        keys_info = output_dict['key_info']
-        info = [merge_reduce(merge_schema, output_dict[f]) for f in keys_info]
+        output_dict = self._execute_task(operation, inputs)
 
-        # convert the output and schema to the right format {0: ... 1: ....}
-        out_data = {}
-        out_info = {}
-        for f, key in enumerate(keys_data):
-            out_data[f] = output_dict[key]
-            out_info[f] = info[f]
-
-        # save results in task_map and schemas_map
-        self.tasks_map[child_task]['function'] = out_data
-        self.tasks_map[child_task]['status'] = 'COMPLETED'
-        self.schemas_map[child_task] = out_info
+        self.save_non_lazy_states(output_dict, child_task)
 
     def run_serial_lazy_tasks(self, i_task, child_task, tasks_list,
-                              tasks_to_in_count, id_var, variables):
-        opt_uuids = set()
-        opt_functions = []
+                              selected_tasks, inputs):
+        """
+        The current operation can be grouped with other operations. This method
+        check if the next operations share this behavior. If it does, group
+        them to execute together, otherwise, execute it as a single task.
+        """
+        group_uuids, group_func = set(), list()
 
         if DEBUG:
             print "RUNNING {} ({}) - condition 4.".format(
@@ -306,31 +348,48 @@ class COMPSsContext(object):
                         task_opt[:8],
                         self.tasks_map[task_opt]['name'])
 
-            opt_uuids.add(task_opt)
-            opt_functions.append(
-                    self.tasks_map[task_opt]['function'])
+            group_uuids.add(task_opt)
+            group_func.append(self.get_task_function(task_opt))
 
             if (i_task + id_j + 1) < len(tasks_list):
                 next_task = tasks_list[i_task + id_j + 1]
 
-                if tasks_to_in_count.count(task_opt) != \
-                        tasks_to_in_count.count(next_task):
+                if selected_tasks.count(task_opt) != \
+                        selected_tasks.count(next_task):
                     break
 
-                if not all([self.tasks_map[task_opt]['lazy'],
-                            self.tasks_map[next_task]['lazy']]):
+                if not all([self.get_task_lazyness(task_opt),
+                            self.get_task_lazyness(next_task)]):
                     break
 
         if DEBUG:
-            print "Stages (optimized): {}".format(opt_uuids)
-            print "opt_functions", opt_functions
-        result, info = variables[id_var]._execute_lazy(opt_functions)
+            print "Stages (optimized): {}".format(group_uuids)
+            print "opt_functions", group_func
 
-        out_data = {}
-        out_info = {}
+        result, info = self._execute_lazy(group_func, inputs)
+        self.save_lazy_states(result, info, group_uuids)
 
+    def save_non_lazy_states(self, output_dict, child_task):
+        # Results in non lazy tasks are in dictionary format
+
+        keys_data = output_dict['key_data']
+        keys_info = output_dict['key_info']
+        info = [output_dict[f] for f in keys_info]
+
+        # convert the output and schema to the right format {0: ... 1: ....}
+        out_data, out_info = dict(), dict()
+        for f, key in enumerate(keys_data):
+            out_data[f] = output_dict[key]
+            out_info[f] = info[f]
+
+        # save results in task_map and schemas_map
+        self.schemas_map[child_task] = out_info
+        self.set_task_function(child_task, out_data)
+        self.set_task_status(child_task, 'COMPLETED')
+
+    def save_lazy_states(self, result, info, opt_uuids):
+        out_data, out_info = dict(), dict()
         for o in opt_uuids:
-            self.tasks_map[o]['status'] = 'COMPLETED'
 
             # output format: {0: ... 1: ....}
             n_outputs = self.tasks_map[o]['output']
@@ -343,25 +402,68 @@ class COMPSsContext(object):
                     out_data[f] = result[f]
                     out_info[f] = info[f]
 
-            self.tasks_map[o]['function'] = out_data
+            self.set_task_function(o, out_data)
             self.schemas_map[o] = out_info
+            self.set_task_status(o, 'COMPLETED')
 
             if DEBUG:
                 print "{} ({}) is COMPLETED - condition 4." \
                     .format(self.tasks_map[o]['name'], o[:8])
 
+    @staticmethod
+    def _execute_task(env, input_data):
+        """
+        Used to execute all non-lazy functions.
+
+        :param f: a list that contains the current task and its parameters.
+        :return:
+        """
+
+        function, settings = env
+        if len(input_data) > 1:
+            partitions = [input_data[k] for k in input_data]
+        else:
+            partitions = input_data[0]
+
+        output = function(partitions, settings)
+        return output
+
+    @staticmethod
+    def _execute_lazy(opt, data):
+
+        """
+        Used to execute a group of lazy tasks. This method submit
+        multiple 'context.task_bundle', one for each data fragment.
+
+        :param opt: sequence of functions and parameters to be executed in
+            each fragment
+        :param data: input data
+        :return:
+        """
+
+        tmp = None
+        if len(data) > 1:
+            tmp = [data[k] for k in data]
+        else:
+            for k in data:
+                tmp = data[k]
+
+        result, info = [[] for _ in tmp], [[] for _ in tmp]
+        for f, df in enumerate(tmp):
+            result[f], info[f] = task_bundle(df, opt, f)
+
+        return result, info
+
 
 @task(returns=2)
 def task_bundle(data, stage, id_frag):
     info = []
-    for f, task in enumerate(stage):
-        function, settings = task
-        # Used only in save
+    for f, current_task in enumerate(stage):
+        function, settings = current_task
         if isinstance(settings, dict):
+            # Used only in save
             settings['id_frag'] = id_frag
-        t = function(data, settings)
-        print f
-        data, info = t
+        data, info = function(data, settings)
 
     return data, info
 
