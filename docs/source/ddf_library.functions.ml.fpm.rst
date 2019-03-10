@@ -1,7 +1,7 @@
 ML.Frequent Pattern Mining
 ********************************
 
-.. automodule:: ddf.functions.ml.fpm
+.. automodule:: ddf_library.functions.ml.fpm
     :members:
     :undoc-members:
     :show-inheritance:

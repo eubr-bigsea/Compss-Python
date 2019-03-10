@@ -13,7 +13,7 @@ from collections import defaultdict
 from pycompss.api.task import task
 from pycompss.functions.reduce import merge_reduce
 from pycompss.api.api import compss_wait_on
-from ddf.ddf import DDF, DDFSketch
+from ddf_library.ddf import DDF, DDFSketch
 
 __all__ = ['Apriori', 'AssociationRules']
 

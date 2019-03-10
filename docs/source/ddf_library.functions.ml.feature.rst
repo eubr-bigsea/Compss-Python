@@ -1,7 +1,7 @@
 ML.Feature
 ***********
 
-.. automodule:: ddf.functions.ml.feature
+.. automodule:: ddf_library.functions.ml.feature
     :members:
     :undoc-members:
     :show-inheritance:

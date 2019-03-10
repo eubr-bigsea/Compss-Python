@@ -12,8 +12,8 @@ from pycompss.api.task import task
 from pycompss.api.local import *
 from pycompss.functions.reduce import merge_reduce
 from pycompss.api.api import compss_wait_on
-from ddf.ddf import DDF
-from ddf.ddf_model import ModelDDF
+from ddf_library.ddf import DDF
+from ddf_library.ddf_model import ModelDDF
 
 __all__ = ['LinearRegression']
 

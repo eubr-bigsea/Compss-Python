@@ -1,7 +1,10 @@
-ML.Evaluation
+
+Graph Operations
 ****************
 
-.. automodule:: ddf.functions.ml.evaluation
+.. automodule:: ddf_library.functions.graph
     :members:
     :undoc-members:
     :show-inheritance:
+
+

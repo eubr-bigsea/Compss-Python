@@ -1,7 +1,7 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 
-from ddf.ddf import DDF
+from ddf_library.ddf import DDF
 import pandas as pd
 
 
@@ -112,7 +112,7 @@ def use_case2():
         .map(age_categorizer, 'Age')\
         .map(fare_categorizer, 'Fare')
 
-    from ddf.functions.ml.feature import StringIndexer
+    from ddf_library.functions.ml.feature import StringIndexer
     ddf1 = StringIndexer(input_col='Embarked',
                          output_col='Embarked').fit_transform(ddf1)
 
@@ -125,12 +125,12 @@ def use_case2():
     """
 
     # assembling a group of attributes as features and removing them after
-    from ddf.functions.ml.feature import VectorAssembler
+    from ddf_library.functions.ml.feature import VectorAssembler
     assembler = VectorAssembler(input_col=features, output_col="features")
     ddf1 = assembler.transform(ddf1).drop(features)
 
     # scaling using StandardScaler
-    from ddf.functions.ml.feature import StandardScaler
+    from ddf_library.functions.ml.feature import StandardScaler
     ddf1 = StandardScaler(input_col='features', output_col='features')\
         .fit_transform(ddf1)
 
@@ -145,7 +145,7 @@ def use_case2():
     The others 30% is used to test the fitted model.
     """
 
-    from ddf.functions.ml.classification import LogisticRegression
+    from ddf_library.functions.ml.classification import LogisticRegression
     logr = LogisticRegression(feature_col='features', label_col='Survived',
                               max_iters=10, pred_col='out_logr').fit(ddf_train)
 
@@ -155,7 +155,7 @@ def use_case2():
     This model can be evaluated by some binary metrics
     """
 
-    from ddf.functions.ml.evaluation import BinaryClassificationMetrics
+    from ddf_library.functions.ml.evaluation import BinaryClassificationMetrics
 
     metrics_bin = BinaryClassificationMetrics(label_col='Survived',
                                               true_label=1.0,

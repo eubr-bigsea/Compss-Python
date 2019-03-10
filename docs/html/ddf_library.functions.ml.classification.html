@@ -1,0 +1,735 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>ML.Classification &#8212; DDF</title>
+    <link rel="stylesheet" href="_static/nature.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <script type="text/javascript" src="_static/language_data.js"></script>
+    <link rel="shortcut icon" href="_static/favicon.ico"/>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="ML.Clustering" href="ddf_library.functions.ml.clustering.html" />
+    <link rel="prev" title="Graph Operations" href="ddf_library.functions.graph.html" /> 
+  </head><body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="ddf_library.functions.ml.clustering.html" title="ML.Clustering"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="ddf_library.functions.graph.html" title="Graph Operations"
+             accesskey="P">previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="index.html">DDF</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="api.html" >API Reference</a> &#187;</li>
+          <li class="nav-item nav-item-2"><a href="ddf_library.html" accesskey="U">DDF operations</a> &#187;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="module-ddf_library.functions.ml.classification">
+<span id="ml-classification"></span><h1>ML.Classification<a class="headerlink" href="#module-ddf_library.functions.ml.classification" title="Permalink to this headline">¶</a></h1>
+<dl class="class">
+<dt id="ddf_library.functions.ml.classification.KNearestNeighbors">
+<em class="property">class </em><code class="descclassname">ddf_library.functions.ml.classification.</code><code class="descname">KNearestNeighbors</code><span class="sig-paren">(</span><em>feature_col</em>, <em>label_col</em>, <em>pred_col=None</em>, <em>k=3</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.functions.ml.classification.KNearestNeighbors" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">ddf_library.ddf_model.ModelDDF</span></code></p>
+<p>K-Nearest Neighbor is a algorithm used that can be used for both
+classification and regression predictive problems. However, it is more
+widely used in classification problems. Is a non parametric lazy learning
+algorithm. Meaning that it does not use the training data points to do
+any generalization. In other words, there is no explicit training phase.
+More precisely, all the training data is needed during the testing phase.</p>
+<p>In a classification, the algorithm computes from a simple majority vote
+of the K nearest neighbors of each point present in the training set.
+The choice of the parameter K is very crucial in this algorithm, and
+depends on the dataset. However, values of one or tree is more commom.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Example:</th><td class="field-body"></td>
+</tr>
+</tbody>
+</table>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">knn</span> <span class="o">=</span> <span class="n">KNearestNeighbors</span><span class="p">(</span><span class="n">feature_col</span><span class="o">=</span><span class="s1">&#39;features&#39;</span><span class="p">,</span>
+<span class="gp">&gt;&gt;&gt; </span>                        <span class="n">label_col</span><span class="o">=</span><span class="s1">&#39;label&#39;</span><span class="p">,</span> <span class="n">k</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">ddf1</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">ddf2</span> <span class="o">=</span> <span class="n">knn</span><span class="o">.</span><span class="n">transform</span><span class="p">(</span><span class="n">ddf1</span><span class="p">)</span>
+</pre></div>
+</div>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>feature_col</strong> – Feature column name;</li>
+<li><strong>label_col</strong> – Label column name;</li>
+<li><strong>pred_col</strong> – Output prediction name (default, <em>‘prediction_kNN’</em>);</li>
+<li><strong>k</strong> – Number of nearest neighbors to majority vote;</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+<dl class="method">
+<dt id="ddf_library.functions.ml.classification.KNearestNeighbors.fit">
+<code class="descname">fit</code><span class="sig-paren">(</span><em>data</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.functions.ml.classification.KNearestNeighbors.fit" title="Permalink to this definition">¶</a></dt>
+<dd><p>Fit the model.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>data</strong> – DDF</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">trained model</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="ddf_library.functions.ml.classification.KNearestNeighbors.fit_transform">
+<code class="descname">fit_transform</code><span class="sig-paren">(</span><em>data</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.functions.ml.classification.KNearestNeighbors.fit_transform" title="Permalink to this definition">¶</a></dt>
+<dd><p>Fit the model and transform.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>data</strong> – DDF</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">DDF</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="ddf_library.functions.ml.classification.KNearestNeighbors.load_model">
+<code class="descname">load_model</code><span class="sig-paren">(</span><em>filepath</em>, <em>storage='hdfs'</em>, <em>namenode='localhost'</em>, <em>port=9000</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.functions.ml.classification.KNearestNeighbors.load_model" title="Permalink to this definition">¶</a></dt>
+<dd><p>Load a machine learning model from a binary file in a storage.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>filepath</strong> – The absolute path name;</li>
+<li><strong>storage</strong> – <em>‘hdfs’</em> to load from HDFS storage or <em>‘fs’</em> to load
+from common file system;</li>
+<li><strong>storage</strong> – <em>‘hdfs’</em> to save in HDFS storage or <em>‘fs’</em> to save in
+common file system;</li>
+<li><strong>namenode</strong> – IP or DNS address to NameNode (default, <em>‘localhost’</em>).
+Note: Only if storage is <em>‘hdfs’</em>;</li>
+<li><strong>port</strong> – NameNode port (default, 9000). Note: Only if storage is
+<em>‘hdfs’</em>;</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">self</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Example:</th><td class="field-body"></td>
+</tr>
+</tbody>
+</table>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">ml_model</span> <span class="o">=</span> <span class="n">ml_algorithm</span><span class="p">()</span><span class="o">.</span><span class="n">load_model</span><span class="p">(</span><span class="s1">&#39;/saved_model&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="method">
+<dt id="ddf_library.functions.ml.classification.KNearestNeighbors.save_model">
+<code class="descname">save_model</code><span class="sig-paren">(</span><em>filepath</em>, <em>storage='hdfs'</em>, <em>overwrite=True</em>, <em>namenode='localhost'</em>, <em>port=9000</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.functions.ml.classification.KNearestNeighbors.save_model" title="Permalink to this definition">¶</a></dt>
+<dd><p>Save a machine learning model as a binary file in a storage.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>filepath</strong> – The output absolute path name;</li>
+<li><strong>storage</strong> – <em>‘hdfs’</em> to save in HDFS storage or <em>‘fs’</em> to save in
+common file system;</li>
+<li><strong>overwrite</strong> – Overwrite if file already exists (default, True);</li>
+<li><strong>namenode</strong> – IP or DNS address to NameNode (default, <em>‘localhost’</em>);</li>
+<li><strong>port</strong> – NameNode port (default, 9000);</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">self</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Example:</th><td class="field-body"></td>
+</tr>
+</tbody>
+</table>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">ml_model</span><span class="o">.</span><span class="n">save_model</span><span class="p">(</span><span class="s1">&#39;/trained_model&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="method">
+<dt id="ddf_library.functions.ml.classification.KNearestNeighbors.transform">
+<code class="descname">transform</code><span class="sig-paren">(</span><em>data</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.functions.ml.classification.KNearestNeighbors.transform" title="Permalink to this definition">¶</a></dt>
+<dd><table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>data</strong> – DDF</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">DDF</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="ddf_library.functions.ml.classification.GaussianNB">
+<em class="property">class </em><code class="descclassname">ddf_library.functions.ml.classification.</code><code class="descname">GaussianNB</code><span class="sig-paren">(</span><em>feature_col</em>, <em>label_col</em>, <em>pred_col=None</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.functions.ml.classification.GaussianNB" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">ddf_library.ddf_model.ModelDDF</span></code></p>
+<p>The Naive Bayes algorithm is an intuitive method that uses the
+probabilities of each attribute belonged to each class to make a prediction.
+It is a supervised learning approach that you would  come up with if you
+wanted to model a predictive probabilistically modeling problem.</p>
+<p>Naive bayes simplifies the calculation of probabilities by assuming that
+the probability of each attribute belonging to a given class value is
+independent of all other attributes. The probability of a class value given
+a value of an attribute is called the conditional probability. By
+multiplying the conditional probabilities together for each attribute for
+a given class value, we have the probability of a data instance belonging
+to that class.</p>
+<p>To make a prediction we can calculate probabilities of the instance
+belonged to each class and select the class value with the highest
+probability.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Example:</th><td class="field-body"></td>
+</tr>
+</tbody>
+</table>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">nb</span> <span class="o">=</span> <span class="n">GaussianNB</span><span class="p">(</span><span class="n">feature_col</span><span class="o">=</span><span class="s1">&#39;features&#39;</span><span class="p">,</span> <span class="n">label_col</span><span class="o">=</span><span class="s1">&#39;label&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">ddf1</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">ddf2</span> <span class="o">=</span> <span class="n">nb</span><span class="o">.</span><span class="n">transform</span><span class="p">(</span><span class="n">ddf1</span><span class="p">)</span>
+</pre></div>
+</div>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>feature_col</strong> – Feature column name;</li>
+<li><strong>label_col</strong> – Label column name;</li>
+<li><strong>pred_col</strong> – Output prediction name
+(default, <em>‘prediction_GaussianNB’</em>);</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+<dl class="method">
+<dt id="ddf_library.functions.ml.classification.GaussianNB.fit">
+<code class="descname">fit</code><span class="sig-paren">(</span><em>data</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.functions.ml.classification.GaussianNB.fit" title="Permalink to this definition">¶</a></dt>
+<dd><p>Fit the model.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>data</strong> – DDF</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">trained model</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="ddf_library.functions.ml.classification.GaussianNB.fit_transform">
+<code class="descname">fit_transform</code><span class="sig-paren">(</span><em>data</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.functions.ml.classification.GaussianNB.fit_transform" title="Permalink to this definition">¶</a></dt>
+<dd><p>Fit the model and transform.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>data</strong> – DDF</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">DDF</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="ddf_library.functions.ml.classification.GaussianNB.load_model">
+<code class="descname">load_model</code><span class="sig-paren">(</span><em>filepath</em>, <em>storage='hdfs'</em>, <em>namenode='localhost'</em>, <em>port=9000</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.functions.ml.classification.GaussianNB.load_model" title="Permalink to this definition">¶</a></dt>
+<dd><p>Load a machine learning model from a binary file in a storage.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>filepath</strong> – The absolute path name;</li>
+<li><strong>storage</strong> – <em>‘hdfs’</em> to load from HDFS storage or <em>‘fs’</em> to load
+from common file system;</li>
+<li><strong>storage</strong> – <em>‘hdfs’</em> to save in HDFS storage or <em>‘fs’</em> to save in
+common file system;</li>
+<li><strong>namenode</strong> – IP or DNS address to NameNode (default, <em>‘localhost’</em>).
+Note: Only if storage is <em>‘hdfs’</em>;</li>
+<li><strong>port</strong> – NameNode port (default, 9000). Note: Only if storage is
+<em>‘hdfs’</em>;</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">self</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Example:</th><td class="field-body"></td>
+</tr>
+</tbody>
+</table>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">ml_model</span> <span class="o">=</span> <span class="n">ml_algorithm</span><span class="p">()</span><span class="o">.</span><span class="n">load_model</span><span class="p">(</span><span class="s1">&#39;/saved_model&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="method">
+<dt id="ddf_library.functions.ml.classification.GaussianNB.save_model">
+<code class="descname">save_model</code><span class="sig-paren">(</span><em>filepath</em>, <em>storage='hdfs'</em>, <em>overwrite=True</em>, <em>namenode='localhost'</em>, <em>port=9000</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.functions.ml.classification.GaussianNB.save_model" title="Permalink to this definition">¶</a></dt>
+<dd><p>Save a machine learning model as a binary file in a storage.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>filepath</strong> – The output absolute path name;</li>
+<li><strong>storage</strong> – <em>‘hdfs’</em> to save in HDFS storage or <em>‘fs’</em> to save in
+common file system;</li>
+<li><strong>overwrite</strong> – Overwrite if file already exists (default, True);</li>
+<li><strong>namenode</strong> – IP or DNS address to NameNode (default, <em>‘localhost’</em>);</li>
+<li><strong>port</strong> – NameNode port (default, 9000);</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">self</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Example:</th><td class="field-body"></td>
+</tr>
+</tbody>
+</table>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">ml_model</span><span class="o">.</span><span class="n">save_model</span><span class="p">(</span><span class="s1">&#39;/trained_model&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="method">
+<dt id="ddf_library.functions.ml.classification.GaussianNB.transform">
+<code class="descname">transform</code><span class="sig-paren">(</span><em>data</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.functions.ml.classification.GaussianNB.transform" title="Permalink to this definition">¶</a></dt>
+<dd><table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>data</strong> – DDF</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">DDF</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="ddf_library.functions.ml.classification.LogisticRegression">
+<em class="property">class </em><code class="descclassname">ddf_library.functions.ml.classification.</code><code class="descname">LogisticRegression</code><span class="sig-paren">(</span><em>feature_col</em>, <em>label_col</em>, <em>pred_col=None</em>, <em>alpha=0.1</em>, <em>regularization=0.1</em>, <em>max_iters=100</em>, <em>threshold=0.01</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.functions.ml.classification.LogisticRegression" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">ddf_library.ddf_model.ModelDDF</span></code></p>
+<p>Logistic regression is named for the function used at the core
+of the method, the logistic function. It is the go-to method for
+binary classification problems (problems with two class values).</p>
+<p>The logistic function, also called the sigmoid function was
+developed by statisticians to describe properties of population
+growth in ecology, rising quickly and maxing out at the carrying
+capacity of the environment. It’s an S-shaped curve that can take
+any real-valued number and map it into a value between 0 and 1,
+but never exactly at those limits.</p>
+<p>This implementation uses a Stochastic Gradient Ascent (a variant of
+the Stochastic gradient descent). It is called stochastic because
+the derivative based on a randomly chosen single example is a random
+approximation to the true derivative based on all the training data.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Example:</th><td class="field-body"></td>
+</tr>
+</tbody>
+</table>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">logr</span> <span class="o">=</span> <span class="n">LogisticRegression</span><span class="p">(</span><span class="n">feature_col</span><span class="o">=</span><span class="s1">&#39;features&#39;</span><span class="p">,</span>
+<span class="gp">&gt;&gt;&gt; </span>                          <span class="n">label_col</span><span class="o">=</span><span class="s1">&#39;label&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">ddf1</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">ddf2</span> <span class="o">=</span> <span class="n">logr</span><span class="o">.</span><span class="n">transform</span><span class="p">(</span><span class="n">ddf1</span><span class="p">)</span>
+</pre></div>
+</div>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>feature_col</strong> – Feature column name;</li>
+<li><strong>label_col</strong> – Label column name;</li>
+<li><strong>pred_col</strong> – Output prediction name (default,
+<em>‘prediction_LogReg’</em>);</li>
+<li><strong>alpha</strong> – Learning rate parameter (default, 0.1);</li>
+<li><strong>regularization</strong> – Regularization parameter (default, 0.1);</li>
+<li><strong>max_iters</strong> – Maximum number of iterations (default, 100);</li>
+<li><strong>threshold</strong> – Tolerance for stopping criterion (default, 0.01);</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+<dl class="method">
+<dt id="ddf_library.functions.ml.classification.LogisticRegression.fit">
+<code class="descname">fit</code><span class="sig-paren">(</span><em>data</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.functions.ml.classification.LogisticRegression.fit" title="Permalink to this definition">¶</a></dt>
+<dd><p>Fit the model.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>data</strong> – DDF</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">trained model</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="ddf_library.functions.ml.classification.LogisticRegression.fit_transform">
+<code class="descname">fit_transform</code><span class="sig-paren">(</span><em>data</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.functions.ml.classification.LogisticRegression.fit_transform" title="Permalink to this definition">¶</a></dt>
+<dd><p>Fit the model and transform.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>data</strong> – DDF</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">DDF</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="ddf_library.functions.ml.classification.LogisticRegression.load_model">
+<code class="descname">load_model</code><span class="sig-paren">(</span><em>filepath</em>, <em>storage='hdfs'</em>, <em>namenode='localhost'</em>, <em>port=9000</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.functions.ml.classification.LogisticRegression.load_model" title="Permalink to this definition">¶</a></dt>
+<dd><p>Load a machine learning model from a binary file in a storage.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>filepath</strong> – The absolute path name;</li>
+<li><strong>storage</strong> – <em>‘hdfs’</em> to load from HDFS storage or <em>‘fs’</em> to load
+from common file system;</li>
+<li><strong>storage</strong> – <em>‘hdfs’</em> to save in HDFS storage or <em>‘fs’</em> to save in
+common file system;</li>
+<li><strong>namenode</strong> – IP or DNS address to NameNode (default, <em>‘localhost’</em>).
+Note: Only if storage is <em>‘hdfs’</em>;</li>
+<li><strong>port</strong> – NameNode port (default, 9000). Note: Only if storage is
+<em>‘hdfs’</em>;</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">self</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Example:</th><td class="field-body"></td>
+</tr>
+</tbody>
+</table>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">ml_model</span> <span class="o">=</span> <span class="n">ml_algorithm</span><span class="p">()</span><span class="o">.</span><span class="n">load_model</span><span class="p">(</span><span class="s1">&#39;/saved_model&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="method">
+<dt id="ddf_library.functions.ml.classification.LogisticRegression.save_model">
+<code class="descname">save_model</code><span class="sig-paren">(</span><em>filepath</em>, <em>storage='hdfs'</em>, <em>overwrite=True</em>, <em>namenode='localhost'</em>, <em>port=9000</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.functions.ml.classification.LogisticRegression.save_model" title="Permalink to this definition">¶</a></dt>
+<dd><p>Save a machine learning model as a binary file in a storage.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>filepath</strong> – The output absolute path name;</li>
+<li><strong>storage</strong> – <em>‘hdfs’</em> to save in HDFS storage or <em>‘fs’</em> to save in
+common file system;</li>
+<li><strong>overwrite</strong> – Overwrite if file already exists (default, True);</li>
+<li><strong>namenode</strong> – IP or DNS address to NameNode (default, <em>‘localhost’</em>);</li>
+<li><strong>port</strong> – NameNode port (default, 9000);</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">self</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Example:</th><td class="field-body"></td>
+</tr>
+</tbody>
+</table>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">ml_model</span><span class="o">.</span><span class="n">save_model</span><span class="p">(</span><span class="s1">&#39;/trained_model&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="method">
+<dt id="ddf_library.functions.ml.classification.LogisticRegression.transform">
+<code class="descname">transform</code><span class="sig-paren">(</span><em>data</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.functions.ml.classification.LogisticRegression.transform" title="Permalink to this definition">¶</a></dt>
+<dd><table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>data</strong> – DDF</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">DDF</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="ddf_library.functions.ml.classification.SVM">
+<em class="property">class </em><code class="descclassname">ddf_library.functions.ml.classification.</code><code class="descname">SVM</code><span class="sig-paren">(</span><em>feature_col</em>, <em>label_col</em>, <em>pred_col=None</em>, <em>coef_lambda=0.1</em>, <em>coef_lr=0.01</em>, <em>threshold=0.001</em>, <em>max_iters=100</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.functions.ml.classification.SVM" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">ddf_library.ddf_model.ModelDDF</span></code></p>
+<p>Support vector machines (SVM) is a supervised learning model used for
+binary classification. Given a set of training examples, each marked as
+belonging to one or the other of two categories, a SVM training algorithm
+builds a model that assigns new examples to one category or the other,
+making it a non-probabilistic binary linear classifier.</p>
+<p>An SVM model is a representation of the examples as points in space, mapped
+so that the examples of the separate categories are divided by a clear gap
+that is as wide as possible. New examples are then mapped into that same
+space and predicted to belong to a category based on which side of the gap
+they fall. This algorithm is effective in high dimensional spaces and it
+is still effective in cases where number of dimensions is greater than
+the number of samples.</p>
+<p>The algorithm reads a dataset composed by labels (-1.0 or 1.0) and
+features (numeric fields).</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Example:</th><td class="field-body"></td>
+</tr>
+</tbody>
+</table>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">svm</span> <span class="o">=</span> <span class="n">SVM</span><span class="p">(</span><span class="n">feature_col</span><span class="o">=</span><span class="s1">&#39;features&#39;</span><span class="p">,</span> <span class="n">label_col</span><span class="o">=</span><span class="s1">&#39;label&#39;</span><span class="p">,</span>
+<span class="gp">&gt;&gt;&gt; </span>          <span class="n">max_iters</span><span class="o">=</span><span class="mi">10</span><span class="p">)</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">ddf1</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">ddf2</span> <span class="o">=</span> <span class="n">svm</span><span class="o">.</span><span class="n">transform</span><span class="p">(</span><span class="n">ddf1</span><span class="p">)</span>
+</pre></div>
+</div>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>feature_col</strong> – Feature column name;</li>
+<li><strong>label_col</strong> – Label column name;</li>
+<li><strong>pred_col</strong> – Output prediction name (default, <em>‘prediction_SVM’</em>);</li>
+<li><strong>coef_lambda</strong> – Regularization parameter (default, 0.1);</li>
+<li><strong>coef_lr</strong> – Learning rate parameter (default, 0.1);</li>
+<li><strong>threshold</strong> – Tolerance for stopping criterion (default, 0.001);</li>
+<li><strong>max_iters</strong> – Number max of iterations (default, 100).</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+<dl class="method">
+<dt id="ddf_library.functions.ml.classification.SVM.fit">
+<code class="descname">fit</code><span class="sig-paren">(</span><em>data</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.functions.ml.classification.SVM.fit" title="Permalink to this definition">¶</a></dt>
+<dd><p>Fit the model.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>data</strong> – DDF</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">trained model</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="ddf_library.functions.ml.classification.SVM.fit_transform">
+<code class="descname">fit_transform</code><span class="sig-paren">(</span><em>data</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.functions.ml.classification.SVM.fit_transform" title="Permalink to this definition">¶</a></dt>
+<dd><p>Fit the model and transform.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>data</strong> – DDF</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">DDF</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="ddf_library.functions.ml.classification.SVM.load_model">
+<code class="descname">load_model</code><span class="sig-paren">(</span><em>filepath</em>, <em>storage='hdfs'</em>, <em>namenode='localhost'</em>, <em>port=9000</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.functions.ml.classification.SVM.load_model" title="Permalink to this definition">¶</a></dt>
+<dd><p>Load a machine learning model from a binary file in a storage.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>filepath</strong> – The absolute path name;</li>
+<li><strong>storage</strong> – <em>‘hdfs’</em> to load from HDFS storage or <em>‘fs’</em> to load
+from common file system;</li>
+<li><strong>storage</strong> – <em>‘hdfs’</em> to save in HDFS storage or <em>‘fs’</em> to save in
+common file system;</li>
+<li><strong>namenode</strong> – IP or DNS address to NameNode (default, <em>‘localhost’</em>).
+Note: Only if storage is <em>‘hdfs’</em>;</li>
+<li><strong>port</strong> – NameNode port (default, 9000). Note: Only if storage is
+<em>‘hdfs’</em>;</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">self</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Example:</th><td class="field-body"></td>
+</tr>
+</tbody>
+</table>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">ml_model</span> <span class="o">=</span> <span class="n">ml_algorithm</span><span class="p">()</span><span class="o">.</span><span class="n">load_model</span><span class="p">(</span><span class="s1">&#39;/saved_model&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="method">
+<dt id="ddf_library.functions.ml.classification.SVM.save_model">
+<code class="descname">save_model</code><span class="sig-paren">(</span><em>filepath</em>, <em>storage='hdfs'</em>, <em>overwrite=True</em>, <em>namenode='localhost'</em>, <em>port=9000</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.functions.ml.classification.SVM.save_model" title="Permalink to this definition">¶</a></dt>
+<dd><p>Save a machine learning model as a binary file in a storage.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>filepath</strong> – The output absolute path name;</li>
+<li><strong>storage</strong> – <em>‘hdfs’</em> to save in HDFS storage or <em>‘fs’</em> to save in
+common file system;</li>
+<li><strong>overwrite</strong> – Overwrite if file already exists (default, True);</li>
+<li><strong>namenode</strong> – IP or DNS address to NameNode (default, <em>‘localhost’</em>);</li>
+<li><strong>port</strong> – NameNode port (default, 9000);</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">self</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Example:</th><td class="field-body"></td>
+</tr>
+</tbody>
+</table>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">ml_model</span><span class="o">.</span><span class="n">save_model</span><span class="p">(</span><span class="s1">&#39;/trained_model&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="method">
+<dt id="ddf_library.functions.ml.classification.SVM.transform">
+<code class="descname">transform</code><span class="sig-paren">(</span><em>data</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.functions.ml.classification.SVM.transform" title="Permalink to this definition">¶</a></dt>
+<dd><table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>data</strong> – DDF</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">DDF</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+  <h4>Previous topic</h4>
+  <p class="topless"><a href="ddf_library.functions.graph.html"
+                        title="previous chapter">Graph Operations</a></p>
+  <h4>Next topic</h4>
+  <p class="topless"><a href="ddf_library.functions.ml.clustering.html"
+                        title="next chapter">ML.Clustering</a></p>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="ddf_library.functions.ml.clustering.html" title="ML.Clustering"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="ddf_library.functions.graph.html" title="Graph Operations"
+             >previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="index.html">DDF</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="api.html" >API Reference</a> &#187;</li>
+          <li class="nav-item nav-item-2"><a href="ddf_library.html" >DDF operations</a> &#187;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2019, Lucas M Ponce.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.8.4.
+    </div>
+  </body>
+</html>

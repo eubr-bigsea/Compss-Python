@@ -7,7 +7,7 @@ __email__ = "lucasmsp@gmail.com"
 from pycompss.api.task import task
 from pycompss.functions.reduce import merge_reduce
 from pycompss.api.local import *
-from ddf.ddf import DDFSketch
+from ddf_library.ddf import DDFSketch
 
 import numpy as np
 import pandas as pd

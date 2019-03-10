@@ -1,7 +1,7 @@
-ML.Regression
+ML.Clustering
 ****************
 
-.. automodule:: ddf.functions.ml.regression
+.. automodule:: ddf_library.functions.ml.clustering
     :members:
     :undoc-members:
     :show-inheritance:

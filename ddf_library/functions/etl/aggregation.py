@@ -5,8 +5,7 @@ __author__ = "Lucas Miguel S Ponce"
 __email__ = "lucasmsp@gmail.com"
 
 from pycompss.api.task import task
-from pycompss.api.parameter import INOUT
-from sort import SortOperation
+
 import pandas as pd
 
 
@@ -16,69 +15,64 @@ class AggregationOperation(object):
     Computes aggregates and returns the result as a DataFrame.
     """
 
-    def transform(self, data, params, nfrag):
+    def transform(self, data, params):
         """AggregationOperation.
 
         :param data: A list with nfrag pandas's dataframe;
         :param params: A dictionary that contains:
-            - columns: A list with the columns names to aggregates;
+            - groupby: A list with the columns names to aggregates;
             - alias: A dictionary with the aliases of all aggregated columns;
             - operation: A dictionary with the functions to be applied in
                          the aggregation:
-                'mean': Computes the average of each group;
-                'count': Counts the total of records of each group;
+                'mean': Computes average values for each numeric columns
+                 for each group;
+                'count': Counts the number of records for each group;
                 'first': Returns the first element of group;
                 'last': Returns the last element of group;
-                'max': Returns the max value of each group for one attribute;
-                'min': Returns the min value of each group for one attribute;
-                'sum': Returns the sum of values of each group for one
-                       attribute;
+                'max': Computes the max value for each numeric columns for each group;
+                'min': Computes the min value for each numeric column for each group;
+                'sum': Computes the sum for each numeric columns for each group;
                 'list': Returns a list of objects with duplicates;
                 'set': Returns a set of objects with duplicate elements
-                            eliminated.
-        :param nfrag: The number of fragments;
-        :return: Returns a list with nfrag pandas's dataframe.
+                 eliminated.
+        :return: Returns a list of pandas's DataFrame.
 
         example:
-            settings['columns']   = ["col1"]
+            settings['groupby']   = ["col1"]
             settings['operation'] = {'col2':['sum'],'col3':['first','last']}
             settings['aliases']   = {'col2':["Sum_col2"],
                                      'col3':['col_First','col_Last']}
 
         """
-        # if not params.get('sorted', False):
-        #     cols = params['columns']
-        #     params['ascending'] = [True for _ in range(len(cols))]
-        #     data = SortOperation().transform(data, params, nfrag)
 
-        # exprs = {'date': {'COUNT': 'count', 'First1': 'first'}}
-        #
-        # params['operation'] = {}
-        # params['aliases'] = {}
-        # for key in params['exprs']:
-        #     if key not in params['operation']:
-        #         params['operation'][key] = []
-        #     if key not in params['aliases']:
-        #         params['aliases'][key] = []
-        #     params['operation'][key].append()
-        #
+        if 'aliases' not in params:
+            params['aliases'] = {}
+            for col in params['operation']:
+                params['aliases'][col] = []
+                ops = params['operation'][col]
+                for op in ops:
+                    alias = "{}({})".format(op, col)
+                    params['aliases'][col].append(alias)
 
-        info = [[] for _ in range(nfrag)]
-        tmp = [[] for _ in range(nfrag)]
+        nfrag = len(data)
+        # the main ideia is to perform a local aggregation in each partition
+        # and to compute the bounding box
+        local_agg = [[] for _ in range(nfrag)]
         idx = [[] for _ in range(nfrag)]
         for f in range(nfrag):
-            tmp[f] = _aggregate(data[f], params, idx[f])
+            local_agg[f], idx[f] = _aggregate(data[f], params)
 
-        from pycompss.api.api import compss_wait_on
-        idx = compss_wait_on(idx)
+        # them, group them if each pair is overlapping
         overlapping = overlap(idx)
+        info = [[] for _ in range(nfrag)]
+        result = local_agg[:]
 
-        result = tmp[:]
         for f1 in range(nfrag):
             for f2 in range(nfrag):
                 if f1 != f2 and overlapping[f1][f2]:
-                    result[f1], info[f1] = _merge_aggregation(result[f1], tmp[f2],
-                                                    params, f1, f2)
+                    result[f1], info[f1] = _merge_aggregation(result[f1],
+                                                              local_agg[f2],
+                                                              params, f1, f2)
 
         output = {'key_data': ['data'], 'key_info': ['info'],
                   'data': result, 'info': info}
@@ -89,8 +83,9 @@ def overlap(sorted_idx):
     """Check if fragments A and B may have some elements to be joined."""
     nfrag = len(sorted_idx)
     overlapping = [[False for _ in range(nfrag)] for _ in range(nfrag)]
+    from pycompss.api.api import compss_wait_on
+    sorted_idx = compss_wait_on(sorted_idx)
 
-    from pandas.api.types import is_categorical_dtype, is_numeric_dtype
     for i in range(nfrag):
         x_min, x_max = sorted_idx[i]
 
@@ -103,19 +98,7 @@ def overlap(sorted_idx):
                     tmp = pd.DataFrame([x_min, x_max, y_min, y_max],
                                        index=[0, 1, 2, 3])
                     tmp = tmp.infer_objects()
-
                     cols = [0]
-                    # ndim = 0
-                    # for c in tmp.columns:
-                    #     type1 = tmp[c].dtype
-                    #     if not is_categorical_dtype(type1) or \
-                    #         is_numeric_dtype(type1):
-                    #         cols.append(c)
-                    #     elif ndim == 0:
-                    #         cols.append(c)
-                    #         ndim += 1
-                    #
-                    # print (tmp[cols].dtypes)
                     tmp.sort_values(by=0, inplace=True)
                     idx = tmp.index
 
@@ -127,10 +110,10 @@ def overlap(sorted_idx):
     return overlapping
 
 
-@task(idx=INOUT, returns=list)
-def _aggregate(data, params, idx):
+@task(returns=2)
+def _aggregate(data, params):
     """Perform a partial aggregation."""
-    columns = params['columns']
+    columns = params['groupby']
     target = params['aliases']
     operation = params['operation']
 
@@ -151,11 +134,12 @@ def _aggregate(data, params, idx):
     data = data.reset_index()
     data.reset_index(drop=True, inplace=True)
     data.sort_values(columns, inplace=True)
+
     n = len(data)
     min_idx = data.loc[0, columns].values.tolist()
     max_idx = data.loc[n-1, columns].values.tolist()
-    idx += [min_idx, max_idx]
-    return data
+    idx = [min_idx, max_idx]
+    return data, idx
 
 
 @task(returns=2)
@@ -165,13 +149,11 @@ def _merge_aggregation(data1, data2, params, f1, f2):
     if a key is present in both fragments, it will remain
     in the result only if f1 <f2.
     """
-    columns = params['columns']
+    columns = params['groupby']
     target = params['aliases']
     operation = params['operation']
 
     if len(data1) > 0 and len(data2) > 0:
-
-        data1, data = check_dtypes(data1, data2)
 
         # Keep only elements that is present in A
         merged = data2.merge(data1, on=columns,
@@ -201,30 +183,6 @@ def _merge_aggregation(data1, data2, params, f1, f2):
 
     info = [data1.columns.tolist(), data1.dtypes.values, [len(data1)]]
     return data1, info
-
-
-def check_dtypes(data1, data2):
-
-    print "TEMPORARY_AGG: check_dtypes "
-    print data1.dtypes
-    print data2.dtypes
-    from pandas.api.types import is_numeric_dtype
-    for c1, c2 in zip(data1.columns, data2.columns):
-        type1 = data1[c1].dtype
-        type2 = data2[c2].dtype
-
-        if type1 != type2:
-            if is_numeric_dtype(data1[c1]) and is_numeric_dtype(data2[c2]):
-                data1[c1] = pd.to_numeric(data1[c1], downcast='float')
-                data2[c2] = pd.to_numeric(data2[c2], downcast='float')
-            else:
-                data1[c1] = data1[c1].astype(object)
-                data2[c2] = data2[c2].astype(object)
-
-    print data1.dtypes
-    print data2.dtypes
-
-    return data1, data2
 
 
 def _collect_list(x):

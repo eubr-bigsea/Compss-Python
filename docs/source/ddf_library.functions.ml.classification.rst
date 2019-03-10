@@ -1,7 +1,7 @@
 ML.Classification
 *******************
 
-.. automodule:: ddf.functions.ml.classification
+.. automodule:: ddf_library.functions.ml.classification
     :members:
     :undoc-members:
     :show-inheritance:

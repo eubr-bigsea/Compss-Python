@@ -11,8 +11,8 @@ import pandas as pd
 from pycompss.api.task import task
 from pycompss.functions.reduce import merge_reduce
 from pycompss.api.local import *
-from ddf.ddf import DDF
-from ddf.ddf_model import ModelDDF
+from ddf_library.ddf import DDF
+from ddf_library.ddf_model import ModelDDF
 
 __all__ = ['Kmeans', 'DBSCAN']
 

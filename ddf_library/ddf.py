@@ -16,17 +16,15 @@ Public classes:
 import uuid
 
 import pandas as pd
-import numpy as np
-
 from pycompss.api.api import compss_wait_on
 from pycompss.functions.reduce import merge_reduce
-
-
-from collections import OrderedDict
 
 import copy
 
 import context
+
+
+__all__ = ['DDF', 'DDFSketch']
 
 
 class DDFSketch(object):
@@ -117,8 +115,6 @@ class DDF(DDFSketch):
         last_uuid = kwargs.get('last_uuid', 'init')
         self.settings = kwargs.get('settings', {'input': 0})
 
-        self.opt = OrderedDict()
-        self.partial_sizes = list()
         self.partitions = list()
 
         if last_uuid != 'init':
@@ -483,36 +479,29 @@ class DDF(DDFSketch):
         new_list = self._merge_tasks_list(self.task_list + data2.task_list)
         return DDF(task_list=new_list, last_uuid=new_state_uuid)
 
-    def aggregation(self, group_by, exprs, aliases):
+    def group_by(self, group_by):
         """
         Computes aggregates and returns the result as a DDF.
 
         Is it a Lazy function: No
 
         :param group_by: A list of columns to be grouped;
-        :param exprs: A dict of lists with all operations in some column;
-        :param aliases: A dict of lists with all new names;
-        :return: DFF
+        :return: A GroupedDFF with a set of methods for aggregations on a DDF
 
         :Example:
 
-        >>> ddf1.aggregation(group_by=['col_1'], exprs={'col_1': ['count']},
-        >>>                  aliases={'col_1': ["new_col"]})
+        >>> ddf1.group_by(group_by=['col_1']).mean(['col_2']).first(['col_2'])
         """
-
-        settings = dict()
-        settings['columns'] = group_by
-        settings['operation'] = exprs
-        settings['aliases'] = aliases
-
+        settings = {'groupby': group_by, 'operation': {}}
+        from groupby import GroupedDDF
         from functions.etl.aggregation import AggregationOperation
 
         def task_aggregation(df, params):
-            return AggregationOperation().transform(df, params, len(df))
+            return AggregationOperation().transform(df, params)
 
         new_state_uuid = self._generate_uuid()
         context.COMPSsContext.tasks_map[new_state_uuid] = \
-            {'name': 'aggregation',
+            {'name': 'groupby',
              'status': 'WAIT',
              'lazy': False,
              'function': [task_aggregation, settings],
@@ -522,7 +511,9 @@ class DDF(DDFSketch):
              }
 
         self._set_n_input(new_state_uuid, self.settings['input'])
-        return DDF(task_list=self.task_list, last_uuid=new_state_uuid)
+        tmp = DDF(task_list=self.task_list, last_uuid=new_state_uuid)
+
+        return GroupedDDF(tmp)
 
     def fillna(self, subset=None, mode='VALUE', value=None):
         """
@@ -746,12 +737,12 @@ class DDF(DDFSketch):
         Is it a Lazy function: Yes, if mode is *"REMOVE_ROW"*, otherwise is No
 
         :param subset: A list of attributes to evaluate;
-        :param mode: action in case of missing values: *"REMOVE_ROW"** to
-         remove entire row (default) or **"REMOVE_COLUMN"* to remove a column;
+        :param mode: *"REMOVE_ROW"** to remove entire row (default) or
+         **"REMOVE_COLUMN"** to remove a column.
         :param thresh: int, default None If specified, drop rows that have less
-         than thresh non-null values. This overwrites the how parameter.
-        :param how: ‘any’ or ‘all’. If ‘any’, drop a row if it contains any
-         nulls. If ‘all’, drop a row only if all its values are null.
+          than thresh non-null values. This overwrites the how parameter.
+        :param how: 'any' or 'all'. If 'any', drop a row if it contains any
+          nulls. If 'all', drop a row only if all its values are null.
         :return: DDF
 
         :Example:
@@ -1396,4 +1387,6 @@ class DDF(DDFSketch):
         self._set_n_input(new_state_uuid, data2.settings['input'])
         new_list = self._merge_tasks_list(self.task_list + data2.task_list)
         return DDF(task_list=new_list, last_uuid=new_state_uuid)
+
+
 
