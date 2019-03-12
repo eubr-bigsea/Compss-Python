@@ -52,8 +52,8 @@
 <h2>ETL<a class="headerlink" href="#etl" title="Permalink to this headline">¶</a></h2>
 <table border="1" class="docutils">
 <colgroup>
+<col width="48%" />
 <col width="53%" />
-<col width="47%" />
 </colgroup>
 <thead valign="bottom">
 <tr class="row-odd"><th class="head">PySpark DataFrame</th>
@@ -76,8 +76,8 @@
 <tr class="row-even"><td>describe</td>
 <td>describe</td>
 </tr>
-<tr class="row-odd"><td>distinct</td>
-<td>distinct</td>
+<tr class="row-odd"><td>subtract</td>
+<td>subtract</td>
 </tr>
 <tr class="row-even"><td>drop</td>
 <td>drop</td>
@@ -100,40 +100,49 @@
 <tr class="row-even"><td>intersect</td>
 <td>intersect</td>
 </tr>
-<tr class="row-odd"><td>join</td>
+<tr class="row-odd"><td>intersectAll</td>
+<td>intersect_all</td>
+</tr>
+<tr class="row-even"><td>join</td>
 <td>join</td>
 </tr>
-<tr class="row-even"><td>randomSplit</td>
+<tr class="row-odd"><td>randomSplit</td>
 <td>split</td>
 </tr>
-<tr class="row-odd"><td>replace</td>
+<tr class="row-even"><td>replace</td>
 <td>replace</td>
 </tr>
-<tr class="row-even"><td>sample</td>
+<tr class="row-odd"><td>sample</td>
 <td>sample</td>
 </tr>
-<tr class="row-odd"><td>select</td>
+<tr class="row-even"><td>select</td>
 <td>select</td>
 </tr>
-<tr class="row-even"><td>show</td>
+<tr class="row-odd"><td>show</td>
 <td>show</td>
 </tr>
-<tr class="row-odd"><td>sort</td>
+<tr class="row-even"><td>sort</td>
 <td>sort</td>
 </tr>
-<tr class="row-even"><td>take</td>
+<tr class="row-odd"><td>take</td>
 <td>take</td>
+</tr>
+<tr class="row-even"><td>toDF</td>
+<td>toDF</td>
 </tr>
 <tr class="row-odd"><td>union</td>
 <td>union</td>
 </tr>
-<tr class="row-even"><td>withColumn</td>
-<td>with_column</td>
+<tr class="row-even"><td>unionByName</td>
+<td>union_by_name</td>
 </tr>
-<tr class="row-odd"><td>read.text</td>
+<tr class="row-odd"><td>withColumnRenamed</td>
+<td>with_column_renamed</td>
+</tr>
+<tr class="row-even"><td>read.text</td>
 <td>load_text</td>
 </tr>
-<tr class="row-even"><td>write</td>
+<tr class="row-odd"><td>write</td>
 <td>save</td>
 </tr>
 </tbody>
@@ -154,6 +163,12 @@
 <tbody valign="top">
 <tr class="row-even"><td>VectorAssembler</td>
 <td>VectorAssembler</td>
+</tr>
+<tr class="row-odd"><td>VectorSlicer</td>
+<td>VectorSlicer</td>
+</tr>
+<tr class="row-even"><td>NGram</td>
+<td>NGram</td>
 </tr>
 <tr class="row-odd"><td>TF-IDF</td>
 <td>TF-IDF</td>
