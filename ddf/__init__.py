@@ -1,7 +1,0 @@
-#!/usr/bin/python
-
-
-
-
-
-

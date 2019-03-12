@@ -1,7 +1,7 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 
-from ddf.ddf import DDF
+from ddf_library.ddf import DDF
 import numpy as np
 
 
@@ -20,7 +20,7 @@ def ml_classifiers_part1():
                   'Iris-virginica': 1.0}, subset=['class'])
 
     # assembling a group of attributes as features and removing them after
-    from ddf.functions.ml.feature import VectorAssembler
+    from ddf_library.functions.ml.feature import VectorAssembler
     assembler = VectorAssembler(input_col=["sepal_length", "sepal_width",
                                            "petal_length", "petal_width"],
                                 output_col="features")
@@ -28,39 +28,39 @@ def ml_classifiers_part1():
                                          "petal_length", "petal_width"])
 
     # scaling using StandardScaler
-    from ddf.functions.ml.feature import StandardScaler
+    from ddf_library.functions.ml.feature import StandardScaler
     ddf = StandardScaler(input_col='features', output_col='features')\
         .fit_transform(ddf)
 
     # splitting 25% to use as training set and 75% as test
     ddf_train, ddf_test = ddf.split(0.25)
 
-    from ddf.functions.ml.classification import GaussianNB
+    from ddf_library.functions.ml.classification import GaussianNB
     nb = GaussianNB(feature_col='features', label_col='class')\
         .fit(ddf_train)
     nb.save_model('/gaussian_nb')  # save this fitted model in HDFS
     ddf_test = nb.transform(ddf_test)
 
-    from ddf.functions.ml.classification import KNearestNeighbors
+    from ddf_library.functions.ml.classification import KNearestNeighbors
     knn = KNearestNeighbors(k=1, feature_col='features', label_col='class')\
         .fit(ddf_train)
     knn.save_model('/knn')
     ddf_test = knn.transform(ddf_test)
 
-    from ddf.functions.ml.classification import LogisticRegression
+    from ddf_library.functions.ml.classification import LogisticRegression
     logr = LogisticRegression(feature_col='features', label_col='class',
                               max_iters=10).fit(ddf_train)
     logr.save_model('/logistic_regression')
     f = lambda row: -1.0 if row['prediction_LogReg'] == 0.0 else 1.0
     ddf_test = logr.transform(ddf_test).map(f, 'prediction_LogReg')
 
-    from ddf.functions.ml.classification import SVM
+    from ddf_library.functions.ml.classification import SVM
     svm = SVM(feature_col='features', label_col='class',
               max_iters=10).fit(ddf_train)
     svm.save_model('/svm')
     ddf_test = svm.transform(ddf_test)
     #
-    from ddf.functions.ml.evaluation import MultilabelMetrics, \
+    from ddf_library.functions.ml.evaluation import MultilabelMetrics, \
         BinaryClassificationMetrics
 
     metrics_bin = BinaryClassificationMetrics(label_col='class',
@@ -100,7 +100,7 @@ def ml_classifiers_part2():
                   'Iris-virginica': 1.0}, subset=['class'])
 
     # assembling a group of attributes as features and removing them after
-    from ddf.functions.ml.feature import VectorAssembler
+    from ddf_library.functions.ml.feature import VectorAssembler
     assembler = VectorAssembler(input_col=["sepal_length", "sepal_width",
                                            "petal_length", "petal_width"],
                                 output_col="features")
@@ -108,13 +108,13 @@ def ml_classifiers_part2():
                                          "petal_length", "petal_width"])
 
     # scaling using StandardScaler
-    from ddf.functions.ml.feature import StandardScaler
+    from ddf_library.functions.ml.feature import StandardScaler
     scaler = StandardScaler(input_col='features', output_col='features',
                             with_mean=True, with_std=True).fit(ddf)
     ddf = scaler.transform(ddf)
 
     # Loading previous fitted ml models
-    from ddf.functions.ml.classification import GaussianNB,\
+    from ddf_library.functions.ml.classification import GaussianNB,\
         KNearestNeighbors, LogisticRegression,  SVM
     nb = GaussianNB(feature_col='features', label_col='label') \
         .load_model('/gaussian_nb')

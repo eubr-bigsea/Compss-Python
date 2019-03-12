@@ -25,7 +25,7 @@ work transparently to the user. The COMPS tasks will be executed in parallel, on
 
 .. code-block:: python
 
-    from ddf.ddf import DDF
+    from ddf_library.ddf import DDF
     import pandas as pd
 
     df = pd.read_csv('tests/titanic.csv', sep='\t')
@@ -57,7 +57,7 @@ Next, we extend the previous code to computate the result also for men and kids.
 
 .. code-block:: python
 
-    from ddf.ddf import DDF
+    from ddf_library.ddf import DDF
     import pandas as pd
 
     df = pd.read_csv('tests/titanic.csv', sep='\t')
@@ -181,12 +181,12 @@ the others 30% is used to test the fitted model. At end, the model can be evalua
                          output_col='Embarked').fit_transform(ddf1)
 
     # assembling a group of attributes as features and removing them after
-    from ddf.functions.ml.feature import VectorAssembler
+    from ddf_library.functions.ml.feature import VectorAssembler
     assembler = VectorAssembler(input_col=features, output_col="features")
     ddf1 = assembler.transform(ddf1).drop(features)
 
     # scaling using StandardScaler
-    from ddf.functions.ml.feature import StandardScaler
+    from ddf_library.functions.ml.feature import StandardScaler
     ddf1 = StandardScaler(input_col='features', output_col='features')\
         .fit_transform(ddf1)
 
@@ -196,13 +196,13 @@ the others 30% is used to test the fitted model. At end, the model can be evalua
     print "Number of rows to fit the model:", ddf_train.count()
     print "Number of rows to test the model:", ddf_test.count()
 
-    from ddf.functions.ml.classification import LogisticRegression
+    from ddf_library.functions.ml.classification import LogisticRegression
     logr = LogisticRegression(feature_col='features', label_col='Survived',
                               max_iters=10, pred_col='out_logr').fit(ddf_train)
 
     ddf_test = logr.transform(ddf_test).select(['Survived', 'out_logr'])
 
-    from ddf.functions.ml.evaluation import BinaryClassificationMetrics
+    from ddf_library.functions.ml.evaluation import BinaryClassificationMetrics
 
     metrics_bin = BinaryClassificationMetrics(label_col='Survived',
                                               true_label=1.0,

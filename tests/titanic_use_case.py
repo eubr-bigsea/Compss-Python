@@ -1,7 +1,7 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 
-from ddf.ddf import DDF
+from ddf_library.ddf import DDF
 import pandas as pd
 
 
@@ -14,23 +14,17 @@ def use_case1():
 
     ddf1 = DDF().parallelize(df, num_of_parts=4)\
         .select(['Sex', 'Age', 'Survived'])\
-        .clean_missing(['Sex', 'Age'], mode='REMOVE_ROW')\
+        .dropna(['Sex', 'Age'], mode='REMOVE_ROW')\
         .replace({0: 'No', 1: 'Yes'}, subset=['Survived']).cache()
 
     ddf_women = ddf1.filter('(Sex == "female") and (Age >= 18)').\
-        aggregation(group_by=['Survived'],
-                    exprs={'Survived': ['count']},
-                    aliases={'Survived': ["Women"]})
+        group_by(['Survived']).count(['*'], alias=['Women'])
 
-    ddf_kids = ddf1.filter('Age < 18').\
-        aggregation(group_by=['Survived'],
-                    exprs={'Survived': ['count']},
-                    aliases={'Survived': ["Kids"]})
+    ddf_kids = ddf1.filter('Age < 18'). \
+        group_by(['Survived']).count(['*'], alias=['Kids'])
 
-    ddf_men = ddf1.filter('(Sex == "male") and (Age >= 18)').\
-        aggregation(group_by=['Survived'],
-                    exprs={'Survived': ['count']},
-                    aliases={'Survived': ["Men"]})
+    ddf_men = ddf1.filter('(Sex == "male") and (Age >= 18)'). \
+        group_by(['Survived']).count(['Survived'], alias=['Men'])
 
     ddf_final = ddf_women\
         .join(ddf_men, key1=['Survived'], key2=['Survived'], mode='inner')\
@@ -106,13 +100,13 @@ def use_case2():
 
     ddf1 = DDF().parallelize(df, num_of_parts=4)\
         .drop(['PassengerId', 'Cabin', 'Ticket'])\
-        .clean_missing(all_columns, mode='REMOVE_ROW')\
+        .dropna(all_columns, how='any')\
         .replace({'male': 1, 'female': 0}, subset=['Sex'])\
         .map(title_checker, 'Name')\
         .map(age_categorizer, 'Age')\
         .map(fare_categorizer, 'Fare')
 
-    from ddf.functions.ml.feature import StringIndexer
+    from ddf_library.functions.ml.feature import StringIndexer
     ddf1 = StringIndexer(input_col='Embarked',
                          output_col='Embarked').fit_transform(ddf1)
 
@@ -125,12 +119,12 @@ def use_case2():
     """
 
     # assembling a group of attributes as features and removing them after
-    from ddf.functions.ml.feature import VectorAssembler
+    from ddf_library.functions.ml.feature import VectorAssembler
     assembler = VectorAssembler(input_col=features, output_col="features")
     ddf1 = assembler.transform(ddf1).drop(features)
 
     # scaling using StandardScaler
-    from ddf.functions.ml.feature import StandardScaler
+    from ddf_library.functions.ml.feature import StandardScaler
     ddf1 = StandardScaler(input_col='features', output_col='features')\
         .fit_transform(ddf1)
 
@@ -145,7 +139,7 @@ def use_case2():
     The others 30% is used to test the fitted model.
     """
 
-    from ddf.functions.ml.classification import LogisticRegression
+    from ddf_library.functions.ml.classification import LogisticRegression
     logr = LogisticRegression(feature_col='features', label_col='Survived',
                               max_iters=10, pred_col='out_logr').fit(ddf_train)
 
@@ -155,7 +149,7 @@ def use_case2():
     This model can be evaluated by some binary metrics
     """
 
-    from ddf.functions.ml.evaluation import BinaryClassificationMetrics
+    from ddf_library.functions.ml.evaluation import BinaryClassificationMetrics
 
     metrics_bin = BinaryClassificationMetrics(label_col='Survived',
                                               true_label=1.0,
@@ -192,4 +186,4 @@ def use_case2():
 if __name__ == '__main__':
     print "_____Titanic's use case_____"
     use_case1()
-    # use_case2()
+    #use_case2()

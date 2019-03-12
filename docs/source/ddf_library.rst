@@ -5,14 +5,9 @@ packages
 -----------
 
 .. toctree::
+    :glob:
 
-    ddf_library.functions.ml.classification
-    ddf_library.functions.ml.clustering
-    ddf_library.functions.ml.evaluation
-    ddf_library.functions.ml.feature
-    ddf_library.functions.ml.fpm
-    ddf_library.functions.ml.regression
-    ddf_library.functions.graph
+    ddf_library*
 
 Module contents
 ---------------

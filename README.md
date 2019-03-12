@@ -32,23 +32,23 @@ operations to a single task COMPSs and stacking operations until an action opera
 
 ## Contents
 
-- [Algorithms and operations currently available](#algorithms-and-operations-available)
+- [Summary of algorithms and operations](#summary-of-algorithms-and-operations)
 - [Example of use](#example-of-use)
 - [Installation](#Installation)
 - [Publications](#publications)
 - [License](#license)
 
  
-## Algorithms and operations available:
+## Summary of algorithms and operations:
 
- - **ETL**: Add Columns, Aggregation, Change attribute, Clean Missing Values, Difference, Distinct (Remove Duplicated Rows), 
- Drop Columns, Set-Intersect, Join (Inner, Left or Right), Load Data, Replace Values, Sample Rows, Save data, 
- Select Columns, Sort, Split, Transform (Map operations), Union
+ - **ETL**: Add Columns, Aggregation, Cast types, Clean Missing Values, Difference (distinct or all), Distinct (Remove Duplicated Rows), 
+ Drop Columns, Set-Intersect (distinct or all), Join (Inner, Left or Right), Load Data, Rename columns, Replace Values, Sample Rows, Save data, 
+ Select Columns, Sort, Split, Transform (Map operations), Union (by column position or column name)
  - **ML**:
    - **Evaluator Models**: Binary Classification Metrics, Multi-label Metrics and Regression Metrics
-   - **Feature Operations**: Vector Assembler, Simple Tokenizer, Regex Tokenizer, Remove Stop-Words,
-           Count Vectorizer, Tf-idf Vectorizer, String Indexer,
-           Index To String, Max-Abs Scaler, Min-Max Scaler, Standard Scaler, PCA
+   - **Feature Operations**: Vector Assembler, Vector Slicer, Binarizer, Tokenizer (Simple and Regex), 
+           Remove Stop-Words, N-Gram, Count Vectorizer, Tf-idf Vectorizer, String Indexer,
+           Index To String, Scalers (Max-Abs, Min-Max and Standard), PCA and Polynomial Expansion
    
    - **Frequent Pattern Mining**: Apriori and Association Rules
    - **Classification**: K-Nearest Neighbors, Gaussian Naive Bayes, Logistic Regression, SVM
@@ -72,7 +72,7 @@ At this point, the programmer no longer has to worry about partitioning the data
 work transparently to the user. The COMPS tasks will be executed in parallel, one for each fragment. 
 
 ```python
-from ddf.ddf import DDF
+from ddf_library.ddf import DDF
 import pandas as pd
 
 url = 'https://raw.githubusercontent.com/eubr-bigsea/' \
@@ -80,21 +80,19 @@ url = 'https://raw.githubusercontent.com/eubr-bigsea/' \
 df = pd.read_csv(url, sep='\t')
 
 ddf1 = DDF().parallelize(df, num_of_parts=4)\
-    .select(['Sex', 'Age', 'Survived'])\
-    .clean_missing(['Sex', 'Age'], mode='REMOVE_ROW')\
-    .replace({0: 'No', 1: 'Yes'}, subset=['Survived'])
+        .select(['Sex', 'Age', 'Survived'])\
+        .dropna(['Sex', 'Age'], mode='REMOVE_ROW')\
+        .replace({0: 'No', 1: 'Yes'}, subset=['Survived']).cache()
 
-ddf_women = ddf1.filter('(Sex == "female") and (Age >= 18)').\
-    aggregation(group_by=['Survived'],
-                exprs={'Survived': ['count']},
-                aliases={'Survived': ["Women"]})
+ddf_women = ddf1.filter('(Sex == "female") and (Age >= 18)')\
+            .group_by(['Survived']).count(['Survived'], alias=['Women'])
 
 print ddf_women.show()
 ```
 
-The image shows the DAG created by COMPSs during the execution. The operations `select(), clean_missing(), replace() and filter()` 
+The image shows the DAG created by COMPSs during the execution. The operations `select(), dropna(), replace() and filter()` 
 are some of them that are 'one processing stage' and then, the library was capable of group into a single COMPSs task 
-(which was named `task_bundle()`). In this DAG, the other tasks are referring to the operation of `aggregation()`. This operations  
+(which was named `task_bundle()`). In this DAG, the other tasks are referring to the operation of `group_by.count()`. This operations  
 needs certain exchanges of information, so it performs a synchronization of some indices (light data) for submit the
  minimum amount of tasks from master node. Finally, the last synchronization is performed by `show()` function 
  (which is an action) to receives the data produced.
@@ -106,7 +104,7 @@ Next, we extend the previous code to computate the result also for men and kids.
 
 
 ```python
-from ddf.ddf import DDF
+from ddf_library.ddf import DDF
 import pandas as pd
 
 url = 'https://raw.githubusercontent.com/eubr-bigsea/' \
@@ -115,23 +113,17 @@ df = pd.read_csv(url, sep='\t')
 
 ddf1 = DDF().parallelize(df, num_of_parts=4)\
     .select(['Sex', 'Age', 'Survived'])\
-    .clean_missing(['Sex', 'Age'], mode='REMOVE_ROW')\
+    .dropna(['Sex', 'Age'], mode='REMOVE_ROW')\
     .replace({0: 'No', 1: 'Yes'}, subset=['Survived']).cache()
 
-ddf_women = ddf1.filter('(Sex == "female") and (Age >= 18)').\
-    aggregation(group_by=['Survived'],
-                exprs={'Survived': ['count']},
-                aliases={'Survived': ["Women"]})
+ddf_women = ddf1.filter('(Sex == "female") and (Age >= 18)')\
+    .group_by(['Survived']).count(['Survived'], alias=['Women'])
 
-ddf_kids = ddf1.filter('Age < 18').\
-    aggregation(group_by=['Survived'],
-                exprs={'Survived': ['count']},
-                aliases={'Survived': ["Kids"]})
+ddf_kids = ddf1.filter('Age < 18')\
+    .group_by(['Survived']).count(['Survived'], alias=['Kids'])
 
-ddf_men = ddf1.filter('(Sex == "male") and (Age >= 18)').\
-    aggregation(group_by=['Survived'],
-                exprs={'Survived': ['count']},
-                aliases={'Survived': ["Men"]})
+ddf_men = ddf1.filter('(Sex == "male") and (Age >= 18)')\
+    .group_by(['Survived']).count(['Survived'], alias=['Men'])
 
 ddf_final = ddf_women\
     .join(ddf_men, key1=['Survived'], key2=['Survived'], mode='inner')\
@@ -146,7 +138,7 @@ This code will produce following result:
 
 | Survived  | Women | Men | Kids |
 | ----------|------ | ----|----- |
-| No        |   8   | 63  |  14  |
+| No        |   8   | 63  | 14   |
 | Yes       |  24   | 7   | 10   |
 
 

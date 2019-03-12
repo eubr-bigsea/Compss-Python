@@ -1,7 +1,7 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 
-from ddf.ddf import DDF
+from ddf_library.ddf import DDF
 import pandas as pd
 import numpy as np
 
@@ -139,13 +139,24 @@ def simple_etl():
     data3 = pd.DataFrame([[i, i + 5, 'hello'] for i in xrange(5, 15)],
                          columns=['a', 'b', 'c'])
 
-    data3.loc[0, ['c']] = np.nan
+    data3.loc[15, ['b']] = np.nan
+    data3.loc[0:2, ['c']] = 'Hi'
+    data3.loc[6:9, ['c']] = 'world'
+    data3['d'] = [10,  12, 13, 19, 19,19,19,19,19, 19, np.nan]
+    data3['e'] = [10,  10, 10, 10, 10, 10, 10, 10, 10, 10, np.nan]
+
+    data3['f'] = [10, 10, 10, 10, 10, 10, 10, 10, 10, np.nan, np.nan]
+    data3['g'] = [10, 12, 13, 19, 19, 19, 19, 19, 19, np.nan, np.nan]
+
+    data3['h'] = [10, 12, 13, 19, 5, 5, 5, 5, 5, np.nan, np.nan]
+    data3['i'] = [5, 12, 13, 19, 19, 19, 5, 5, 5, 5, np.nan]
 
     # print "\n|-------- Read Data --------|\n"
     # ddf_1 = DDF().load_text('/test-read_data.csv', header=True,
     #                         sep=',', dtype={'la1el': np.dtype('O'),
     #                                         'x': np.float64,
     #                                         'y': np.float64}).select(['x', 'y'])
+
     #
     # print "Schema: \n", ddf_1.schema()
     # return 0
@@ -176,14 +187,43 @@ def simple_etl():
     # print "\n|-------- Aggregation --------|\n"
     # express = {'a': ['count'], 'b': ['first', 'last']}
     # aliases = {'a': ["COUNT"], 'b': ['col_First', 'col_Last']}
-    # ddf_1 = DDF().parallelize(data, 4)\
-    #     .aggregation(['c'], exprs=express, aliases=aliases)
+    # # ddf_1 = DDF().parallelize(data, 4).group_by(['c']).agg(express)
+    # ddf_1 = DDF().parallelize(data3, 4).group_by(['c'])\
+    #     .mean(['a', 'b']).first(['a', 'b', 'e'])
+    #
+    # # .aggregation(['c'], exprs=express, aliases=aliases)
     # df1 = ddf_1.cache().show()
     # print df1
     # res_agg = pd.DataFrame([[0, 10, 5, 14]],
     #                        columns=['c', 'COUNT', 'col_First', 'col_Last'])
-    # assert_frame_equal(df1, res_agg, check_index_type=False)
+    # # assert_frame_equal(df1, res_agg, check_index_type=False)
     # print "etl_test - aggregation - OK",
+
+    # print "\n|-------- DropNaN --------|\n"
+    # ddf_1 = DDF().parallelize(data3, 4)
+    # df1a = ddf_1.dropna(['c'], mode='REMOVE_COLUMN', how='all', thresh=1)
+    #
+    # df1b = ddf_1.dropna(['c'], mode='REMOVE_ROW', how='any')
+    # print df1a.show()
+    # print df1b.show()
+    # return 0
+
+
+    # print "\n|-------- FillNaN --------|\n"
+    # print data3
+    # ddf_1 = DDF().parallelize(data3, 4)
+    # # df1a = ddf_1.fillna(mode='VALUE', value=42),
+    # # df1a = ddf_1.fillna(mode='VALUE', value={'c': 42})
+    # # df1a = ddf_1.fillna(['a', 'b'], mode='MEAN')
+    # # df1a = ddf_1.fillna(['c'], mode='MODE')
+    #
+    # df1a = ddf_1.fillna(['a', 'b', 'd','e','f','g', 'h', 'i'], mode='MEDIAN')
+    #
+    # print df1a.show()
+    # print "A: 9.5 - B: 14.5 - D: 19.0 - E: 10.0 - G: 19.0 - H: 5.0 - I: 8.5"
+
+
+
 
     # print "\n|-------- CrossJoin --------|\n"
     # ddf_1a = DDF().parallelize(data1, 4)
@@ -192,13 +232,10 @@ def simple_etl():
     # df1 = ddf_2.cache().show(50)
     #
     #
-    print "\n|-------- Describe --------|\n"
-    df1 = DDF().parallelize(data3, 4).describe()
-    print df1
-
-    print "etl_test - difference - OK"
-
-    return 0
+    # print "\n|-------- Describe --------|\n"
+    # df1 = DDF().parallelize(data3, 4).describe()
+    # print df1
+    # print "etl_test - difference - OK"
 
     # print "\n|-------- Difference --------|\n"
     # ddf_1a = DDF().parallelize(data, 4)
@@ -293,14 +330,14 @@ def simple_etl():
     # assert_frame_equal(df1, res_sor, check_index_type=False)
     # print "etl_test - sort - OK"
     #
-    print "\n|-------- Split --------|\n"
-    ddf_1a, ddf_1b = DDF().parallelize(data, 4).split(0.5)
-    df1 = ddf_1a.cache().show()
-    df2 = ddf_1b.cache().show()
-    cond = any(pd.concat([df1, df2]).duplicated(['a', 'b', 'c']).values)
-    if cond:
-        raise Exception("Split")
-    print "etl_test - split - OK"
+    # print "\n|-------- Split --------|\n"
+    # ddf_1a, ddf_1b = DDF().parallelize(data, 4).split(0.5)
+    # df1 = ddf_1a.cache().show()
+    # df2 = ddf_1b.cache().show()
+    # cond = any(pd.concat([df1, df2]).duplicated(['a', 'b', 'c']).values)
+    # if cond:
+    #     raise Exception("Split")
+    # print "etl_test - split - OK"
 
     # print "\n|-------- Take --------|\n"
     # ddf_1 = DDF().parallelize(data, 4).take(3)
@@ -334,8 +371,15 @@ def simple_etl():
     # assert_frame_equal(df1, res_uni, check_index_type=False)
     # print "etl_test - union - OK"
     #
-    # print "\n|-------- With_column --------|\n"
-    # ddf_1 = DDF().parallelize(data, 4).with_column('a', 'A')
+    # print "\n|-------- cast --------|\n"
+    # ddf_1 = DDF().parallelize(data, 4).cast(['a', 'b'], 'string')
+    # schema = ddf_1.cache().schema()
+    # print schema
+
+    print "etl_test - with_column - OK"
+
+    # print "\n|-------- With_column Renamed --------|\n"
+    # ddf_1 = DDF().parallelize(data, 4).with_column_renamed('a', 'A')
     # df1 = ddf_1.cache().show()
     # res_with = pd.DataFrame([[0, 5, 0], [1, 6, 0], [2, 7, 0], [3, 8, 0],
     #                         [4, 9, 0], [5, 10, 0], [6, 11, 0], [7, 12, 0],
@@ -347,4 +391,4 @@ def simple_etl():
 if __name__ == '__main__':
     print "_____ETL_____"
     simple_etl()
-    # etl()
+    #etl()
