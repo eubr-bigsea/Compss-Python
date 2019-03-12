@@ -9,19 +9,26 @@ import pandas as pd
 import numpy as np
 
 
-class IntersectionOperation(object):
+def intersect(data1, data2, distinct=False):
+    """
+    Returns a new DataFrame containing rows in both frames.
 
-    @staticmethod
-    def transform(data1, data2):
-        """
-        Returns a new DataFrame containing rows in both frames.
+    :param data1: A list with nfrag pandas's dataframe;
+    :param data2: Other list with nfrag pandas's dataframe;
+    :param distinct:
+    :return: Returns a new pandas dataframe
 
-        :param data1: A list with nfrag pandas's dataframe;
-        :param data2: Other list with nfrag pandas's dataframe;
-        :return: Returns a new pandas dataframe
+    .. note:: Rows with NA elements will not be take in count.
+    """
 
-        .. note:: Rows with NA elements will not be take in count.
-        """
+    if distinct:
+        from .distinct import distinct
+        result = distinct(data1, [])
+        info = result['info']
+        result = result['data']
+
+    else:
+
         if isinstance(data1[0], pd.DataFrame):
             # it is necessary to perform a deepcopy if data is not a
             # FutureObject
@@ -33,18 +40,18 @@ class IntersectionOperation(object):
 
         info = [[] for _ in result]
 
-        nfrag1 = len(data1)
-        nfrag2 = len(data2)
+    nfrag1 = len(data1)
+    nfrag2 = len(data2)
 
-        for f1 in xrange(nfrag1):
-            for f2 in xrange(nfrag2):
-                last = (f2 == (nfrag2-1))
-                result[f1], info[f1] = _intersection(result[f1], data2[f2],
-                                                     f2, last)
+    for f1 in xrange(nfrag1):
+        for f2 in xrange(nfrag2):
+            last = (f2 == (nfrag2-1))
+            result[f1], info[f1] = _intersection(result[f1], data2[f2],
+                                                 f2, last)
 
-        output = {'key_data': ['data'], 'key_info': ['info'],
-                  'data': result, 'info': info}
-        return output
+    output = {'key_data': ['data'], 'key_info': ['info'],
+              'data': result, 'info': info}
+    return output
 
 
 @task(returns=2)

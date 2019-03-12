@@ -18,11 +18,14 @@ import itertools
 import sys
 sys.path.append('../../')
 
-__all__ = ['VectorAssembler', 'VectorSlicer', 'Tokenizer', 'RegexTokenizer',
-           'RemoveStopWords', 'CountVectorizer', 'TfidfVectorizer',
-           'StringIndexer',
-           'IndexToString', 'MaxAbsScaler', 'MinMaxScaler', 'StandardScaler',
-           'PCA', 'PolynomialExpansion']
+preprocessing = ['Binarizer', 'StringIndexer', 'IndexToString',
+                 'MaxAbsScaler', 'MinMaxScaler', 'StandardScaler']
+
+text_operations = ['Tokenizer', 'RegexTokenizer', 'RemoveStopWords',
+                   'NGram', 'CountVectorizer', 'TfidfVectorizer']
+
+__all__ = ['VectorAssembler', 'VectorSlicer', 'PCA', 'PolynomialExpansion']\
+          + preprocessing + text_operations
 
 
 class VectorAssembler(object):
@@ -125,11 +128,14 @@ class VectorSlicer(object):
 
     The output vector will order features with the selected indices first
     (in the order given), followed by the selected names (in the order given).
+
+    :Example:
+
+    >>> ddf = VectorSlicer(input_col='features', indices=[0, 5).transform(ddf)
     """
 
     def __init__(self, input_col, output_col=None, indices=None):
         """
-
         :param input_col: Feature vector field.
         :param output_col: New feature vector field (overwrite by default)
         :param indices: indices list
@@ -168,13 +174,85 @@ class VectorSlicer(object):
 
 def _vector_slicer(df, settings):
 
-    if len(df) > 0:
+    output_col = settings['outputcol']
+
+    if len(df) == 0:
+        df[output_col] = np.nan
+
+    else:
 
         input_col = settings['inputcol']
-        output_col = settings['outputcol']
         idx = settings['indices']
 
         values = np.array(df[input_col].tolist())[:, idx]
+        df[output_col] = values.tolist()
+
+    info = [df.columns.tolist(), df.dtypes.values, [len(df)]]
+    return df, info
+
+
+class Binarizer(object):
+    """
+    Binarize data (set feature values to 0 or 1) according to a threshold
+
+    Values greater than the threshold map to 1, while values less than or equal
+    to the threshold map to 0. With the default threshold of 0, only positive
+    values map to 1.
+
+    :Example:
+
+    >>> ddf = Binarizer(input_col='features', threshold=5.0).transform(ddf)
+    """
+
+    def __init__(self, input_col, output_col=None, threshold=0.0):
+        """
+        :param input_col: List of columns;
+        :param output_col: Output column name.
+        :param threshold: Feature values below or equal to this are
+         replaced by 0, above it by 1. Default = 0.0.
+        """
+
+        if not output_col:
+            output_col = 'features'
+
+        self.settings = dict()
+        self.settings['inputcol'] = input_col
+        self.settings['outputcol'] = output_col
+        self.settings['threshold'] = threshold
+
+    def transform(self, data):
+        """
+        :param data: DDF
+        :return: DDF
+        """
+
+        def task_binarizer(df, params):
+            return _binarizer(df, params)
+
+        uuid_key = data._ddf_add_task(task_name='binarizer',
+                                      status='WAIT', lazy=True,
+                                      function=[task_binarizer,
+                                                self.settings],
+                                      parent=[data.last_uuid],
+                                      n_output=1, n_input=1)
+
+        data._set_n_input(uuid_key, data.settings['input'])
+        return DDF(task_list=data.task_list, last_uuid=uuid_key)
+
+
+def _binarizer(df, settings):
+    output_col = settings['outputcol']
+
+    if len(df) == 0:
+        df[output_col] = np.nan
+
+    else:
+        input_col = settings['inputcol']
+        threshold = settings['threshold']
+
+        values = np.array(df[input_col].tolist())
+        from sklearn.preprocessing import Binarizer
+        values = Binarizer(threshold=threshold).fit_transform(values)
         df[output_col] = values.tolist()
 
     info = [df.columns.tolist(), df.dtypes.values, [len(df)]]
@@ -459,6 +537,73 @@ def _remove_stopwords(data, settings, stopwords):
 
     info = [data.columns.tolist(), data.dtypes.values, [len(data)]]
     return data, info
+
+
+class NGram(object):
+    """
+    A feature transformer that converts the input array of strings into an
+    array of n-grams. Null values in the input array are ignored. It returns
+    an array of n-grams where each n-gram is represented by a space-separated
+    string of words. When the input is empty, an empty array is returned. When
+    the input array length is less than n (number of elements per n-gram), no
+    n-grams are returned.
+    """
+
+    def __init__(self, input_col, n=2, output_col=None):
+        """
+
+        :param input_col: Input columns with the tokens;
+        :param n: Number integer. Default = 2;
+        :param output_col: Output column. Default, overwrite input_col;
+
+        """
+        if not output_col:
+            output_col = input_col
+
+        self.settings = dict()
+        self.settings['inputcol'] = input_col
+        self.settings['outputcol'] = output_col
+        self.settings['n'] = n
+
+    def transform(self, data):
+        """
+        :param data: DDF
+        :return: DDF
+        """
+
+        def task_ngram(df, params):
+            return _ngram(df, params)
+
+        uuid_key = data._ddf_add_task(task_name='ngram',
+                                      status='WAIT', lazy=True,
+                                      function=[task_ngram, self.settings],
+                                      parent=[data.last_uuid],
+                                      n_output=1, n_input=1)
+
+        data._set_n_input(uuid_key, data.settings['input'])
+        return DDF(task_list=data.task_list, last_uuid=uuid_key)
+
+
+def _ngram(df, settings):
+
+    output_col = settings['outputcol']
+    if len(df) == 0:
+        df[output_col] = np.nan
+    else:
+        input_col = settings['inputcol']
+        from nltk.util import ngrams
+
+        n = settings['n']
+
+        def ngrammer(row):
+            return [" ".join(gram) for gram in ngrams(row, n)]
+
+        values = df[input_col].tolist()
+        grams = [ngrammer(row) for row in values]
+        df[output_col] = grams
+
+    info = [df.columns.tolist(), df.dtypes.values, [len(df)]]
+    return df, info
 
 
 class CountVectorizer(ModelDDF):

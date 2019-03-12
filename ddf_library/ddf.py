@@ -441,49 +441,6 @@ class DDF(DDFSketch):
 
         return DDF(task_list=self.task_list, last_uuid=new_state_uuid)
 
-    def with_column_renamed(self, old_column, new_column):
-        """
-        Returns a new DDF by renaming an existing column. This is a no-op if
-        schema doesn’t contain the given column name.
-
-        Is it a Lazy function: Yes
-
-        :param old_column: String or list of strings with columns to rename;
-        :param new_column: String or list of strings with new names.
-
-        :return: DDF
-        """
-
-        from functions.etl.attributes_changer import with_column_renamed
-
-        if not isinstance(old_column, list):
-            old_column = [old_column]
-
-        if not isinstance(new_column, list):
-            new_column = [new_column]
-
-        settings = dict()
-        settings['old_column'] = old_column
-        settings['new_column'] = new_column
-
-        def task_with_column_renamed(df, params):
-            return with_column_renamed(df, params)
-
-        new_state_uuid = self._generate_uuid()
-        context.COMPSsContext.tasks_map[new_state_uuid] = \
-            {'name': 'with_column_renamed',
-             'status': 'WAIT',
-             'lazy': True,
-             'function': [task_with_column_renamed, settings],
-             'parent': [self.last_uuid],
-             'output': 1,
-             'input': 1
-             }
-
-        self._set_n_input(new_state_uuid, self.settings['input'])
-
-        return DDF(task_list=self.task_list, last_uuid=new_state_uuid)
-
     def add_column(self, data2, suffixes=["_l", "_r"]):
         """
         Merge two DDF, column-wise.
@@ -671,10 +628,10 @@ class DDF(DDFSketch):
 
         return result
 
-    def difference(self, data2):
+    def subtract(self, data2):
         """
         Returns a new DDF with containing rows in the first frame but not
-        in the second one.
+        in the second one. This is equivalent to EXCEPT in SQL.
 
         Is it a Lazy function: No
 
@@ -683,16 +640,16 @@ class DDF(DDFSketch):
 
         :Example:
 
-        >>> ddf1.difference(ddf2)
+        >>> ddf1.subtract(ddf2)
         """
-        from functions.etl.difference import difference
+        from functions.etl.difference import subtract
 
         def task_difference(df, params):
-            return difference(df[0], df[1])
+            return subtract(df[0], df[1])
 
         new_state_uuid = self._generate_uuid()
         context.COMPSsContext.tasks_map[new_state_uuid] = \
-            {'name': 'difference',
+            {'name': 'subtract',
              'status': 'WAIT',
              'lazy': False,
              'function': [task_difference, {}],
@@ -705,6 +662,42 @@ class DDF(DDFSketch):
         self._set_n_input(new_state_uuid, data2.settings['input'])
         new_list = self._merge_tasks_list(self.task_list + data2.task_list)
         return DDF(task_list=new_list, last_uuid=new_state_uuid)
+
+    # def except_all(self, data2):
+    #     """
+    #     Returns a new DDF with containing rows in the first frame but not
+    #     in the second one while preserving duplicates. This is equivalent to
+    #     EXCEPT ALL in SQL.
+    #
+    #     Is it a Lazy function: No
+    #
+    #     :param data2: second DDF;
+    #     :return: DDF
+    #
+    #     :Example:
+    #
+    #     >>> ddf1.except_all(ddf2)
+    #     """
+    #     from functions.etl.difference import except_all
+    #
+    #     def task_except_all(df, params):
+    #         return except_all(df[0], df[1])
+    #
+    #     new_state_uuid = self._generate_uuid()
+    #     context.COMPSsContext.tasks_map[new_state_uuid] = \
+    #         {'name': 'subtract',
+    #          'status': 'WAIT',
+    #          'lazy': False,
+    #          'function': [task_except_all, {}],
+    #          'parent': [self.last_uuid, data2.last_uuid],
+    #          'output': 1,
+    #          'input': 2
+    #          }
+    #
+    #     self._set_n_input(new_state_uuid, self.settings['input'])
+    #     self._set_n_input(new_state_uuid, data2.settings['input'])
+    #     new_list = self._merge_tasks_list(self.task_list + data2.task_list)
+    #     return DDF(task_list=new_list, last_uuid=new_state_uuid)
 
     def distinct(self, cols):
         """
@@ -909,7 +902,8 @@ class DDF(DDFSketch):
 
     def intersect(self, data2):
         """
-        Returns a new DDF containing rows in both DDF.
+        Returns a new DDF containing rows in both DDF. This is equivalent to
+        INTERSECT in SQL.
 
         Is it a Lazy function: No
 
@@ -921,10 +915,46 @@ class DDF(DDFSketch):
         >>> ddf2.intersect(ddf1)
         """
 
-        from functions.etl.intersect import IntersectionOperation
+        from functions.etl.intersect import intersect
 
-        def task_intersect(df, params):
-            return IntersectionOperation().transform(df[0], df[1])
+        def task_intersect(df, _):
+            return intersect(df[0], df[1], distinct=True)
+
+        new_state_uuid = self._generate_uuid()
+        context.COMPSsContext.tasks_map[new_state_uuid] = \
+            {'name': 'intersect',
+             'status': 'WAIT',
+             'lazy': False,
+             'function': [task_intersect, {}],
+             'parent': [self.last_uuid, data2.last_uuid],
+             'output': 1,
+             'input': 2
+             }
+
+        self._set_n_input(new_state_uuid, self.settings['input'])
+        self._set_n_input(new_state_uuid, data2.settings['input'])
+        new_list = self._merge_tasks_list(self.task_list + data2.task_list)
+        return DDF(task_list=new_list, last_uuid=new_state_uuid)
+
+    def intersect_all(self, data2):
+        """
+        Returns a new DDF containing rows in both DDF while preserving
+        duplicates. This is equivalent to INTERSECT ALL in SQL.
+
+        Is it a Lazy function: No
+
+        :param data2: DDF
+        :return: DDF
+
+        :Example:
+
+        >>> ddf2.intersect_all(ddf1)
+        """
+
+        from functions.etl.intersect import intersect
+
+        def task_intersect(df, _):
+            return intersect(df[0], df[1], distinct=False)
 
         new_state_uuid = self._generate_uuid()
         context.COMPSsContext.tasks_map[new_state_uuid] = \
@@ -1396,7 +1426,8 @@ class DDF(DDFSketch):
 
     def union(self, data2):
         """
-        Combine this data set with some other DDF.
+        Combine this data set with some other DDF. Also as standard in SQL,
+        this function resolves columns by position (not by name).
 
         Is it a Lazy function: No
 
@@ -1411,7 +1442,7 @@ class DDF(DDFSketch):
         from functions.etl.union import union
 
         def task_union(df, _):
-            return union(df[0], df[1])
+            return union(df[0], df[1], by_name=False)
 
         new_state_uuid = self._generate_uuid()
         context.COMPSsContext.tasks_map[new_state_uuid] = \
@@ -1429,5 +1460,83 @@ class DDF(DDFSketch):
         new_list = self._merge_tasks_list(self.task_list + data2.task_list)
         return DDF(task_list=new_list, last_uuid=new_state_uuid)
 
+    def union_by_name(self, data2):
+        """
+        Combine this data set with some other DDF. This function resolves
+         columns by name (not by position).
+
+        Is it a Lazy function: No
+
+        :param data2:
+        :return: DDF
+
+        :Example:
+
+        >>> ddf1.union_by_name(ddf2)
+        """
+
+        from functions.etl.union import union
+
+        def task_union(df, _):
+            return union(df[0], df[1], by_name=True)
+
+        new_state_uuid = self._generate_uuid()
+        context.COMPSsContext.tasks_map[new_state_uuid] = \
+            {'name': 'union',
+             'status': 'WAIT',
+             'lazy': False,
+             'function': [task_union, {}],
+             'parent': [self.last_uuid,  data2.last_uuid],
+             'output': 1,
+             'input': 2
+             }
+
+        self._set_n_input(new_state_uuid, self.settings['input'])
+        self._set_n_input(new_state_uuid, data2.settings['input'])
+        new_list = self._merge_tasks_list(self.task_list + data2.task_list)
+        return DDF(task_list=new_list, last_uuid=new_state_uuid)
+
+    def with_column_renamed(self, old_column, new_column):
+        """
+        Returns a new DDF by renaming an existing column. This is a no-op if
+        schema doesn’t contain the given column name.
+
+        Is it a Lazy function: Yes
+
+        :param old_column: String or list of strings with columns to rename;
+        :param new_column: String or list of strings with new names.
+
+        :return: DDF
+        """
+
+        from functions.etl.attributes_changer import with_column_renamed
+
+        if not isinstance(old_column, list):
+            old_column = [old_column]
+
+        if not isinstance(new_column, list):
+            new_column = [new_column]
+
+        settings = dict()
+        settings['old_column'] = old_column
+        settings['new_column'] = new_column
+
+        def task_with_column_renamed(df, params):
+            return with_column_renamed(df, params)
+
+        new_state_uuid = self._generate_uuid()
+        context.COMPSsContext.tasks_map[new_state_uuid] = \
+            {'name': 'with_column_renamed',
+             'status': 'WAIT',
+             'lazy': True,
+             'function': [task_with_column_renamed, settings],
+             'parent': [self.last_uuid],
+             'output': 1,
+             'input': 1
+             }
+
+        self._set_n_input(new_state_uuid, self.settings['input'])
+
+        return DDF(task_list=self.task_list, last_uuid=new_state_uuid)
 
 

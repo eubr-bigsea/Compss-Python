@@ -113,10 +113,10 @@ def _drop_duplicates(data1, data2, cols):
         data1.drop(data1.index[m1:], inplace=True)
         data2.drop(data2.index[m2:], inplace=True)
 
-        info1 = [data1.columns.tolist(), data1.dtypes.values, [len(data1)]]
-        info2 = [data2.columns.tolist(), data2.dtypes.values, [len(data2)]]
+    info1 = [data1.columns.tolist(), data1.dtypes.values, [len(data1)]]
+    info2 = [data2.columns.tolist(), data2.dtypes.values, [len(data2)]]
 
-        return data1, data2, info1, info2
+    return data1, data2, info1, info2
 
 
 def get_column(cols):

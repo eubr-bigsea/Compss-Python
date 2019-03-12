@@ -56,15 +56,15 @@ Contents
 ETL
 ====
 
-:func:`DDF.add_column <ddf.DDF.add_column>` - Merges two dataframes, column-wise.
+:func:`DDF.add_column <ddf.DDF.add_column>` - Merges two dataFrames, column-wise.
 
 :func:`DDF.cache <ddf.DDF.cache>` - Forces the computation of all tasks in the current stack.
+
+:func:`DDF.cast <ddf.DDF.cast>` - Change the data's type of some columns.
 
 :func:`DDF.count <ddf.DDF.count>` - Returns a number of rows in this DDF.
 
 :func:`DDF.describe <ddf.DDF.describe>` - Computes basic statistics for numeric and string columns.
-
-:func:`DDF.difference <ddf.DDF.difference>` - Returns a new set with containing rows in the first frame but not in the second one.
 
 :func:`DDF.distinct <ddf.DDF.distinct>` - Returns a new DDF with non duplicated rows.
 
@@ -79,6 +79,9 @@ ETL
 :func:`DDF.group_by <ddf.DDF.group_by>` - Returns a GroupedDFF with a set of methods for aggregations on a DDF.
 
 :func:`DDF.intersect <ddf.DDF.intersect>` - Returns a new DDF containing rows in both DDF.
+
+:func:`DDF.intersect_all <ddf.DDF.intersect_all>` - Returns a new DDF containing rows in both DDF while preserving
+        duplicates.
 
 :func:`DDF.join <ddf.DDF.join>` - Joins two DDF using the given join expression.
 
@@ -100,13 +103,17 @@ ETL
 
 :func:`DDF.split <ddf.DDF.split>` - Randomly splits a DDF into two DDF.
 
+:func:`DDF.subtract <ddf.DDF.subtract>` - Returns a new set with containing rows in the first frame but not in the second one.
+
 :func:`DDF.take <ddf.DDF.take>` - Returns the first num rows.
 
 :func:`DDF.map <ddf.DDF.map>` - Applies a function to each row of this data set.
 
-:func:`DDF.union <ddf.DDF.union>` - Combines two DDF (concatenate).
+:func:`DDF.union <ddf.DDF.union>` - Combines two DDF (concatenate) by column position.
 
-:func:`DDF.with_column <ddf.DDF.with_column>` - Renames or changes the data's type of some columns.
+:func:`DDF.union_by_name <ddf.DDF.union_by_name>` - Combines two DDF (concatenate) by column name.
+
+:func:`DDF.with_column_renamed <ddf.DDF.with_column_renamed>` - Renames some columns.
 
 
 .. _ml-anchor:
@@ -169,11 +176,15 @@ Selection: Selecting a subset from a larger set of features:
 
 :class:`ml.feature.VectorSlicer <ddf_library.functions.ml.feature.VectorSlicer>` - Vector Slicer create a new feature vector with a subarray of an original features.
 
+:class:`ml.feature.Binarizer <ddf_library.functions.ml.feature.Binarizer>` - Binarize data (set feature values to 0 or 1) according to a threshold.
+
 :class:`ml.feature.Tokenizer <ddf_library.functions.ml.feature.Tokenizer>` - Tokenization is the process of taking text (such as a sentence) and breaking it into individual terms (usually words). A simple Tokenizer class provides this functionality.
 
 :class:`ml.feature.RegexTokenizer <ddf_library.functions.ml.feature.RegexTokenizer>` - A regex based tokenizer that extracts tokens either by using the provided regex pattern (in Java dialect) to split the text.
 
 :class:`ml.feature.RemoveStopWords <ddf_library.functions.ml.feature.RemoveStopWords>` - Remove stop-words is a operation to remove words which should be excluded from the input, typically because the words appear frequently and don’t carry as much meaning.
+
+:class:`ml.feature.NGram <ddf_library.functions.ml.feature.NGram>` - A feature transformer that converts the input array of strings into an array of n-grams.
 
 :class:`ml.feature.CountVectorizer <ddf_library.functions.ml.feature.CountVectorizer>` - Converts a collection of text documents to a matrix of token counts.
 

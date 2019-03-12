@@ -32,7 +32,7 @@ operations to a single task COMPSs and stacking operations until an action opera
 
 ## Contents
 
-- [Summary of algorithms and operations currently](#summary-of-algorithms-and-operations)
+- [Summary of algorithms and operations](#summary-of-algorithms-and-operations)
 - [Example of use](#example-of-use)
 - [Installation](#Installation)
 - [Publications](#publications)
@@ -41,14 +41,14 @@ operations to a single task COMPSs and stacking operations until an action opera
  
 ## Summary of algorithms and operations:
 
- - **ETL**: Add Columns, Aggregation, Change attribute, Clean Missing Values, Difference, Distinct (Remove Duplicated Rows), 
- Drop Columns, Set-Intersect, Join (Inner, Left or Right), Load Data, Replace Values, Sample Rows, Save data, 
- Select Columns, Sort, Split, Transform (Map operations), Union
+ - **ETL**: Add Columns, Aggregation, Cast types, Clean Missing Values, Difference (distinct or all), Distinct (Remove Duplicated Rows), 
+ Drop Columns, Set-Intersect (distinct or all), Join (Inner, Left or Right), Load Data, Rename columns, Replace Values, Sample Rows, Save data, 
+ Select Columns, Sort, Split, Transform (Map operations), Union (by column position or column name)
  - **ML**:
    - **Evaluator Models**: Binary Classification Metrics, Multi-label Metrics and Regression Metrics
-   - **Feature Operations**: Vector Assembler, Simple Tokenizer, Regex Tokenizer, Remove Stop-Words,
-           Count Vectorizer, Tf-idf Vectorizer, String Indexer,
-           Index To String, Max-Abs Scaler, Min-Max Scaler, Standard Scaler, PCA
+   - **Feature Operations**: Vector Assembler, Vector Slicer, Binarizer, Tokenizer (Simple and Regex), 
+           Remove Stop-Words, N-Gram, Count Vectorizer, Tf-idf Vectorizer, String Indexer,
+           Index To String, Scalers (Max-Abs, Min-Max and Standard), PCA and Polynomial Expansion
    
    - **Frequent Pattern Mining**: Apriori and Association Rules
    - **Classification**: K-Nearest Neighbors, Gaussian Naive Bayes, Logistic Regression, SVM

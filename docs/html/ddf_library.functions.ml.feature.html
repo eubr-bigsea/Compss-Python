@@ -112,6 +112,17 @@ vector with a subarray of the original features.</p>
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Example:</th><td class="field-body"></td>
+</tr>
+</tbody>
+</table>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">ddf</span> <span class="o">=</span> <span class="n">VectorSlicer</span><span class="p">(</span><span class="n">input_col</span><span class="o">=</span><span class="s1">&#39;features&#39;</span><span class="p">,</span> <span class="n">indices</span><span class="o">=</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">5</span><span class="p">)</span><span class="o">.</span><span class="n">transform</span><span class="p">(</span><span class="n">ddf</span><span class="p">)</span>
+</pre></div>
+</div>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
 <li><strong>input_col</strong> – Feature vector field.</li>
 <li><strong>output_col</strong> – New feature vector field (overwrite by default)</li>
@@ -139,178 +150,14 @@ vector with a subarray of the original features.</p>
 </dd></dl>
 
 <dl class="class">
-<dt id="ddf_library.functions.ml.feature.Tokenizer">
-<em class="property">class </em><code class="descclassname">ddf_library.functions.ml.feature.</code><code class="descname">Tokenizer</code><span class="sig-paren">(</span><em>input_col</em>, <em>output_col=None</em>, <em>min_token_length=2</em>, <em>to_lowercase=True</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.functions.ml.feature.Tokenizer" title="Permalink to this definition">¶</a></dt>
-<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
-<p>Tokenization is the process of taking text (such as a sentence) and
-breaking it into individual terms (usually words). A simple Tokenizer
-class provides this functionality.</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Example:</th><td class="field-body"></td>
-</tr>
-</tbody>
-</table>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">ddf2</span> <span class="o">=</span> <span class="n">Tokenizer</span><span class="p">(</span><span class="n">input_col</span><span class="o">=</span><span class="s1">&#39;features&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">transform</span><span class="p">(</span><span class="n">ddf1</span><span class="p">)</span>
-</pre></div>
-</div>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
-<li><strong>input_col</strong> – Input column with sentences;</li>
-<li><strong>output_col</strong> – Output column (overwrite the <em>‘input_col’</em> if None);</li>
-<li><strong>min_token_length</strong> – Minimum tokens length (default is 2);</li>
-<li><strong>to_lowercase</strong> – To convert words to lowercase (default is True).</li>
-</ul>
-</td>
-</tr>
-</tbody>
-</table>
-<dl class="method">
-<dt id="ddf_library.functions.ml.feature.Tokenizer.transform">
-<code class="descname">transform</code><span class="sig-paren">(</span><em>data</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.functions.ml.feature.Tokenizer.transform" title="Permalink to this definition">¶</a></dt>
-<dd><table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>data</strong> – DDF</td>
-</tr>
-<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">DDF</td>
-</tr>
-</tbody>
-</table>
-</dd></dl>
-
-</dd></dl>
-
-<dl class="class">
-<dt id="ddf_library.functions.ml.feature.RegexTokenizer">
-<em class="property">class </em><code class="descclassname">ddf_library.functions.ml.feature.</code><code class="descname">RegexTokenizer</code><span class="sig-paren">(</span><em>input_col</em>, <em>output_col=None</em>, <em>pattern='\s+'</em>, <em>min_token_length=2</em>, <em>to_lowercase=True</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.functions.ml.feature.RegexTokenizer" title="Permalink to this definition">¶</a></dt>
-<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
-<p>A regex based tokenizer that extracts tokens either by using the provided
-regex pattern (in Java dialect) to split the text.</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Example:</th><td class="field-body"></td>
-</tr>
-</tbody>
-</table>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">ddf2</span> <span class="o">=</span> <span class="n">RegexTokenizer</span><span class="p">(</span><span class="n">input_col</span><span class="o">=</span><span class="s1">&#39;col_0&#39;</span><span class="p">,</span> <span class="n">pattern</span><span class="o">=</span><span class="s1">r&#39;\s+&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">transform</span><span class="p">(</span><span class="n">ddf1</span><span class="p">)</span>
-</pre></div>
-</div>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
-<li><strong>input_col</strong> – Input column with sentences;</li>
-<li><strong>output_col</strong> – Output column (overwrite the <em>‘input_col’</em> if None);</li>
-<li><strong>pattern</strong> – Regex pattern in Java dialect, default is <em>r’s+’</em>;</li>
-<li><strong>min_token_length</strong> – Minimum tokens length (default is 2);</li>
-<li><strong>to_lowercase</strong> – To convert words to lowercase (default is True).</li>
-</ul>
-</td>
-</tr>
-</tbody>
-</table>
-<dl class="method">
-<dt id="ddf_library.functions.ml.feature.RegexTokenizer.transform">
-<code class="descname">transform</code><span class="sig-paren">(</span><em>data</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.functions.ml.feature.RegexTokenizer.transform" title="Permalink to this definition">¶</a></dt>
-<dd><table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>data</strong> – DDF</td>
-</tr>
-<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">DDF</td>
-</tr>
-</tbody>
-</table>
-</dd></dl>
-
-</dd></dl>
-
-<dl class="class">
-<dt id="ddf_library.functions.ml.feature.RemoveStopWords">
-<em class="property">class </em><code class="descclassname">ddf_library.functions.ml.feature.</code><code class="descname">RemoveStopWords</code><span class="sig-paren">(</span><em>input_col</em>, <em>output_col=None</em>, <em>case_sensitive=True</em>, <em>stops_words_list=None</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.functions.ml.feature.RemoveStopWords" title="Permalink to this definition">¶</a></dt>
-<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">ddf_library.ddf.DDFSketch</span></code></p>
-<p>Remove stop-words is a operation to remove words which
-should be excluded from the input, typically because
-the words appear frequently and don’t carry as much meaning.</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Example:</th><td class="field-body"></td>
-</tr>
-</tbody>
-</table>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">remover</span> <span class="o">=</span> <span class="n">RemoveStopWords</span><span class="p">(</span><span class="n">input_col</span><span class="o">=</span><span class="s1">&#39;col_0&#39;</span><span class="p">,</span> <span class="n">output_col</span><span class="o">=</span><span class="s1">&#39;col_1&#39;</span><span class="p">,</span>
-<span class="gp">&gt;&gt;&gt; </span>                          <span class="n">stops_words_list</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;rock&#39;</span><span class="p">,</span> <span class="s1">&#39;destined&#39;</span><span class="p">])</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="n">remover</span> <span class="o">=</span> <span class="n">remover</span><span class="o">.</span><span class="n">stopwords_from_ddf</span><span class="p">(</span><span class="n">stopswords_ddf</span><span class="p">,</span> <span class="s1">&#39;col&#39;</span><span class="p">)</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="n">ddf2</span> <span class="o">=</span> <span class="n">remover</span><span class="o">.</span><span class="n">transform</span><span class="p">(</span><span class="n">ddf1</span><span class="p">)</span>
-</pre></div>
-</div>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
-<li><strong>input_col</strong> – Input columns with the tokens;</li>
-<li><strong>output_col</strong> – Output column;</li>
-<li><strong>case_sensitive</strong> – To compare words using case sensitive (default);</li>
-<li><strong>stops_words_list</strong> – Optional, a list of words to be removed.</li>
-</ul>
-</td>
-</tr>
-</tbody>
-</table>
-<dl class="method">
-<dt id="ddf_library.functions.ml.feature.RemoveStopWords.stopwords_from_ddf">
-<code class="descname">stopwords_from_ddf</code><span class="sig-paren">(</span><em>data</em>, <em>input_col</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.functions.ml.feature.RemoveStopWords.stopwords_from_ddf" title="Permalink to this definition">¶</a></dt>
-<dd><p>Is also possible inform stop-words form a DDF.</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
-<li><strong>data</strong> – DDF with a column of stop-words;</li>
-<li><strong>input_col</strong> – Stop-words column name;</li>
-</ul>
-</td>
-</tr>
-</tbody>
-</table>
-</dd></dl>
-
-<dl class="method">
-<dt id="ddf_library.functions.ml.feature.RemoveStopWords.transform">
-<code class="descname">transform</code><span class="sig-paren">(</span><em>data</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.functions.ml.feature.RemoveStopWords.transform" title="Permalink to this definition">¶</a></dt>
-<dd><table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>data</strong> – DDF</td>
-</tr>
-<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">DDF</td>
-</tr>
-</tbody>
-</table>
-</dd></dl>
-
-</dd></dl>
-
-<dl class="class">
-<dt id="ddf_library.functions.ml.feature.CountVectorizer">
-<em class="property">class </em><code class="descclassname">ddf_library.functions.ml.feature.</code><code class="descname">CountVectorizer</code><span class="sig-paren">(</span><em>input_col</em>, <em>output_col=None</em>, <em>vocab_size=-1</em>, <em>min_tf=1.0</em>, <em>min_df=1.0</em>, <em>binary=True</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.functions.ml.feature.CountVectorizer" title="Permalink to this definition">¶</a></dt>
+<dt id="ddf_library.functions.ml.feature.PCA">
+<em class="property">class </em><code class="descclassname">ddf_library.functions.ml.feature.</code><code class="descname">PCA</code><span class="sig-paren">(</span><em>input_col</em>, <em>n_components</em>, <em>output_col=None</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.functions.ml.feature.PCA" title="Permalink to this definition">¶</a></dt>
 <dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">ddf_library.ddf_model.ModelDDF</span></code></p>
-<p>Converts a collection of text documents to a matrix of token counts.</p>
+<p>Principal component analysis (PCA) is a statistical method to find
+a rotation such that the first coordinate has the largest variance
+possible, and each succeeding coordinate in turn has the largest
+variance possible. The columns of the rotation matrix are called
+principal components. PCA is used widely in dimensionality reduction.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
@@ -319,8 +166,9 @@ the words appear frequently and don’t carry as much meaning.</p>
 </tr>
 </tbody>
 </table>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">cv</span> <span class="o">=</span> <span class="n">CountVectorizer</span><span class="p">(</span><span class="n">input_col</span><span class="o">=</span><span class="s1">&#39;col_1&#39;</span><span class="p">,</span> <span class="n">output_col</span><span class="o">=</span><span class="s1">&#39;col_2&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">ddf1</span><span class="p">)</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="n">ddf2</span> <span class="o">=</span> <span class="n">cv</span><span class="o">.</span><span class="n">transform</span><span class="p">(</span><span class="n">ddf1</span><span class="p">)</span>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">pca</span> <span class="o">=</span> <span class="n">PCA</span><span class="p">(</span><span class="n">input_col</span><span class="o">=</span><span class="s1">&#39;features&#39;</span><span class="p">,</span> <span class="n">output_col</span><span class="o">=</span><span class="s1">&#39;features_pca&#39;</span><span class="p">,</span>
+<span class="gp">&gt;&gt;&gt; </span>          <span class="n">n_components</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">ddf1</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">ddf2</span> <span class="o">=</span> <span class="n">pca</span><span class="o">.</span><span class="n">transform</span><span class="p">(</span><span class="n">ddf1</span><span class="p">)</span>
 </pre></div>
 </div>
 <table class="docutils field-list" frame="void" rules="none">
@@ -328,182 +176,18 @@ the words appear frequently and don’t carry as much meaning.</p>
 <col class="field-body" />
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
-<li><strong>input_col</strong> – Input column name with the tokens;</li>
-<li><strong>output_col</strong> – Output column name;</li>
-<li><strong>vocab_size</strong> – Maximum size of the vocabulary. If -1, no limits
-will be applied. (default, -1)</li>
-<li><strong>min_tf</strong> – Specifies the minimum number of different documents a
-term must appear in to be included in the vocabulary. If this is an
-integer &gt;= 1, this specifies the number of documents the term must
-appear in;  Default 1.0;</li>
-<li><strong>min_df</strong> – Filter to ignore rare words in a document. For each
-document, terms with frequency/count less than the given threshold
-are ignored. If this is an integer &gt;= 1, then this specifies a count
-(of times the term must appear in the document);</li>
-<li><strong>binary</strong> – If True, all nonzero counts are set to 1.</li>
+<li><strong>input_col</strong> – Input feature column;</li>
+<li><strong>n_components</strong> – Number of output components;</li>
+<li><strong>output_col</strong> – Output feature column (default, <em>‘prediction_PCA’</em>).</li>
 </ul>
 </td>
 </tr>
 </tbody>
 </table>
 <dl class="method">
-<dt id="ddf_library.functions.ml.feature.CountVectorizer.fit">
-<code class="descname">fit</code><span class="sig-paren">(</span><em>data</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.functions.ml.feature.CountVectorizer.fit" title="Permalink to this definition">¶</a></dt>
-<dd><p>Fit the model.</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>data</strong> – DDF</td>
-</tr>
-<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">a trained model</td>
-</tr>
-</tbody>
-</table>
-</dd></dl>
-
-<dl class="method">
-<dt id="ddf_library.functions.ml.feature.CountVectorizer.fit_transform">
-<code class="descname">fit_transform</code><span class="sig-paren">(</span><em>data</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.functions.ml.feature.CountVectorizer.fit_transform" title="Permalink to this definition">¶</a></dt>
-<dd><p>Fit the model and transform.</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>data</strong> – DDF</td>
-</tr>
-<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">DDF</td>
-</tr>
-</tbody>
-</table>
-</dd></dl>
-
-<dl class="method">
-<dt id="ddf_library.functions.ml.feature.CountVectorizer.load_model">
-<code class="descname">load_model</code><span class="sig-paren">(</span><em>filepath</em>, <em>storage='hdfs'</em>, <em>namenode='localhost'</em>, <em>port=9000</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.functions.ml.feature.CountVectorizer.load_model" title="Permalink to this definition">¶</a></dt>
-<dd><p>Load a machine learning model from a binary file in a storage.</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
-<li><strong>filepath</strong> – The absolute path name;</li>
-<li><strong>storage</strong> – <em>‘hdfs’</em> to load from HDFS storage or <em>‘fs’</em> to load
-from common file system;</li>
-<li><strong>storage</strong> – <em>‘hdfs’</em> to save in HDFS storage or <em>‘fs’</em> to save in
-common file system;</li>
-<li><strong>namenode</strong> – IP or DNS address to NameNode (default, <em>‘localhost’</em>).
-Note: Only if storage is <em>‘hdfs’</em>;</li>
-<li><strong>port</strong> – NameNode port (default, 9000). Note: Only if storage is
-<em>‘hdfs’</em>;</li>
-</ul>
-</td>
-</tr>
-<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">self</p>
-</td>
-</tr>
-<tr class="field-odd field"><th class="field-name">Example:</th><td class="field-body"></td>
-</tr>
-</tbody>
-</table>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">ml_model</span> <span class="o">=</span> <span class="n">ml_algorithm</span><span class="p">()</span><span class="o">.</span><span class="n">load_model</span><span class="p">(</span><span class="s1">&#39;/saved_model&#39;</span><span class="p">)</span>
-</pre></div>
-</div>
-</dd></dl>
-
-<dl class="method">
-<dt id="ddf_library.functions.ml.feature.CountVectorizer.save_model">
-<code class="descname">save_model</code><span class="sig-paren">(</span><em>filepath</em>, <em>storage='hdfs'</em>, <em>overwrite=True</em>, <em>namenode='localhost'</em>, <em>port=9000</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.functions.ml.feature.CountVectorizer.save_model" title="Permalink to this definition">¶</a></dt>
-<dd><p>Save a machine learning model as a binary file in a storage.</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
-<li><strong>filepath</strong> – The output absolute path name;</li>
-<li><strong>storage</strong> – <em>‘hdfs’</em> to save in HDFS storage or <em>‘fs’</em> to save in
-common file system;</li>
-<li><strong>overwrite</strong> – Overwrite if file already exists (default, True);</li>
-<li><strong>namenode</strong> – IP or DNS address to NameNode (default, <em>‘localhost’</em>);</li>
-<li><strong>port</strong> – NameNode port (default, 9000);</li>
-</ul>
-</td>
-</tr>
-<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">self</p>
-</td>
-</tr>
-<tr class="field-odd field"><th class="field-name">Example:</th><td class="field-body"></td>
-</tr>
-</tbody>
-</table>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">ml_model</span><span class="o">.</span><span class="n">save_model</span><span class="p">(</span><span class="s1">&#39;/trained_model&#39;</span><span class="p">)</span>
-</pre></div>
-</div>
-</dd></dl>
-
-<dl class="method">
-<dt id="ddf_library.functions.ml.feature.CountVectorizer.transform">
-<code class="descname">transform</code><span class="sig-paren">(</span><em>data</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.functions.ml.feature.CountVectorizer.transform" title="Permalink to this definition">¶</a></dt>
+<dt id="ddf_library.functions.ml.feature.PCA.fit">
+<code class="descname">fit</code><span class="sig-paren">(</span><em>data</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.functions.ml.feature.PCA.fit" title="Permalink to this definition">¶</a></dt>
 <dd><table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>data</strong> – DDF</td>
-</tr>
-<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">DDF</td>
-</tr>
-</tbody>
-</table>
-</dd></dl>
-
-</dd></dl>
-
-<dl class="class">
-<dt id="ddf_library.functions.ml.feature.TfidfVectorizer">
-<em class="property">class </em><code class="descclassname">ddf_library.functions.ml.feature.</code><code class="descname">TfidfVectorizer</code><span class="sig-paren">(</span><em>input_col</em>, <em>output_col=None</em>, <em>vocab_size=-1</em>, <em>min_tf=1.0</em>, <em>min_df=1.0</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.functions.ml.feature.TfidfVectorizer" title="Permalink to this definition">¶</a></dt>
-<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">ddf_library.ddf_model.ModelDDF</span></code></p>
-<p>Term frequency-inverse document frequency (TF-IDF) is a numerical
-statistic transformation that is intended to reflect how important a word
-is to a document in a collection or corpus.</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Example:</th><td class="field-body"></td>
-</tr>
-</tbody>
-</table>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">tfidf</span> <span class="o">=</span> <span class="n">TfidfVectorizer</span><span class="p">(</span><span class="n">input_col</span><span class="o">=</span><span class="s1">&#39;col_0&#39;</span><span class="p">,</span> <span class="n">output_col</span><span class="o">=</span><span class="s1">&#39;col_1&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">ddf1</span><span class="p">)</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="n">ddf2</span> <span class="o">=</span> <span class="n">tfidf</span><span class="o">.</span><span class="n">transform</span><span class="p">(</span><span class="n">ddf1</span><span class="p">)</span>
-</pre></div>
-</div>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
-<li><strong>input_col</strong> – Input column name with the tokens;</li>
-<li><strong>output_col</strong> – Output column name;</li>
-<li><strong>vocab_size</strong> – Maximum size of the vocabulary. If -1, no limits
-will be applied. (default, -1)</li>
-<li><strong>min_tf</strong> – Specifies the minimum number of different documents a
-term must appear in to be included in the vocabulary. If this is an
-integer &gt;= 1, this specifies the number of documents the term must
-appear in;  Default 1.0;</li>
-<li><strong>min_df</strong> – Filter to ignore rare words in a document. For each
-document, terms with frequency/count less than the given threshold
-are ignored. If this is an integer &gt;= 1, then this specifies a count
-(of times the term must appear in the document);</li>
-</ul>
-</td>
-</tr>
-</tbody>
-</table>
-<dl class="method">
-<dt id="ddf_library.functions.ml.feature.TfidfVectorizer.fit">
-<code class="descname">fit</code><span class="sig-paren">(</span><em>data</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.functions.ml.feature.TfidfVectorizer.fit" title="Permalink to this definition">¶</a></dt>
-<dd><p>Fit the model.</p>
-<table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
@@ -516,8 +200,8 @@ are ignored. If this is an integer &gt;= 1, then this specifies a count
 </dd></dl>
 
 <dl class="method">
-<dt id="ddf_library.functions.ml.feature.TfidfVectorizer.fit_transform">
-<code class="descname">fit_transform</code><span class="sig-paren">(</span><em>data</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.functions.ml.feature.TfidfVectorizer.fit_transform" title="Permalink to this definition">¶</a></dt>
+<dt id="ddf_library.functions.ml.feature.PCA.fit_transform">
+<code class="descname">fit_transform</code><span class="sig-paren">(</span><em>data</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.functions.ml.feature.PCA.fit_transform" title="Permalink to this definition">¶</a></dt>
 <dd><p>Fit the model and transform.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
@@ -532,8 +216,8 @@ are ignored. If this is an integer &gt;= 1, then this specifies a count
 </dd></dl>
 
 <dl class="method">
-<dt id="ddf_library.functions.ml.feature.TfidfVectorizer.load_model">
-<code class="descname">load_model</code><span class="sig-paren">(</span><em>filepath</em>, <em>storage='hdfs'</em>, <em>namenode='localhost'</em>, <em>port=9000</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.functions.ml.feature.TfidfVectorizer.load_model" title="Permalink to this definition">¶</a></dt>
+<dt id="ddf_library.functions.ml.feature.PCA.load_model">
+<code class="descname">load_model</code><span class="sig-paren">(</span><em>filepath</em>, <em>storage='hdfs'</em>, <em>namenode='localhost'</em>, <em>port=9000</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.functions.ml.feature.PCA.load_model" title="Permalink to this definition">¶</a></dt>
 <dd><p>Load a machine learning model from a binary file in a storage.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
@@ -565,8 +249,8 @@ Note: Only if storage is <em>‘hdfs’</em>;</li>
 </dd></dl>
 
 <dl class="method">
-<dt id="ddf_library.functions.ml.feature.TfidfVectorizer.save_model">
-<code class="descname">save_model</code><span class="sig-paren">(</span><em>filepath</em>, <em>storage='hdfs'</em>, <em>overwrite=True</em>, <em>namenode='localhost'</em>, <em>port=9000</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.functions.ml.feature.TfidfVectorizer.save_model" title="Permalink to this definition">¶</a></dt>
+<dt id="ddf_library.functions.ml.feature.PCA.save_model">
+<code class="descname">save_model</code><span class="sig-paren">(</span><em>filepath</em>, <em>storage='hdfs'</em>, <em>overwrite=True</em>, <em>namenode='localhost'</em>, <em>port=9000</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.functions.ml.feature.PCA.save_model" title="Permalink to this definition">¶</a></dt>
 <dd><p>Save a machine learning model as a binary file in a storage.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
@@ -595,8 +279,101 @@ common file system;</li>
 </dd></dl>
 
 <dl class="method">
-<dt id="ddf_library.functions.ml.feature.TfidfVectorizer.transform">
-<code class="descname">transform</code><span class="sig-paren">(</span><em>data</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.functions.ml.feature.TfidfVectorizer.transform" title="Permalink to this definition">¶</a></dt>
+<dt id="ddf_library.functions.ml.feature.PCA.transform">
+<code class="descname">transform</code><span class="sig-paren">(</span><em>data</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.functions.ml.feature.PCA.transform" title="Permalink to this definition">¶</a></dt>
+<dd><table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>data</strong> – DDF</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">DDF</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="ddf_library.functions.ml.feature.PolynomialExpansion">
+<em class="property">class </em><code class="descclassname">ddf_library.functions.ml.feature.</code><code class="descname">PolynomialExpansion</code><span class="sig-paren">(</span><em>input_col</em>, <em>degree=2</em>, <em>output_col=None</em>, <em>interaction_only=False</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.functions.ml.feature.PolynomialExpansion" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>Perform feature expansion in a polynomial space. As said in wikipedia of
+Polynomial Expansion, “In mathematics, an expansion of a product of sums
+expresses it as a sum of products by using the fact that multiplication
+distributes over addition”.</p>
+<p>For example, if an input sample is two dimensional and of the form [a, b],
+the degree-2 polynomial features are [1, a, b, a^2, ab, b^2]</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>input_col</strong> – List of columns;</li>
+<li><strong>output_col</strong> – Output column name.</li>
+<li><strong>degree</strong> – The degree of the polynomial features. Default = 2.</li>
+<li><strong>interaction_only</strong> – If true, only interaction features are
+produced: features that are products of at most degree distinct input
+features. Default = False</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+<dl class="method">
+<dt id="ddf_library.functions.ml.feature.PolynomialExpansion.transform">
+<code class="descname">transform</code><span class="sig-paren">(</span><em>data</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.functions.ml.feature.PolynomialExpansion.transform" title="Permalink to this definition">¶</a></dt>
+<dd><table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>data</strong> – DDF</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">DDF</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="ddf_library.functions.ml.feature.Binarizer">
+<em class="property">class </em><code class="descclassname">ddf_library.functions.ml.feature.</code><code class="descname">Binarizer</code><span class="sig-paren">(</span><em>input_col</em>, <em>output_col=None</em>, <em>threshold=0.0</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.functions.ml.feature.Binarizer" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>Binarize data (set feature values to 0 or 1) according to a threshold</p>
+<p>Values greater than the threshold map to 1, while values less than or equal
+to the threshold map to 0. With the default threshold of 0, only positive
+values map to 1.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Example:</th><td class="field-body"></td>
+</tr>
+</tbody>
+</table>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">ddf</span> <span class="o">=</span> <span class="n">Binarizer</span><span class="p">(</span><span class="n">input_col</span><span class="o">=</span><span class="s1">&#39;features&#39;</span><span class="p">,</span> <span class="n">threshold</span><span class="o">=</span><span class="mf">5.0</span><span class="p">)</span><span class="o">.</span><span class="n">transform</span><span class="p">(</span><span class="n">ddf</span><span class="p">)</span>
+</pre></div>
+</div>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>input_col</strong> – List of columns;</li>
+<li><strong>output_col</strong> – Output column name.</li>
+<li><strong>threshold</strong> – Feature values below or equal to this are
+replaced by 0, above it by 1. Default = 0.0.</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+<dl class="method">
+<dt id="ddf_library.functions.ml.feature.Binarizer.transform">
+<code class="descname">transform</code><span class="sig-paren">(</span><em>data</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.functions.ml.feature.Binarizer.transform" title="Permalink to this definition">¶</a></dt>
 <dd><table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
@@ -1300,14 +1077,12 @@ common file system;</li>
 </dd></dl>
 
 <dl class="class">
-<dt id="ddf_library.functions.ml.feature.PCA">
-<em class="property">class </em><code class="descclassname">ddf_library.functions.ml.feature.</code><code class="descname">PCA</code><span class="sig-paren">(</span><em>input_col</em>, <em>n_components</em>, <em>output_col=None</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.functions.ml.feature.PCA" title="Permalink to this definition">¶</a></dt>
-<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">ddf_library.ddf_model.ModelDDF</span></code></p>
-<p>Principal component analysis (PCA) is a statistical method to find
-a rotation such that the first coordinate has the largest variance
-possible, and each succeeding coordinate in turn has the largest
-variance possible. The columns of the rotation matrix are called
-principal components. PCA is used widely in dimensionality reduction.</p>
+<dt id="ddf_library.functions.ml.feature.Tokenizer">
+<em class="property">class </em><code class="descclassname">ddf_library.functions.ml.feature.</code><code class="descname">Tokenizer</code><span class="sig-paren">(</span><em>input_col</em>, <em>output_col=None</em>, <em>min_token_length=2</em>, <em>to_lowercase=True</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.functions.ml.feature.Tokenizer" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>Tokenization is the process of taking text (such as a sentence) and
+breaking it into individual terms (usually words). A simple Tokenizer
+class provides this functionality.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
@@ -1316,9 +1091,7 @@ principal components. PCA is used widely in dimensionality reduction.</p>
 </tr>
 </tbody>
 </table>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">pca</span> <span class="o">=</span> <span class="n">PCA</span><span class="p">(</span><span class="n">input_col</span><span class="o">=</span><span class="s1">&#39;features&#39;</span><span class="p">,</span> <span class="n">output_col</span><span class="o">=</span><span class="s1">&#39;features_pca&#39;</span><span class="p">,</span>
-<span class="gp">&gt;&gt;&gt; </span>          <span class="n">n_components</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">ddf1</span><span class="p">)</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="n">ddf2</span> <span class="o">=</span> <span class="n">pca</span><span class="o">.</span><span class="n">transform</span><span class="p">(</span><span class="n">ddf1</span><span class="p">)</span>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">ddf2</span> <span class="o">=</span> <span class="n">Tokenizer</span><span class="p">(</span><span class="n">input_col</span><span class="o">=</span><span class="s1">&#39;features&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">transform</span><span class="p">(</span><span class="n">ddf1</span><span class="p">)</span>
 </pre></div>
 </div>
 <table class="docutils field-list" frame="void" rules="none">
@@ -1326,32 +1099,250 @@ principal components. PCA is used widely in dimensionality reduction.</p>
 <col class="field-body" />
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
-<li><strong>input_col</strong> – Input feature column;</li>
-<li><strong>n_components</strong> – Number of output components;</li>
-<li><strong>output_col</strong> – Output feature column (default, <em>‘prediction_PCA’</em>).</li>
+<li><strong>input_col</strong> – Input column with sentences;</li>
+<li><strong>output_col</strong> – Output column (overwrite the <em>‘input_col’</em> if None);</li>
+<li><strong>min_token_length</strong> – Minimum tokens length (default is 2);</li>
+<li><strong>to_lowercase</strong> – To convert words to lowercase (default is True).</li>
 </ul>
 </td>
 </tr>
 </tbody>
 </table>
 <dl class="method">
-<dt id="ddf_library.functions.ml.feature.PCA.fit">
-<code class="descname">fit</code><span class="sig-paren">(</span><em>data</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.functions.ml.feature.PCA.fit" title="Permalink to this definition">¶</a></dt>
+<dt id="ddf_library.functions.ml.feature.Tokenizer.transform">
+<code class="descname">transform</code><span class="sig-paren">(</span><em>data</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.functions.ml.feature.Tokenizer.transform" title="Permalink to this definition">¶</a></dt>
 <dd><table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>data</strong> – DDF</td>
 </tr>
-<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">trained model</td>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">DDF</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="ddf_library.functions.ml.feature.RegexTokenizer">
+<em class="property">class </em><code class="descclassname">ddf_library.functions.ml.feature.</code><code class="descname">RegexTokenizer</code><span class="sig-paren">(</span><em>input_col</em>, <em>output_col=None</em>, <em>pattern='\s+'</em>, <em>min_token_length=2</em>, <em>to_lowercase=True</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.functions.ml.feature.RegexTokenizer" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>A regex based tokenizer that extracts tokens either by using the provided
+regex pattern (in Java dialect) to split the text.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Example:</th><td class="field-body"></td>
+</tr>
+</tbody>
+</table>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">ddf2</span> <span class="o">=</span> <span class="n">RegexTokenizer</span><span class="p">(</span><span class="n">input_col</span><span class="o">=</span><span class="s1">&#39;col_0&#39;</span><span class="p">,</span> <span class="n">pattern</span><span class="o">=</span><span class="s1">r&#39;\s+&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">transform</span><span class="p">(</span><span class="n">ddf1</span><span class="p">)</span>
+</pre></div>
+</div>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>input_col</strong> – Input column with sentences;</li>
+<li><strong>output_col</strong> – Output column (overwrite the <em>‘input_col’</em> if None);</li>
+<li><strong>pattern</strong> – Regex pattern in Java dialect, default is <em>r’s+’</em>;</li>
+<li><strong>min_token_length</strong> – Minimum tokens length (default is 2);</li>
+<li><strong>to_lowercase</strong> – To convert words to lowercase (default is True).</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+<dl class="method">
+<dt id="ddf_library.functions.ml.feature.RegexTokenizer.transform">
+<code class="descname">transform</code><span class="sig-paren">(</span><em>data</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.functions.ml.feature.RegexTokenizer.transform" title="Permalink to this definition">¶</a></dt>
+<dd><table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>data</strong> – DDF</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">DDF</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="ddf_library.functions.ml.feature.RemoveStopWords">
+<em class="property">class </em><code class="descclassname">ddf_library.functions.ml.feature.</code><code class="descname">RemoveStopWords</code><span class="sig-paren">(</span><em>input_col</em>, <em>output_col=None</em>, <em>case_sensitive=True</em>, <em>stops_words_list=None</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.functions.ml.feature.RemoveStopWords" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">ddf_library.ddf.DDFSketch</span></code></p>
+<p>Remove stop-words is a operation to remove words which
+should be excluded from the input, typically because
+the words appear frequently and don’t carry as much meaning.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Example:</th><td class="field-body"></td>
+</tr>
+</tbody>
+</table>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">remover</span> <span class="o">=</span> <span class="n">RemoveStopWords</span><span class="p">(</span><span class="n">input_col</span><span class="o">=</span><span class="s1">&#39;col_0&#39;</span><span class="p">,</span> <span class="n">output_col</span><span class="o">=</span><span class="s1">&#39;col_1&#39;</span><span class="p">,</span>
+<span class="gp">&gt;&gt;&gt; </span>                          <span class="n">stops_words_list</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;rock&#39;</span><span class="p">,</span> <span class="s1">&#39;destined&#39;</span><span class="p">])</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">remover</span> <span class="o">=</span> <span class="n">remover</span><span class="o">.</span><span class="n">stopwords_from_ddf</span><span class="p">(</span><span class="n">stopswords_ddf</span><span class="p">,</span> <span class="s1">&#39;col&#39;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">ddf2</span> <span class="o">=</span> <span class="n">remover</span><span class="o">.</span><span class="n">transform</span><span class="p">(</span><span class="n">ddf1</span><span class="p">)</span>
+</pre></div>
+</div>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>input_col</strong> – Input columns with the tokens;</li>
+<li><strong>output_col</strong> – Output column;</li>
+<li><strong>case_sensitive</strong> – To compare words using case sensitive (default);</li>
+<li><strong>stops_words_list</strong> – Optional, a list of words to be removed.</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+<dl class="method">
+<dt id="ddf_library.functions.ml.feature.RemoveStopWords.stopwords_from_ddf">
+<code class="descname">stopwords_from_ddf</code><span class="sig-paren">(</span><em>data</em>, <em>input_col</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.functions.ml.feature.RemoveStopWords.stopwords_from_ddf" title="Permalink to this definition">¶</a></dt>
+<dd><p>Is also possible inform stop-words form a DDF.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>data</strong> – DDF with a column of stop-words;</li>
+<li><strong>input_col</strong> – Stop-words column name;</li>
+</ul>
+</td>
 </tr>
 </tbody>
 </table>
 </dd></dl>
 
 <dl class="method">
-<dt id="ddf_library.functions.ml.feature.PCA.fit_transform">
-<code class="descname">fit_transform</code><span class="sig-paren">(</span><em>data</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.functions.ml.feature.PCA.fit_transform" title="Permalink to this definition">¶</a></dt>
+<dt id="ddf_library.functions.ml.feature.RemoveStopWords.transform">
+<code class="descname">transform</code><span class="sig-paren">(</span><em>data</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.functions.ml.feature.RemoveStopWords.transform" title="Permalink to this definition">¶</a></dt>
+<dd><table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>data</strong> – DDF</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">DDF</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="ddf_library.functions.ml.feature.NGram">
+<em class="property">class </em><code class="descclassname">ddf_library.functions.ml.feature.</code><code class="descname">NGram</code><span class="sig-paren">(</span><em>input_col</em>, <em>n=2</em>, <em>output_col=None</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.functions.ml.feature.NGram" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>A feature transformer that converts the input array of strings into an
+array of n-grams. Null values in the input array are ignored. It returns
+an array of n-grams where each n-gram is represented by a space-separated
+string of words. When the input is empty, an empty array is returned. When
+the input array length is less than n (number of elements per n-gram), no
+n-grams are returned.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>input_col</strong> – Input columns with the tokens;</li>
+<li><strong>n</strong> – Number integer. Default = 2;</li>
+<li><strong>output_col</strong> – Output column. Default, overwrite input_col;</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+<dl class="method">
+<dt id="ddf_library.functions.ml.feature.NGram.transform">
+<code class="descname">transform</code><span class="sig-paren">(</span><em>data</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.functions.ml.feature.NGram.transform" title="Permalink to this definition">¶</a></dt>
+<dd><table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>data</strong> – DDF</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">DDF</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="ddf_library.functions.ml.feature.CountVectorizer">
+<em class="property">class </em><code class="descclassname">ddf_library.functions.ml.feature.</code><code class="descname">CountVectorizer</code><span class="sig-paren">(</span><em>input_col</em>, <em>output_col=None</em>, <em>vocab_size=-1</em>, <em>min_tf=1.0</em>, <em>min_df=1.0</em>, <em>binary=True</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.functions.ml.feature.CountVectorizer" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">ddf_library.ddf_model.ModelDDF</span></code></p>
+<p>Converts a collection of text documents to a matrix of token counts.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Example:</th><td class="field-body"></td>
+</tr>
+</tbody>
+</table>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">cv</span> <span class="o">=</span> <span class="n">CountVectorizer</span><span class="p">(</span><span class="n">input_col</span><span class="o">=</span><span class="s1">&#39;col_1&#39;</span><span class="p">,</span> <span class="n">output_col</span><span class="o">=</span><span class="s1">&#39;col_2&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">ddf1</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">ddf2</span> <span class="o">=</span> <span class="n">cv</span><span class="o">.</span><span class="n">transform</span><span class="p">(</span><span class="n">ddf1</span><span class="p">)</span>
+</pre></div>
+</div>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>input_col</strong> – Input column name with the tokens;</li>
+<li><strong>output_col</strong> – Output column name;</li>
+<li><strong>vocab_size</strong> – Maximum size of the vocabulary. If -1, no limits
+will be applied. (default, -1)</li>
+<li><strong>min_tf</strong> – Specifies the minimum number of different documents a
+term must appear in to be included in the vocabulary. If this is an
+integer &gt;= 1, this specifies the number of documents the term must
+appear in;  Default 1.0;</li>
+<li><strong>min_df</strong> – Filter to ignore rare words in a document. For each
+document, terms with frequency/count less than the given threshold
+are ignored. If this is an integer &gt;= 1, then this specifies a count
+(of times the term must appear in the document);</li>
+<li><strong>binary</strong> – If True, all nonzero counts are set to 1.</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+<dl class="method">
+<dt id="ddf_library.functions.ml.feature.CountVectorizer.fit">
+<code class="descname">fit</code><span class="sig-paren">(</span><em>data</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.functions.ml.feature.CountVectorizer.fit" title="Permalink to this definition">¶</a></dt>
+<dd><p>Fit the model.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>data</strong> – DDF</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">a trained model</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="ddf_library.functions.ml.feature.CountVectorizer.fit_transform">
+<code class="descname">fit_transform</code><span class="sig-paren">(</span><em>data</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.functions.ml.feature.CountVectorizer.fit_transform" title="Permalink to this definition">¶</a></dt>
 <dd><p>Fit the model and transform.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
@@ -1366,8 +1357,8 @@ principal components. PCA is used widely in dimensionality reduction.</p>
 </dd></dl>
 
 <dl class="method">
-<dt id="ddf_library.functions.ml.feature.PCA.load_model">
-<code class="descname">load_model</code><span class="sig-paren">(</span><em>filepath</em>, <em>storage='hdfs'</em>, <em>namenode='localhost'</em>, <em>port=9000</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.functions.ml.feature.PCA.load_model" title="Permalink to this definition">¶</a></dt>
+<dt id="ddf_library.functions.ml.feature.CountVectorizer.load_model">
+<code class="descname">load_model</code><span class="sig-paren">(</span><em>filepath</em>, <em>storage='hdfs'</em>, <em>namenode='localhost'</em>, <em>port=9000</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.functions.ml.feature.CountVectorizer.load_model" title="Permalink to this definition">¶</a></dt>
 <dd><p>Load a machine learning model from a binary file in a storage.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
@@ -1399,8 +1390,8 @@ Note: Only if storage is <em>‘hdfs’</em>;</li>
 </dd></dl>
 
 <dl class="method">
-<dt id="ddf_library.functions.ml.feature.PCA.save_model">
-<code class="descname">save_model</code><span class="sig-paren">(</span><em>filepath</em>, <em>storage='hdfs'</em>, <em>overwrite=True</em>, <em>namenode='localhost'</em>, <em>port=9000</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.functions.ml.feature.PCA.save_model" title="Permalink to this definition">¶</a></dt>
+<dt id="ddf_library.functions.ml.feature.CountVectorizer.save_model">
+<code class="descname">save_model</code><span class="sig-paren">(</span><em>filepath</em>, <em>storage='hdfs'</em>, <em>overwrite=True</em>, <em>namenode='localhost'</em>, <em>port=9000</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.functions.ml.feature.CountVectorizer.save_model" title="Permalink to this definition">¶</a></dt>
 <dd><p>Save a machine learning model as a binary file in a storage.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
@@ -1429,8 +1420,8 @@ common file system;</li>
 </dd></dl>
 
 <dl class="method">
-<dt id="ddf_library.functions.ml.feature.PCA.transform">
-<code class="descname">transform</code><span class="sig-paren">(</span><em>data</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.functions.ml.feature.PCA.transform" title="Permalink to this definition">¶</a></dt>
+<dt id="ddf_library.functions.ml.feature.CountVectorizer.transform">
+<code class="descname">transform</code><span class="sig-paren">(</span><em>data</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.functions.ml.feature.CountVectorizer.transform" title="Permalink to this definition">¶</a></dt>
 <dd><table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
@@ -1446,34 +1437,144 @@ common file system;</li>
 </dd></dl>
 
 <dl class="class">
-<dt id="ddf_library.functions.ml.feature.PolynomialExpansion">
-<em class="property">class </em><code class="descclassname">ddf_library.functions.ml.feature.</code><code class="descname">PolynomialExpansion</code><span class="sig-paren">(</span><em>input_col</em>, <em>degree=2</em>, <em>output_col=None</em>, <em>interaction_only=False</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.functions.ml.feature.PolynomialExpansion" title="Permalink to this definition">¶</a></dt>
-<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
-<p>Perform feature expansion in a polynomial space. As said in wikipedia of
-Polynomial Expansion, “In mathematics, an expansion of a product of sums
-expresses it as a sum of products by using the fact that multiplication
-distributes over addition”.</p>
-<p>For example, if an input sample is two dimensional and of the form [a, b],
-the degree-2 polynomial features are [1, a, b, a^2, ab, b^2]</p>
+<dt id="ddf_library.functions.ml.feature.TfidfVectorizer">
+<em class="property">class </em><code class="descclassname">ddf_library.functions.ml.feature.</code><code class="descname">TfidfVectorizer</code><span class="sig-paren">(</span><em>input_col</em>, <em>output_col=None</em>, <em>vocab_size=-1</em>, <em>min_tf=1.0</em>, <em>min_df=1.0</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.functions.ml.feature.TfidfVectorizer" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">ddf_library.ddf_model.ModelDDF</span></code></p>
+<p>Term frequency-inverse document frequency (TF-IDF) is a numerical
+statistic transformation that is intended to reflect how important a word
+is to a document in a collection or corpus.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Example:</th><td class="field-body"></td>
+</tr>
+</tbody>
+</table>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">tfidf</span> <span class="o">=</span> <span class="n">TfidfVectorizer</span><span class="p">(</span><span class="n">input_col</span><span class="o">=</span><span class="s1">&#39;col_0&#39;</span><span class="p">,</span> <span class="n">output_col</span><span class="o">=</span><span class="s1">&#39;col_1&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">ddf1</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">ddf2</span> <span class="o">=</span> <span class="n">tfidf</span><span class="o">.</span><span class="n">transform</span><span class="p">(</span><span class="n">ddf1</span><span class="p">)</span>
+</pre></div>
+</div>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
-<li><strong>input_col</strong> – List of columns;</li>
-<li><strong>output_col</strong> – Output column name.</li>
-<li><strong>degree</strong> – The degree of the polynomial features. Default = 2.</li>
-<li><strong>interaction_only</strong> – If true, only interaction features are
-produced: features that are products of at most degree distinct input
-features. Default = False</li>
+<li><strong>input_col</strong> – Input column name with the tokens;</li>
+<li><strong>output_col</strong> – Output column name;</li>
+<li><strong>vocab_size</strong> – Maximum size of the vocabulary. If -1, no limits
+will be applied. (default, -1)</li>
+<li><strong>min_tf</strong> – Specifies the minimum number of different documents a
+term must appear in to be included in the vocabulary. If this is an
+integer &gt;= 1, this specifies the number of documents the term must
+appear in;  Default 1.0;</li>
+<li><strong>min_df</strong> – Filter to ignore rare words in a document. For each
+document, terms with frequency/count less than the given threshold
+are ignored. If this is an integer &gt;= 1, then this specifies a count
+(of times the term must appear in the document);</li>
 </ul>
 </td>
 </tr>
 </tbody>
 </table>
 <dl class="method">
-<dt id="ddf_library.functions.ml.feature.PolynomialExpansion.transform">
-<code class="descname">transform</code><span class="sig-paren">(</span><em>data</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.functions.ml.feature.PolynomialExpansion.transform" title="Permalink to this definition">¶</a></dt>
+<dt id="ddf_library.functions.ml.feature.TfidfVectorizer.fit">
+<code class="descname">fit</code><span class="sig-paren">(</span><em>data</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.functions.ml.feature.TfidfVectorizer.fit" title="Permalink to this definition">¶</a></dt>
+<dd><p>Fit the model.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>data</strong> – DDF</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">trained model</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="ddf_library.functions.ml.feature.TfidfVectorizer.fit_transform">
+<code class="descname">fit_transform</code><span class="sig-paren">(</span><em>data</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.functions.ml.feature.TfidfVectorizer.fit_transform" title="Permalink to this definition">¶</a></dt>
+<dd><p>Fit the model and transform.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>data</strong> – DDF</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">DDF</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="ddf_library.functions.ml.feature.TfidfVectorizer.load_model">
+<code class="descname">load_model</code><span class="sig-paren">(</span><em>filepath</em>, <em>storage='hdfs'</em>, <em>namenode='localhost'</em>, <em>port=9000</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.functions.ml.feature.TfidfVectorizer.load_model" title="Permalink to this definition">¶</a></dt>
+<dd><p>Load a machine learning model from a binary file in a storage.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>filepath</strong> – The absolute path name;</li>
+<li><strong>storage</strong> – <em>‘hdfs’</em> to load from HDFS storage or <em>‘fs’</em> to load
+from common file system;</li>
+<li><strong>storage</strong> – <em>‘hdfs’</em> to save in HDFS storage or <em>‘fs’</em> to save in
+common file system;</li>
+<li><strong>namenode</strong> – IP or DNS address to NameNode (default, <em>‘localhost’</em>).
+Note: Only if storage is <em>‘hdfs’</em>;</li>
+<li><strong>port</strong> – NameNode port (default, 9000). Note: Only if storage is
+<em>‘hdfs’</em>;</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">self</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Example:</th><td class="field-body"></td>
+</tr>
+</tbody>
+</table>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">ml_model</span> <span class="o">=</span> <span class="n">ml_algorithm</span><span class="p">()</span><span class="o">.</span><span class="n">load_model</span><span class="p">(</span><span class="s1">&#39;/saved_model&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="method">
+<dt id="ddf_library.functions.ml.feature.TfidfVectorizer.save_model">
+<code class="descname">save_model</code><span class="sig-paren">(</span><em>filepath</em>, <em>storage='hdfs'</em>, <em>overwrite=True</em>, <em>namenode='localhost'</em>, <em>port=9000</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.functions.ml.feature.TfidfVectorizer.save_model" title="Permalink to this definition">¶</a></dt>
+<dd><p>Save a machine learning model as a binary file in a storage.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>filepath</strong> – The output absolute path name;</li>
+<li><strong>storage</strong> – <em>‘hdfs’</em> to save in HDFS storage or <em>‘fs’</em> to save in
+common file system;</li>
+<li><strong>overwrite</strong> – Overwrite if file already exists (default, True);</li>
+<li><strong>namenode</strong> – IP or DNS address to NameNode (default, <em>‘localhost’</em>);</li>
+<li><strong>port</strong> – NameNode port (default, 9000);</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">self</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Example:</th><td class="field-body"></td>
+</tr>
+</tbody>
+</table>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">ml_model</span><span class="o">.</span><span class="n">save_model</span><span class="p">(</span><span class="s1">&#39;/trained_model&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="method">
+<dt id="ddf_library.functions.ml.feature.TfidfVectorizer.transform">
+<code class="descname">transform</code><span class="sig-paren">(</span><em>data</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.functions.ml.feature.TfidfVectorizer.transform" title="Permalink to this definition">¶</a></dt>
 <dd><table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />

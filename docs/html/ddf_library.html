@@ -209,29 +209,6 @@ this function computes statistics for all numerical or string columns;</td>
 </dd></dl>
 
 <dl class="method">
-<dt id="ddf_library.ddf.DDF.difference">
-<code class="descname">difference</code><span class="sig-paren">(</span><em>data2</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.ddf.DDF.difference" title="Permalink to this definition">¶</a></dt>
-<dd><p>Returns a new DDF with containing rows in the first frame but not
-in the second one.</p>
-<p>Is it a Lazy function: No</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>data2</strong> – second DDF;</td>
-</tr>
-<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">DDF</td>
-</tr>
-<tr class="field-odd field"><th class="field-name">Example:</th><td class="field-body"></td>
-</tr>
-</tbody>
-</table>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">ddf1</span><span class="o">.</span><span class="n">difference</span><span class="p">(</span><span class="n">ddf2</span><span class="p">)</span>
-</pre></div>
-</div>
-</dd></dl>
-
-<dl class="method">
 <dt id="ddf_library.ddf.DDF.distinct">
 <code class="descname">distinct</code><span class="sig-paren">(</span><em>cols</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.ddf.DDF.distinct" title="Permalink to this definition">¶</a></dt>
 <dd><p>Returns a new DDF containing the distinct rows in this DDF.</p>
@@ -428,7 +405,8 @@ empty to all (default, None);</li>
 <dl class="method">
 <dt id="ddf_library.ddf.DDF.intersect">
 <code class="descname">intersect</code><span class="sig-paren">(</span><em>data2</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.ddf.DDF.intersect" title="Permalink to this definition">¶</a></dt>
-<dd><p>Returns a new DDF containing rows in both DDF.</p>
+<dd><p>Returns a new DDF containing rows in both DDF. This is equivalent to
+INTERSECT in SQL.</p>
 <p>Is it a Lazy function: No</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
@@ -443,6 +421,29 @@ empty to all (default, None);</li>
 </tbody>
 </table>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">ddf2</span><span class="o">.</span><span class="n">intersect</span><span class="p">(</span><span class="n">ddf1</span><span class="p">)</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="method">
+<dt id="ddf_library.ddf.DDF.intersect_all">
+<code class="descname">intersect_all</code><span class="sig-paren">(</span><em>data2</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.ddf.DDF.intersect_all" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns a new DDF containing rows in both DDF while preserving
+duplicates. This is equivalent to INTERSECT ALL in SQL.</p>
+<p>Is it a Lazy function: No</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>data2</strong> – DDF</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">DDF</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Example:</th><td class="field-body"></td>
+</tr>
+</tbody>
+</table>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">ddf2</span><span class="o">.</span><span class="n">intersect_all</span><span class="p">(</span><span class="n">ddf1</span><span class="p">)</span>
 </pre></div>
 </div>
 </dd></dl>
@@ -829,6 +830,29 @@ is ascending (True) for each column (Default, True);</li>
 </dd></dl>
 
 <dl class="method">
+<dt id="ddf_library.ddf.DDF.subtract">
+<code class="descname">subtract</code><span class="sig-paren">(</span><em>data2</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.ddf.DDF.subtract" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns a new DDF with containing rows in the first frame but not
+in the second one. This is equivalent to EXCEPT in SQL.</p>
+<p>Is it a Lazy function: No</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>data2</strong> – second DDF;</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">DDF</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Example:</th><td class="field-body"></td>
+</tr>
+</tbody>
+</table>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">ddf1</span><span class="o">.</span><span class="n">subtract</span><span class="p">(</span><span class="n">ddf2</span><span class="p">)</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="method">
 <dt id="ddf_library.ddf.DDF.take">
 <code class="descname">take</code><span class="sig-paren">(</span><em>num</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.ddf.DDF.take" title="Permalink to this definition">¶</a></dt>
 <dd><p>Returns the first num rows.</p>
@@ -874,7 +898,8 @@ is ascending (True) for each column (Default, True);</li>
 <dl class="method">
 <dt id="ddf_library.ddf.DDF.union">
 <code class="descname">union</code><span class="sig-paren">(</span><em>data2</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.ddf.DDF.union" title="Permalink to this definition">¶</a></dt>
-<dd><p>Combine this data set with some other DDF.</p>
+<dd><p>Combine this data set with some other DDF. Also as standard in SQL,
+this function resolves columns by position (not by name).</p>
 <p>Is it a Lazy function: No</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
@@ -889,6 +914,31 @@ is ascending (True) for each column (Default, True);</li>
 </tbody>
 </table>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">ddf1</span><span class="o">.</span><span class="n">union</span><span class="p">(</span><span class="n">ddf2</span><span class="p">)</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="method">
+<dt id="ddf_library.ddf.DDF.union_by_name">
+<code class="descname">union_by_name</code><span class="sig-paren">(</span><em>data2</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.ddf.DDF.union_by_name" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="docutils">
+<dt>Combine this data set with some other DDF. This function resolves</dt>
+<dd>columns by name (not by position).</dd>
+</dl>
+<p>Is it a Lazy function: No</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>data2</strong> – </td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">DDF</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Example:</th><td class="field-body"></td>
+</tr>
+</tbody>
+</table>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">ddf1</span><span class="o">.</span><span class="n">union_by_name</span><span class="p">(</span><span class="n">ddf2</span><span class="p">)</span>
 </pre></div>
 </div>
 </dd></dl>
