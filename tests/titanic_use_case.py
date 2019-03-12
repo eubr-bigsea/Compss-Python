@@ -18,19 +18,13 @@ def use_case1():
         .replace({0: 'No', 1: 'Yes'}, subset=['Survived']).cache()
 
     ddf_women = ddf1.filter('(Sex == "female") and (Age >= 18)').\
-        aggregation(group_by=['Survived'],
-                    exprs={'Survived': ['count']},
-                    aliases={'Survived': ["Women"]})
+        group_by(['Survived']).count(['*'], alias=['Women'])
 
-    ddf_kids = ddf1.filter('Age < 18').\
-        aggregation(group_by=['Survived'],
-                    exprs={'Survived': ['count']},
-                    aliases={'Survived': ["Kids"]})
+    ddf_kids = ddf1.filter('Age < 18'). \
+        group_by(['Survived']).count(['*'], alias=['Kids'])
 
-    ddf_men = ddf1.filter('(Sex == "male") and (Age >= 18)').\
-        aggregation(group_by=['Survived'],
-                    exprs={'Survived': ['count']},
-                    aliases={'Survived': ["Men"]})
+    ddf_men = ddf1.filter('(Sex == "male") and (Age >= 18)'). \
+        group_by(['Survived']).count(['Survived'], alias=['Men'])
 
     ddf_final = ddf_women\
         .join(ddf_men, key1=['Survived'], key2=['Survived'], mode='inner')\
@@ -191,5 +185,5 @@ def use_case2():
 
 if __name__ == '__main__':
     print "_____Titanic's use case_____"
-    #use_case1()
-    use_case2()
+    use_case1()
+    #use_case2()

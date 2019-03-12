@@ -393,21 +393,68 @@ class DDF(DDFSketch):
         size = sum(info[2])
         return size
 
-    def with_column(self, old_column, new_column=None, cast=None):
+    def cast(self, column, cast):
         """
-        Rename or change the data's type of some columns.
+        Change the data's type of some columns.
 
         Is it a Lazy function: Yes
 
-        :param old_column: the current column name;
-        :param new_column: the new column name;
-        :param cast: 'keep' (if None), 'integer', 'string', 'double', 'Date',
-            'Date/time';
+        :param column: String or list of strings with columns to cast;
+        :param cast: String or list of string with the supported types:
+         'integer', 'string', 'double', 'date', 'date/time';
         :return: DDF
         """
 
-        from functions.etl.attributes_changer import \
-            attributes_changer, preprocessing
+        from functions.etl.attributes_changer import with_column_cast
+
+        if not isinstance(column, list):
+            column = [column]
+
+        if not isinstance(cast, list):
+            cast = [cast for _ in range(len(column))]
+
+        diff = len(cast) - len(column)
+        if diff > 0:
+            cast = cast[:len(column)]
+        elif diff < 0:
+            cast = cast + ['keep' for _ in range(diff+1)]
+
+        settings = dict()
+        settings['attributes'] = column
+        settings['cast'] = cast
+
+        def task_cast(df, params):
+            return with_column_cast(df, params)
+
+        new_state_uuid = self._generate_uuid()
+        context.COMPSsContext.tasks_map[new_state_uuid] = \
+            {'name': 'cast',
+             'status': 'WAIT',
+             'lazy': True,
+             'function': [task_cast, settings],
+             'parent': [self.last_uuid],
+             'output': 1,
+             'input': 1
+             }
+
+        self._set_n_input(new_state_uuid, self.settings['input'])
+
+        return DDF(task_list=self.task_list, last_uuid=new_state_uuid)
+
+    def with_column_renamed(self, old_column, new_column):
+        """
+        Returns a new DDF by renaming an existing column. This is a no-op if
+        schema doesn’t contain the given column name.
+
+        Is it a Lazy function: Yes
+
+        :param old_column: String or list of strings with columns to rename;
+        :param new_column: String or list of strings with new names.
+
+        :return: DDF
+        """
+
+        from functions.etl.attributes_changer import with_column_renamed
 
         if not isinstance(old_column, list):
             old_column = [old_column]
@@ -415,25 +462,19 @@ class DDF(DDFSketch):
         if not isinstance(new_column, list):
             new_column = [new_column]
 
-        if not isinstance(cast, list):
-            cast = [cast]
-
         settings = dict()
-        settings['attributes'] = old_column
-        settings['new_name'] = new_column
-        settings['new_data_type'] = cast
+        settings['old_column'] = old_column
+        settings['new_column'] = new_column
 
-        settings = preprocessing(settings)
-
-        def task_with_column(df, params):
-            return attributes_changer(df, params)
+        def task_with_column_renamed(df, params):
+            return with_column_renamed(df, params)
 
         new_state_uuid = self._generate_uuid()
         context.COMPSsContext.tasks_map[new_state_uuid] = \
-            {'name': 'with_column',
+            {'name': 'with_column_renamed',
              'status': 'WAIT',
              'lazy': True,
-             'function': [task_with_column, settings],
+             'function': [task_with_column_renamed, settings],
              'parent': [self.last_uuid],
              'output': 1,
              'input': 1

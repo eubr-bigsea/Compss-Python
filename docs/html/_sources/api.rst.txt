@@ -167,6 +167,8 @@ Selection: Selecting a subset from a larger set of features:
 
 :class:`ml.feature.VectorAssembler <ddf_library.functions.ml.feature.VectorAssembler>` - Vector Assembler is a transformer that combines a given list of columns into a single vector column.
 
+:class:`ml.feature.VectorSlicer <ddf_library.functions.ml.feature.VectorSlicer>` - Vector Slicer create a new feature vector with a subarray of an original features.
+
 :class:`ml.feature.Tokenizer <ddf_library.functions.ml.feature.Tokenizer>` - Tokenization is the process of taking text (such as a sentence) and breaking it into individual terms (usually words). A simple Tokenizer class provides this functionality.
 
 :class:`ml.feature.RegexTokenizer <ddf_library.functions.ml.feature.RegexTokenizer>` - A regex based tokenizer that extracts tokens either by using the provided regex pattern (in Java dialect) to split the text.
@@ -188,6 +190,8 @@ Selection: Selecting a subset from a larger set of features:
 :class:`ml.feature.StandardScaler <ddf_library.functions.ml.feature.StandardScaler>` - StandardScaler transforms a dataset of features rows, reascaling each feature by the standard score.
 
 :class:`ml.feature.PCA <ddf_library.functions.ml.feature.PCA>` - Principal component analysis (PCA) is used widely in dimensionality reduction.
+
+:class:`ml.feature.PolynomialExpansion <ddf_library.functions.ml.feature.PolynomialExpansion>` - Perform feature expansion in a polynomial space..
 
 
 .. _fpm-anchor:

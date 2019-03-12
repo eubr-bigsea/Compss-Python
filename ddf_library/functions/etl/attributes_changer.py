@@ -9,80 +9,70 @@ from pycompss.api.task import task
 import pandas as pd
 
 
-def attributes_changer(data, settings):
+def with_column_renamed(data, settings):
     """
-    Rename or change the data's type of some columns.
+    Returns a new DataFrame by renaming an existing column.
+    Nothing is done if schema doesn't contain the given column name(s).
 
-    :param data: A list with numFrag pandas's dataframe;
+    :param data: A pandas's DataFrame;
     :param settings: A dictionary that contains:
-        - attributes: A list of column(s) to be changed (or renamed).
-        - new_name: A list of alias with the same size of attributes.
-        If empty, the operation will overwrite all columns in attributes
-        (default, empty);
-        - new_data_type: The new type of the selected columns:
-            * 'keep' - (default);
-            * 'integer';
-            * 'string';
-            * 'double';
-            * 'Date';
-            * 'Date/time';
 
-    :return: Returns a list with numFrag pandas's dataframe.
+        * old_column: String or list of strings with columns to rename;
+        * new_column: String or list of strings with new names.
+
+    :return: A pandas's DataFrame.
     """
 
-    result, info = _change_attribute(data, settings)
-    return result
+    existing = settings['old_column']
+    new = settings['new_column']
 
-
-def preprocessing(settings):
-    """Validate the parameters"""
-    if 'attributes' not in settings:
-        raise Exception("You must inform an `attributes` column.")
-
-    attributes = settings['attributes']
-    alias = settings.get('new_name', attributes)
-    if len(alias) > 0 and (len(alias) != len(attributes)):
-        raise Exception("Alias and attributes must have the same length, "
-                        " or Alias must be a empty list.")
-    return settings
-
-
-def _change_attribute(data, settings):
-    """Peform an attribute changer in each fragment."""
-
-    attributes = settings['attributes']
-    new_name = settings.get('new_name', attributes)
-    new_data_type = settings.get('new_data_type', 'keep')
-    cols = data.columns
-    for col in attributes:
-        if col not in cols:
-            raise Exception("The column `{}` dont exists!.".format(col))
-
-    # first, change the data types.
-    for att in attributes:
-        if new_data_type == 'keep':
-            pass
-        elif new_data_type == 'integer':
-            data[att] = data[att].astype(int)
-        elif new_data_type == 'string':
-            data[att] = data[att].astype(str)
-        elif new_data_type == "double":
-            data[att] = \
-                pd.to_numeric(data[att], downcast='float', errors='coerce')
-        elif new_data_type == "Date":
-            tmp = pd.to_datetime(data[att])
-            data[att] = tmp.apply(convertToDate)
-        elif new_data_type == "Date/time":
-            data[att] = pd.to_datetime(data[att], infer_datetime_format=True)
-
-    # second, rename the columns
-    mapper = dict(zip(attributes, new_name))
+    mapper = dict(zip(existing, new))
     data.rename(columns=mapper, inplace=True)
 
     info = [data.columns.tolist(), data.dtypes.values, [len(data)]]
     return data, info
 
 
-def convertToDate(col):
+def with_column_cast(data, settings):
+    """
+    Rename or change the data's type of some columns.
+
+    :param data: A pandas's DataFrame;
+    :param settings: A dictionary that contains:
+        - attributes: A list of column(s) to cast;
+        - cast: A list of strings with the supported types: 'integer', 'string',
+         'double', 'date', 'date/time';
+
+    :return: A pandas's DataFrame.
+    """
+
+    attributes = settings['attributes']
+    new_data_type = settings['cast']
+    cols = data.columns
+    for col in attributes:
+        if col not in cols:
+            raise Exception("The column `{}` dont exists!.".format(col))
+
+    # first, change the data types.
+    for att, dtype in zip(attributes, new_data_type):
+        if dtype == 'integer':
+            data[att] = data[att].astype(int)
+        elif dtype == 'string':
+            data[att] = data[att].astype(str)
+        elif dtype == "double":
+            data[att] = \
+                pd.to_numeric(data[att], downcast='float', errors='coerce')
+        elif dtype == "date":
+            tmp = pd.to_datetime(data[att])
+            data[att] = tmp.apply(convert_to_date)
+        elif dtype == "date/time":
+            data[att] = pd.to_datetime(data[att], infer_datetime_format=True)
+
+    info = [data.columns.tolist(), data.dtypes.values, [len(data)]]
+
+    return data, info
+
+
+def convert_to_date(col):
     """Convert datetime to date."""
     return col.date()

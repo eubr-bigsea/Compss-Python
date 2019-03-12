@@ -101,6 +101,44 @@ input columns will be concatenated into a vector in the specified order.</p>
 </dd></dl>
 
 <dl class="class">
+<dt id="ddf_library.functions.ml.feature.VectorSlicer">
+<em class="property">class </em><code class="descclassname">ddf_library.functions.ml.feature.</code><code class="descname">VectorSlicer</code><span class="sig-paren">(</span><em>input_col</em>, <em>output_col=None</em>, <em>indices=None</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.functions.ml.feature.VectorSlicer" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>Vector Slicer class takes a feature vector and outputs a new feature
+vector with a subarray of the original features.</p>
+<p>The output vector will order features with the selected indices first
+(in the order given), followed by the selected names (in the order given).</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>input_col</strong> – Feature vector field.</li>
+<li><strong>output_col</strong> – New feature vector field (overwrite by default)</li>
+<li><strong>indices</strong> – indices list</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+<dl class="method">
+<dt id="ddf_library.functions.ml.feature.VectorSlicer.transform">
+<code class="descname">transform</code><span class="sig-paren">(</span><em>data</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.functions.ml.feature.VectorSlicer.transform" title="Permalink to this definition">¶</a></dt>
+<dd><table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>data</strong> – DDF</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">DDF</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
 <dt id="ddf_library.functions.ml.feature.Tokenizer">
 <em class="property">class </em><code class="descclassname">ddf_library.functions.ml.feature.</code><code class="descname">Tokenizer</code><span class="sig-paren">(</span><em>input_col</em>, <em>output_col=None</em>, <em>min_token_length=2</em>, <em>to_lowercase=True</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.functions.ml.feature.Tokenizer" title="Permalink to this definition">¶</a></dt>
 <dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
@@ -1393,6 +1431,49 @@ common file system;</li>
 <dl class="method">
 <dt id="ddf_library.functions.ml.feature.PCA.transform">
 <code class="descname">transform</code><span class="sig-paren">(</span><em>data</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.functions.ml.feature.PCA.transform" title="Permalink to this definition">¶</a></dt>
+<dd><table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>data</strong> – DDF</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">DDF</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="ddf_library.functions.ml.feature.PolynomialExpansion">
+<em class="property">class </em><code class="descclassname">ddf_library.functions.ml.feature.</code><code class="descname">PolynomialExpansion</code><span class="sig-paren">(</span><em>input_col</em>, <em>degree=2</em>, <em>output_col=None</em>, <em>interaction_only=False</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.functions.ml.feature.PolynomialExpansion" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>Perform feature expansion in a polynomial space. As said in wikipedia of
+Polynomial Expansion, “In mathematics, an expansion of a product of sums
+expresses it as a sum of products by using the fact that multiplication
+distributes over addition”.</p>
+<p>For example, if an input sample is two dimensional and of the form [a, b],
+the degree-2 polynomial features are [1, a, b, a^2, ab, b^2]</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>input_col</strong> – List of columns;</li>
+<li><strong>output_col</strong> – Output column name.</li>
+<li><strong>degree</strong> – The degree of the polynomial features. Default = 2.</li>
+<li><strong>interaction_only</strong> – If true, only interaction features are
+produced: features that are products of at most degree distinct input
+features. Default = False</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+<dl class="method">
+<dt id="ddf_library.functions.ml.feature.PolynomialExpansion.transform">
+<code class="descname">transform</code><span class="sig-paren">(</span><em>data</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.functions.ml.feature.PolynomialExpansion.transform" title="Permalink to this definition">¶</a></dt>
 <dd><table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />

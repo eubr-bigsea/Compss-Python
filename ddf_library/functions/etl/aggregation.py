@@ -21,7 +21,7 @@ class AggregationOperation(object):
         :param data: A list with nfrag pandas's dataframe;
         :param params: A dictionary that contains:
             - groupby: A list with the columns names to aggregates;
-            - alias: A dictionary with the aliases of all aggregated columns;
+            - aliases: A dictionary with the aliases of all aggregated columns;
             - operation: A dictionary with the functions to be applied in
                          the aggregation:
                 'mean': Computes average values for each numeric columns
@@ -29,8 +29,8 @@ class AggregationOperation(object):
                 'count': Counts the number of records for each group;
                 'first': Returns the first element of group;
                 'last': Returns the last element of group;
-                'max': Computes the max value for each numeric columns for each group;
-                'min': Computes the min value for each numeric column for each group;
+                'max': Computes the max value for each numeric columns;
+                'min': Computes the min value for each numeric column;
                 'sum': Computes the sum for each numeric columns for each group;
                 'list': Returns a list of objects with duplicates;
                 'set': Returns a set of objects with duplicate elements
@@ -44,15 +44,6 @@ class AggregationOperation(object):
                                      'col3':['col_First','col_Last']}
 
         """
-
-        if 'aliases' not in params:
-            params['aliases'] = {}
-            for col in params['operation']:
-                params['aliases'][col] = []
-                ops = params['operation'][col]
-                for op in ops:
-                    alias = "{}({})".format(op, col)
-                    params['aliases'][col].append(alias)
 
         nfrag = len(data)
         # the main ideia is to perform a local aggregation in each partition
@@ -180,6 +171,9 @@ def _merge_aggregation(data1, data2, params, f1, f2):
 
         # remove the different level
         data1.reset_index(inplace=True)
+        sequence = columns + [c for c in data1.columns.tolist()
+                              if c not in columns]
+        data1 = data1[sequence]
 
     info = [data1.columns.tolist(), data1.dtypes.values, [len(data1)]]
     return data1, info

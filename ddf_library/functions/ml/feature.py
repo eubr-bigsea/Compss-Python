@@ -18,10 +18,11 @@ import itertools
 import sys
 sys.path.append('../../')
 
-__all__ = ['VectorAssembler', 'Tokenizer', 'RegexTokenizer', 'RemoveStopWords',
-           'CountVectorizer', 'TfidfVectorizer', 'StringIndexer',
+__all__ = ['VectorAssembler', 'VectorSlicer', 'Tokenizer', 'RegexTokenizer',
+           'RemoveStopWords', 'CountVectorizer', 'TfidfVectorizer',
+           'StringIndexer',
            'IndexToString', 'MaxAbsScaler', 'MinMaxScaler', 'StandardScaler',
-           'PCA']
+           'PCA', 'PolynomialExpansion']
 
 
 class VectorAssembler(object):
@@ -115,6 +116,69 @@ def checkfields(rows, cols):
             else:
                 not_list.append(col_name)
     return is_list, not_list
+
+
+class VectorSlicer(object):
+    """
+    Vector Slicer class takes a feature vector and outputs a new feature
+    vector with a subarray of the original features.
+
+    The output vector will order features with the selected indices first
+    (in the order given), followed by the selected names (in the order given).
+    """
+
+    def __init__(self, input_col, output_col=None, indices=None):
+        """
+
+        :param input_col: Feature vector field.
+        :param output_col: New feature vector field (overwrite by default)
+        :param indices: indices list
+        """
+        if not output_col:
+            output_col = input_col
+
+        self.settings = dict()
+        self.settings['inputcol'] = input_col
+        self.settings['outputcol'] = output_col
+
+        if indices is None:
+            raise Exception('At least one feature must be selected.')
+
+        self.settings['indices'] = indices
+
+    def transform(self, data):
+        """
+        :param data: DDF
+        :return: DDF
+        """
+
+        def task_vector_slicer(df, params):
+            return _vector_slicer(df, params)
+
+        uuid_key = data._ddf_add_task(task_name='vector_slicer',
+                                      status='WAIT', lazy=True,
+                                      function=[task_vector_slicer,
+                                                self.settings],
+                                      parent=[data.last_uuid],
+                                      n_output=1, n_input=1)
+
+        data._set_n_input(uuid_key, data.settings['input'])
+        return DDF(task_list=data.task_list, last_uuid=uuid_key)
+
+
+def _vector_slicer(df, settings):
+
+    if len(df) > 0:
+
+        input_col = settings['inputcol']
+        output_col = settings['outputcol']
+        idx = settings['indices']
+
+        values = np.array(df[input_col].tolist())[:, idx]
+        df[output_col] = values.tolist()
+
+    info = [df.columns.tolist(), df.dtypes.values, [len(df)]]
+    return df, info
 
 
 class Tokenizer(object):
@@ -1675,3 +1739,77 @@ def _pca_transform(data, features, pred_col, matrix_w):
 
     info = [data.columns.tolist(), data.dtypes.values, [len(data)]]
     return data, info
+
+
+class PolynomialExpansion(object):
+
+    """
+    Perform feature expansion in a polynomial space. As said in wikipedia of
+    Polynomial Expansion, “In mathematics, an expansion of a product of sums
+    expresses it as a sum of products by using the fact that multiplication
+    distributes over addition”.
+
+    For example, if an input sample is two dimensional and of the form [a, b],
+    the degree-2 polynomial features are [1, a, b, a^2, ab, b^2]
+    """
+
+    def __init__(self, input_col, degree=2, output_col=None,
+                 interaction_only=False):
+        """
+       :param input_col: List of columns;
+       :param output_col: Output column name.
+       :param degree: The degree of the polynomial features. Default = 2.
+       :param interaction_only: If true, only interaction features are
+        produced: features that are products of at most degree distinct input
+        features. Default = False
+       """
+
+        if not output_col:
+            output_col = 'features'
+
+        self.settings = dict()
+        self.settings['inputcol'] = input_col
+        self.settings['outputcol'] = output_col
+        self.settings['degree'] = int(degree)
+        self.settings['interaction_only'] = interaction_only
+
+    def transform(self, data):
+        """
+        :param data: DDF
+        :return: DDF
+        """
+
+        def task_poly_expansion(df, params):
+            return _poly_expansion(df, params)
+
+        uuid_key = data._ddf_add_task(task_name='poly_expansion',
+                                      status='WAIT', lazy=True,
+                                      function=[task_poly_expansion,
+                                                self.settings],
+                                      parent=[data.last_uuid],
+                                      n_output=1, n_input=1)
+
+        data._set_n_input(uuid_key, data.settings['input'])
+        return DDF(task_list=data.task_list, last_uuid=uuid_key)
+
+
+def _poly_expansion(df, params):
+
+    output_col = params['outputcol']
+
+    if len(df) == 0:
+        df[output_col] = np.nan
+    else:
+        input_col = params['inputcol']
+        interaction_only = params['interaction_only']
+        degree = params['degree']
+
+        from sklearn.preprocessing import PolynomialFeatures
+        values = np.array(df[input_col].tolist())
+        values = PolynomialFeatures(degree=degree,
+                                    interaction_only=interaction_only)\
+            .fit_transform(values)
+        df[output_col] = values.tolist()
+
+    info = [df.columns.tolist(), df.dtypes.values, [len(df)]]
+    return df, info

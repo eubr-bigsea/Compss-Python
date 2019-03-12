@@ -36,162 +36,204 @@ class GroupedDDF(DDF):
         super(GroupedDDF, self).__init__(task_list=ddf_var.task_list,
                                          last_uuid=self.last_uuid)
 
-    def agg(self, exprs):
+    def agg(self, exprs, alias):
         """
         Compute aggregates and returns the result as a DDF.
 
         :param exprs: A single dict mapping from string to string, where the
          key is the column to perform aggregation on, and the value is a list
          of aggregation functions.
+        :param alias: A single dict mapping from string to string, where the
+         key is the old column name to perform aggregation on, and the value
+         is a list of aliases for each aggregation function.
 
         :Example:
 
         >>> ddf1.group_by(group_by=['col_1']).agg({'col_2': ['sum', 'last']})
         """
         self.parameters['operation'] = exprs
+        if alias is not None:
+            self.parameters['aliases'] = alias
         context.COMPSsContext.tasks_map[self.last_uuid]['function'][1] = \
             self.parameters
 
         return self.ddf_var
 
-    def avg(self, cols=None):
+    def avg(self, cols, alias=None):
         """
         Computes average values for each numeric columns for each group.
 
-        :param cols: A list of columns
+        :param cols: String or a list of columns names
+        :param alias: String or a list of aliases
 
         :Example:
 
         >>> ddf1.group_by(group_by=['col_1']).avg(['col_2'])
         """
-        self._apply_agg(cols, 'mean')
+        self._apply_agg(cols, 'mean', alias)
         return self
 
-    def count(self, cols=None):
+    def count(self, cols, alias=None):
         """
         Counts the number of records for each group.
 
-        :param cols: A list of columns
+        :param cols: String or a list of columns names
+        :param alias: String or a list of aliases
 
         :Example:
 
         >>> ddf1.group_by(group_by=['col_1']).count(['col_2'])
         """
-        self._apply_agg(cols, 'count')
+        self._apply_agg(cols, 'count', alias)
         return self
 
-    def first(self, cols=None):
+    def first(self, cols, alias=None):
         """
         Returns the first element of group.
 
-        :param cols: A list of columns
+        :param cols: String or a list of columns names
+        :param alias: String or a list of aliases
 
         :Example:
 
         >>> ddf1.group_by(group_by=['col_1']).avg(['col_2'])
         """
-        self._apply_agg(cols, 'first')
+        self._apply_agg(cols, 'first', alias)
         return self
 
-    def last(self, cols=None):
+    def last(self, cols, alias=None):
         """
         Returns the last element of group.
 
-        :param cols: A list of columns
+        :param cols: String or a list of columns names
+        :param alias: String or a list of aliases
 
         :Example:
 
         >>> ddf1.group_by(group_by=['col_1']).avg(['col_2'])
         """
-        self._apply_agg(cols, 'last')
+        self._apply_agg(cols, 'last', alias)
         return self
 
-    def list(self, cols=None):
+    def list(self, cols, alias=None):
         """
         Returns a list of objects with duplicates;
 
-        :param cols: A list of columns
+        :param cols: String or a list of columns names
+        :param alias: String or a list of aliases
 
         :Example:
 
         >>> ddf1.group_by(group_by=['col_1']).avg(['col_2'])
         """
-        self._apply_agg(cols, 'list')
+        self._apply_agg(cols, 'list', alias)
         return self
 
-    def max(self, cols=None):
+    def max(self, cols, alias=None):
         """
         Computes the max value for each numeric columns for each group.
 
-        :param cols: A list of columns
+        :param cols: String or a list of columns names
+        :param alias: String or a list of aliases
 
         :Example:
 
         >>> ddf1.group_by(group_by=['col_1']).avg(['col_2'])
         """
-        self._apply_agg(cols, 'max')
+        self._apply_agg(cols, 'max', alias)
         return self
 
-    def mean(self, cols=None):
+    def mean(self, cols, alias=None):
         """
         Alias for avg. Computes average values for each numeric columns for
         each group.
 
-        :param cols: A list of columns
+        :param cols: String or a list of columns names
+        :param alias: String or a list of aliases
 
         :Example:
 
         >>> ddf1.group_by(group_by=['col_1']).mean(['col_2'])
         """
-        self._apply_agg(cols, 'mean')
+        self._apply_agg(cols, 'mean', alias)
         return self
 
-    def min(self, cols=None):
+    def min(self, cols, alias=None):
         """
         Computes the min value for each numeric column for each group.
 
-        :param cols: A list of columns
+        :param cols: String or a list of columns names
+        :param alias: String or a list of aliases
 
         :Example:
 
         >>> ddf1.group_by(group_by=['col_1']).min(['col_2'])
         """
-        self._apply_agg(cols, 'min')
+        self._apply_agg(cols, 'min', alias)
         return self
 
-    def set(self, cols=None):
+    def set(self, cols, alias=None):
         """
         Returns a set of objects with duplicate elements.
 
-        :param cols: A list of columns
+        :param cols: String or a list of columns names
+        :param alias: String or a list of aliases
 
         :Example:
 
         >>> ddf1.group_by(group_by=['col_1']).set(['col_2'])
         """
-        self._apply_agg(cols, 'set')
+        self._apply_agg(cols, 'set', alias)
         return self
 
-    def sum(self, cols=None):
+    def sum(self, cols, alias=None):
         """
         Computes the sum for each numeric columns for each group.
 
-        :param cols: A list of columns
+        :param cols: String or a list of columns names
+        :param alias: String or a list of aliases
 
         :Example:
 
         >>> ddf1.group_by(group_by=['col_1']).sum(['col_2'])
         """
-        self._apply_agg(cols, 'sum')
+        self._apply_agg(cols, 'sum', alias)
         return self
 
-    def _apply_agg(self, cols, func):
+    def _apply_agg(self, cols, func, new_alias):
         exprs = self.parameters['operation']
-        for col in cols:
+        aliases = self.parameters.get('aliases', {})
+        groupby = self.parameters['groupby'][0]
+
+        if not isinstance(cols, list):
+            cols = [cols]
+        if not isinstance(new_alias, list):
+            new_alias = [new_alias]
+
+        diff = len(new_alias) - len(cols)
+        if diff > 0:
+            new_alias = new_alias[:diff]
+        if diff < 0:
+            new_alias = new_alias + [None for _ in range(diff+1)]
+
+        for col, alias in zip(cols, new_alias):
+
+            if alias is None:
+                alias = "{}({})".format(col, alias)
+
+            if col == '*':
+                col = groupby
+
             if col not in exprs:
                 exprs[col] = []
             exprs[col].append(func)
+
+            if col not in aliases:
+                aliases[col] = []
+            aliases[col].append(alias)
+
         self.parameters['operation'] = exprs
+        self.parameters['aliases'] = aliases
 
         context.COMPSsContext.tasks_map[self.last_uuid]['function'][1] = \
             self.parameters

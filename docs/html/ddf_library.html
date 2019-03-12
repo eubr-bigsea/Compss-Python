@@ -117,6 +117,29 @@
 </dd></dl>
 
 <dl class="method">
+<dt id="ddf_library.ddf.DDF.cast">
+<code class="descname">cast</code><span class="sig-paren">(</span><em>column</em>, <em>cast</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.ddf.DDF.cast" title="Permalink to this definition">¶</a></dt>
+<dd><p>Change the data’s type of some columns.</p>
+<p>Is it a Lazy function: Yes</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>column</strong> – String or list of strings with columns to cast;</li>
+<li><strong>cast</strong> – String or list of string with the supported types:
+‘integer’, ‘string’, ‘double’, ‘date’, ‘date/time’;</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">DDF</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
 <dt id="ddf_library.ddf.DDF.columns">
 <code class="descname">columns</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.ddf.DDF.columns" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
@@ -871,19 +894,18 @@ is ascending (True) for each column (Default, True);</li>
 </dd></dl>
 
 <dl class="method">
-<dt id="ddf_library.ddf.DDF.with_column">
-<code class="descname">with_column</code><span class="sig-paren">(</span><em>old_column</em>, <em>new_column=None</em>, <em>cast=None</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.ddf.DDF.with_column" title="Permalink to this definition">¶</a></dt>
-<dd><p>Rename or change the data’s type of some columns.</p>
+<dt id="ddf_library.ddf.DDF.with_column_renamed">
+<code class="descname">with_column_renamed</code><span class="sig-paren">(</span><em>old_column</em>, <em>new_column</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.ddf.DDF.with_column_renamed" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns a new DDF by renaming an existing column. This is a no-op if
+schema doesn’t contain the given column name.</p>
 <p>Is it a Lazy function: Yes</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
-<li><strong>old_column</strong> – the current column name;</li>
-<li><strong>new_column</strong> – the new column name;</li>
-<li><strong>cast</strong> – ‘keep’ (if None), ‘integer’, ‘string’, ‘double’, ‘Date’,
-‘Date/time’;</li>
+<li><strong>old_column</strong> – String or list of strings with columns to rename;</li>
+<li><strong>new_column</strong> – String or list of strings with new names.</li>
 </ul>
 </td>
 </tr>
@@ -917,15 +939,21 @@ is ascending (True) for each column (Default, True);</li>
 
 <dl class="method">
 <dt id="ddf_library.groupby.GroupedDDF.agg">
-<code class="descclassname">GroupedDDF.</code><code class="descname">agg</code><span class="sig-paren">(</span><em>exprs</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.groupby.GroupedDDF.agg" title="Permalink to this definition">¶</a></dt>
+<code class="descclassname">GroupedDDF.</code><code class="descname">agg</code><span class="sig-paren">(</span><em>exprs</em>, <em>alias</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.groupby.GroupedDDF.agg" title="Permalink to this definition">¶</a></dt>
 <dd><p>Compute aggregates and returns the result as a DDF.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>exprs</strong> – A single dict mapping from string to string, where the
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>exprs</strong> – A single dict mapping from string to string, where the
 key is the column to perform aggregation on, and the value is a list
-of aggregation functions.</td>
+of aggregation functions.</li>
+<li><strong>alias</strong> – A single dict mapping from string to string, where the
+key is the old column name to perform aggregation on, and the value
+is a list of aliases for each aggregation function.</li>
+</ul>
+</td>
 </tr>
 <tr class="field-even field"><th class="field-name">Example:</th><td class="field-body"></td>
 </tr>
@@ -938,13 +966,17 @@ of aggregation functions.</td>
 
 <dl class="method">
 <dt id="ddf_library.groupby.GroupedDDF.avg">
-<code class="descclassname">GroupedDDF.</code><code class="descname">avg</code><span class="sig-paren">(</span><em>cols=None</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.groupby.GroupedDDF.avg" title="Permalink to this definition">¶</a></dt>
+<code class="descclassname">GroupedDDF.</code><code class="descname">avg</code><span class="sig-paren">(</span><em>cols</em>, <em>alias=None</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.groupby.GroupedDDF.avg" title="Permalink to this definition">¶</a></dt>
 <dd><p>Computes average values for each numeric columns for each group.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>cols</strong> – A list of columns</td>
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>cols</strong> – String or a list of columns names</li>
+<li><strong>alias</strong> – String or a list of aliases</li>
+</ul>
+</td>
 </tr>
 <tr class="field-even field"><th class="field-name">Example:</th><td class="field-body"></td>
 </tr>
@@ -957,13 +989,17 @@ of aggregation functions.</td>
 
 <dl class="method">
 <dt id="ddf_library.groupby.GroupedDDF.count">
-<code class="descclassname">GroupedDDF.</code><code class="descname">count</code><span class="sig-paren">(</span><em>cols=None</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.groupby.GroupedDDF.count" title="Permalink to this definition">¶</a></dt>
+<code class="descclassname">GroupedDDF.</code><code class="descname">count</code><span class="sig-paren">(</span><em>cols</em>, <em>alias=None</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.groupby.GroupedDDF.count" title="Permalink to this definition">¶</a></dt>
 <dd><p>Counts the number of records for each group.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>cols</strong> – A list of columns</td>
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>cols</strong> – String or a list of columns names</li>
+<li><strong>alias</strong> – String or a list of aliases</li>
+</ul>
+</td>
 </tr>
 <tr class="field-even field"><th class="field-name">Example:</th><td class="field-body"></td>
 </tr>
@@ -976,13 +1012,17 @@ of aggregation functions.</td>
 
 <dl class="method">
 <dt id="ddf_library.groupby.GroupedDDF.first">
-<code class="descclassname">GroupedDDF.</code><code class="descname">first</code><span class="sig-paren">(</span><em>cols=None</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.groupby.GroupedDDF.first" title="Permalink to this definition">¶</a></dt>
+<code class="descclassname">GroupedDDF.</code><code class="descname">first</code><span class="sig-paren">(</span><em>cols</em>, <em>alias=None</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.groupby.GroupedDDF.first" title="Permalink to this definition">¶</a></dt>
 <dd><p>Returns the first element of group.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>cols</strong> – A list of columns</td>
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>cols</strong> – String or a list of columns names</li>
+<li><strong>alias</strong> – String or a list of aliases</li>
+</ul>
+</td>
 </tr>
 <tr class="field-even field"><th class="field-name">Example:</th><td class="field-body"></td>
 </tr>
@@ -995,13 +1035,17 @@ of aggregation functions.</td>
 
 <dl class="method">
 <dt id="ddf_library.groupby.GroupedDDF.last">
-<code class="descclassname">GroupedDDF.</code><code class="descname">last</code><span class="sig-paren">(</span><em>cols=None</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.groupby.GroupedDDF.last" title="Permalink to this definition">¶</a></dt>
+<code class="descclassname">GroupedDDF.</code><code class="descname">last</code><span class="sig-paren">(</span><em>cols</em>, <em>alias=None</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.groupby.GroupedDDF.last" title="Permalink to this definition">¶</a></dt>
 <dd><p>Returns the last element of group.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>cols</strong> – A list of columns</td>
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>cols</strong> – String or a list of columns names</li>
+<li><strong>alias</strong> – String or a list of aliases</li>
+</ul>
+</td>
 </tr>
 <tr class="field-even field"><th class="field-name">Example:</th><td class="field-body"></td>
 </tr>
@@ -1014,13 +1058,17 @@ of aggregation functions.</td>
 
 <dl class="method">
 <dt id="ddf_library.groupby.GroupedDDF.list">
-<code class="descclassname">GroupedDDF.</code><code class="descname">list</code><span class="sig-paren">(</span><em>cols=None</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.groupby.GroupedDDF.list" title="Permalink to this definition">¶</a></dt>
+<code class="descclassname">GroupedDDF.</code><code class="descname">list</code><span class="sig-paren">(</span><em>cols</em>, <em>alias=None</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.groupby.GroupedDDF.list" title="Permalink to this definition">¶</a></dt>
 <dd><p>Returns a list of objects with duplicates;</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>cols</strong> – A list of columns</td>
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>cols</strong> – String or a list of columns names</li>
+<li><strong>alias</strong> – String or a list of aliases</li>
+</ul>
+</td>
 </tr>
 <tr class="field-even field"><th class="field-name">Example:</th><td class="field-body"></td>
 </tr>
@@ -1033,13 +1081,17 @@ of aggregation functions.</td>
 
 <dl class="method">
 <dt id="ddf_library.groupby.GroupedDDF.max">
-<code class="descclassname">GroupedDDF.</code><code class="descname">max</code><span class="sig-paren">(</span><em>cols=None</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.groupby.GroupedDDF.max" title="Permalink to this definition">¶</a></dt>
+<code class="descclassname">GroupedDDF.</code><code class="descname">max</code><span class="sig-paren">(</span><em>cols</em>, <em>alias=None</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.groupby.GroupedDDF.max" title="Permalink to this definition">¶</a></dt>
 <dd><p>Computes the max value for each numeric columns for each group.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>cols</strong> – A list of columns</td>
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>cols</strong> – String or a list of columns names</li>
+<li><strong>alias</strong> – String or a list of aliases</li>
+</ul>
+</td>
 </tr>
 <tr class="field-even field"><th class="field-name">Example:</th><td class="field-body"></td>
 </tr>
@@ -1052,14 +1104,18 @@ of aggregation functions.</td>
 
 <dl class="method">
 <dt id="ddf_library.groupby.GroupedDDF.mean">
-<code class="descclassname">GroupedDDF.</code><code class="descname">mean</code><span class="sig-paren">(</span><em>cols=None</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.groupby.GroupedDDF.mean" title="Permalink to this definition">¶</a></dt>
+<code class="descclassname">GroupedDDF.</code><code class="descname">mean</code><span class="sig-paren">(</span><em>cols</em>, <em>alias=None</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.groupby.GroupedDDF.mean" title="Permalink to this definition">¶</a></dt>
 <dd><p>Alias for avg. Computes average values for each numeric columns for
 each group.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>cols</strong> – A list of columns</td>
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>cols</strong> – String or a list of columns names</li>
+<li><strong>alias</strong> – String or a list of aliases</li>
+</ul>
+</td>
 </tr>
 <tr class="field-even field"><th class="field-name">Example:</th><td class="field-body"></td>
 </tr>
@@ -1072,13 +1128,17 @@ each group.</p>
 
 <dl class="method">
 <dt id="ddf_library.groupby.GroupedDDF.min">
-<code class="descclassname">GroupedDDF.</code><code class="descname">min</code><span class="sig-paren">(</span><em>cols=None</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.groupby.GroupedDDF.min" title="Permalink to this definition">¶</a></dt>
+<code class="descclassname">GroupedDDF.</code><code class="descname">min</code><span class="sig-paren">(</span><em>cols</em>, <em>alias=None</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.groupby.GroupedDDF.min" title="Permalink to this definition">¶</a></dt>
 <dd><p>Computes the min value for each numeric column for each group.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>cols</strong> – A list of columns</td>
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>cols</strong> – String or a list of columns names</li>
+<li><strong>alias</strong> – String or a list of aliases</li>
+</ul>
+</td>
 </tr>
 <tr class="field-even field"><th class="field-name">Example:</th><td class="field-body"></td>
 </tr>
@@ -1091,13 +1151,17 @@ each group.</p>
 
 <dl class="method">
 <dt id="ddf_library.groupby.GroupedDDF.set">
-<code class="descclassname">GroupedDDF.</code><code class="descname">set</code><span class="sig-paren">(</span><em>cols=None</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.groupby.GroupedDDF.set" title="Permalink to this definition">¶</a></dt>
+<code class="descclassname">GroupedDDF.</code><code class="descname">set</code><span class="sig-paren">(</span><em>cols</em>, <em>alias=None</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.groupby.GroupedDDF.set" title="Permalink to this definition">¶</a></dt>
 <dd><p>Returns a set of objects with duplicate elements.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>cols</strong> – A list of columns</td>
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>cols</strong> – String or a list of columns names</li>
+<li><strong>alias</strong> – String or a list of aliases</li>
+</ul>
+</td>
 </tr>
 <tr class="field-even field"><th class="field-name">Example:</th><td class="field-body"></td>
 </tr>
@@ -1110,13 +1174,17 @@ each group.</p>
 
 <dl class="method">
 <dt id="ddf_library.groupby.GroupedDDF.sum">
-<code class="descclassname">GroupedDDF.</code><code class="descname">sum</code><span class="sig-paren">(</span><em>cols=None</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.groupby.GroupedDDF.sum" title="Permalink to this definition">¶</a></dt>
+<code class="descclassname">GroupedDDF.</code><code class="descname">sum</code><span class="sig-paren">(</span><em>cols</em>, <em>alias=None</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.groupby.GroupedDDF.sum" title="Permalink to this definition">¶</a></dt>
 <dd><p>Computes the sum for each numeric columns for each group.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>cols</strong> – A list of columns</td>
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>cols</strong> – String or a list of columns names</li>
+<li><strong>alias</strong> – String or a list of aliases</li>
+</ul>
+</td>
 </tr>
 <tr class="field-even field"><th class="field-name">Example:</th><td class="field-body"></td>
 </tr>
