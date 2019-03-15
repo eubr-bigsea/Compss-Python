@@ -1,7 +1,7 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 
-from ddf.ddf import DDF
+from ddf_library.ddf import DDF
 import pandas as pd
 
 def ml_feature_scalers():
@@ -20,7 +20,7 @@ def ml_feature_scalers():
     ddf_std = DDF().parallelize(df_std, 4)
 
     # Creating a column of features
-    from ddf.functions.ml.feature import VectorAssembler
+    from ddf_library.functions.ml.feature import VectorAssembler
     assembler = VectorAssembler(input_col=["x", "y", 'z'],
                                 output_col="features")
     ddf_maxabs = assembler.transform(ddf_maxabs)
@@ -29,15 +29,15 @@ def ml_feature_scalers():
     ddf_minmax = assembler.transform(ddf_minmax)
     ddf_std = assembler.transform(ddf_std)
 
-    from ddf.functions.ml.feature import MaxAbsScaler
+    from ddf_library.functions.ml.feature import MaxAbsScaler
     ddf_maxabs = MaxAbsScaler(input_col='features', output_col='features_norm')\
         .fit_transform(ddf_maxabs).select(['features_norm'])
 
-    from ddf.functions.ml.feature import MinMaxScaler
+    from ddf_library.functions.ml.feature import MinMaxScaler
     ddf_minmax = MinMaxScaler(input_col='features', output_col='features_norm')\
         .fit_transform(ddf_minmax).select(['features_norm'])
 
-    from ddf.functions.ml.feature import StandardScaler
+    from ddf_library.functions.ml.feature import StandardScaler
     scaler = StandardScaler(input_col='features', output_col='features_norm',
                             with_mean=True, with_std=True).fit(ddf_std)
     ddf_std = scaler.transform(ddf_std).select(['features_norm'])
@@ -76,15 +76,15 @@ def ml_feature_dimensionality():
     columns.remove('class')
 
     ddf = DDF().parallelize(df, 4)
-    from ddf.functions.ml.feature import VectorAssembler
+    from ddf_library.functions.ml.feature import VectorAssembler
     assembler = VectorAssembler(input_col=columns, output_col="features")
     ddf = assembler.transform(ddf)
 
-    from ddf.functions.ml.feature import StandardScaler
+    from ddf_library.functions.ml.feature import StandardScaler
     ddf_std = StandardScaler(input_col='features',
                              output_col='features_norm').fit_transform(ddf)
 
-    from ddf.functions.ml.feature import PCA
+    from ddf_library.functions.ml.feature import PCA
     pca = PCA(input_col='features_norm', output_col='features_pca',
               n_components=2)
     ddf_pca = pca.fit_transform(ddf_std).select(['features', 'features_pca'])
@@ -126,7 +126,59 @@ def ml_feature_dimensionality():
     """
 
 
+def ml_feature_others():
+    # df = pd.DataFrame([[0, 1], [2, 3], [4, 5]], columns=['x', 'y'])
+    # ddf = DDF().parallelize(df, 4)
+    #
+    # from ddf_library.functions.ml.feature import VectorAssembler
+    # assembler = VectorAssembler(input_col=["x", "y"], output_col="features")
+    # ddf = assembler.transform(ddf)
+    #
+    # from ddf_library.functions.ml.feature import PolynomialExpansion
+    #
+    # ddf = PolynomialExpansion(input_col='features', degree=2).transform(ddf)
+    #
+    # print "PolynomialExpansion output :\n", ddf.show()
+    # """
+    #                                 features  x  y
+    # 0     [1.0, 0.0, 1.0, 0.0, 0.0, 1.0]  0  1
+    # 1     [1.0, 2.0, 3.0, 4.0, 6.0, 9.0]  2  3
+    # 2  [1.0, 4.0, 5.0, 16.0, 20.0, 25.0]  4  5
+    # """
+    #
+    # from ddf_library.functions.ml.feature import Binarizer
+    #
+    # ddf = Binarizer(input_col='features', threshold=5.0).transform(ddf)
+    #
+    # print "Binarizer output :\n", ddf.show()
+    # """
+    #                              features  x  y
+    # 0  [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]  0  1
+    # 1  [0.0, 0.0, 0.0, 0.0, 1.0, 1.0]  2  3
+    # 2  [0.0, 0.0, 0.0, 1.0, 1.0, 1.0]  4  5
+    # """
+
+    # # ---------------------------------------
+    # #               OneHotEncoder
+    # # ---------------------------------------
+    # from ddf_library.functions.ml.feature import OneHotEncoder
+    # df = pd.DataFrame([['Male', 1], ['Female', 3],
+    #                    ['Female', 2]], columns=['x', 'y'])
+    # ddf = DDF().parallelize(df, 4)
+    #
+    # ddf = OneHotEncoder(input_col=['x', 'y']).fit_transform(ddf)
+    # print "OneHotEncoder output :\n", ddf.show()
+    # """
+    #         x  y            features_onehot
+    # 0    Male  1  [0.0, 1.0, 1.0, 0.0, 0.0]
+    # 1  Female  3  [1.0, 0.0, 0.0, 0.0, 1.0]
+    # 2  Female  2  [1.0, 0.0, 0.0, 1.0, 0.0]
+    # """
+
+
+
 if __name__ == '__main__':
 
-    ml_feature_scalers()
+    #ml_feature_scalers()
     #ml_feature_dimensionality()
+    ml_feature_others()

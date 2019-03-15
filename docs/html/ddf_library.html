@@ -145,6 +145,27 @@
 <dd></dd></dl>
 
 <dl class="method">
+<dt id="ddf_library.ddf.DDF.correlation">
+<code class="descname">correlation</code><span class="sig-paren">(</span><em>col1</em>, <em>col2</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.ddf.DDF.correlation" title="Permalink to this definition">¶</a></dt>
+<dd><p>Calculate the Pearson Correlation Coefficient.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>col1</strong> – The name of the first column</li>
+<li><strong>col2</strong> – The name of the second column</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">The result of sample covariance</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
 <dt id="ddf_library.ddf.DDF.count">
 <code class="descname">count</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.ddf.DDF.count" title="Permalink to this definition">¶</a></dt>
 <dd><p>Return a number of rows in this DDF.</p>
@@ -164,6 +185,28 @@
 </dd></dl>
 
 <dl class="method">
+<dt id="ddf_library.ddf.DDF.covariance">
+<code class="descname">covariance</code><span class="sig-paren">(</span><em>col1</em>, <em>col2</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.ddf.DDF.covariance" title="Permalink to this definition">¶</a></dt>
+<dd><p>Calculate the sample covariance for the given columns, specified by
+their names, as a double value.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>col1</strong> – The name of the first column</li>
+<li><strong>col2</strong> – The name of the second column</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">The result of sample covariance</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
 <dt id="ddf_library.ddf.DDF.cross_join">
 <code class="descname">cross_join</code><span class="sig-paren">(</span><em>data2</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.ddf.DDF.cross_join" title="Permalink to this definition">¶</a></dt>
 <dd><p>Returns the cartesian product with another DDF.</p>
@@ -180,6 +223,36 @@
 </tbody>
 </table>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">ddf1</span><span class="o">.</span><span class="n">cross_join</span><span class="p">(</span><span class="n">ddf2</span><span class="p">)</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="method">
+<dt id="ddf_library.ddf.DDF.cross_tab">
+<code class="descname">cross_tab</code><span class="sig-paren">(</span><em>col1</em>, <em>col2</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.ddf.DDF.cross_tab" title="Permalink to this definition">¶</a></dt>
+<dd><p>Computes a pair-wise frequency table of the given columns. Also known as
+a contingency table.  The number of distinct values for each column
+should be less than 1e4. At most 1e6 non-zero pair frequencies will be
+returned.</p>
+<p>Is it a Lazy function: No</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>col1</strong> – The name of the first column</li>
+<li><strong>col2</strong> – The name of the second column</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">DDF</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Example:</th><td class="field-body"></td>
+</tr>
+</tbody>
+</table>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">ddf1</span><span class="o">.</span><span class="n">cross_tab</span><span class="p">(</span><span class="n">col1</span><span class="o">=</span><span class="s1">&#39;col_1&#39;</span><span class="p">,</span> <span class="n">col2</span><span class="o">=</span><span class="s1">&#39;col_2&#39;</span><span class="p">)</span>
 </pre></div>
 </div>
 </dd></dl>

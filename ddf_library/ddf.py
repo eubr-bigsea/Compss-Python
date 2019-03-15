@@ -569,6 +569,53 @@ class DDF(DDFSketch):
         columns = self._get_info()[0]
         return columns
 
+    def correlation(self, col1, col2):
+        """
+        Calculate the Pearson Correlation Coefficient.
+
+        :param col1: The name of the first column
+        :param col2: The name of the second column
+        :return: The result of sample covariance
+        """
+
+        if not isinstance(col1, basestring):
+            raise ValueError("col1 should be a string.")
+        if not isinstance(col2, basestring):
+            raise ValueError("col2 should be a string.")
+
+        df, nfrag, tmp = self._ddf_inital_setup(self)
+
+        from ddf_library.functions.statistics.correlation import correlation
+
+        params = {'col1': col1, 'col2': col2}
+        result = correlation(df, params)
+
+        return result
+
+    def covariance(self, col1, col2):
+        """
+        Calculate the sample covariance for the given columns, specified by
+        their names, as a double value.
+
+        :param col1: The name of the first column
+        :param col2: The name of the second column
+        :return: The result of sample covariance
+        """
+
+        if not isinstance(col1, basestring):
+            raise ValueError("col1 should be a string.")
+        if not isinstance(col2, basestring):
+            raise ValueError("col2 should be a string.")
+
+        df, nfrag, tmp = self._ddf_inital_setup(self)
+
+        from ddf_library.functions.statistics.covariance import covariance
+
+        params = {'col1': col1, 'col2': col2}
+        result = covariance(df, params)
+
+        return result
+
     def cross_join(self, data2):
         """
         Returns the cartesian product with another DDF.
@@ -601,6 +648,43 @@ class DDF(DDFSketch):
         new_list = self._merge_tasks_list(self.task_list + data2.task_list)
         return DDF(task_list=new_list, last_uuid=new_state_uuid)
 
+    def cross_tab(self, col1, col2):
+        """
+        Computes a pair-wise frequency table of the given columns. Also known as
+        a contingency table.  The number of distinct values for each column
+        should be less than 1e4. At most 1e6 non-zero pair frequencies will be
+        returned.
+
+        Is it a Lazy function: No
+
+        :param col1: The name of the first column
+        :param col2: The name of the second column
+        :return: DDF
+
+        :Example:
+
+        >>> ddf1.cross_tab(col1='col_1', col2='col_2')
+        """
+        from ddf_library.functions.statistics.cross_tab import cross_tab
+        settings = {'col1': col1, 'col2':col2}
+
+        def task_cross_tab(df, params):
+            return cross_tab(df, params)
+
+        new_state_uuid = self._generate_uuid()
+        context.COMPSsContext.tasks_map[new_state_uuid] = \
+            {'name': 'cross_tab',
+             'status': 'WAIT',
+             'lazy': False,
+             'function': [task_cross_tab, settings],
+             'parent': [self.last_uuid],
+             'output': 1,
+             'input': 1
+             }
+
+        self._set_n_input(new_state_uuid, self.settings['input'])
+        return DDF(task_list=self.task_list, last_uuid=new_state_uuid)
+
     def describe(self, columns=None):
         """
         Computes basic statistics for numeric and string columns. This include
@@ -619,12 +703,39 @@ class DDF(DDFSketch):
 
         df, nfrag, tmp = self._ddf_inital_setup(self)
 
-        from functions.etl.describe import describe
+        from ddf_library.functions.statistics.describe import describe
 
         if not columns:
             columns = []
 
         result = describe(df, columns)
+
+        return result
+
+    def freq_items(self, col, support=0.01):
+        """
+        Finding frequent items for columns, possibly with false positives.
+        Using the frequent element count algorithm described in
+        “http://dx.doi.org/10.1145/762471.762473, proposed by Karp, Schenker,
+        and Papadimitriou”
+
+        Is it a Lazy function: No
+
+        :param col: Names of the columns to calculate frequent items
+        :param support: The frequency with which to consider an item 'frequent'.
+         Default is 1%. The support must be greater than 1e-4.
+        :return: DDF
+
+        :Example:
+
+        >>> ddf1.freq_items(col='col_1', support=0.01)
+        """
+        from ddf_library.functions.statistics.freq_items import freq_items
+        settings = {'col': col, 'support': support}
+
+        df, nfrag, tmp = self._ddf_inital_setup(self)
+
+        result = freq_items(df, settings)
 
         return result
 
@@ -663,41 +774,41 @@ class DDF(DDFSketch):
         new_list = self._merge_tasks_list(self.task_list + data2.task_list)
         return DDF(task_list=new_list, last_uuid=new_state_uuid)
 
-    # def except_all(self, data2):
-    #     """
-    #     Returns a new DDF with containing rows in the first frame but not
-    #     in the second one while preserving duplicates. This is equivalent to
-    #     EXCEPT ALL in SQL.
-    #
-    #     Is it a Lazy function: No
-    #
-    #     :param data2: second DDF;
-    #     :return: DDF
-    #
-    #     :Example:
-    #
-    #     >>> ddf1.except_all(ddf2)
-    #     """
-    #     from functions.etl.difference import except_all
-    #
-    #     def task_except_all(df, params):
-    #         return except_all(df[0], df[1])
-    #
-    #     new_state_uuid = self._generate_uuid()
-    #     context.COMPSsContext.tasks_map[new_state_uuid] = \
-    #         {'name': 'subtract',
-    #          'status': 'WAIT',
-    #          'lazy': False,
-    #          'function': [task_except_all, {}],
-    #          'parent': [self.last_uuid, data2.last_uuid],
-    #          'output': 1,
-    #          'input': 2
-    #          }
-    #
-    #     self._set_n_input(new_state_uuid, self.settings['input'])
-    #     self._set_n_input(new_state_uuid, data2.settings['input'])
-    #     new_list = self._merge_tasks_list(self.task_list + data2.task_list)
-    #     return DDF(task_list=new_list, last_uuid=new_state_uuid)
+    def except_all(self, data2):
+        """
+        Returns a new DDF with containing rows in the first frame but not
+        in the second one while preserving duplicates. This is equivalent to
+        EXCEPT ALL in SQL.
+
+        Is it a Lazy function: No
+
+        :param data2: second DDF;
+        :return: DDF
+
+        :Example:
+
+        >>> ddf1.except_all(ddf2)
+        """
+        from functions.etl.difference import except_all
+
+        def task_except_all(df, params):
+            return except_all(df[0], df[1])
+
+        new_state_uuid = self._generate_uuid()
+        context.COMPSsContext.tasks_map[new_state_uuid] = \
+            {'name': 'subtract',
+             'status': 'WAIT',
+             'lazy': False,
+             'function': [task_except_all, {}],
+             'parent': [self.last_uuid, data2.last_uuid],
+             'output': 1,
+             'input': 2
+             }
+
+        self._set_n_input(new_state_uuid, self.settings['input'])
+        self._set_n_input(new_state_uuid, data2.settings['input'])
+        new_list = self._merge_tasks_list(self.task_list + data2.task_list)
+        return DDF(task_list=new_list, last_uuid=new_state_uuid)
 
     def distinct(self, cols):
         """
@@ -1025,6 +1136,55 @@ class DDF(DDFSketch):
         new_list = self._merge_tasks_list(self.task_list + data2.task_list)
         return DDF(task_list=new_list, last_uuid=new_state_uuid)
 
+    def kolmogorov_smirnov_one_sample(self, col, distribution='norm',
+                                      mode='asymp', args=None):
+        """
+        Perform the Kolmogorov-Smirnov test for goodness of fit. This
+        implementation of Kolmogorov–Smirnov test is a two-sided test
+        for the null hypothesis that the sample is drawn from a continuous
+        distribution.
+
+        Is it a Lazy function: No
+
+         :param col: sample column name;
+         :param distribution: Name of distribution (default is 'norm');
+         :param mode: Defines the distribution used for calculating the p-value.
+            - 'approx' : use approximation to exact distribution
+            - 'asymp' : use asymptotic distribution of test statistic
+        :param args: A tuple of distribution parameters. Default is (0,1);
+        :return: KS statistic and two-tailed p-value
+
+        .. seealso:: Visit this `link <https://docs.scipy.org/doc/scipy-0.14.0/
+         reference/stats.html#module-scipy.stats>`__ to see all supported
+         distributions.
+
+        .. note:: The KS statistic is the absolute max distance (supremum)
+         between the CDFs of the two samples. The closer this number is to
+         0 the more likely it is that the two samples were drawn from the
+         same distribution.
+
+         The p-value returned by the KS test has the same interpretation
+         as other p-values. You reject the null hypothesis that the two
+         samples were drawn from the same distribution if the p-value is
+         less than your significance level.
+
+        :Example:
+
+        >>> ddf1.kolmogorov_smirnov_one_sample(col='col_1')
+        """
+        from ddf_library.functions.statistics.kolmogorov_smirnov \
+            import kolmogorov_smirnov_one_sample
+
+        settings = {'col': col, 'distribution': distribution, 'mode': mode}
+        if args is not None:
+            settings['args'] = args
+
+        df, nfrag, tmp = self._ddf_inital_setup(self)
+
+        result = kolmogorov_smirnov_one_sample(df, settings)
+
+        return result
+
     def map(self, f, alias):
         """
         Apply a function to each row of this DDF.
@@ -1280,11 +1440,12 @@ class DDF(DDFSketch):
         if len(self.task_list) > 2:
             context.COMPSsContext.tasks_map[last_last_uuid]['function'][n_input] = res
 
-        df = pd.concat(res, sort=True)[:abs(n)]
+        res = [r for r in res if len(r) > 0]  # to avoid change dtypes
+        df = pd.concat(res, sort=False)[:abs(n)]
         df.reset_index(drop=True, inplace=True)
         return df
 
-    def sort(self, cols,  ascending=None):
+    def sort(self, cols,  ascending=None, mode='batcher'):
         """
         Returns a sorted DDF by the specified column(s).
 
@@ -1293,6 +1454,9 @@ class DDF(DDFSketch):
         :param cols: list of columns to be sorted;
         :param ascending: list indicating whether the sort order
             is ascending (True) for each column (Default, True);
+        :param mode: 'batcher' to sort by Batcher odd–even mergesort
+                (default if nfrag is power of 2) or 'oddeven' to
+                commom Odd-Even (if nfrag is not a power of 2);
         :return: DDF
 
         :Example:
@@ -1302,7 +1466,7 @@ class DDF(DDFSketch):
 
         from functions.etl.sort import SortOperation
 
-        settings = {'columns': cols, 'ascending': ascending}
+        settings = {'columns': cols, 'ascending': ascending, 'algorithm': mode}
 
         def task_sort(df, params):
             return SortOperation().transform(df, params)

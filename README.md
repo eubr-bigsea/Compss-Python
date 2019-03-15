@@ -41,9 +41,11 @@ operations to a single task COMPSs and stacking operations until an action opera
  
 ## Summary of algorithms and operations:
 
- - **ETL**: Add Columns, Aggregation, Cast types, Clean Missing Values, Difference (distinct or all), Distinct (Remove Duplicated Rows), 
- Drop Columns, Set-Intersect (distinct or all), Join (Inner, Left or Right), Load Data, Rename columns, Replace Values, Sample Rows, Save data, 
- Select Columns, Sort, Split, Transform (Map operations), Union (by column position or column name)
+ - **ETL**: Add Columns, Aggregation, Cast types, Clean Missing Values, 
+ Difference (distinct or all), Distinct (Remove Duplicated Rows), Drop Columns, Set-Intersect (distinct or all), 
+ Join (Inner, Left or Right), Load Data, Rename columns, Replace Values, Sample Rows, Save data, Select Columns, Sort, 
+ Split, Transform (Map operations), Union (by column position or column name)
+ - **Statistics**: Covariance, CrossTab, Describe, Frequent Items, Kolmogorov-Smirnov test, Pearson Correlation,
  - **ML**:
    - **Evaluator Models**: Binary Classification Metrics, Multi-label Metrics and Regression Metrics
    - **Feature Operations**: Vector Assembler, Vector Slicer, Binarizer, Tokenizer (Simple and Regex), 

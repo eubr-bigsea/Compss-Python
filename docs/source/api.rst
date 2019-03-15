@@ -32,6 +32,8 @@ Contents
 
 *  :ref:`etl-anchor`
 
+*  :ref:`statistics-anchor`
+
 * :ref:`ml-anchor`
 
  * :ref:`classification-anchor`
@@ -62,15 +64,13 @@ ETL
 
 :func:`DDF.cast <ddf.DDF.cast>` - Change the data's type of some columns.
 
-:func:`DDF.count <ddf.DDF.count>` - Returns a number of rows in this DDF.
-
-:func:`DDF.describe <ddf.DDF.describe>` - Computes basic statistics for numeric and string columns.
-
 :func:`DDF.distinct <ddf.DDF.distinct>` - Returns a new DDF with non duplicated rows.
 
 :func:`DDF.drop <ddf.DDF.drop>` - Remove some columns from DDF.
 
 :func:`DDF.dropna <ddf.DDF.dropna>` - Drop rows or columns with NaN elements.
+
+:func:`DDF.except_all <ddf.DDF.except_all>` - Returns a new set with containing rows in the first frame but not in the second one while preserving duplicates.
 
 :func:`DDF.fillna <ddf.DDF.fillna>` - Replace NaN elements by value or by median, mean or mode.
 
@@ -80,8 +80,7 @@ ETL
 
 :func:`DDF.intersect <ddf.DDF.intersect>` - Returns a new DDF containing rows in both DDF.
 
-:func:`DDF.intersect_all <ddf.DDF.intersect_all>` - Returns a new DDF containing rows in both DDF while preserving
-        duplicates.
+:func:`DDF.intersect_all <ddf.DDF.intersect_all>` - Returns a new DDF containing rows in both DDF while preserving duplicates.
 
 :func:`DDF.join <ddf.DDF.join>` - Joins two DDF using the given join expression.
 
@@ -114,6 +113,25 @@ ETL
 :func:`DDF.union_by_name <ddf.DDF.union_by_name>` - Combines two DDF (concatenate) by column name.
 
 :func:`DDF.with_column_renamed <ddf.DDF.with_column_renamed>` - Renames some columns.
+
+
+.. _statistics-anchor:
+
+Statistics
+============
+
+:func:`DDF.count <ddf.DDF.count>` - Returns a number of rows in this DDF.
+
+:func:`DDF.correlation <ddf.DDF.correlation>` - Calculates the Pearson Correlation Coefficient.
+
+:func:`DDF.covariance <ddf.DDF.covariance>` - Calculates the sample covariance for the given columns.
+
+:func:`DDF.cross_tab <ddf.DDF.cross_tab>` - Computes a pair-wise frequency table of the given columns.
+
+:func:`DDF.describe <ddf.DDF.describe>` - Computes basic statistics for numeric and string columns.
+
+:func:`DDF.freq_items <ddf.DDF.freq_items>` - Finds frequent items for columns.
+
 
 
 .. _ml-anchor:
@@ -177,6 +195,8 @@ Selection: Selecting a subset from a larger set of features:
 :class:`ml.feature.VectorSlicer <ddf_library.functions.ml.feature.VectorSlicer>` - Vector Slicer create a new feature vector with a subarray of an original features.
 
 :class:`ml.feature.Binarizer <ddf_library.functions.ml.feature.Binarizer>` - Binarize data (set feature values to 0 or 1) according to a threshold.
+
+:class:`ml.feature.OneHotEncoder <ddf_library.functions.ml.feature.OneHotEncoder>` - Encode categorical integer features as a one-hot numeric array.
 
 :class:`ml.feature.Tokenizer <ddf_library.functions.ml.feature.Tokenizer>` - Tokenization is the process of taking text (such as a sentence) and breaking it into individual terms (usually words). A simple Tokenizer class provides this functionality.
 

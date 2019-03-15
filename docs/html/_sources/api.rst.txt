@@ -64,6 +64,12 @@ ETL
 
 :func:`DDF.count <ddf.DDF.count>` - Returns a number of rows in this DDF.
 
+:func:`DDF.correlation <ddf.DDF.correlation>` - Calculates the Pearson Correlation Coefficient.
+
+:func:`DDF.covariance <ddf.DDF.covariance>` - Calculates the sample covariance for the given columns.
+
+:func:`DDF.cross_tab <ddf.DDF.cross_tab>` - Computes a pair-wise frequency table of the given columns.
+
 :func:`DDF.describe <ddf.DDF.describe>` - Computes basic statistics for numeric and string columns.
 
 :func:`DDF.distinct <ddf.DDF.distinct>` - Returns a new DDF with non duplicated rows.
@@ -80,8 +86,7 @@ ETL
 
 :func:`DDF.intersect <ddf.DDF.intersect>` - Returns a new DDF containing rows in both DDF.
 
-:func:`DDF.intersect_all <ddf.DDF.intersect_all>` - Returns a new DDF containing rows in both DDF while preserving
-        duplicates.
+:func:`DDF.intersect_all <ddf.DDF.intersect_all>` - Returns a new DDF containing rows in both DDF while preserving duplicates.
 
 :func:`DDF.join <ddf.DDF.join>` - Joins two DDF using the given join expression.
 

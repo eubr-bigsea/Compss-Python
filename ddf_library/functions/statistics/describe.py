@@ -35,7 +35,7 @@ def describe(data, columns):
     sse = [_describe_stage3(df, agg_info) for df in data]
     sse = merge_reduce(_describe_stage4, sse)
 
-    result = _generate_stage5(agg_info, sse, len(data))
+    result = _generate_stage5(agg_info, sse)
 
     return result
 
@@ -98,7 +98,7 @@ def _describe_stage4(sse1, sse2):
 
 
 @local
-def _generate_stage5(agg_info, sse, nfrag):
+def _generate_stage5(agg_info, sse):
     mean = [m / agg_info['count'] if m else np.nan for m in agg_info['mean']]
 
     count = agg_info['count']
@@ -106,9 +106,6 @@ def _generate_stage5(agg_info, sse, nfrag):
     counts = [count for _ in range(len(sse))]
     for e in sse:
         std.append(np.sqrt(float(e) / (count - 1)))
-
-    cols = agg_info['columns'].tolist() + ['statistic']
-    statistics = ['column', 'count', 'mean', 'std', 'min', 'max', 'nan_count']
 
     result = pd.DataFrame([counts,
                           mean,

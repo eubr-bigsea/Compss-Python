@@ -18,7 +18,7 @@ import itertools
 import sys
 sys.path.append('../../')
 
-preprocessing = ['Binarizer', 'StringIndexer', 'IndexToString',
+preprocessing = ['Binarizer', 'StringIndexer', 'IndexToString', 'OneHotEncoder',
                  'MaxAbsScaler', 'MinMaxScaler', 'StandardScaler']
 
 text_operations = ['Tokenizer', 'RegexTokenizer', 'RemoveStopWords',
@@ -601,6 +601,146 @@ def _ngram(df, settings):
         values = df[input_col].tolist()
         grams = [ngrammer(row) for row in values]
         df[output_col] = grams
+
+    info = [df.columns.tolist(), df.dtypes.values, [len(df)]]
+    return df, info
+
+
+class OneHotEncoder(ModelDDF):
+    """
+    Encode categorical integer features as a one-hot numeric array.
+
+    :Example:
+
+    >>> enc = OneHotEncoder(input_col='col_1', output_col='col_2')
+    >>> ddf2 = enc.fit_transform(ddf1)
+    """
+
+    def __init__(self, input_col, output_col=None):
+        """
+        :param input_col: Input column name with the tokens;
+        :param output_col: Output column name;
+        """
+        super(OneHotEncoder, self).__init__()
+
+        if not isinstance(input_col, list):
+            input_col = [input_col]
+
+        if output_col is None:
+            output_col = 'features_onehot'
+        elif isinstance(output_col, list):
+            raise Exception("You must insert only one name to output.")
+
+        self.settings = dict()
+        self.settings['input_col'] = input_col
+        self.settings['output_col'] = output_col
+
+        self.model = {}
+        self.name = 'OneHotEncoder'
+
+    def fit(self, data):
+        """
+        Fit the model.
+
+        :param data: DDF
+        :return: a trained model
+        """
+
+        df, nfrag, tmp = self._ddf_inital_setup(data)
+
+        result_p = [[] for _ in range(nfrag)]
+        for f in range(nfrag):
+            result_p[f] = _one_hot_encoder(df[f], self.settings)
+
+        categories = merge_reduce(_one_hot_encoder_merge, result_p)
+
+        self.model['categories'] = compss_wait_on(categories)
+        self.model['name'] = 'OneHotEncoder'
+
+        return self
+
+    def fit_transform(self, data):
+        """
+        Fit the model and transform.
+
+        :param data: DDF
+        :return: DDF
+        """
+
+        self.fit(data)
+        ddf = self.transform(data)
+
+        return ddf
+
+    def transform(self, data):
+        """
+        :param data: DDF
+        :return: DDF
+        """
+        if len(self.model) == 0:
+            raise Exception("Model is not fitted.")
+
+        df, nfrag, tmp = self._ddf_inital_setup(data)
+
+        categories = self.model['categories']
+
+        result = [[] for _ in range(nfrag)]
+        info = [[] for _ in range(nfrag)]
+        for f in range(nfrag):
+            result[f], info[f] = _transform_one_hot(df[f], categories,
+                                                    self.settings)
+
+        uuid_key = self._ddf_add_task(task_name='transform_one_hot_encoder',
+                                      status='COMPLETED', lazy=False,
+                                      function={0: result},
+                                      parent=[tmp.last_uuid],
+                                      n_output=1, n_input=1, info=info)
+
+        self._set_n_input(uuid_key, 0)
+        return DDF(task_list=tmp.task_list, last_uuid=uuid_key)
+
+
+@task(returns=1)
+def _one_hot_encoder(df, settings):
+    from sklearn.preprocessing import OneHotEncoder
+    input_col = settings['input_col']
+    X = df[input_col].values
+
+    if len(X) > 0:
+        enc = OneHotEncoder(handle_unknown='ignore')
+        enc.fit(X)
+        categories = enc.categories_
+    else:
+        categories = [np.array([]) for _ in range(len(input_col))]
+
+    return categories
+
+
+@task(returns=1)
+def _one_hot_encoder_merge(x1, x2):
+
+    x = []
+    for i1, i2 in zip(x1, x2):
+        t = np.unique(np.concatenate((i1, i2), axis=0))
+        x.append(t)
+
+    return x
+
+
+@task(returns=2)
+def _transform_one_hot(df, categories, settings):
+    from sklearn.preprocessing import OneHotEncoder
+    input_col = settings['input_col']
+    output_col = settings['output_col']
+
+    if len(df) == 0:
+        df[output_col] = np.nan
+    else:
+        enc = OneHotEncoder(handle_unknown='ignore', sparse=False, dtype=np.int)
+        enc._legacy_mode = False
+        enc.categories_ = categories
+
+        df[output_col] = enc.transform(df[input_col].values).tolist()
 
     info = [df.columns.tolist(), df.dtypes.values, [len(df)]]
     return df, info

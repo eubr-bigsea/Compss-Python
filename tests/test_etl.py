@@ -186,18 +186,32 @@ def simple_etl():
     #
     # print "\n|-------- Aggregation --------|\n"
     # express = {'a': ['count'], 'b': ['first', 'last']}
-    # aliases = {'a': ["COUNT"], 'b': ['col_First', 'col_Last']}
     # # ddf_1 = DDF().parallelize(data, 4).group_by(['c']).agg(express)
-    # ddf_1 = DDF().parallelize(data3, 4).group_by(['c'])\
-    #     .mean(['a', 'b']).first(['a', 'b', 'e'])
+    # ddf_1 = DDF().parallelize(data3, 4).group_by(['a', 'c']).count('*')
     #
     # # .aggregation(['c'], exprs=express, aliases=aliases)
     # df1 = ddf_1.cache().show()
     # print df1
-    # res_agg = pd.DataFrame([[0, 10, 5, 14]],
+    # # res_agg = pd.DataFrame([[0, 10, 5, 14]],
     #                        columns=['c', 'COUNT', 'col_First', 'col_Last'])
     # # assert_frame_equal(df1, res_agg, check_index_type=False)
     # print "etl_test - aggregation - OK",
+
+    print "\n|-------- CrossTab --------|\n"
+    data = pd.DataFrame([(1, 1), (1, 2), (2, 1), (2, 1),
+                         (2, 3), (3, 2), (3, 3)], columns=['key', 'value'])
+    ddf_1 = DDF().parallelize(data, 4).cross_tab(col1='key', col2='value')
+    df1 = ddf_1.show()
+    print df1
+    """
+    +---------+---+---+---+
+    |key_value|  1|  2|  3|
+    +---------+---+---+---+
+    |        2|  2|  0|  1|
+    |        1|  1|  1|  0|
+    |        3|  0|  1|  1|
+    +---------+---+---+---+
+    """
 
     # print "\n|-------- DropNaN --------|\n"
     # ddf_1 = DDF().parallelize(data3, 4)
@@ -237,16 +251,52 @@ def simple_etl():
     # print df1
     # print "etl_test - difference - OK"
 
-    # print "\n|-------- Difference --------|\n"
-    # ddf_1a = DDF().parallelize(data, 4)
-    # ddf_1b = DDF().parallelize(data2, 4)
-    # ddf_2 = ddf_1a.difference(ddf_1b)
-    # df1 = ddf_2.cache().show()
-    # res_diff = pd.DataFrame([[0, 5, 0], [1, 6, 0], [2, 7, 0],
-    #                          [3, 8, 0], [4, 9, 0]], columns=['a', 'b', 'c'])
-    # assert_frame_equal(df1, res_diff, check_index_type=False)
-    # print "etl_test - difference - OK"
+    # print "\n|-------- Covariance --------|\n"
+    # # df = pd.DataFrame([[1692, 68], [1978, 102],
+    # #                    [1884, 110], [2151, 112],
+    # #                    [2519, 154]], columns=['a', 'b'])
+    # # cov(a,b) = 9107.3
     #
+    # df = pd.DataFrame([[1.95, 93.1], [1.96, 93.9], [1.95, 89.9],
+    #                    [1.98, 95.1], [2.10, 100.2]], columns=['a', 'b'])
+    # # cov(a,b) = 0.2196
+    #
+    # df1 = DDF().parallelize(df, 4).covariance(col1='a', col2='b')
+    # print df1
+    # print "etl_test - Covariance - OK"
+
+    # print "\n|-------- Correlation --------|\n"
+    #
+    # df = pd.DataFrame([[8, 81], [8, 80], [6, 75],
+    #                    [5, 65], [7, 91], [6, 80]], columns=['a', 'b'])
+    # # corr(a,b) = 0.6475106
+    #
+    # df1 = DDF().parallelize(df, 4).correlation(col1='a', col2='b')
+    # print df1
+    # print "etl_test - Correlation - OK"
+
+    # print "\n|-------- Subtract --------|\n"
+    # s1 = pd.DataFrame([("a", 1), ("a", 1), ("a", 1), ("a", 2), ("b",  3),
+    #                    ("c", 4)], columns=['col1', 'col2'])
+    # s2 = pd.DataFrame([("a", 1), ("b",  3)], columns=['col1', 'col2'])
+    # ddf_1a = DDF().parallelize(s1, 4)
+    # ddf_1b = DDF().parallelize(s2, 4)
+    # ddf_2 = ddf_1a.subtract(ddf_1b)
+    # df1 = ddf_2.cache().show()
+    # print df1
+    # print "etl_test - subtract - OK"
+
+    # print "\n|-------- ExceptAll --------|\n"
+    # s1 = pd.DataFrame([("a", 1), ("a", 1), ("a", 1), ("a", 2), ("b",  3),
+    #                    ("c", 4)], columns=['col1', 'col2'])
+    # s2 = pd.DataFrame([("a", 1), ("b",  3)], columns=['col1', 'col2'])
+    # ddf_1a = DDF().parallelize(s1, 4)
+    # ddf_1b = DDF().parallelize(s2, 4)
+    # ddf_2 = ddf_1a.subtract(ddf_1b)
+    # df1 = ddf_2.cache().show()
+    # print df1
+    # print "etl_test - exceptAll - OK"
+
     # print "\n|-------- Distinct --------|\n"
     # ddf_1 = DDF().parallelize(data, 4).distinct(['c'])
     # df1 = ddf_1.cache().show()
@@ -264,14 +314,28 @@ def simple_etl():
     # assert_frame_equal(df1, res_drop, check_index_type=False)
     # print "etl_test - drop - OK"
     #
+    # print "\n|-------- Intersect All--------|\n"
+    # s1 = pd.DataFrame([("a", 1), ("a", 1), ("a", 1), ("a", 2), ("b", 3),
+    #                    ("c", 4)], columns=['col1', 'col2'])
+    # s2 = pd.DataFrame([('a', 1), ('a', 1), ('b', 3)], columns=['col1', 'col2'])
+    #
+    # ddf_1a = DDF().parallelize(s1, 4)
+    # ddf_1b = DDF().parallelize(s2, 4)
+    # ddf_2 = ddf_1a.intersect_all(ddf_1b)
+    # df1 = ddf_2.cache().show()
+    # print df1
+    # print "etl_test - intersect - OK"
+    #
     # print "\n|-------- Intersect --------|\n"
-    # ddf_1a = DDF().parallelize(data, 4)
-    # ddf_1b = DDF().parallelize(data2, 4)
+    # s1 = pd.DataFrame([("a", 1), ("a", 1), ("a", 1), ("a", 2), ("b", 3),
+    #                    ("c", 4)], columns=['col1', 'col2'])
+    # s2 = pd.DataFrame([('a', 1), ('a', 1), ('b', 3)], columns=['col1', 'col2'])
+    #
+    # ddf_1a = DDF().parallelize(s1, 4)
+    # ddf_1b = DDF().parallelize(s2, 4)
     # ddf_2 = ddf_1a.intersect(ddf_1b)
     # df1 = ddf_2.cache().show()
-    # res_int = pd.DataFrame([[5, 10, 0], [6, 11, 0], [7, 12, 0],
-    #                         [8, 13, 0], [9, 14, 0]], columns=['a', 'b', 'c'])
-    # assert_frame_equal(df1, res_int, check_index_type=False)
+    # print df1
     # print "etl_test - intersect - OK"
     #
     # print "\n|-------- Filter --------|\n"
@@ -357,26 +421,38 @@ def simple_etl():
     # assert_frame_equal(df1, res_tra, check_index_type=False)
     # print "etl_test - transform - OK"
     #
+    # print "\n|-------- Union by Name --------|\n"
+    # data = pd.DataFrame([[i, 5] for i in range(10)], columns=['a', 'b'])
+    # data1 = pd.DataFrame([["i{}".format(i), 7] for i in range(5)],
+    #                      columns=['b', 'a'])
+    #
+    # ddf_1a = DDF().parallelize(data, 4)
+    # ddf_1b = DDF().parallelize(data1, 4)
+    # ddf_2 = ddf_1a.union_by_name(ddf_1b)
+    # df1 = ddf_2.cache().show()
+    # print df1
+    #
+    # print "etl_test - union by name - OK"
+    #
     # print "\n|-------- Union --------|\n"
+    # data = pd.DataFrame([[i, 5, 10] for i in range(10)], columns=['a', 'b', 'c'])
+    # data1 = pd.DataFrame([["i{}".format(i), 7] for i in range(5)],
+    #                      columns=['b', 'a'])
+    #
     # ddf_1a = DDF().parallelize(data, 4)
     # ddf_1b = DDF().parallelize(data1, 4)
     # ddf_2 = ddf_1a.union(ddf_1b)
     # df1 = ddf_2.cache().show()
-    # res_uni = pd.DataFrame([[0, 5, 0.0], [1, 6, 0.0], [2, 7, 0.0],
-    #                         [0, 5, None], [1, 6, None], [3, 8, 0.0],
-    #                         [4, 9, 0.0], [5, 10, 0.0], [2, 7, None],
-    #                         [3, 8, None], [6, 11, 0.0], [7, 12, 0.0],
-    #                         [8, 13, 0.0], [4, 9, None], [9, 14, 0.0]],
-    #                        columns=['a', 'b', 'c'])
-    # assert_frame_equal(df1, res_uni, check_index_type=False)
+    # print df1
+    #
     # print "etl_test - union - OK"
+
     #
     # print "\n|-------- cast --------|\n"
     # ddf_1 = DDF().parallelize(data, 4).cast(['a', 'b'], 'string')
     # schema = ddf_1.cache().schema()
     # print schema
-
-    print "etl_test - with_column - OK"
+    # print "etl_test - with_column - OK"
 
     # print "\n|-------- With_column Renamed --------|\n"
     # ddf_1 = DDF().parallelize(data, 4).with_column_renamed('a', 'A')

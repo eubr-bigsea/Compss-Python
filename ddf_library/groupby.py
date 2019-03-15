@@ -36,7 +36,7 @@ class GroupedDDF(DDF):
         super(GroupedDDF, self).__init__(task_list=ddf_var.task_list,
                                          last_uuid=self.last_uuid)
 
-    def agg(self, exprs, alias):
+    def agg(self, exprs, alias=None):
         """
         Compute aggregates and returns the result as a DDF.
 
@@ -52,8 +52,14 @@ class GroupedDDF(DDF):
         >>> ddf1.group_by(group_by=['col_1']).agg({'col_2': ['sum', 'last']})
         """
         self.parameters['operation'] = exprs
-        if alias is not None:
-            self.parameters['aliases'] = alias
+        if alias is None:
+            alias = {}
+            for col in exprs:
+                alias[col] = []
+                for f in exprs[col]:
+                    alias[col].append("{}({})".format(f, col))
+
+        self.parameters['aliases'] = alias
         context.COMPSsContext.tasks_map[self.last_uuid]['function'][1] = \
             self.parameters
 
@@ -219,7 +225,7 @@ class GroupedDDF(DDF):
         for col, alias in zip(cols, new_alias):
 
             if alias is None:
-                alias = "{}({})".format(col, alias)
+                alias = "{}({})".format(func, col)
 
             if col == '*':
                 col = groupby
