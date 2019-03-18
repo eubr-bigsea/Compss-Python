@@ -632,6 +632,147 @@ common file system;</li>
 </dd></dl>
 
 <dl class="class">
+<dt id="ddf_library.functions.ml.feature.OneHotEncoder">
+<em class="property">class </em><code class="descclassname">ddf_library.functions.ml.feature.</code><code class="descname">OneHotEncoder</code><span class="sig-paren">(</span><em>input_col</em>, <em>output_col=None</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.functions.ml.feature.OneHotEncoder" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">ddf_library.ddf_model.ModelDDF</span></code></p>
+<p>Encode categorical integer features as a one-hot numeric array.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Example:</th><td class="field-body"></td>
+</tr>
+</tbody>
+</table>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">enc</span> <span class="o">=</span> <span class="n">OneHotEncoder</span><span class="p">(</span><span class="n">input_col</span><span class="o">=</span><span class="s1">&#39;col_1&#39;</span><span class="p">,</span> <span class="n">output_col</span><span class="o">=</span><span class="s1">&#39;col_2&#39;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">ddf2</span> <span class="o">=</span> <span class="n">enc</span><span class="o">.</span><span class="n">fit_transform</span><span class="p">(</span><span class="n">ddf1</span><span class="p">)</span>
+</pre></div>
+</div>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>input_col</strong> – Input column name with the tokens;</li>
+<li><strong>output_col</strong> – Output column name;</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+<dl class="method">
+<dt id="ddf_library.functions.ml.feature.OneHotEncoder.fit">
+<code class="descname">fit</code><span class="sig-paren">(</span><em>data</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.functions.ml.feature.OneHotEncoder.fit" title="Permalink to this definition">¶</a></dt>
+<dd><p>Fit the model.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>data</strong> – DDF</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">a trained model</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="ddf_library.functions.ml.feature.OneHotEncoder.fit_transform">
+<code class="descname">fit_transform</code><span class="sig-paren">(</span><em>data</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.functions.ml.feature.OneHotEncoder.fit_transform" title="Permalink to this definition">¶</a></dt>
+<dd><p>Fit the model and transform.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>data</strong> – DDF</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">DDF</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="ddf_library.functions.ml.feature.OneHotEncoder.load_model">
+<code class="descname">load_model</code><span class="sig-paren">(</span><em>filepath</em>, <em>storage='hdfs'</em>, <em>namenode='localhost'</em>, <em>port=9000</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.functions.ml.feature.OneHotEncoder.load_model" title="Permalink to this definition">¶</a></dt>
+<dd><p>Load a machine learning model from a binary file in a storage.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>filepath</strong> – The absolute path name;</li>
+<li><strong>storage</strong> – <em>‘hdfs’</em> to load from HDFS storage or <em>‘fs’</em> to load
+from common file system;</li>
+<li><strong>storage</strong> – <em>‘hdfs’</em> to save in HDFS storage or <em>‘fs’</em> to save in
+common file system;</li>
+<li><strong>namenode</strong> – IP or DNS address to NameNode (default, <em>‘localhost’</em>).
+Note: Only if storage is <em>‘hdfs’</em>;</li>
+<li><strong>port</strong> – NameNode port (default, 9000). Note: Only if storage is
+<em>‘hdfs’</em>;</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">self</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Example:</th><td class="field-body"></td>
+</tr>
+</tbody>
+</table>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">ml_model</span> <span class="o">=</span> <span class="n">ml_algorithm</span><span class="p">()</span><span class="o">.</span><span class="n">load_model</span><span class="p">(</span><span class="s1">&#39;/saved_model&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="method">
+<dt id="ddf_library.functions.ml.feature.OneHotEncoder.save_model">
+<code class="descname">save_model</code><span class="sig-paren">(</span><em>filepath</em>, <em>storage='hdfs'</em>, <em>overwrite=True</em>, <em>namenode='localhost'</em>, <em>port=9000</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.functions.ml.feature.OneHotEncoder.save_model" title="Permalink to this definition">¶</a></dt>
+<dd><p>Save a machine learning model as a binary file in a storage.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>filepath</strong> – The output absolute path name;</li>
+<li><strong>storage</strong> – <em>‘hdfs’</em> to save in HDFS storage or <em>‘fs’</em> to save in
+common file system;</li>
+<li><strong>overwrite</strong> – Overwrite if file already exists (default, True);</li>
+<li><strong>namenode</strong> – IP or DNS address to NameNode (default, <em>‘localhost’</em>);</li>
+<li><strong>port</strong> – NameNode port (default, 9000);</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">self</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Example:</th><td class="field-body"></td>
+</tr>
+</tbody>
+</table>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">ml_model</span><span class="o">.</span><span class="n">save_model</span><span class="p">(</span><span class="s1">&#39;/trained_model&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="method">
+<dt id="ddf_library.functions.ml.feature.OneHotEncoder.transform">
+<code class="descname">transform</code><span class="sig-paren">(</span><em>data</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.functions.ml.feature.OneHotEncoder.transform" title="Permalink to this definition">¶</a></dt>
+<dd><table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>data</strong> – DDF</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">DDF</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
 <dt id="ddf_library.functions.ml.feature.MaxAbsScaler">
 <em class="property">class </em><code class="descclassname">ddf_library.functions.ml.feature.</code><code class="descname">MaxAbsScaler</code><span class="sig-paren">(</span><em>input_col</em>, <em>output_col</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.functions.ml.feature.MaxAbsScaler" title="Permalink to this definition">¶</a></dt>
 <dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">ddf_library.ddf_model.ModelDDF</span></code></p>

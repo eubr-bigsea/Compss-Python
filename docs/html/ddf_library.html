@@ -358,6 +358,30 @@ nulls. If ‘all’, drop a row only if all its values are null.</li>
 </dd></dl>
 
 <dl class="method">
+<dt id="ddf_library.ddf.DDF.except_all">
+<code class="descname">except_all</code><span class="sig-paren">(</span><em>data2</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.ddf.DDF.except_all" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns a new DDF with containing rows in the first frame but not
+in the second one while preserving duplicates. This is equivalent to
+EXCEPT ALL in SQL.</p>
+<p>Is it a Lazy function: No</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>data2</strong> – second DDF;</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">DDF</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Example:</th><td class="field-body"></td>
+</tr>
+</tbody>
+</table>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">ddf1</span><span class="o">.</span><span class="n">except_all</span><span class="p">(</span><span class="n">ddf2</span><span class="p">)</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="method">
 <dt id="ddf_library.ddf.DDF.fillna">
 <code class="descname">fillna</code><span class="sig-paren">(</span><em>subset=None</em>, <em>mode='VALUE'</em>, <em>value=None</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.ddf.DDF.fillna" title="Permalink to this definition">¶</a></dt>
 <dd><p>Replace missing rows or columns by mean, median, value or mode.</p>
@@ -416,6 +440,37 @@ information about query options.</p>
 </tbody>
 </table>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">ddf1</span><span class="o">.</span><span class="n">filter</span><span class="p">(</span><span class="s2">&quot;(col_1 == &#39;male&#39;) and (col_3 &gt; 42)&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="method">
+<dt id="ddf_library.ddf.DDF.freq_items">
+<code class="descname">freq_items</code><span class="sig-paren">(</span><em>col</em>, <em>support=0.01</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.ddf.DDF.freq_items" title="Permalink to this definition">¶</a></dt>
+<dd><p>Finding frequent items for columns, possibly with false positives.
+Using the frequent element count algorithm described in
+“<a class="reference external" href="http://dx.doi.org/10.1145/762471.762473">http://dx.doi.org/10.1145/762471.762473</a>, proposed by Karp, Schenker,
+and Papadimitriou”</p>
+<p>Is it a Lazy function: No</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>col</strong> – Names of the columns to calculate frequent items</li>
+<li><strong>support</strong> – The frequency with which to consider an item ‘frequent’.
+Default is 1%. The support must be greater than 1e-4.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">DDF</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Example:</th><td class="field-body"></td>
+</tr>
+</tbody>
+</table>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">ddf1</span><span class="o">.</span><span class="n">freq_items</span><span class="p">(</span><span class="n">col</span><span class="o">=</span><span class="s1">&#39;col_1&#39;</span><span class="p">,</span> <span class="n">support</span><span class="o">=</span><span class="mf">0.01</span><span class="p">)</span>
 </pre></div>
 </div>
 </dd></dl>
@@ -552,6 +607,70 @@ Default is [‘_l’, ‘_r’];</li>
 </tbody>
 </table>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">ddf1</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">ddf2</span><span class="p">,</span> <span class="n">key1</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;col_1&#39;</span><span class="p">],</span> <span class="n">key2</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;col_1&#39;</span><span class="p">],</span> <span class="n">mode</span><span class="o">=</span><span class="s1">&#39;inner&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="method">
+<dt id="ddf_library.ddf.DDF.kolmogorov_smirnov_one_sample">
+<code class="descname">kolmogorov_smirnov_one_sample</code><span class="sig-paren">(</span><em>col</em>, <em>distribution='norm'</em>, <em>mode='asymp'</em>, <em>args=None</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.ddf.DDF.kolmogorov_smirnov_one_sample" title="Permalink to this definition">¶</a></dt>
+<dd><p>Perform the Kolmogorov-Smirnov test for goodness of fit. This
+implementation of Kolmogorov–Smirnov test is a two-sided test
+for the null hypothesis that the sample is drawn from a continuous
+distribution.</p>
+<p>Is it a Lazy function: No</p>
+<blockquote>
+<div><table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">param col:</th><td class="field-body">sample column name;</td>
+</tr>
+<tr class="field-even field"><th class="field-name" colspan="2">param distribution:</th></tr>
+<tr class="field-even field"><td>&#160;</td><td class="field-body">Name of distribution (default is ‘norm’);</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">param mode:</th><td class="field-body">Defines the distribution used for calculating the p-value.
+- ‘approx’ : use approximation to exact distribution
+- ‘asymp’ : use asymptotic distribution of test statistic</td>
+</tr>
+</tbody>
+</table>
+</div></blockquote>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>args</strong> – A tuple of distribution parameters. Default is (0,1);</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">KS statistic and two-tailed p-value</td>
+</tr>
+</tbody>
+</table>
+<div class="admonition seealso">
+<p class="first admonition-title">See also</p>
+<p class="last">Visit this <a class="reference external" href="https://docs.scipy.org/doc/scipy-0.14.0/reference/stats.html#module-scipy.stats">link</a> to see all supported
+distributions.</p>
+</div>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p>The KS statistic is the absolute max distance (supremum)
+between the CDFs of the two samples. The closer this number is to
+0 the more likely it is that the two samples were drawn from the
+same distribution.</p>
+<p class="last">The p-value returned by the KS test has the same interpretation
+as other p-values. You reject the null hypothesis that the two
+samples were drawn from the same distribution if the p-value is
+less than your significance level.</p>
+</div>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Example:</th><td class="field-body"></td>
+</tr>
+</tbody>
+</table>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">ddf1</span><span class="o">.</span><span class="n">kolmogorov_smirnov_one_sample</span><span class="p">(</span><span class="n">col</span><span class="o">=</span><span class="s1">&#39;col_1&#39;</span><span class="p">)</span>
 </pre></div>
 </div>
 </dd></dl>
@@ -717,6 +836,29 @@ set as a parameter;</li>
 </dd></dl>
 
 <dl class="method">
+<dt id="ddf_library.ddf.DDF.rename">
+<code class="descname">rename</code><span class="sig-paren">(</span><em>old_column</em>, <em>new_column</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.ddf.DDF.rename" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns a new DDF by renaming an existing column. This is a no-op if
+schema doesn’t contain the given column name.</p>
+<p>Is it a Lazy function: Yes</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>old_column</strong> – String or list of strings with columns to rename;</li>
+<li><strong>new_column</strong> – String or list of strings with new names.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">DDF</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
 <dt id="ddf_library.ddf.DDF.replace">
 <code class="descname">replace</code><span class="sig-paren">(</span><em>replaces</em>, <em>subset=None</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.ddf.DDF.replace" title="Permalink to this definition">¶</a></dt>
 <dd><p>Replace one or more values to new ones.</p>
@@ -849,7 +991,7 @@ a integer or float N to sample a N random records;</li>
 
 <dl class="method">
 <dt id="ddf_library.ddf.DDF.sort">
-<code class="descname">sort</code><span class="sig-paren">(</span><em>cols</em>, <em>ascending=None</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.ddf.DDF.sort" title="Permalink to this definition">¶</a></dt>
+<code class="descname">sort</code><span class="sig-paren">(</span><em>cols</em>, <em>ascending=None</em>, <em>mode='batcher'</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.ddf.DDF.sort" title="Permalink to this definition">¶</a></dt>
 <dd><p>Returns a sorted DDF by the specified column(s).</p>
 <p>Is it a Lazy function: No</p>
 <table class="docutils field-list" frame="void" rules="none">
@@ -860,6 +1002,9 @@ a integer or float N to sample a N random records;</li>
 <li><strong>cols</strong> – list of columns to be sorted;</li>
 <li><strong>ascending</strong> – list indicating whether the sort order
 is ascending (True) for each column (Default, True);</li>
+<li><strong>mode</strong> – ‘batcher’ to sort by Batcher odd–even mergesort
+(default if nfrag is power of 2) or ‘oddeven’ to
+commom Odd-Even (if nfrag is not a power of 2);</li>
 </ul>
 </td>
 </tr>
@@ -1016,29 +1161,6 @@ this function resolves columns by position (not by name).</p>
 </div>
 </dd></dl>
 
-<dl class="method">
-<dt id="ddf_library.ddf.DDF.with_column_renamed">
-<code class="descname">with_column_renamed</code><span class="sig-paren">(</span><em>old_column</em>, <em>new_column</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.ddf.DDF.with_column_renamed" title="Permalink to this definition">¶</a></dt>
-<dd><p>Returns a new DDF by renaming an existing column. This is a no-op if
-schema doesn’t contain the given column name.</p>
-<p>Is it a Lazy function: Yes</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
-<li><strong>old_column</strong> – String or list of strings with columns to rename;</li>
-<li><strong>new_column</strong> – String or list of strings with new names.</li>
-</ul>
-</td>
-</tr>
-<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">DDF</p>
-</td>
-</tr>
-</tbody>
-</table>
-</dd></dl>
-
 </dd></dl>
 
 <span class="target" id="module-ddf_library.groupby"></span><dl class="class">
@@ -1062,7 +1184,7 @@ schema doesn’t contain the given column name.</p>
 
 <dl class="method">
 <dt id="ddf_library.groupby.GroupedDDF.agg">
-<code class="descclassname">GroupedDDF.</code><code class="descname">agg</code><span class="sig-paren">(</span><em>exprs</em>, <em>alias</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.groupby.GroupedDDF.agg" title="Permalink to this definition">¶</a></dt>
+<code class="descclassname">GroupedDDF.</code><code class="descname">agg</code><span class="sig-paren">(</span><em>exprs</em>, <em>alias=None</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.groupby.GroupedDDF.agg" title="Permalink to this definition">¶</a></dt>
 <dd><p>Compute aggregates and returns the result as a DDF.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />

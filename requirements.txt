@@ -1,4 +1,4 @@
-scipy
+
 
 # Requirements to use all functions in DDF Library.
 
@@ -12,3 +12,4 @@ pyshp==1.2.11
 python_dateutil==2.6.1
 scikit-learn
 nltk
+scipy

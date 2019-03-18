@@ -1440,7 +1440,8 @@ class DDF(DDFSketch):
         if len(self.task_list) > 2:
             context.COMPSsContext.tasks_map[last_last_uuid]['function'][n_input] = res
 
-        res = [r for r in res if len(r) > 0]  # to avoid change dtypes
+        if any([True for r in res if len(r) > 0]):
+            res = [r for r in res if len(r) > 0]  # to avoid change dtypes
         df = pd.concat(res, sort=False)[:abs(n)]
         df.reset_index(drop=True, inplace=True)
         return df
@@ -1660,7 +1661,7 @@ class DDF(DDFSketch):
         new_list = self._merge_tasks_list(self.task_list + data2.task_list)
         return DDF(task_list=new_list, last_uuid=new_state_uuid)
 
-    def with_column_renamed(self, old_column, new_column):
+    def rename(self, old_column, new_column):
         """
         Returns a new DDF by renaming an existing column. This is a no-op if
         schema doesn’t contain the given column name.
@@ -1685,15 +1686,15 @@ class DDF(DDFSketch):
         settings['old_column'] = old_column
         settings['new_column'] = new_column
 
-        def task_with_column_renamed(df, params):
+        def task_rename(df, params):
             return with_column_renamed(df, params)
 
         new_state_uuid = self._generate_uuid()
         context.COMPSsContext.tasks_map[new_state_uuid] = \
-            {'name': 'with_column_renamed',
+            {'name': 'rename',
              'status': 'WAIT',
              'lazy': True,
-             'function': [task_with_column_renamed, settings],
+             'function': [task_rename, settings],
              'parent': [self.last_uuid],
              'output': 1,
              'input': 1

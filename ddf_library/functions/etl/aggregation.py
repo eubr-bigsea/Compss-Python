@@ -53,8 +53,17 @@ class AggregationOperation(object):
         for f in range(nfrag):
             partial_agg[f], idx[f] = _aggregate(data[f], params)
 
-        # them, group them if each pair is overlapping
-        overlapping, params = overlap(idx)
+        if params.get('idx', True):
+            from pycompss.api.api import compss_wait_on
+            idx = compss_wait_on(idx)
+
+            # them, group them if each pair is overlapping
+            overlapping = overlap(idx)
+
+        else:
+            overlapping = [[True for _ in range(nfrag)] for _ in range(nfrag)]
+
+        params = idx[0]
         info = [[] for _ in range(nfrag)]
         result = partial_agg[:]
 
@@ -72,11 +81,10 @@ class AggregationOperation(object):
 
 def overlap(sorted_idx):
     """Check if fragments A and B may have some elements to be joined."""
+
     nfrag = len(sorted_idx)
     overlapping = [[False for _ in range(nfrag)] for _ in range(nfrag)]
-    from pycompss.api.api import compss_wait_on
-    sorted_idx = compss_wait_on(sorted_idx)
-    params = sorted_idx[0]
+
     for i in range(nfrag):
         x_min, x_max = sorted_idx[i]['idx']
 
@@ -98,7 +106,7 @@ def overlap(sorted_idx):
                             all(tmp.iloc[0, cols] == tmp.iloc[2, cols])]):
                             overlapping[i][j] = True
 
-    return overlapping, params
+    return overlapping
 
 
 @task(returns=2)

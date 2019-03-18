@@ -26,14 +26,14 @@ def kolmogorov_smirnov_one_sample(data, settings):
             - 'distribution': Name of distribution (default is 'norm');
             - 'args': A tuple of distribution parameters;
             - 'mode': Defines the distribution used for calculating the p-value.
-                - 'approx' : use approximation to exact distribution
-                - 'asymp' : use asymptotic distribution of test statistic
+
+              - 'approx': use approximation to exact distribution
+              - 'asymp': use asymptotic distribution of test statistic
         :return: KS statistic and p-value
 
         .. seealso:: Visit this `link <https://docs.scipy.org/doc/scipy-0.14.0/
          reference/stats.html#module-scipy.stats>`__ to see all supported
          distributions.
-
         """
 
         col = settings['col']
