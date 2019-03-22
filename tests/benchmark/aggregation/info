@@ -1,0 +1,5 @@
+Without trace:
+Aggregation - Exec: 8 Nodes - nfrag 32 - nsize 100000000 -  iteration 1 - It took 45 seconds.
+
+With trace:
+Aggregation - Exec: 8 Nodes - nfrag 32 - nsize 100000000 -  iteration 1 - It took 113 seconds.

@@ -22,18 +22,18 @@ def kolmogorov_smirnov_one_sample(data, settings):
 
         :param data: A list with of pandas's DataFrame;
         :param settings: A dictionary that contains:
-            - 'col': sample column name;
-            - 'distribution': Name of distribution (default is 'norm');
-            - 'args': A tuple of distribution parameters;
-            - 'mode': Defines the distribution used for calculating the p-value.
-
-              - 'approx': use approximation to exact distribution
-              - 'asymp': use asymptotic distribution of test statistic
+            - col: sample column name;
+            - distribution: Name of distribution (default is 'norm');
+            - args: A tuple of distribution parameters;
+            - mode: Defines the distribution used for calculating the p-value,
+             'approx' to use approximation to exact distribution or 'asymp' to
+             use asymptotic distribution of test statistic
         :return: KS statistic and p-value
 
         .. seealso:: Visit this `link <https://docs.scipy.org/doc/scipy-0.14.0/
          reference/stats.html#module-scipy.stats>`__ to see all supported
          distributions.
+
         """
 
         col = settings['col']
@@ -129,6 +129,8 @@ def _ks_d_critical(info, mode):
         else:
             pvalue = distributions.ksone.sf(ks_stat, n) * 2
 
+    pvalue = round(pvalue, 10)
+    ks_stat = round(ks_stat, 10)
     return ks_stat, pvalue
 
 

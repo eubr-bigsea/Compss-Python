@@ -176,7 +176,7 @@ the others 30% is used to test the fitted model. At end, the model can be evalua
         .map(age_categorizer, 'Age')\
         .map(fare_categorizer, 'Fare')
 
-    from ddf.functions.ml.feature import StringIndexer
+    from ddf_library.functions.ml.feature import StringIndexer
     ddf1 = StringIndexer(input_col='Embarked',
                          output_col='Embarked').fit_transform(ddf1)
 

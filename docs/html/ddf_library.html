@@ -531,6 +531,28 @@ empty to all (default, None);</li>
 </dd></dl>
 
 <dl class="method">
+<dt id="ddf_library.ddf.DDF.import_data">
+<code class="descname">import_data</code><span class="sig-paren">(</span><em>df_list</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.ddf.DDF.import_data" title="Permalink to this definition">¶</a></dt>
+<dd><p>Import a previous Pandas DataFrame list in DDF abstraction.
+Replace old data if DDF is not empty.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>df_list</strong> – DataFrame input</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">DDF</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Example:</th><td class="field-body"></td>
+</tr>
+</tbody>
+</table>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">ddf1</span> <span class="o">=</span> <span class="n">DDF</span><span class="p">()</span><span class="o">.</span><span class="n">import_partitions</span><span class="p">(</span><span class="n">df_list</span><span class="p">)</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="method">
 <dt id="ddf_library.ddf.DDF.intersect">
 <code class="descname">intersect</code><span class="sig-paren">(</span><em>data2</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.ddf.DDF.intersect" title="Permalink to this definition">¶</a></dt>
 <dd><p>Returns a new DDF containing rows in both DDF. This is equivalent to

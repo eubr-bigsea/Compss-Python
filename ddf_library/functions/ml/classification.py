@@ -76,10 +76,12 @@ class KNearestNeighbors(ModelDDF):
 
         col_label = self.settings['label_col']
         col_feature = self.settings['feature_col']
+        k = self.settings['k']
 
         train_data = [[] for _ in range(nfrag)]
         for f in range(nfrag):
-            train_data[f] = _knn_create_model(df[f], col_label, col_feature)
+            train_data[f] = _knn_create_model(df[f], col_label,
+                                              col_feature, nfrag, k)
         model = merge_reduce(merge_lists, train_data)
 
         self.model = [compss_wait_on(model)]
@@ -98,10 +100,11 @@ class KNearestNeighbors(ModelDDF):
 
         return ddf
 
-    def transform(self, data):
+    def transform(self, data, feature_col=None):
         """
 
         :param data: DDF
+        :param feature_col: Feature column name
         :return: DDF
         """
 
@@ -109,6 +112,9 @@ class KNearestNeighbors(ModelDDF):
             raise Exception("Model is not fitted.")
 
         self.settings['model'] = self.model[0]
+
+        if feature_col is not None:
+            self.settings['feature_col'] = feature_col
 
         df, nfrag, tmp = self._ddf_inital_setup(data)
 
@@ -127,29 +133,35 @@ class KNearestNeighbors(ModelDDF):
         return DDF(task_list=tmp.task_list, last_uuid=uuid_key)
 
 
-@task(returns=list)
-def _knn_create_model(df, label, features):
+@task(returns=1)
+def _knn_create_model(df, label, features, nfrag, k):
     """Create a partial model based in the selected columns."""
     labels = df[label].values
     feature = np.array(df[features].values.tolist())
-    return [labels, feature]
+    return [labels, feature, 0, nfrag, k]
 
 
-@task(returns=list)
+@task(returns=1)
 def merge_lists(list1, list2):
     """Merge all elements in an unique dataframe to be part of a knn model."""
-    l1, f1 = list1
-    l2, f2 = list2
+    l1, f1, i1, nfrag, k = list1
+    l2, f2, i2, _, _ = list2
 
-    if len(l1) != 0:
-        if len(l2) != 0:
-            result1 = np.concatenate((l1, l2), axis=0)
-            result2 = np.concatenate((f1, f2), axis=0)
-            return [result1, result2]
-        else:
-            return list1
-    else:
-        return list2
+    if len(l1) != 0 and len(l2) != 0:
+        l1 = np.concatenate((l1, l2), axis=0)
+        f1 = np.concatenate((f1, f2), axis=0)
+
+    elif len(l1) < len(l2):
+        l1, f1 = l2, f2
+
+    i = i1+i2 + 1
+    if i == (nfrag - 1):
+        from sklearn.neighbors import KNeighborsClassifier
+        neigh = KNeighborsClassifier(n_neighbors=k)
+        neigh.fit(f1, l1)
+        return [neigh]
+
+    return [l1, f1, i, nfrag, k]
 
 
 @task(returns=2)
@@ -157,63 +169,18 @@ def _knn_classify_block_(data, settings):
     """Perform a partial classification."""
     col_features = settings['feature_col']
     pred_col = settings.get('pred_col', "prediction_kNN")
-    K = settings.get('k', 3)
-    model = settings['model']
+    model = settings['model'][0]
 
-    sizeTest = len(data)
-    if sizeTest == 0:
+    if len(data) == 0:
         data[pred_col] = np.nan
-        return data
+        info = [data.columns.tolist(), data.dtypes.values, [len(data)]]
+        return data, info
 
-    # initalizing variables
-    sample = data[col_features].values[0]
-    if isinstance(sample, list):
-        numDim = len(sample)
-    else:
-        numDim = 1
-
-    semi_labels = [[0 for _ in range(K)] for _ in range(sizeTest)]
-
-    # from ddf.functions.ml import functions_knn
-    from timeit import default_timer as timer
-    start = timer()
-
-    semi_labels = dist2all(
-                  model[1], np.array(data.iloc[:][col_features].tolist()),
-                  numDim, K, semi_labels, model[0])
-    end = timer()
-    print "{0:.2e}".format(end - start)
-    values = _knn_get_majority(semi_labels)
-    data[pred_col] = pd.Series(values).values
+    values = model.predict(data[col_features].tolist())
+    data[pred_col] = values.tolist()
 
     info = [data.columns.tolist(), data.dtypes.values, [len(data)]]
     return data, info
-
-
-def dist2all(dataTrain, dataTest, numDim,  K, semi_labels, model):
-
-    sizeTest = dataTest.shape[0]
-    sizeTrain = dataTrain.shape[0]
-
-    for i_test in range(sizeTest):
-        semi_dist = np.empty(sizeTrain)
-        for i_train in range(sizeTrain):
-            semi_dist[i_train] = \
-                np.linalg.norm(dataTrain[i_train]-dataTest[i_test])
-        idx = np.argpartition(semi_dist, K)
-        semi_labels[i_test] = model[idx[:K]]
-
-    return semi_labels
-
-
-def _knn_get_majority(neighborhood):
-    """Finding the most frequent label."""
-    result = np.zeros(len(neighborhood)).tolist()
-    for i in range(len(neighborhood)):
-        labels = neighborhood[i].tolist()
-        result[i] = \
-            max(map(lambda val: (labels.count(val), val), set(labels)))[1]
-    return result
 
 
 class SVM(ModelDDF):
@@ -591,7 +558,7 @@ def _logr_compute_coeffs(data, features, label, alpha, iters,
     return theta
 
 
-@task(returns=list)
+@task(returns=1)
 def _logr_gradient_ascent(data, X, Y, theta, alfa):
     """
         Estimate logistic regression coefficients
@@ -611,12 +578,11 @@ def _logr_gradient_ascent(data, X, Y, theta, alfa):
     gradient = 0
 
     xs = np.c_[np.ones(size), np.array(data[X].tolist())]  # adding ones
-
+    ys = data[Y].values
     for n in range(size):
         xn = np.array(xs[n, :])
-        yn = data[Y].values[n]
         grad_p = _logr_sigmoid(xn, theta)
-        gradient += xn*(yn - grad_p)
+        gradient += xn*(ys[n] - grad_p)
 
     return [gradient, size, dim, theta]
 
@@ -662,7 +628,7 @@ def _logr_predict(data, settings, theta):
     size = len(data)
 
     xs = np.c_[np.ones(size), np.array(data[col_features].tolist())]
-    data[pred_col] = [round(_logr_sigmoid(x, theta)) for x in xs]
+    data[pred_col] = [int(round(_logr_sigmoid(x, theta))) for x in xs]
 
     info = [data.columns.tolist(), data.dtypes.values, [len(data)]]
     return data, info
@@ -726,16 +692,15 @@ class GaussianNB(ModelDDF):
         cols = [self.settings['feature_col'], self.settings['label_col']]
 
         # generate a dictionary with the sum of all attributes separed by class
-        separated = [[] for _ in range(nfrag)]
-        means = [[] for _ in range(nfrag)]
+        clusters, means = [[] for _ in range(nfrag)], [[] for _ in range(nfrag)]
         for i in range(nfrag):
-            separated[i], means[i] = _nb_separate_by_class(df[i], cols)
+            clusters[i], means[i] = _nb_separate_by_class(df[i], cols)
 
         # generate a total sum and len of each class
         mean = merge_reduce(_nb_merge_means, means)
 
         # compute the partial variance
-        partial_var = [_nb_calc_var(mean, separated[i]) for i in range(nfrag)]
+        partial_var = [_nb_calc_var(mean, clusters[i]) for i in range(nfrag)]
         merged_fitted = merge_reduce(_nb_merge_var, partial_var)
 
         # compute standard deviation
@@ -837,7 +802,6 @@ def _nb_merge_var(summ1, summ2):
         if att in summ1:
             summ1[att] = [np.add(summ1[att][0], summ2[att][0]),
                           summ1[att][1], summ1[att][2]]
-            print summ1[att]
         else:
             summ1[att] = summ2[att]
     return summ1
@@ -861,13 +825,28 @@ def _nb_predict_chunck(data, summaries, settings):
 
     features_col = settings['feature_col']
     predicted_label = settings['pred_col']
+    pi = 3.1415926535
+    n = len(data)
 
-    predictions = []
-    for i in range(len(data)):
-        result = _nb_predict(summaries, data.iloc[i][features_col])
-        predictions.append(result)
+    for class_v, class_summaries in summaries.iteritems():
+        avgs, stds = class_summaries
+        dim = len(avgs)
+        dens, nums = np.zeros(dim), np.zeros(dim)
 
-    data[predicted_label] = predictions
+        for i, (avg, std) in enumerate(zip(avgs, stds)):
+            if std == 0:
+                std = 0.0000001
+
+            dens[i] = (2 * pow(std, 2))
+            nums[i] = np.divide(1.0, (math.sqrt(2*pi) * std))
+
+        summaries[class_v] = [avgs, dens, nums]
+
+    predictions = np.zeros(n, dtype=int)
+    for i in range(n):
+        predictions[i] = _nb_predict(summaries, data.iloc[i][features_col])
+
+    data[predicted_label] = predictions.tolist()
 
     info = [data.columns.tolist(), data.dtypes.values, [len(data)]]
     return data, info
@@ -875,7 +854,7 @@ def _nb_predict_chunck(data, summaries, settings):
 
 def _nb_predict(summaries, input_vector):
     """Predict a feature."""
-    probabilities = _nb_calculateClassProbabilities(summaries, input_vector)
+    probabilities = _nb_class_probabilities(summaries, input_vector)
     best_label, best_prob = None, -1
     for classValue, probability in probabilities.iteritems():
         if best_label is None or probability > best_prob:
@@ -884,35 +863,15 @@ def _nb_predict(summaries, input_vector):
     return best_label
 
 
-def _nb_calculateClassProbabilities(summaries, to_predict):
+def _nb_class_probabilities(summaries, x):
     """Do the probability's calculation of all records."""
-    probabilities = {}
-    print summaries
+    probs = {}
+
     for class_v, class_summaries in summaries.iteritems():
-        probabilities[class_v] = 1
-        avgs, stds = class_summaries
-        for i, (avg, std) in enumerate(zip(avgs, stds)):
-            probabilities[class_v] *= \
-                _nb_calc_probability(to_predict[i], avg, std)
-    return probabilities
+        probs[class_v] = 1
+        avgs, dens, nums = class_summaries
+        for i, (avg,  den, num) in enumerate(zip(avgs, dens, nums)):
+            probs[class_v] *= num * math.exp(-(pow(x[i] - avg, 2) / den))
 
+    return probs
 
-def _nb_calc_probability(x, mean, stdev):
-    """Do the probability's calculation of one record."""
-    # exponent = math.exp(-(math.pow(x-mean,2)/(2*math.pow(stdev,2))))
-    # prob = (1 / (math.sqrt(2*math.pi) * stdev)) * exponent
-    # import functions_naivebayes
-    prob = calculateProbability(x, mean, stdev)
-    return prob
-
-
-def calculateProbability(x, mean, stdev):
-    pi = 3.14159265358979323846
-
-    exponent = math.exp(-(pow(x-mean, 2)/(2*pow(stdev, 2))))
-
-    if stdev == 0:
-        stdev = 0.0000001
-
-    result = np.divide(1.0, (math.sqrt(2*pi) * stdev)) * exponent
-    return result

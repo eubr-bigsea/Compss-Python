@@ -1,0 +1,7 @@
+Withou Trace:
+Gaussian NB - Exec: 8 Nodes - nfrag 32 - nsize 10000000 -  iteration 1 - It took 160 seconds.
+
+
+With Trace:
+Gaussian NB - Exec: 8 Nodes - nfrag 32 - nsize 10000000 -  iteration 1 - It took 744 seconds.
+

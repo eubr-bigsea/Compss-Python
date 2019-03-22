@@ -122,8 +122,10 @@ def kolmogorov_smirnov_one_sample():
     """
 
     ks_onesample = DDF().parallelize(df, 4)\
-        .kolmogorov_smirnov_one_sample(col='d', distribution='gamma',
+        .kolmogorov_smirnov_one_sample(col='d',
+                                       distribution='gamma',
                                        args=(15.5, 0, 1./7))
+
     print ks_onesample
 
 

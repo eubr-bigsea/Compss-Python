@@ -300,6 +300,17 @@ def fill_na():
     print "A: 9.5 - B: 14.5 - D: 19.0 - E: 10.0 - G: 19.0 - H: 5.0 - I: 8.5"
 
 
+def import_data():
+    print "\n|-------- Import data --------|\n"
+    s1 = pd.DataFrame([("a", 1), ("a", 1), ("a", 1), ("a", 2), ("b", 3),
+                       ("c", 4)], columns=['col1', 'col2'])
+    s1 = np.array_split(s1, 4)
+
+    df1 = DDF().import_data(s1).show()
+    print df1
+    print "etl_test - import data - OK"
+
+
 def intersect():
     print "\n|-------- Intersect --------|\n"
     s1 = pd.DataFrame([("a", 1), ("a", 1), ("a", 1), ("a", 2), ("b", 3),
@@ -516,8 +527,9 @@ if __name__ == '__main__':
     # cast()
     # etl()
     # filter()
-    distinct()
+    # distinct()
     # drop()
+    import_data()
     # select()
     # sort()
     # subtract()

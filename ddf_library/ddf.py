@@ -291,6 +291,39 @@ class DDF(DDFSketch):
         self._set_n_input(new_state_uuid, self.settings['input'])
         return DDF(task_list=self.task_list, last_uuid=new_state_uuid)
 
+    def import_data(self, df_list):
+        """
+        Import a previous Pandas DataFrame list in DDF abstraction.
+        Replace old data if DDF is not empty.
+
+        :param df_list: DataFrame input
+        :return: DDF
+
+        :Example:
+
+        >>> ddf1 = DDF().import_partitions(df_list)
+        """
+
+        from functions.etl.parallelize import import_to_ddf
+
+        result, info = import_to_ddf(df_list)
+
+        new_state_uuid = self._generate_uuid()
+        context.COMPSsContext.schemas_map[new_state_uuid] = {0: info}
+
+        tmp = DDF()
+        context.COMPSsContext.tasks_map[new_state_uuid] = \
+            {'name': 'import_data',
+             'status': 'COMPLETED',
+             'lazy': False,
+             'function': {0: result},
+             'output': 1, 'input': 0,
+             'parent': [tmp.last_uuid]
+             }
+
+        tmp._set_n_input(new_state_uuid, 0)
+        return DDF(task_list=tmp.task_list, last_uuid=new_state_uuid)
+
     def _collect(self):
         """
         #TODO Check it

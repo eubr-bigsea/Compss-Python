@@ -1495,15 +1495,13 @@ class StandardScaler(ModelDDF):
         features = self.settings['input_col']
 
         # compute the sum of each subset column
-        sum_partial = \
-            [_agg_sum(df[f], features) for f in range(nfrag)]
+        sums = [_agg_sum(df[f], features) for f in range(nfrag)]
         # merge then to compute a mean
-        mean = merge_reduce(_merge_sum, sum_partial)
+        mean = merge_reduce(_merge_sum, sums)
 
         # using this mean, compute the variance of each subset column
-        sse_partial = \
-            [_agg_sse(df[f], features, mean) for f in range(nfrag)]
-        sse = merge_reduce(_merge_sse, sse_partial)
+        sse = [_agg_sse(df[f], features, mean) for f in range(nfrag)]
+        sse = merge_reduce(_merge_sse, sse)
 
         mean = compss_wait_on(mean)
         sse = compss_wait_on(sse)
@@ -1556,7 +1554,6 @@ class StandardScaler(ModelDDF):
 def _agg_sum(df, features):
     """Pre-compute some values."""
     sum_partial = []
-    print "DDDF", df
     for feature in features:
         sum_p = [np.nansum(df[feature].values.tolist(), axis=0),
                  len(df[feature])]
@@ -1564,7 +1561,7 @@ def _agg_sum(df, features):
     return sum_partial
 
 
-@task(returns=list, priority=True)
+@task(returns=1, priority=True)
 def _merge_sum(sum1, sum2):
     """Merge pre-computation."""
     sum_count = []
@@ -1622,28 +1619,21 @@ def _stardard_scaler(data, settings, mean, sse):
     if len(alias) != len(features):
         alias = features
 
-    def computation_scaler(xs, means, stds):
-        scaler = []
-        for xi, mi, std in zip(xs, means, stds):
-            scaler.append(float(xi - mi) / std)
-        return scaler
-
+    from sklearn.preprocessing import StandardScaler
     for i, (alias, col) in enumerate(zip(alias, features)):
-
         size = mean[i][1]
 
-        if with_mean:
-            means = [float(x) / size for x in mean[i][0]]
-        else:
-            means = [0 for _ in mean[i][0]]
+        var_ = [float(sse_p) / size for sse_p in sse[i]]
+        mean_ = [float(x) / size for x in mean[i][0]]
 
-        if with_std:
-            stds = [np.sqrt(float(sse_p) / size) for sse_p in sse[i]]  # std pop
-        else:
-            stds = [1.0 for _ in sse[i]]
+        scaler = StandardScaler()
+        scaler.mean_ = mean_ if with_mean else None
+        scaler.scale_ = np.sqrt(var_) if with_std else None
+        scaler.var_ = var_ if with_std else None
+        scaler.n_samples_seen_ = size
 
-        data[alias] = data[col] \
-            .apply(lambda xs: computation_scaler(xs, means, stds))
+        values = data[col].tolist()
+        data[alias] = scaler.transform(values).tolist()
 
     info = [data.columns.tolist(), data.dtypes.values, [len(data)]]
     return data, info
@@ -1739,13 +1729,13 @@ class StringIndexer(ModelDDF):
         return DDF(task_list=tmp.task_list, last_uuid=uuid_key)
 
 
-@task(returns=list)
+@task(returns=1)
 def get_indexes(data, in_col):
     """Create partial model to convert string to index."""
     return data[in_col].dropna().unique()
 
 
-@task(returns=list)
+@task(returns=1)
 def merge_mapper(data1, data2):
     """Merge partial models into one."""
     data1 = np.concatenate((data1, data2), axis=0)
@@ -1820,11 +1810,11 @@ class IndexToString(ModelDDF):
 
 
 @task(returns=2)
-def _index_to_string(data, inputCol, outputCol, mapper):
+def _index_to_string(data, input_col, output_col, mapper):
     """Convert index to string based in the model."""
     news = [i for i in range(len(mapper))]
     mapper = mapper.tolist()
-    data[outputCol] = data[inputCol].replace(to_replace=news, value=mapper)
+    data[output_col] = data[input_col].replace(to_replace=news, value=mapper)
 
     info = [data.columns.tolist(), data.dtypes.values, [len(data)]]
     return data, info
