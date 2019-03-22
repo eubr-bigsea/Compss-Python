@@ -48,22 +48,31 @@ class AggregationOperation(object):
         nfrag = len(data)
         # the main ideia is to perform a local aggregation in each partition
         # and to compute the bounding box
-        local_agg = [[] for _ in range(nfrag)]
+        partial_agg = [[] for _ in range(nfrag)]
         idx = [[] for _ in range(nfrag)]
         for f in range(nfrag):
-            local_agg[f], idx[f] = _aggregate(data[f], params)
+            partial_agg[f], idx[f] = _aggregate(data[f], params)
 
-        # them, group them if each pair is overlapping
-        overlapping = overlap(idx)
+        if params.get('idx', True):
+            from pycompss.api.api import compss_wait_on
+            idx = compss_wait_on(idx)
+
+            # them, group them if each pair is overlapping
+            overlapping = overlap(idx)
+
+        else:
+            overlapping = [[True for _ in range(nfrag)] for _ in range(nfrag)]
+
+        params = idx[0]
         info = [[] for _ in range(nfrag)]
-        result = local_agg[:]
+        result = partial_agg[:]
 
         for f1 in range(nfrag):
             for f2 in range(nfrag):
                 if f1 != f2 and overlapping[f1][f2]:
-                    result[f1], info[f1] = _merge_aggregation(result[f1],
-                                                              local_agg[f2],
-                                                              params, f1, f2)
+                    result[f1], info[f1] = \
+                        _merge_aggregation(result[f1], partial_agg[f2],
+                                           params, f1, f2)
 
         output = {'key_data': ['data'], 'key_info': ['info'],
                   'data': result, 'info': info}
@@ -72,17 +81,16 @@ class AggregationOperation(object):
 
 def overlap(sorted_idx):
     """Check if fragments A and B may have some elements to be joined."""
+
     nfrag = len(sorted_idx)
     overlapping = [[False for _ in range(nfrag)] for _ in range(nfrag)]
-    from pycompss.api.api import compss_wait_on
-    sorted_idx = compss_wait_on(sorted_idx)
 
     for i in range(nfrag):
-        x_min, x_max = sorted_idx[i]
+        x_min, x_max = sorted_idx[i]['idx']
 
         if len(x_min) != 0:  # only if data1 was empty
             for j in range(nfrag):
-                y_min, y_max = sorted_idx[j]
+                y_min, y_max = sorted_idx[j]['idx']
 
                 if len(y_min) != 0:  # only if data2 was empty
 
@@ -108,8 +116,23 @@ def _aggregate(data, params):
     target = params['aliases']
     operation = params['operation']
 
+    if columns is '*':
+        columns = list(data.columns)
+        params['groupby'] = columns
+
+    if '*' in target.keys():
+        target[columns[0]] = target['*']
+        del target['*']
+        params['aliases'] = target
+
+    if '*' in operation.keys():
+        operation[columns[0]] = operation['*']
+        del operation['*']
+        params['operation'] = operation
+
     operation = _replace_functions_name(operation)
     data = data.groupby(columns).agg(operation)
+
     newidx = []
     i = 0
     old = None
@@ -127,10 +150,15 @@ def _aggregate(data, params):
     data.sort_values(columns, inplace=True)
 
     n = len(data)
-    min_idx = data.loc[0, columns].values.tolist()
-    max_idx = data.loc[n-1, columns].values.tolist()
-    idx = [min_idx, max_idx]
-    return data, idx
+    if n > 0:
+        min_idx = data.loc[0, columns].values.tolist()
+        max_idx = data.loc[n-1, columns].values.tolist()
+        idx = [min_idx, max_idx]
+    else:
+        idx = [[], []]
+
+    params['idx'] = idx
+    return data, params
 
 
 @task(returns=2)
@@ -166,7 +194,7 @@ def _merge_aggregation(data1, data2, params, f1, f2):
 
         operation = _replace_name_by_functions(operation, target)
 
-        data1 = pd.concat([data1, data2], axis=0, ignore_index=True)
+        data1 = pd.concat([data1, data2], axis=0, ignore_index=True, sort=False)
         data1 = data1.groupby(columns).agg(operation)
 
         # remove the different level
@@ -200,7 +228,7 @@ def _merge_set(series):
 
 def _replace_functions_name(operation):
     """Replace 'set' and 'list' to the pointer of the real function."""
-    for col in operation:
+    for col in operation.keys():
         for f in range(len(operation[col])):
             if operation[col][f] == 'list':
                 operation[col][f] = _collect_list

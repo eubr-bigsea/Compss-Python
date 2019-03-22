@@ -1,7 +1,7 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 
-from ddf.ddf import DDF
+from ddf_library.ddf import DDF
 import pandas as pd
 
 
@@ -20,20 +20,20 @@ def ml_regression_simple():
     df = pd.DataFrame.from_dict({'features': diabetes_x, 'y': diabetes_y})
     ddf_simple = DDF().parallelize(df, 4)
 
-    from ddf.functions.ml.feature import StandardScaler
+    from ddf_library.functions.ml.feature import StandardScaler
     scaler = StandardScaler(input_col='features',
                             output_col='features').fit(ddf_simple)
     ddf_simple = scaler.transform(ddf_simple)
 
     ddf_train, ddf_test = ddf_simple.split(0.5)
 
-    from ddf.functions.ml.regression import LinearRegression
+    from ddf_library.functions.ml.regression import LinearRegression
     model = LinearRegression('features', 'y', mode='simple').fit(ddf_train)
     ddf_test = model.transform(ddf_test)
 
     print "Simple linear regressor result:\n", ddf_test.show(10)
 
-    from ddf.functions.ml.evaluation import RegressionMetrics
+    from ddf_library.functions.ml.evaluation import RegressionMetrics
     metrics = RegressionMetrics(col_features='features', label_col='y',
                                 pred_col='pred_LinearReg', data=ddf_test)
 
@@ -52,12 +52,12 @@ def ml_regression_metrics():
                          ], columns=['x', 'z', 'y', 'pred_LinearReg'])
     dataset = DDF().parallelize(data, 4)
 
-    from ddf.functions.ml.feature import VectorAssembler
+    from ddf_library.functions.ml.feature import VectorAssembler
     assembler = VectorAssembler(input_col=["x"],
                                 output_col="features")
     assembled = assembler.transform(dataset)
 
-    from ddf.functions.ml.evaluation import RegressionMetrics
+    from ddf_library.functions.ml.evaluation import RegressionMetrics
     metrics = RegressionMetrics(col_features='features', label_col='y',
                                 pred_col='pred_LinearReg', data=assembled)
 
@@ -105,16 +105,16 @@ def ml_regression_sgb():
 
     # Testing 'SGB' linear regressor
 
-    from ddf.functions.ml.feature import VectorAssembler
+    from ddf_library.functions.ml.feature import VectorAssembler
     assembler = VectorAssembler(input_col=["x", "z"], output_col="features")
     ddf = assembler.transform(ddf)
 
-    from ddf.functions.ml.feature import MinMaxScaler
+    from ddf_library.functions.ml.feature import MinMaxScaler
     scaler = MinMaxScaler(input_col='features',
                           output_col='features').fit(ddf)
     ddf = scaler.transform(ddf)
 
-    from ddf.functions.ml.regression import LinearRegression
+    from ddf_library.functions.ml.regression import LinearRegression
     model = LinearRegression('features', 'y', max_iter=20, alpha=0.01).fit(ddf)
     df = model.transform(ddf).show()
 

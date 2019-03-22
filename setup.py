@@ -1,8 +1,22 @@
 import setuptools
 
+
+def get_requirements():
+    """
+    lists the requirements to install.
+    """
+    requirements = []
+    try:
+        with open('requirements.txt') as f:
+            requirements = f.read().splitlines()
+    except Exception as ex:
+        requirements = []
+    return requirements
+
+
 setuptools.setup(
      name='ddf-pycompss',  
-     version='0.2',
+     version='0.3',
      author="Lucas Miguel Ponce",
      author_email="lucasmsp@dcc.ufmg.br",
      summary="A PyCOMPSs library for Big Data scenarios.",
@@ -31,15 +45,7 @@ setuptools.setup(
          "Topic :: System :: Distributed Computing",
      ],
     packages=setuptools.find_packages(),
-    install_requires=[
-        "Pyqtree>=0.24",
-        "matplotlib>=1.5.1",
-        "networkx>=1.11",
-        "numpy>=1.16.0",
-        "pandas>=0.23.4",
-        "pyshp>=1.2.11",
-        "python_dateutil>=2.6.1",
-    ],
+    install_requires=get_requirements(),
 
  )
 

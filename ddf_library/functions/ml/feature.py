@@ -18,7 +18,7 @@ import itertools
 import sys
 sys.path.append('../../')
 
-preprocessing = ['Binarizer', 'StringIndexer', 'IndexToString',
+preprocessing = ['Binarizer', 'StringIndexer', 'IndexToString', 'OneHotEncoder',
                  'MaxAbsScaler', 'MinMaxScaler', 'StandardScaler']
 
 text_operations = ['Tokenizer', 'RegexTokenizer', 'RemoveStopWords',
@@ -601,6 +601,146 @@ def _ngram(df, settings):
         values = df[input_col].tolist()
         grams = [ngrammer(row) for row in values]
         df[output_col] = grams
+
+    info = [df.columns.tolist(), df.dtypes.values, [len(df)]]
+    return df, info
+
+
+class OneHotEncoder(ModelDDF):
+    """
+    Encode categorical integer features as a one-hot numeric array.
+
+    :Example:
+
+    >>> enc = OneHotEncoder(input_col='col_1', output_col='col_2')
+    >>> ddf2 = enc.fit_transform(ddf1)
+    """
+
+    def __init__(self, input_col, output_col=None):
+        """
+        :param input_col: Input column name with the tokens;
+        :param output_col: Output column name;
+        """
+        super(OneHotEncoder, self).__init__()
+
+        if not isinstance(input_col, list):
+            input_col = [input_col]
+
+        if output_col is None:
+            output_col = 'features_onehot'
+        elif isinstance(output_col, list):
+            raise Exception("You must insert only one name to output.")
+
+        self.settings = dict()
+        self.settings['input_col'] = input_col
+        self.settings['output_col'] = output_col
+
+        self.model = {}
+        self.name = 'OneHotEncoder'
+
+    def fit(self, data):
+        """
+        Fit the model.
+
+        :param data: DDF
+        :return: a trained model
+        """
+
+        df, nfrag, tmp = self._ddf_inital_setup(data)
+
+        result_p = [[] for _ in range(nfrag)]
+        for f in range(nfrag):
+            result_p[f] = _one_hot_encoder(df[f], self.settings)
+
+        categories = merge_reduce(_one_hot_encoder_merge, result_p)
+
+        self.model['categories'] = compss_wait_on(categories)
+        self.model['name'] = 'OneHotEncoder'
+
+        return self
+
+    def fit_transform(self, data):
+        """
+        Fit the model and transform.
+
+        :param data: DDF
+        :return: DDF
+        """
+
+        self.fit(data)
+        ddf = self.transform(data)
+
+        return ddf
+
+    def transform(self, data):
+        """
+        :param data: DDF
+        :return: DDF
+        """
+        if len(self.model) == 0:
+            raise Exception("Model is not fitted.")
+
+        df, nfrag, tmp = self._ddf_inital_setup(data)
+
+        categories = self.model['categories']
+
+        result = [[] for _ in range(nfrag)]
+        info = [[] for _ in range(nfrag)]
+        for f in range(nfrag):
+            result[f], info[f] = _transform_one_hot(df[f], categories,
+                                                    self.settings)
+
+        uuid_key = self._ddf_add_task(task_name='transform_one_hot_encoder',
+                                      status='COMPLETED', lazy=False,
+                                      function={0: result},
+                                      parent=[tmp.last_uuid],
+                                      n_output=1, n_input=1, info=info)
+
+        self._set_n_input(uuid_key, 0)
+        return DDF(task_list=tmp.task_list, last_uuid=uuid_key)
+
+
+@task(returns=1)
+def _one_hot_encoder(df, settings):
+    from sklearn.preprocessing import OneHotEncoder
+    input_col = settings['input_col']
+    X = df[input_col].values
+
+    if len(X) > 0:
+        enc = OneHotEncoder(handle_unknown='ignore')
+        enc.fit(X)
+        categories = enc.categories_
+    else:
+        categories = [np.array([]) for _ in range(len(input_col))]
+
+    return categories
+
+
+@task(returns=1)
+def _one_hot_encoder_merge(x1, x2):
+
+    x = []
+    for i1, i2 in zip(x1, x2):
+        t = np.unique(np.concatenate((i1, i2), axis=0))
+        x.append(t)
+
+    return x
+
+
+@task(returns=2)
+def _transform_one_hot(df, categories, settings):
+    from sklearn.preprocessing import OneHotEncoder
+    input_col = settings['input_col']
+    output_col = settings['output_col']
+
+    if len(df) == 0:
+        df[output_col] = np.nan
+    else:
+        enc = OneHotEncoder(handle_unknown='ignore', sparse=False, dtype=np.int)
+        enc._legacy_mode = False
+        enc.categories_ = categories
+
+        df[output_col] = enc.transform(df[input_col].values).tolist()
 
     info = [df.columns.tolist(), df.dtypes.values, [len(df)]]
     return df, info
@@ -1355,15 +1495,13 @@ class StandardScaler(ModelDDF):
         features = self.settings['input_col']
 
         # compute the sum of each subset column
-        sum_partial = \
-            [_agg_sum(df[f], features) for f in range(nfrag)]
+        sums = [_agg_sum(df[f], features) for f in range(nfrag)]
         # merge then to compute a mean
-        mean = merge_reduce(_merge_sum, sum_partial)
+        mean = merge_reduce(_merge_sum, sums)
 
         # using this mean, compute the variance of each subset column
-        sse_partial = \
-            [_agg_sse(df[f], features, mean) for f in range(nfrag)]
-        sse = merge_reduce(_merge_sse, sse_partial)
+        sse = [_agg_sse(df[f], features, mean) for f in range(nfrag)]
+        sse = merge_reduce(_merge_sse, sse)
 
         mean = compss_wait_on(mean)
         sse = compss_wait_on(sse)
@@ -1416,7 +1554,6 @@ class StandardScaler(ModelDDF):
 def _agg_sum(df, features):
     """Pre-compute some values."""
     sum_partial = []
-    print "DDDF", df
     for feature in features:
         sum_p = [np.nansum(df[feature].values.tolist(), axis=0),
                  len(df[feature])]
@@ -1424,7 +1561,7 @@ def _agg_sum(df, features):
     return sum_partial
 
 
-@task(returns=list, priority=True)
+@task(returns=1, priority=True)
 def _merge_sum(sum1, sum2):
     """Merge pre-computation."""
     sum_count = []
@@ -1482,28 +1619,21 @@ def _stardard_scaler(data, settings, mean, sse):
     if len(alias) != len(features):
         alias = features
 
-    def computation_scaler(xs, means, stds):
-        scaler = []
-        for xi, mi, std in zip(xs, means, stds):
-            scaler.append(float(xi - mi) / std)
-        return scaler
-
+    from sklearn.preprocessing import StandardScaler
     for i, (alias, col) in enumerate(zip(alias, features)):
-
         size = mean[i][1]
 
-        if with_mean:
-            means = [float(x) / size for x in mean[i][0]]
-        else:
-            means = [0 for _ in mean[i][0]]
+        var_ = [float(sse_p) / size for sse_p in sse[i]]
+        mean_ = [float(x) / size for x in mean[i][0]]
 
-        if with_std:
-            stds = [np.sqrt(float(sse_p) / size) for sse_p in sse[i]]  # std pop
-        else:
-            stds = [1.0 for _ in sse[i]]
+        scaler = StandardScaler()
+        scaler.mean_ = mean_ if with_mean else None
+        scaler.scale_ = np.sqrt(var_) if with_std else None
+        scaler.var_ = var_ if with_std else None
+        scaler.n_samples_seen_ = size
 
-        data[alias] = data[col] \
-            .apply(lambda xs: computation_scaler(xs, means, stds))
+        values = data[col].tolist()
+        data[alias] = scaler.transform(values).tolist()
 
     info = [data.columns.tolist(), data.dtypes.values, [len(data)]]
     return data, info
@@ -1599,13 +1729,13 @@ class StringIndexer(ModelDDF):
         return DDF(task_list=tmp.task_list, last_uuid=uuid_key)
 
 
-@task(returns=list)
+@task(returns=1)
 def get_indexes(data, in_col):
     """Create partial model to convert string to index."""
     return data[in_col].dropna().unique()
 
 
-@task(returns=list)
+@task(returns=1)
 def merge_mapper(data1, data2):
     """Merge partial models into one."""
     data1 = np.concatenate((data1, data2), axis=0)
@@ -1680,11 +1810,11 @@ class IndexToString(ModelDDF):
 
 
 @task(returns=2)
-def _index_to_string(data, inputCol, outputCol, mapper):
+def _index_to_string(data, input_col, output_col, mapper):
     """Convert index to string based in the model."""
     news = [i for i in range(len(mapper))]
     mapper = mapper.tolist()
-    data[outputCol] = data[inputCol].replace(to_replace=news, value=mapper)
+    data[output_col] = data[input_col].replace(to_replace=news, value=mapper)
 
     info = [data.columns.tolist(), data.dtypes.values, [len(data)]]
     return data, info

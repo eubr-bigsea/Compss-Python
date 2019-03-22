@@ -159,26 +159,23 @@ class MultilabelMetrics(DDFSketch):
         return table
 
 
-@task(returns=list)
+@task(returns=1)
 def CME_stage1(data, col_test, col_predicted):
     """Create a partial confusion matrix."""
     Reals = data[col_test].values
     Preds = data[col_predicted].values
 
-    labels = np.unique(
-                np.concatenate(
-                    (data[col_test].unique(), data[col_predicted].unique()),
-                    0))
+    labels = np.unique(np.concatenate((np.unique(Reals), np.unique(Preds)), 0))
 
     df = pd.DataFrame(columns=labels, index=labels).fillna(0)
 
     for real, pred in zip(Reals, Preds):
-        df.loc[real, pred] += 1
+        df.at[real, pred] += 1
 
     return df
 
 
-@task(returns=list)
+@task(returns=1)
 def mergeStage1(p1, p2):
     """Merge partial statistics."""
     p1 = p1.add(p2, fill_value=0)
@@ -193,6 +190,7 @@ def CME_stage2(confusion_matrix):
     acertos = 0
     Precisions = []  # TPR
     Recalls = []  # FPR
+
     for i in labels:
         acertos += confusion_matrix[i].ix[i]
         TP = confusion_matrix[i].ix[i]

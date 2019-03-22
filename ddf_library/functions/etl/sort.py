@@ -8,8 +8,6 @@ from pycompss.api.task import task
 import pandas as pd
 import numpy as np
 
-#TODO: bittonic sort
-
 
 class SortOperation(object):
 
@@ -22,15 +20,31 @@ class SortOperation(object):
             - columns: The list of columns to be sorted.
             - ascending: A list indicating whether the sort order
                 is ascending (True) for each column.
-
+            - algorithm: 'batcher' to Batcher odd–even mergesort
+                (default if nfrag is power of 2), 'oddeven' to
+                commom Odd-Even (if nfrag is not a power of 2);
         :return: A list with nfrag pandas's dataframe
 
-        ..note: #TODO
         """
 
         nfrag = len(data)
         settings = self.preprocessing(settings)
-        result, info = self._sort_by_oddeven(data, settings, nfrag)
+        algorithm = settings.get('algorithm', 'batcher')
+
+        def is_power2(num):
+            """states if a number is a power of two."""
+            return num != 0 and ((num & (num - 1)) == 0)
+
+        if nfrag == 1:
+            info = [[] for _ in range(nfrag)]
+            result = [[] for _ in range(nfrag)]
+            for f in range(nfrag):
+                result[f], info[f] = partial_sort(data[f], settings)
+
+        elif is_power2(nfrag) and algorithm is 'batcher':
+            result, info = self._sort_by_batcher(data, settings)
+        else:
+            result, info = self._sort_by_oddeven(data, settings, nfrag)
 
         output = {'key_data': ['data'], 'key_info': ['info'],
                   'data': result, 'info': info}
@@ -93,6 +107,96 @@ class SortOperation(object):
 
         return result, info
 
+    def _sort_by_batcher(self, data, settings):
+        """
+        Batcher's odd–even mergesort is a generic construction devised by Ken
+        Batcher for sorting networks of size O(n (log n)2) and depth
+        O((log n)2), where n is the number of items to be sorted.
+        """
+        data, info = self.batcher_oddeven_mergesort(data, settings)
+        return data, info
+
+    def batcher_oddeven_mergesort(self, data, settings):
+        """
+        The odd-even mergesort algorithm was developed by K.E. Batcher [
+        Bat 68]. It is based on a merge algorithm that merges two sorted
+        halves of a sequence to a completely sorted sequence.
+        """
+        nfrag = len(data)
+        info = [[] for _ in range(nfrag)]
+        pairs_to_compare = self.oddeven_merge_sort_range(0, nfrag - 1)
+
+        for i, j in pairs_to_compare:
+            data[i], data[j], info[i], info[j] = \
+                _mergesort_bit(data[i], data[j], settings)
+
+        return data, info
+
+    def oddeven_merge(self, lo, hi, r):
+        step = r * 2
+        if step < hi - lo:
+            for i in self.oddeven_merge(lo, hi, step):
+                yield i
+            for i in self.oddeven_merge(lo + r, hi, step):
+                yield i
+            for i in [(i, i + r) for i in range(lo + r, hi - r, step)]:
+                yield i
+        else:
+            yield (lo, lo + r)
+
+    def oddeven_merge_sort_range(self, lo, hi):
+        if (hi - lo) >= 1:
+            # if there is more than one element, split the input
+            # down the middle and first sort the first and second
+            # half, followed by merging them.
+            mid = lo + ((hi - lo) // 2)
+            for i in self.oddeven_merge_sort_range(lo, mid):
+                yield i
+            for i in self.oddeven_merge_sort_range(mid + 1, hi):
+                yield i
+            for i in self.oddeven_merge(lo, hi, 1):
+                yield i
+
+
+@task(returns=2)
+def partial_sort(data, settings):
+    cols = settings['columns']
+    order = settings['ascending']
+
+    data.sort_values(cols, inplace=True, ascending=order, kind='mergesort')
+    data.reset_index(drop=True, inplace=True)
+
+    info = [data.columns.tolist(), data.dtypes.values, [len(data)]]
+
+    return data, info
+
+
+@task(returns=4)
+def _mergesort_bit(data1, data2, settings):
+    """Return 1 if [data1, data2] is sorted, otherwise is -1.
+
+    Space complexity: 2(N+M)
+    """
+    cols = settings['columns']
+    order = settings['ascending']
+
+    n1 = len(data1)
+    n2 = len(data2)
+
+    data = pd.concat([data1, data2], sort=False, ignore_index=True)
+    data.sort_values(cols, inplace=True, ascending=order, kind='mergesort')
+
+    data1 = data.head(n1)
+    data1.reset_index(drop=True, inplace=True)
+
+    data2 = data.tail(n2)
+    data2.reset_index(drop=True, inplace=True)
+
+    info1 = [data1.columns.tolist(), data1.dtypes.values, [len(data1)]]
+    info2 = [data2.columns.tolist(), data2.dtypes.values, [len(data2)]]
+
+    return data1, data2, info1, info2
+
 
 @task(returns=5)
 def _mergesort(data1, data2, settings):
@@ -150,3 +254,12 @@ def check_column(cols):
     while col in cols:
         col = '{}_{}'.format(base, i)
     return col
+
+
+
+
+
+
+
+
+

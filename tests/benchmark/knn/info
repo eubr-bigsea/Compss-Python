@@ -1,0 +1,7 @@
+Without Trace:
+KNN - Exec: 8 Nodes - nfrag 32 - nsize 100000000 -  iteration 1 - It took 562 seconds
+
+
+With Trace:
+
+KNN - Exec: 8 Nodes - nfrag 32 - nsize 100000000 -  iteration 1 - It took 1041 seconds.

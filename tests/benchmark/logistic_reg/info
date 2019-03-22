@@ -1,0 +1,7 @@
+
+Without Trace:
+Logistic Regression - Exec: 8 Nodes - nfrag 32 - nsize 100000000 -  iteration 1 - It took 1206 seconds.
+
+With Trace:
+Logistic Regression - Exec: 8 Nodes - nfrag 32 - nsize 100000000 -  iteration 1 - It took 2307 seconds.
+

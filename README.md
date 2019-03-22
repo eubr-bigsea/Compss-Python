@@ -41,16 +41,18 @@ operations to a single task COMPSs and stacking operations until an action opera
  
 ## Summary of algorithms and operations:
 
- - **ETL**: Add Columns, Aggregation, Cast types, Clean Missing Values, Difference (distinct or all), Distinct (Remove Duplicated Rows), 
- Drop Columns, Set-Intersect (distinct or all), Join (Inner, Left or Right), Load Data, Rename columns, Replace Values, Sample Rows, Save data, 
- Select Columns, Sort, Split, Transform (Map operations), Union (by column position or column name)
+ - **ETL**: Add Columns, Aggregation, Cast types, Clean Missing Values, 
+ Difference (distinct or all), Distinct (Remove Duplicated Rows), Drop Columns, Filter rows, Set-Intersect (distinct or all), 
+ Join (Inner, Left or Right), Load Data, Rename columns, Replace Values, Sample Rows, Save data, Select Columns, Sort, 
+ Split, Transform (Map operations), Union (by column position or column name)
+ - **Statistics**: Covariance, CrossTab, Describe, Frequent Items, Kolmogorov-Smirnov test, Pearson Correlation,
  - **ML**:
    - **Evaluator Models**: Binary Classification Metrics, Multi-label Metrics and Regression Metrics
    - **Feature Operations**: Vector Assembler, Vector Slicer, Binarizer, Tokenizer (Simple and Regex), 
            Remove Stop-Words, N-Gram, Count Vectorizer, Tf-idf Vectorizer, String Indexer,
            Index To String, Scalers (Max-Abs, Min-Max and Standard), PCA and Polynomial Expansion
    
-   - **Frequent Pattern Mining**: Apriori and Association Rules
+   - **Frequent Pattern Mining**: FP-Growth and Association Rules
    - **Classification**: K-Nearest Neighbors, Gaussian Naive Bayes, Logistic Regression, SVM
    - **Clustering**: K-means (using random or k-means|| initialization method), DBSCAN
    - **Regression**: Linear Regression using method of least squares (works only for 2-D data) or using 
