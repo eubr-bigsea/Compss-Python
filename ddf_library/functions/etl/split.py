@@ -27,14 +27,15 @@ def split(data, settings):
     """
     nfrag = len(data)
 
-    idxs = _preprocessing(settings, nfrag)
+    idxs, seed = _preprocessing(settings, nfrag)
     out1 = [[] for _ in range(nfrag)]
     out2 = [[] for _ in range(nfrag)]
     info1 = [[] for _ in range(nfrag)]
     info2 = [[] for _ in range(nfrag)]
 
     for i, fraction in enumerate(idxs):
-        out1[i], out2[i], info1[i], info2[i] = _split_get(data[i], fraction)
+        out1[i], out2[i], info1[i], info2[i] = _split_get(data[i],
+                                                          fraction, seed)
 
     output = {'key_data': ['data1', 'data2'],
               'key_info': ['info1', 'info2'],
@@ -52,7 +53,7 @@ def _preprocessing(settings, nfrag):
         raise Exception("Please inform a valid percentage [0, 1].")
 
     idxs = _split_allocate(info, percentage, seed, nfrag)
-    return idxs
+    return idxs, seed
 
 
 @local
@@ -60,34 +61,43 @@ def _split_allocate(info, percentage, seed, nfrag):
     """Define a list of indexes to be splitted."""
 
     n_list = info[2]
+
     total = sum(n_list)
 
-    size = int(math.floor(total*percentage))
+    size = int(math.ceil(total*percentage))
 
     np.random.seed(seed)
-    ids = np.array(sorted(np.random.choice(total, size, replace=False)))
 
-    n_list = np.cumsum(n_list)
-    list_ids = [[] for _ in range(nfrag)]
+    sizes = [int(math.ceil(n * percentage)) for n in n_list]
 
-    first_id = 0
+    val = sum(sizes)
     for i in range(nfrag):
-        last_id = n_list[i]
-        idx = (ids >= first_id) & (ids < last_id)
-        list_ids[i] = ids[idx] - first_id
-        first_id = last_id
+        if val == size:
+            break
+        if sizes[i] > 0:
+            sizes[i] -= 1
+            val -= 1
 
-    return list_ids
+    return sizes
 
 
 @task(returns=4)
-def _split_get(data, indexes):
+def _split_get(data, value, seed):
     """Retrieve the split."""
-    data.reset_index(drop=True, inplace=True)
-    idx = data.index.isin(indexes)
-    split1 = data.loc[idx]
-    data.drop(index=indexes, inplace=True)
+    n = len(data)
+
+    if n > 0:
+        data.reset_index(drop=True, inplace=True)
+        split1 = data.sample(n=value, replace=False, random_state=seed)
+        data = data.drop(split1.index)
+
+        split1.reset_index(drop=True, inplace=True)
+        data.reset_index(drop=True, inplace=True)
+
+    else:
+        split1 = data.copy()
 
     info1 = [split1.columns.tolist(), split1.dtypes.values, [len(split1)]]
     info2 = [data.columns.tolist(), data.dtypes.values, [len(data)]]
+
     return split1, data, info1, info2

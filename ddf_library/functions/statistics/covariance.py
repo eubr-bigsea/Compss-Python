@@ -71,7 +71,7 @@ def _covariance_stage3(df, info_agg):
 
     error1 = df[col1].values - mean[0]
     error2 = df[col2].values - mean[1]
-    error = (np.array(error1)*np.array(error2)).sum()
+    error = (error1*error2).sum()
 
     return error
 
@@ -87,4 +87,5 @@ def _generate_stage5(agg_info, error):
     count = agg_info['count']
     cov = np.divide(float(error), count-1)
 
+    cov = round(cov, 5)
     return cov

@@ -1,7 +1,0 @@
-
-Without trace:
-Std Scaler - Exec: 8 Nodes - nfrag 32 - nsize 10000000 -  iteration 1 - It took 31 seconds.
-
-with trace: 
-
-Std Scaler - Exec: 8 Nodes - nfrag 32 - nsize 10000000 -  iteration 1 - It took 108 seconds

@@ -216,9 +216,8 @@ class COMPSsContext(object):
             operation[1]['info'] = []
             for p, i in zip(id_parents, n_input):
                 sc = self.schemas_map[p][i]
-                if isinstance(sc, list):
-                    if not isinstance(sc[0], list):
-                        sc = merge_reduce(merge_schema, sc)
+                if not isinstance(sc[0], list):
+                    sc = merge_reduce(merge_schema, sc)
                 operation[1]['info'].append(sc)
 
         return operation

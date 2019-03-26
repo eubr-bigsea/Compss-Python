@@ -183,10 +183,15 @@ def _ar_mergecount(c1, c2):
 class FPGrowth(DDFSketch):
     """
     FPGrowth implements the FP-growth algorithm described in the paper
-    Han et al., Mining requent patterns without candidate generation, where
+    LI et al., Mining requent patterns without candidate generation, where
     “FP” stands for frequent pattern. Given a dataset of transactions, the
     first step of FP-growth is to calculate item frequencies and identify
     frequent items.
+
+
+    LI, Haoyuan et al. Pfp: parallel fp-growth for query recommendation.
+    In: Proceedings of the 2008 ACM conference on Recommender systems.
+    ACM, 2008. p. 107-114.
 
     :Example:
 
@@ -384,18 +389,12 @@ def step4_pfg(df, col, g_list, f):
 
 
 @task(returns=2)
-def step4_merge(r1, df_group_aux, id_group):
+def step4_merge(r1, r_others, id_group):
 
-    r_others = {}
-    for id_o in df_group_aux.keys():
-        t_o = df_group_aux[id_o]
-
-        if id_o == id_group:
-            r1[id_o].extend(t_o)
-        else:
-            r_others[id_o] = t_o
-
-        del df_group_aux[id_o]
+    keys = r_others.keys()
+    if id_group in keys:
+        r1[id_group].extend(r_others[id_group])
+        r_others.pop(id_group, None)
 
     return r1, r_others
 

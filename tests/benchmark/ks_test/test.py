@@ -3,14 +3,16 @@
 
 from pycompss.api.task import task
 from ddf_library.ddf import DDF
+
 import pandas as pd
 import numpy as np
 
 
 @task(returns=1)
-def generate_partition(size, name):
+def generate_partition(size, col_name):
     df = pd.DataFrame()
-    df[name] = np.random.normal(size=size)
+    np.random.seed(123)
+    df[col_name] = np.random.normal(1, 1000, size=size).tolist()
     return df
 
 
@@ -24,14 +26,21 @@ def generate_data(total_size, nfrag, col_name):
 
     return dfs
 
+def local():
+    from scipy import stats
+
+    size = 1000
+    np.random.seed(123)
+    X = np.random.normal(1, 1000, size=size).tolist()
+    print stats.kstest(X, 'norm')
 
 if __name__ == "__main__":
-    print "\n|-------- Sort --------|\n"
+    print "\n|-------- KS Test --------|\n"
     total_size = int(sys.argv[1])
     nfrag = int(sys.argv[2])
-    col_name = 'col_0'
+    col_name = 'feature'
+
     df_list = generate_data(total_size, nfrag, col_name)
 
-    ddf1 = DDF().import_data(df_list).sort([col_name], ascending=[True]).cache()
-
-    # print ddf1.show()
+    ddf1 = DDF().import_data(df_list).kolmogorov_smirnov_one_sample(col_name)
+    print ddf1

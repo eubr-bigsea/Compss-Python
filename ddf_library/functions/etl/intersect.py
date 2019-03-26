@@ -8,6 +8,8 @@ from pycompss.api.task import task
 import pandas as pd
 import numpy as np
 
+from pycompss.api.local import local
+
 
 def intersect(data1, data2, distinct=False):
     """
@@ -45,9 +47,8 @@ def intersect(data1, data2, distinct=False):
 
     for f1 in xrange(nfrag1):
         for f2 in xrange(nfrag2):
-            last = (f2 == (nfrag2-1))
             result[f1], info[f1] = _intersection(result[f1], data2[f2],
-                                                 f2, last)
+                                                 f2, nfrag2)
 
     output = {'key_data': ['data'], 'key_info': ['info'],
               'data': result, 'info': info}
@@ -55,9 +56,14 @@ def intersect(data1, data2, distinct=False):
 
 
 @task(returns=2)
-def _intersection(df1, df2, index, last):
+def _intersection(df1, df2, index, nfrag):
     """Perform a partial intersection."""
-    if len(df1) > 0:
+
+    keys = df1.columns.tolist()
+    keys2 = df2.columns.tolist()
+
+    if set(keys) == set(keys2) and len(df1) > 0:
+
         if index > 0:
             indicator = df1['_merge'].values
             df1.drop(['_merge'], axis=1, inplace=True)
@@ -66,7 +72,6 @@ def _intersection(df1, df2, index, last):
             df1 = df1.dropna(axis=0, how='any')
 
         df2 = df2.dropna(axis=0, how='any')
-        keys = df1.columns.tolist()
         df1 = pd.merge(df1, df2, how='left', on=keys,
                        indicator=True, copy=False)
 
@@ -82,8 +87,9 @@ def _intersection(df1, df2, index, last):
                 np.vectorize(combine_indicators)(col1=df1['_merge'],
                                                  col2=indicator)
 
-        if last:
-            df1 = df1.loc[df1['_merge'] == 'both', keys]
+    if index == (nfrag-1) and "_merge" in keys:
+        df1 = df1.loc[df1['_merge'] == 'both', keys]
+        df1.drop(['_merge'], axis=1, inplace=True)
 
     info = [df1.columns.tolist(), df1.dtypes.values, [len(df1)]]
     return df1, info

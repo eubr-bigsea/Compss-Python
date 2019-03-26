@@ -1,8 +1,0 @@
-without trace:
-
-KS test - Exec: 8 Nodes - nfrag 32 - nsize 100000000 -  iteration 1 - It took 232 seconds.
-
-with trace:
-
-KS test - Exec: 8 Nodes - nfrag 32 - nsize 100000000 -  iteration 1 - It took 309 seconds.
-

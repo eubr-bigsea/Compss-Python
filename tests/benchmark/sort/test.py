@@ -3,16 +3,15 @@
 
 from pycompss.api.task import task
 from ddf_library.ddf import DDF
-
 import pandas as pd
 import numpy as np
+import time
 
 
 @task(returns=1)
-def generate_partition(size, col_name):
+def generate_partition(size, name):
     df = pd.DataFrame()
-    np.random.seed(123)
-    df[col_name] = np.random.normal(1, 1000, size=size).tolist()
+    df[name] = np.random.normal(size=size)
     return df
 
 
@@ -27,13 +26,27 @@ def generate_data(total_size, nfrag, col_name):
     return dfs
 
 
+def local():
+
+    start_time = time.time()
+    col_name = 'col_0'
+    df = pd.DataFrame()
+    df[col_name] = np.random.normal(size=total_size)
+
+    df.sort_values([col_name], ascending=[True])
+
+    end_time = time.time()
+
+    print (end_time-start_time)
+
+
 if __name__ == "__main__":
-    print "\n|-------- KS Test --------|\n"
+    print "\n|-------- Sort --------|\n"
     total_size = int(sys.argv[1])
     nfrag = int(sys.argv[2])
-    col_name = 'feature'
-
+    col_name = 'col_0'
     df_list = generate_data(total_size, nfrag, col_name)
 
-    ddf1 = DDF().import_data(df_list).kolmogorov_smirnov_one_sample(col_name)
-    print ddf1
+    ddf1 = DDF().import_data(df_list).sort([col_name], ascending=[True]).cache()
+
+    # print ddf1.show()

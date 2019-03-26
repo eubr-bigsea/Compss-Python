@@ -374,16 +374,10 @@ class DDF(DDFSketch):
         cached = False
 
         for _ in range(2):
-            if context.COMPSsContext.tasks_map[self.last_uuid][
-                'status'] == 'COMPLETED':
-                n_input = \
-                    context.COMPSsContext.tasks_map[self.last_uuid]['n_input'][
-                        0]
-                # if n_input == -1:
-                #     n_input = 0
+            if context.COMPSsContext.tasks_map[self.last_uuid]['status'] == 'COMPLETED':
+                n_input = context.COMPSsContext.tasks_map[self.last_uuid]['n_input'][0]
                 self.partitions = \
-                    context.COMPSsContext.tasks_map[self.last_uuid]['function'][
-                        n_input]
+                    context.COMPSsContext.tasks_map[self.last_uuid]['function'][n_input]
                 cached = True
                 break
             else:
@@ -606,6 +600,9 @@ class DDF(DDFSketch):
         """
         Calculate the Pearson Correlation Coefficient.
 
+        When one of the standard deviations is zero so the correlation is
+        undefined (NaN).
+
         :param col1: The name of the first column
         :param col2: The name of the second column
         :return: The result of sample covariance
@@ -824,7 +821,7 @@ class DDF(DDFSketch):
         """
         from functions.etl.difference import except_all
 
-        def task_except_all(df, params):
+        def task_except_all(df, _):
             return except_all(df[0], df[1])
 
         new_state_uuid = self._generate_uuid()
@@ -854,7 +851,7 @@ class DDF(DDFSketch):
 
         :Example:
 
-        >>> ddf1.distinct(['col_1'])
+        >>> ddf1.distinct('col_1')
         """
         from functions.etl.distinct import distinct
 
@@ -1447,29 +1444,11 @@ class DDF(DDFSketch):
         """
         last_last_uuid = self.task_list[-2]
         self._check_cache()
-        # cached = False
-        #
-        # for _ in range(2):
-        #     if context.COMPSsContext.tasks_map[self.last_uuid]['status'] == 'COMPLETED':
-        #         n_input = context.COMPSsContext.tasks_map[self.last_uuid]['n_input'][0]
-        #         if n_input == -1:
-        #             n_input = 0
-        #         self.partitions = \
-        #             context.COMPSsContext.tasks_map[self.last_uuid]['function'][n_input]
-        #         cached = True
-        #         break
-        #     else:
-        #         self.cache()
-        #
-        # if not cached:
-        #     raise Exception("ERROR - toPandas - not cached")
 
         res = compss_wait_on(self.partitions)
         n_input = self.settings['input']
-        # if n_input == -1:
-        #     n_input = 0
-
         context.COMPSsContext.tasks_map[self.last_uuid]['function'][n_input] = res
+
         if len(self.task_list) > 2:
             context.COMPSsContext.tasks_map[last_last_uuid]['function'][n_input] = res
 
@@ -1555,9 +1534,9 @@ class DDF(DDFSketch):
 
         self._set_n_input(new_state_uuid, self.settings['input'])
         return DDF(task_list=self.task_list,
-                   last_uuid=new_state_uuid, settings={'input': 0}), \
+                   last_uuid=new_state_uuid, settings={'input': 0}).cache(), \
             DDF(task_list=self.task_list, last_uuid=new_state_uuid,
-                settings={'input': 1})
+                settings={'input': 1}).cache()
 
     def take(self, num):
         """
@@ -1612,6 +1591,7 @@ class DDF(DDFSketch):
         n_input = self.settings['input']
 
         context.COMPSsContext.tasks_map[self.last_uuid]['function'][n_input] = res
+
         if len(self.task_list) > 2:
             context.COMPSsContext.tasks_map[last_last_uuid]['function'][n_input] = res
 

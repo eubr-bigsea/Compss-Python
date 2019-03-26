@@ -12,6 +12,7 @@ __pycache__/
 *.zip
 *.ps
 *.log
+*.xml
 
 # Ignore IntelliJ files
 .idea/

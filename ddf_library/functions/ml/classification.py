@@ -26,15 +26,11 @@ class KNearestNeighbors(ModelDDF):
 
     """K-Nearest Neighbor is a algorithm used that can be used for both
     classification and regression predictive problems. However, it is more
-    widely used in classification problems. Is a non parametric lazy learning
-    algorithm. Meaning that it does not use the training data points to do
-    any generalization. In other words, there is no explicit training phase.
-    More precisely, all the training data is needed during the testing phase.
-
-    In a classification, the algorithm computes from a simple majority vote
-    of the K nearest neighbors of each point present in the training set.
-    The choice of the parameter K is very crucial in this algorithm, and
-    depends on the dataset. However, values of one or tree is more commom.
+    widely used in classification problems. In a classification, the
+    algorithm computes from a simple majority vote of the K nearest neighbors
+    of each point present in the training set. The choice of the parameter
+    K is very crucial in this algorithm, and depends on the dataset.
+    However, values of one or tree is more commom.
 
     :Example:
 
@@ -199,7 +195,7 @@ class SVM(ModelDDF):
     is still effective in cases where number of dimensions is greater than
     the number of samples.
 
-    The algorithm reads a dataset composed by labels (-1.0 or 1.0) and
+    The algorithm reads a dataset composed by labels (-1 or 1) and
     features (numeric fields).
 
     :Example:
@@ -258,22 +254,30 @@ class SVM(ModelDDF):
         w = [0]
         old_cost = np.inf
 
+        cost_grad_p = [[] for _ in range(nfrag)]
+
         for it in range(coef_max_iter):
-            cost_grad_p = [_calc_cost_grad(df[f], f, coef_lambda,
-                                           w, col_label, col_feature) for f in
-                           range(nfrag)]
+            if it == 0:
+                for f in range(nfrag):
+                    cost_grad_p[f], df[f] = \
+                        _calc_cost_grad_first(df[f], f, coef_lambda, w, 
+                                              col_label, col_feature)
+            else:
+                for f in range(nfrag):
+                    cost_grad_p[f] = _calc_cost_grad(df[f], f, coef_lambda, w) 
+
             cost_grad = merge_reduce(_accumulate_cost_grad, cost_grad_p)
             cost_grad = compss_wait_on(cost_grad)
 
             cost = cost_grad[0]
             thresold = np.abs(old_cost - cost)
             if thresold <= coef_threshold:
-                print "[INFO] - Final Cost %.4f" % (cost)
                 break
             else:
                 old_cost = cost
 
             w = _update_weight(coef_lr, cost_grad, w)
+        print "[INFO] - Final Cost %.4f" % cost
 
         self.model = [w]
 
@@ -332,22 +336,24 @@ def _update_weight(coef_lr, grad, w):
     return w
 
 
-@task(returns=list)
-def _calc_cost_grad(train_data, f, coef_lambda, w, label, features):
+@task(returns=2)
+def _calc_cost_grad_first(train_data, f, coef_lambda, w, label, features):
     """Calculate the partial cost and gradient."""
     size_train = len(train_data)
+    labels = train_data[label].values
+    train_data = train_data[features].values
+
     if size_train > 0:
-        dim = len(train_data.iloc[0][features])
-        ypp = np.zeros(size_train)
-        cost = 0
-        grad = np.zeros(dim)
+
+        dim = len(train_data[0])
+        ypp, grad, cost = np.zeros(size_train), np.zeros(dim), 0
 
         if dim != len(w):
             w = [0 for _ in range(dim)]  # initial
 
         for i in range(size_train):
-            ypp[i] = np.matmul(train_data.iloc[i][features], w)
-            condition = train_data.iloc[i][label] * ypp[i]
+            ypp[i] = np.matmul(train_data[i], w)
+            condition = labels[i] * ypp[i]
             if (condition - 1) < 0:
                 cost += (1 - condition)
 
@@ -357,23 +363,54 @@ def _calc_cost_grad(train_data, f, coef_lambda, w, label, features):
                 grad[d] += np.abs(coef_lambda * w[d])
 
             for i in range(size_train):
-                i2 = train_data.iloc[i][label]
+                i2 = labels[i]
                 condition = i2 * ypp[i]
                 if (condition - 1) < 0:
-                    grad[d] -= i2 * train_data.iloc[i][features][d]
+                    grad[d] -= i2 * train_data[i][d]
+
+        return [cost, grad], [labels, train_data]
+    else:
+        return [0, 0], [labels, train_data]
+
+
+@task(returns=1)
+def _calc_cost_grad(train_data, f, coef_lambda, w):
+    """Calculate the partial cost and gradient."""
+    labels, train_data = train_data
+    size_train = len(train_data)
+    
+    if size_train > 0:
+
+        dim = len(train_data[0])
+        ypp, grad, cost = np.zeros(size_train), np.zeros(dim), 0
+
+        for i in range(size_train):
+            ypp[i] = np.matmul(train_data[i], w)
+            condition = labels[i] * ypp[i]
+            if (condition - 1) < 0:
+                cost += (1 - condition)
+
+        for d in range(dim):
+            grad[d] = 0
+            if f is 0:
+                grad[d] += np.abs(coef_lambda * w[d])
+
+            for i in range(size_train):
+                i2 = labels[i]
+                condition = i2 * ypp[i]
+                if (condition - 1) < 0:
+                    grad[d] -= i2 * train_data[i][d]
 
         return [cost, grad]
     else:
         return [0, 0]
-
-
-@task(returns=list)
+    
+    
+@task(returns=1)
 def _accumulate_cost_grad(cost_grad_p1, cost_grad_p2):
     """Merge cost and gradient."""
-    cost_p1 = cost_grad_p1[0]
-    cost_p2 = cost_grad_p2[0]
-    grad_p1 = cost_grad_p1[1]
-    grad_p2 = cost_grad_p2[1]
+    cost_p1, grad_p1 = cost_grad_p1
+    cost_p2, grad_p2 = cost_grad_p2
 
     cost_p1 += cost_p2
     grad_p1 = np.add(grad_p1, grad_p2)
@@ -386,16 +423,9 @@ def _predict_partial(data, w, cols):
     """Predict all records in a fragments."""
     features, predicted_label = cols
 
-    def _predict_one(test_xi, w):
-        """Predict one record based in the model."""
-        if np.matmul(test_xi, w) >= 0:
-            return 1.0
-        return -1.0
-
     if len(data) > 0:
-        values = \
-            np.vectorize(_predict_one, excluded=['w'])(test_xi=data[features],
-                                                       w=w)
+        values = np.matmul(data[features].tolist(), w)
+        values = np.where(values >= 0, 1, -1)
         data[predicted_label] = values.tolist()
     else:
         data[predicted_label] = np.nan

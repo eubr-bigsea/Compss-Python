@@ -31,6 +31,9 @@ def parallelize(data, nfrag):
     info = []
     for r in result:
         info.append([r.columns.tolist(), r.dtypes.values, [len(r)]])
+
+    info = _create_schema(info)
+
     if len(result) > nfrag:
         raise Exception("Error in parallelize function")
 
@@ -56,6 +59,11 @@ def import_to_ddf(df_list):
     info = merge_reduce(merge_schema, info)
     info = compss_wait_on(info)
 
+    info = _create_schema(info)
+    return result, info
+
+
+def _create_schema(info):
     columns, dtypes, n = 0, 0, 0
     for f, schema in enumerate(info):
         if f == 0:
@@ -68,7 +76,8 @@ def import_to_ddf(df_list):
             # Check different datatypes
 
     info = [columns, dtypes, n]
-    return result, info
+
+    return info
 
 
 @task(returns=2)

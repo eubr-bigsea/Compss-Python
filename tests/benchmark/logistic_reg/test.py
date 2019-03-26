@@ -41,7 +41,7 @@ if __name__ == "__main__":
     ddf_train, ddf_test = DDF().import_data(df_list).split(0.10, seed=123)
 
     lr = LogisticRegression(feature_col=col_feature,
-                            label_col=col_label, max_iters=50).fit(ddf_train)
+                            label_col=col_label, max_iters=20).fit(ddf_train)
 
     ddf_test = lr.transform(ddf_test).cache()
     # print ddf_test.show()
