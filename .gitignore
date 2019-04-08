@@ -13,7 +13,7 @@ __pycache__/
 *.ps
 *.log
 *.xml
-
+*.r
 # Ignore IntelliJ files
 .idea/
 *.iml

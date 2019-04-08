@@ -11,6 +11,7 @@ The Sample operation consists of two stages: First stage uses the schema informa
 
  - 8 workers (32 cores)
  - 100kk rows 
+ - Parameters: fraction=0.2
  - Time to run: 15 seconds
 
 

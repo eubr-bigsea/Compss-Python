@@ -1,9 +1,10 @@
-#!/usr/bin/python
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
 __author__ = "Lucas Miguel S Ponce"
 __email__ = "lucasmsp@gmail.com"
 
+from ddf_library.utils import generate_info
 from pycompss.api.task import task
 import pandas as pd
 
@@ -30,9 +31,9 @@ def distinct(data, cols):
     info = [[] for _ in result]
 
     x_i, y_i = generate_pairs(nfrag)
-    for x, y in zip(x_i, y_i):
+    for f, (x, y) in enumerate(zip(x_i, y_i)):
         result[x], result[y], info[x], info[y] = \
-            _drop_duplicates(result[x], result[y], cols)
+            _drop_duplicates(result[x], result[y], cols, f)
 
     output = {'key_data': ['data'], 'key_info': ['info'],
               'data': result, 'info': info}
@@ -73,7 +74,7 @@ def generate_pairs(nfrag):
         
 
 @task(returns=4)
-def _drop_duplicates(data1, data2, cols):
+def _drop_duplicates(data1, data2, cols, frag):
     """Remove duplicate rows based in two fragments at the time."""
     data = pd.concat([data1, data2], axis=0, ignore_index=True, sort=False)
     data1.reset_index(drop=True, inplace=True)
@@ -87,7 +88,7 @@ def _drop_duplicates(data1, data2, cols):
         n = n1 + n2
 
         # Create a temporary column for referencing
-        index = ['p1' for _ in range(n1)] + ['p2' for _ in xrange(n1, n)]
+        index = ['p1' for _ in range(n1)] + ['p2' for _ in range(n1, n)]
         data[tmp_col] = index
 
         # if cols is empty, all fields will be used)
@@ -113,8 +114,8 @@ def _drop_duplicates(data1, data2, cols):
         data1.drop(data1.index[m1:], inplace=True)
         data2.drop(data2.index[m2:], inplace=True)
 
-    info1 = [data1.columns.tolist(), data1.dtypes.values, [len(data1)]]
-    info2 = [data2.columns.tolist(), data2.dtypes.values, [len(data2)]]
+    info1 = generate_info(data1, frag)
+    info2 = generate_info(data2, frag)
 
     return data1, data2, info1, info2
 

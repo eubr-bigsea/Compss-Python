@@ -1,9 +1,10 @@
-#!/usr/bin/python
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
 __author__ = "Lucas Miguel S Ponce"
 __email__ = "lucasmsp@gmail.com"
 
+from ddf_library.utils import generate_info
 from pycompss.api.task import task
 import pandas as pd
 
@@ -28,7 +29,7 @@ def subtract(data1, data2):
 
     for f1 in range(nfrag):
         for df2 in data2:
-            result[f1], info[f1] = _difference(result[f1], df2)
+            result[f1], info[f1] = _difference(result[f1], df2, f1)
 
     output = {'key_data': ['data'], 'key_info': ['info'],
               'data': result, 'info': info}
@@ -36,7 +37,7 @@ def subtract(data1, data2):
 
 
 @task(returns=2)
-def _difference(df1, df2):
+def _difference(df1, df2, frag):
     """Perform a Difference partial operation."""
 
     if len(df1) > 0:
@@ -45,7 +46,7 @@ def _difference(df1, df2):
             df1 = pd.merge(df1, df2, indicator=True, how='left', on=names)
             df1 = df1.loc[df1['_merge'] == 'left_only', names]
 
-    info = [df1.columns.tolist(), df1.dtypes.values, [len(df1)]]
+    info = generate_info(df1, frag)
     return df1, info
 
 
@@ -76,7 +77,8 @@ def except_all(data1, data2):
     for f1 in range(nfrag1):
         for f2 in range(nfrag2):
             end = f2 == (nfrag2 - 1)
-            agg_data1[f1], info[f1] = _except(agg_data1[f1], agg_data2[f2], end)
+            agg_data1[f1], info[f1] = _except(agg_data1[f1], agg_data2[f2],
+                                              end, f1)
 
     output = {'key_data': ['data'], 'key_info': ['info'],
               'data': agg_data1, 'info': info}
@@ -84,7 +86,7 @@ def except_all(data1, data2):
 
 
 @task(returns=2)
-def _except(df1, df2, last):
+def _except(df1, df2, last, frag):
     """Peform a Difference partial operation keeping duplicated rows."""
 
     name1, name2 = list(df1.columns), list(df2.columns)
@@ -101,7 +103,6 @@ def _except(df1, df2, last):
     if last:
 
         values = df1['tmp_except_all'].values
-        print values
 
         for i, v in enumerate(values):
             for _ in range(int(v)-1):
@@ -109,7 +110,7 @@ def _except(df1, df2, last):
                 df1.loc[nfrag+i] = df1.loc[i]
         df1 = df1.drop(['tmp_except_all'], axis=1)
 
-    info = [df1.columns.tolist(), df1.dtypes.values, [len(df1)]]
+    info = generate_info(df1, frag)
     return df1, info
 
 

@@ -1,10 +1,11 @@
-#!/usr/bin/python
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """AttributesChanger: Rename or change the data's type of some columns."""
 
 __author__ = "Lucas Miguel S Ponce"
 __email__ = "lucasmsp@gmail.com"
 
+from ddf_library.utils import generate_info
 from pycompss.api.task import task
 import pandas as pd
 
@@ -25,11 +26,12 @@ def with_column_renamed(data, settings):
 
     existing = settings['old_column']
     new = settings['new_column']
+    frag = settings['id_frag']
 
     mapper = dict(zip(existing, new))
     data.rename(columns=mapper, inplace=True)
 
-    info = [data.columns.tolist(), data.dtypes.values, [len(data)]]
+    info = generate_info(data, frag)
     return data, info
 
 
@@ -48,6 +50,8 @@ def with_column_cast(data, settings):
 
     attributes = settings['attributes']
     new_data_type = settings['cast']
+    frag = settings['id_frag']
+
     cols = data.columns
     for col in attributes:
         if col not in cols:
@@ -68,7 +72,7 @@ def with_column_cast(data, settings):
         elif dtype == "date/time":
             data[att] = pd.to_datetime(data[att], infer_datetime_format=True)
 
-    info = [data.columns.tolist(), data.dtypes.values, [len(data)]]
+    info = generate_info(data, frag)
 
     return data, info
 

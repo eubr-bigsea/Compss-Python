@@ -4,7 +4,9 @@
 __author__ = "Lucas Miguel S Ponce"
 __email__ = "lucasmsp@gmail.com"
 
+from ddf_library.utils import generate_info
 from pycompss.api.task import task
+from pycompss.api.api import compss_wait_on, compss_delete_object
 
 import pandas as pd
 
@@ -54,9 +56,7 @@ class AggregationOperation(object):
             partial_agg[f], idx[f] = _aggregate(data[f], params)
 
         if params.get('idx', True):
-            from pycompss.api.api import compss_wait_on
             idx = compss_wait_on(idx)
-
             # them, group them if each pair is overlapping
             overlapping = overlap(idx)
 
@@ -74,11 +74,13 @@ class AggregationOperation(object):
                         _merge_aggregation(result[f1], partial_agg[f2],
                                            params, f1, f2)
 
+        compss_delete_object(partial_agg)
         output = {'key_data': ['data'], 'key_info': ['info'],
                   'data': result, 'info': info}
         return output
 
 
+# TODO: improve this
 def overlap(sorted_idx):
     """Check if fragments A and B may have some elements to be joined."""
 
@@ -203,7 +205,7 @@ def _merge_aggregation(data1, data2, params, f1, f2):
                               if c not in columns]
         data1 = data1[sequence]
 
-    info = [data1.columns.tolist(), data1.dtypes.values, [len(data1)]]
+    info = generate_info(data1, f1)
     return data1, info
 
 

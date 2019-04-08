@@ -1,13 +1,13 @@
-#!/usr/bin/python
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-from pycompss.api.local import local
+from ddf_library.utils import generate_info
 from pycompss.api.task import task
 import numpy as np
 import math
 
 
-def split(data, settings):
+def random_split(data, settings):
     """
     Randomly splits a DataFrame into two distintics DataFrames.
 
@@ -16,8 +16,8 @@ def split(data, settings):
       - 'percentage': Percentage to split the data (default, 0.5);
       - 'seed': Optional, seed in case of deterministic random operation;
       - 'info': information generated from others tasks (automatic);
-    :return: Returns two lists with nfrag pandas's DataFrame with
-     distincts subsets of the input.
+    :return: Returns two lists with nfrag pandas's DataFrame with distinct
+     subsets of the input.
 
     ..note: The operation consists of two stages: first, we define the
      distribution; and the second we split the data. The first part cannot be
@@ -34,8 +34,8 @@ def split(data, settings):
     info2 = [[] for _ in range(nfrag)]
 
     for i, fraction in enumerate(idxs):
-        out1[i], out2[i], info1[i], info2[i] = _split_get(data[i],
-                                                          fraction, seed)
+        out1[i], info1[i], out2[i], info2[i] = \
+            _split_get(data[i], fraction,  seed, i)
 
     output = {'key_data': ['data1', 'data2'],
               'key_info': ['info1', 'info2'],
@@ -49,26 +49,23 @@ def _preprocessing(settings, nfrag):
     seed = settings.get('seed', None)
     info = settings['info'][0]
 
+    n_list = info['size']
+
     if percentage < 0 or percentage > 1:
         raise Exception("Please inform a valid percentage [0, 1].")
 
-    idxs = _split_allocate(info, percentage, seed, nfrag)
+    idxs = _split_allocate(n_list, percentage, nfrag)
+
     return idxs, seed
 
 
-@local
-def _split_allocate(info, percentage, seed, nfrag):
+def _split_allocate(n_list, fraction, nfrag):
     """Define a list of indexes to be splitted."""
 
-    n_list = info[2]
+    n_rows = sum(n_list)
 
-    total = sum(n_list)
-
-    size = int(math.ceil(total*percentage))
-
-    np.random.seed(seed)
-
-    sizes = [int(math.ceil(n * percentage)) for n in n_list]
+    size = int(math.ceil(n_rows*fraction))
+    sizes = [int(math.ceil(n * fraction)) for n in n_list]
 
     val = sum(sizes)
     for i in range(nfrag):
@@ -82,22 +79,24 @@ def _split_allocate(info, percentage, seed, nfrag):
 
 
 @task(returns=4)
-def _split_get(data, value, seed):
+def _split_get(data, fraction, seed, frag):
     """Retrieve the split."""
+
     n = len(data)
 
     if n > 0:
-        data.reset_index(drop=True, inplace=True)
-        split1 = data.sample(n=value, replace=False, random_state=seed)
-        data = data.drop(split1.index)
-
-        split1.reset_index(drop=True, inplace=True)
-        data.reset_index(drop=True, inplace=True)
-
+        np.random.seed(seed)
+        idx = np.random.randint(0, n, size=fraction)
+        split2 = data[~data.index.isin(idx)]
+        data = data[data.index.isin(idx)]
     else:
-        split1 = data.copy()
+        split2 = data.copy()
 
-    info1 = [split1.columns.tolist(), split1.dtypes.values, [len(split1)]]
-    info2 = [data.columns.tolist(), data.dtypes.values, [len(data)]]
+    data.reset_index(drop=True, inplace=True)
+    info1 = generate_info(data, frag)
 
-    return split1, data, info1, info2
+    split2.reset_index(drop=True, inplace=True)
+    info2 = generate_info(split2, frag)
+
+    return data, info1, split2, info2
+

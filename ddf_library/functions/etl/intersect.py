@@ -1,14 +1,15 @@
-#!/usr/bin/python
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
 __author__ = "Lucas Miguel S Ponce"
 __email__ = "lucasmsp@gmail.com"
 
+from ddf_library.utils import generate_info
 from pycompss.api.task import task
 import pandas as pd
 import numpy as np
 
-from pycompss.api.local import local
+# from pycompss.api.local import local  # requires guppy
 
 
 def intersect(data1, data2, distinct=False):
@@ -45,10 +46,10 @@ def intersect(data1, data2, distinct=False):
     nfrag1 = len(data1)
     nfrag2 = len(data2)
 
-    for f1 in xrange(nfrag1):
-        for f2 in xrange(nfrag2):
+    for f1 in range(nfrag1):
+        for f2 in range(nfrag2):
             result[f1], info[f1] = _intersection(result[f1], data2[f2],
-                                                 f2, nfrag2)
+                                                 f2, nfrag2, f1)
 
     output = {'key_data': ['data'], 'key_info': ['info'],
               'data': result, 'info': info}
@@ -56,7 +57,7 @@ def intersect(data1, data2, distinct=False):
 
 
 @task(returns=2)
-def _intersection(df1, df2, index, nfrag):
+def _intersection(df1, df2, index, nfrag, frag):
     """Perform a partial intersection."""
 
     keys = df1.columns.tolist()
@@ -91,7 +92,7 @@ def _intersection(df1, df2, index, nfrag):
         df1 = df1.loc[df1['_merge'] == 'both', keys]
         df1.drop(['_merge'], axis=1, inplace=True)
 
-    info = [df1.columns.tolist(), df1.dtypes.values, [len(df1)]]
+    info = generate_info(df1, frag)
     return df1, info
 
 

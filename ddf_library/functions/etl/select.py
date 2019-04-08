@@ -1,11 +1,13 @@
-#!/usr/bin/python
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
 __author__ = "Lucas Miguel S Ponce"
 __email__ = "lucasmsp@gmail.com"
 
+from ddf_library.utils import generate_info
 
-def select(data, columns):
+
+def select(data, settings):
     """
     Projects a set of expressions and returns a new DataFrame.
 
@@ -13,7 +15,8 @@ def select(data, columns):
     :param columns: A list with the columns names which will be selected;
     :return: A pandas's DataFrame with only the columns choosed.
     """
-
+    columns = settings['columns']
+    frag = settings['id_frag']
     # remove the columns that not in list1
     fields = [field for field in columns if field in data.columns]
     if len(fields) == 0:
@@ -22,7 +25,7 @@ def select(data, columns):
 
     result = data[fields]
 
-    info = [result.columns.tolist(), result.dtypes.values, [len(result)]]
+    info = generate_info(result, frag)
     return result, info
 
 

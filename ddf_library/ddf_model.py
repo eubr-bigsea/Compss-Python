@@ -1,11 +1,11 @@
-#!/usr/bin/python
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
 __author__ = "Lucas Miguel S Ponce"
 __email__ = "lucasmsp@gmail.com"
 
 import cPickle as pickle
-from ddf import DDFSketch
+from .ddf_base import DDFSketch
 
 
 class ModelDDF(DDFSketch):

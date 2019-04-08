@@ -1,7 +1,0 @@
-Without tracing:
-Binary Evaluator - Exec: 8 Nodes - nfrag 32 - nsize 10000000 -  iteration 1 - It took 30 seconds.
-
-
-Using trace:
-Binary Evaluator - Exec: 8 Nodes - nfrag 32 - nsize 10000000 -  iteration 1 - It took 151 seconds.
-

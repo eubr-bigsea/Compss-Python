@@ -857,6 +857,7 @@ def _nb_predict_chunck(data, summaries, settings):
     predicted_label = settings['pred_col']
     pi = 3.1415926535
     n = len(data)
+    data.reset_index(drop=True, inplace=True)
 
     for class_v, class_summaries in summaries.iteritems():
         avgs, stds = class_summaries
@@ -874,7 +875,7 @@ def _nb_predict_chunck(data, summaries, settings):
 
     predictions = np.zeros(n, dtype=int)
     for i in range(n):
-        predictions[i] = _nb_predict(summaries, data.iloc[i][features_col])
+        predictions[i] = _nb_predict(summaries, data[features_col].iat[i])
 
     data[predicted_label] = predictions.tolist()
 

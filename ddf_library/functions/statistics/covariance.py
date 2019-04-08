@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
 __author__ = "Lucas Miguel S Ponce"
@@ -7,7 +7,8 @@ __email__ = "lucasmsp@gmail.com"
 
 from pycompss.api.task import task
 from pycompss.functions.reduce import merge_reduce
-from pycompss.api.local import local
+from pycompss.api.api import compss_delete_object, compss_wait_on
+# from pycompss.api.local import local # requires guppy
 
 import numpy as np
 
@@ -27,19 +28,20 @@ def covariance(data, settings):
 
     info = [_covariance_stage1(df, settings) for df in data]
     agg_info = merge_reduce(_covariance_stage2, info)
+    compss_delete_object(info)
 
     error = [_covariance_stage3(df, agg_info) for df in data]
-    error = merge_reduce(_describe_stage4, error)
+    agg_error = merge_reduce(_describe_stage4, error)
+    compss_delete_object(error)
 
-    result = _generate_stage5(agg_info, error)
+    result = _generate_stage5(agg_info, agg_error)
 
     return result
 
 
 @task(returns=1)
 def _covariance_stage1(df, settings):
-    col1 = settings['col1']
-    col2 = settings['col2']
+    col1, col2 = settings['col1'], settings['col2']
     columns = [col1, col2]
 
     sums = df[columns].sum(skipna=True, numeric_only=True).values
@@ -82,10 +84,14 @@ def _describe_stage4(error1, error2):
     return error1
 
 
-@local
+# @local
 def _generate_stage5(agg_info, error):
+    agg_info = compss_wait_on(agg_info)
+    error = compss_wait_on(error)
     count = agg_info['count']
-    cov = np.divide(float(error), count-1)
 
-    cov = round(cov, 5)
+    if count == 1:
+        raise Exception("Number of samples is too small.")
+
+    cov = round(error / (count-1), 5)
     return cov

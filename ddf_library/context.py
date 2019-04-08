@@ -1,5 +1,6 @@
-#!/usr/bin/python
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
+
 
 __author__ = "Lucas Miguel S Ponce"
 __email__ = "lucasmsp@gmail.com"
@@ -11,10 +12,14 @@ DDF is a Library for PyCOMPSs.
 """
 
 from pycompss.api.task import task
-from pycompss.functions.reduce import merge_reduce
+from pycompss.api.api import compss_wait_on
+from pycompss.runtime.binding import Future
+
+from ddf_library.utils import merge_info
+
 from collections import OrderedDict, deque
-import ddf
 import copy
+
 
 DEBUG = False
 
@@ -63,7 +68,7 @@ class COMPSsContext(object):
         print("Relevant tasks:")
         for uuid in selected_tasks:
             print("\t{} - ({})".format(self.tasks_map[uuid]['name'], uuid[:8]))
-        print ("\n")
+        print("\n")
 
     def show_tasks(self):
         """
@@ -73,7 +78,7 @@ class COMPSsContext(object):
         print("List of all tasks:")
         for k in self.tasks_map:
             print("{} --> {}".format(k[:8], self.tasks_map[k]))
-        print ("\n")
+        print("\n")
 
     def create_adj_tasks(self, specials=[]):
         """
@@ -116,14 +121,15 @@ class COMPSsContext(object):
         for k in self.adj_tasks:
             self.adj_tasks[k] = list(set(self.adj_tasks[k]))
             if DEBUG:
-                print "{} ({}) --> {}".format(k, self.tasks_map[k]['name'],
-                                              self.adj_tasks[k])
+                print("{} ({}) --> {}".format(k, self.tasks_map[k]['name'],
+                                              self.adj_tasks[k]))
 
         result = list(topological(self.adj_tasks))
 
         return result
 
     def get_taskslist(self, wanted):
+        from ddf_library.ddf import DDF
         import gc
         # mapping all tasks that produce a final result
         action_tasks = []
@@ -135,12 +141,11 @@ class COMPSsContext(object):
                 action_tasks.append(t)
 
         if DEBUG:
-            print "action:", action_tasks
+            print("action:", action_tasks)
         # based on that, get the their variables
-        variables = []
-        n_vars = 0
+        variables, n_vars = [], 0
         for obj in gc.get_objects():
-            if isinstance(obj, ddf.DDF):
+            if isinstance(obj, DDF):
                 n_vars += 1
                 tasks = obj.task_list
                 for k in action_tasks:
@@ -216,8 +221,10 @@ class COMPSsContext(object):
             operation[1]['info'] = []
             for p, i in zip(id_parents, n_input):
                 sc = self.schemas_map[p][i]
-                if not isinstance(sc[0], list):
-                    sc = merge_reduce(merge_schema, sc)
+                if isinstance(sc, list):
+                    sc = merge_info(sc)
+                    sc = compss_wait_on(sc)
+                    self.schemas_map[p][i] = sc
                 operation[1]['info'].append(sc)
 
         return operation
@@ -239,7 +246,7 @@ class COMPSsContext(object):
         if DEBUG:
             self.show_tasks()
             self.show_workflow(selected_tasks)
-            print "topological_tasks: ", topological_tasks
+            print("topological_tasks: ", topological_tasks)
 
         # iterate over all sorted tasks
         for current_task in topological_tasks:
@@ -261,8 +268,8 @@ class COMPSsContext(object):
                 if DEBUG:
                     print(" - task {} ({})".format(
                             self.get_task_name(child_task), child_task[:8]))
-                    print "id_parents: {} and n_input: {}".format(
-                            id_parents, n_input)
+                    print("id_parents: {} and n_input: {}".format(
+                            id_parents, n_input))
 
                 # when has parents: wait all parents tasks be completed
                 if not self.is_ready_to_run(id_parents):
@@ -293,8 +300,7 @@ class COMPSsContext(object):
         represent a COMPSs synchronization.
         """
         if DEBUG:
-            print "RUNNING sync ({}) - condition 2." \
-                .format(child_task)
+            print("RUNNING sync ({}) - condition 2.".format(child_task))
 
         # sync tasks always will have only one parent
         id_p = id_parents[0]
@@ -317,9 +323,8 @@ class COMPSsContext(object):
         """
 
         if DEBUG:
-            print "RUNNING {} ({}) - condition 3.".format(
-                    self.tasks_map[child_task]['name'],
-                    child_task)
+            print("RUNNING {} ({}) - condition 3.".format(
+                    self.tasks_map[child_task]['name'], child_task))
 
         operation = self.set_operation(child_task, id_parents, n_input)
 
@@ -338,14 +343,13 @@ class COMPSsContext(object):
         group_uuids, group_func = set(), list()
 
         if DEBUG:
-            print "RUNNING {} ({}) - condition 4.".format(
-                    self.tasks_map[child_task]['name'], child_task)
+            print("RUNNING {} ({}) - condition 4.".format(
+                    self.tasks_map[child_task]['name'], child_task))
 
         for id_j, task_opt in enumerate(tasks_list[i_task:]):
             if DEBUG:
-                print 'Checking lazziness: {} -> {}'.format(
-                        task_opt[:8],
-                        self.tasks_map[task_opt]['name'])
+                print('Checking lazziness: {} -> {}'.format(
+                        task_opt[:8], self.tasks_map[task_opt]['name']))
 
             group_uuids.add(task_opt)
             group_func.append(self.get_task_function(task_opt))
@@ -362,8 +366,8 @@ class COMPSsContext(object):
                     break
 
         if DEBUG:
-            print "Stages (optimized): {}".format(group_uuids)
-            print "opt_functions", group_func
+            print("Stages (optimized): {}".format(group_uuids))
+            print("opt_functions", group_func)
 
         result, info = self._execute_lazy(group_func, inputs)
         self.save_lazy_states(result, info, group_uuids)
@@ -406,8 +410,8 @@ class COMPSsContext(object):
             self.set_task_status(o, 'COMPLETED')
 
             if DEBUG:
-                print "{} ({}) is COMPLETED - condition 4." \
-                    .format(self.tasks_map[o]['name'], o[:8])
+                print("{} ({}) is COMPLETED - condition 4." \
+                    .format(self.tasks_map[o]['name'], o[:8]))
 
     @staticmethod
     def _execute_task(env, input_data):
@@ -467,11 +471,4 @@ def task_bundle(data, stage, id_frag):
     return data, info
 
 
-@task(returns=1)
-def merge_schema(schema1, schema2):
 
-    columns1, dtypes1, p1 = schema1
-    columns2, dtypes2, p2 = schema2
-
-    schema = [columns1, dtypes1, p1 + p2]
-    return schema

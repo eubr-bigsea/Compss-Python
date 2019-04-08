@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
 __author__ = "Lucas Miguel S Ponce"
@@ -13,92 +13,21 @@ Public classes:
       Distributed DataFrame (DDF), the abstraction of this library.
 """
 
-import uuid
+from pycompss.api.api import compss_wait_on
+
+from ddf_library.ddf_base import DDFSketch
+from ddf_library.context import COMPSsContext
+from ddf_library.utils import generate_info
 
 import pandas as pd
-from pycompss.api.api import compss_wait_on
-from pycompss.functions.reduce import merge_reduce
-
 import copy
+import sys
 
-import context
+if sys.version_info[0] < 3:
+    raise Exception("Must be using Python 3")
 
 
-__all__ = ['DDF', 'DDFSketch']
-
-
-class DDFSketch(object):
-
-    """
-    Basic functions that are necessary when submit a new operation
-    """
-
-    def __init__(self):
-        pass
-
-    @staticmethod
-    def _merge_tasks_list(seq):
-        """
-        Merge two list of tasks removing duplicated tasks
-
-        :param seq: list with possible duplicated elements
-        :return:
-        """
-        seen = set()
-        return [x for x in seq if x not in seen and not seen.add(x)]
-
-    @staticmethod
-    def _generate_uuid():
-        """
-        Generate a unique id
-        :return: uuid
-        """
-        new_state_uuid = str(uuid.uuid4())
-        while new_state_uuid in context.COMPSsContext.tasks_map:
-            new_state_uuid = str(uuid.uuid4())
-        return new_state_uuid
-
-    @staticmethod
-    def _set_n_input(state_uuid, idx):
-        """
-        Method to inform the index of the input data
-
-        :param state_uuid: id of the current task
-        :param idx: idx of input data
-        :return:
-        """
-
-        if 'n_input' not in context.COMPSsContext.tasks_map[state_uuid]:
-            context.COMPSsContext.tasks_map[state_uuid]['n_input'] = []
-        context.COMPSsContext.tasks_map[state_uuid]['n_input'].append(idx)
-
-    @staticmethod
-    def _ddf_inital_setup(data):
-        tmp = data.cache()
-        n_input = context.COMPSsContext.tasks_map[tmp.last_uuid]['n_input'][0]
-        if n_input == -1:
-            n_input = 0
-        df = context.COMPSsContext.tasks_map[tmp.last_uuid]['function'][n_input]
-        nfrag = len(df)
-        return df, nfrag, tmp
-
-    def _ddf_add_task(self, task_name, status, lazy, function,
-                      parent, n_output, n_input, info=None):
-
-        uuid_key = self._generate_uuid()
-        context.COMPSsContext.tasks_map[uuid_key] = {
-            'name': task_name,
-            'status': status,
-            'lazy': lazy,
-            'function': function,
-            'parent': parent,
-            'output': n_output,
-            'input': n_input
-        }
-
-        if info:
-            context.COMPSsContext.schemas_map[uuid_key] = {0: info}
-        return uuid_key
+__all__ = ['DDF', 'generate_info']
 
 
 class DDF(DDFSketch):
@@ -123,20 +52,25 @@ class DDF(DDFSketch):
             self.task_list.append(last_uuid)
 
         else:
-            last_uuid = str(uuid.uuid4())
+            # last_uuid = str(uuid.uuid4())
+            last_uuid = self._ddf_add_task('init', 'COMPLETED', False,
+                                           None, [], None, 0, info=None)
 
             self.task_list = list()
             self.task_list.append(last_uuid)
 
-            context.COMPSsContext.tasks_map[last_uuid] = \
-                {'name': 'init',
-                 'lazy': False,
-                 'input': 0,
-                 'parent': [],
-                 'status': 'COMPLETED'
-                 }
+            # COMPSsContext.tasks_map[last_uuid] = \
+            #     {'name': 'init',
+            #      'lazy': False,
+            #      'input': 0,
+            #      'parent': [],
+            #      'status': 'COMPLETED'
+            #      }
 
         self.last_uuid = last_uuid
+
+    def __str__(self):
+        return "DDF object."
 
     def load_text(self, filename, num_of_parts=4, header=True,
                   sep=',', storage='hdfs', host='localhost', port=9000,
@@ -170,7 +104,7 @@ class DDF(DDFSketch):
         if storage not in ['hdfs', 'fs']:
             raise Exception('`hdfs` and `fs` storage are supported.')
 
-        from functions.etl.read_data import DataReader
+        from .functions.etl.read_data import DataReader
 
         data_reader = DataReader(filename, nfrag=num_of_parts,
                                  format='csv', storage=storage,
@@ -183,7 +117,7 @@ class DDF(DDFSketch):
             result, info = data_reader.transform()
 
             new_state_uuid = self._generate_uuid()
-            context.COMPSsContext.tasks_map[new_state_uuid] = \
+            COMPSsContext.tasks_map[new_state_uuid] = \
                 {'name': 'load_text',
                  'status': 'COMPLETED',
                  'lazy': False,
@@ -193,15 +127,15 @@ class DDF(DDFSketch):
                  'parent': [self.last_uuid]
                  }
 
-            context.COMPSsContext.schemas_map[new_state_uuid] = {0: info}
+            COMPSsContext.schemas_map[new_state_uuid] = {0: info}
         else:
             blocks = data_reader.get_blocks()
 
-            context.COMPSsContext.tasks_map[self.last_uuid]['function'] = \
+            COMPSsContext.tasks_map[self.last_uuid]['function'] = \
                 {0: blocks}
 
             new_state_uuid = self._generate_uuid()
-            context.COMPSsContext.tasks_map[new_state_uuid] = \
+            COMPSsContext.tasks_map[new_state_uuid] = \
                 {'name': 'load_text',
                  'status': 'WAIT',
                  'lazy': True,
@@ -227,13 +161,13 @@ class DDF(DDFSketch):
         >>> ddf1 = DDF().parallelize(df)
         """
 
-        from functions.etl.parallelize import parallelize
+        from .functions.etl.parallelize import parallelize
 
         result, info = parallelize(df, num_of_parts)
 
         new_state_uuid = self._generate_uuid()
-        context.COMPSsContext.schemas_map[new_state_uuid] = {0: info}
-        context.COMPSsContext.tasks_map[new_state_uuid] = \
+        COMPSsContext.schemas_map[new_state_uuid] = {0: info}
+        COMPSsContext.tasks_map[new_state_uuid] = \
             {'name': 'parallelize',
              'status': 'COMPLETED',
              'lazy': False,
@@ -246,7 +180,7 @@ class DDF(DDFSketch):
         return DDF(task_list=self.task_list, last_uuid=new_state_uuid)
 
     def load_shapefile(self, shp_path, dbf_path, polygon='points',
-                       attributes=[], num_of_parts=4):
+                       attributes=None, num_of_parts=4):
         """
         Reads a shapefile using the shp and dbf file.
 
@@ -267,19 +201,22 @@ class DDF(DDFSketch):
         >>>                             dbf_path='/41CURITI.dbf')
         """
 
+        if attributes is None:
+            attributes = []
+
         settings = dict()
         settings['shp_path'] = shp_path
         settings['dbf_path'] = dbf_path
         settings['polygon'] = polygon
         settings['attributes'] = attributes
 
-        from functions.geo import read_shapefile
+        from .functions.geo import read_shapefile
 
         result, info = read_shapefile(settings, num_of_parts)
 
         new_state_uuid = self._generate_uuid()
-        context.COMPSsContext.schemas_map[new_state_uuid] = {0: info}
-        context.COMPSsContext.tasks_map[new_state_uuid] = \
+        COMPSsContext.schemas_map[new_state_uuid] = {0: info}
+        COMPSsContext.tasks_map[new_state_uuid] = \
             {'name': 'load_shapefile',
              'status': 'COMPLETED',
              'lazy': False,
@@ -291,12 +228,14 @@ class DDF(DDFSketch):
         self._set_n_input(new_state_uuid, self.settings['input'])
         return DDF(task_list=self.task_list, last_uuid=new_state_uuid)
 
-    def import_data(self, df_list):
+    def import_data(self, df_list, info=None):
         """
         Import a previous Pandas DataFrame list in DDF abstraction.
         Replace old data if DDF is not empty.
 
         :param df_list: DataFrame input
+        :param info: (Optional) A list of columns names, data types and size
+         in each partition;
         :return: DDF
 
         :Example:
@@ -304,15 +243,15 @@ class DDF(DDFSketch):
         >>> ddf1 = DDF().import_partitions(df_list)
         """
 
-        from functions.etl.parallelize import import_to_ddf
+        from .functions.etl.parallelize import import_to_ddf
 
-        result, info = import_to_ddf(df_list)
+        result, info = import_to_ddf(df_list, info)
 
         new_state_uuid = self._generate_uuid()
-        context.COMPSsContext.schemas_map[new_state_uuid] = {0: info}
+        COMPSsContext.schemas_map[new_state_uuid] = {0: info}
 
         tmp = DDF()
-        context.COMPSsContext.tasks_map[new_state_uuid] = \
+        COMPSsContext.tasks_map[new_state_uuid] = \
             {'name': 'import_data',
              'status': 'COMPLETED',
              'lazy': False,
@@ -330,9 +269,9 @@ class DDF(DDFSketch):
         :return:
         """
 
-        if context.COMPSsContext.tasks_map[self.last_uuid]['status'] == 'COMPLETED':
+        if COMPSsContext.tasks_map[self.last_uuid]['status'] == 'COMPLETED':
             self.partitions = \
-                context.COMPSsContext.tasks_map[self.last_uuid]['function'][0]
+                COMPSsContext.tasks_map[self.last_uuid]['function'][0]
 
         self.partitions = compss_wait_on(self.partitions)
 
@@ -348,12 +287,12 @@ class DDF(DDFSketch):
         """
 
         # TODO: no momento, é necessario para lidar com split
-        # if context.COMPSsContext.tasks_map[self.last_uuid]['status'] == 'COMPLETED':
+        # if COMPSsContext.tasks_map[self.last_uuid]['status'] == 'COMPLETED':
         #     print 'cache skipped'
         #     return self
 
         new_state_uuid = self._generate_uuid()
-        context.COMPSsContext.tasks_map[new_state_uuid] = \
+        COMPSsContext.tasks_map[new_state_uuid] = \
             {'name': 'sync',
              'status': 'WAIT',
              'lazy': False,
@@ -369,27 +308,6 @@ class DDF(DDFSketch):
 
         return tmp
 
-    def _check_cache(self):
-
-        cached = False
-
-        for _ in range(2):
-            if context.COMPSsContext.tasks_map[self.last_uuid]['status'] == 'COMPLETED':
-                n_input = context.COMPSsContext.tasks_map[self.last_uuid]['n_input'][0]
-                self.partitions = \
-                    context.COMPSsContext.tasks_map[self.last_uuid]['function'][n_input]
-                cached = True
-                break
-            else:
-                self.cache()
-
-        if not cached:
-            raise Exception("ERROR - toPandas - not cached")
-
-    def _run_compss_context(self, wanted=None):
-        context.COMPSsContext().run_workflow(wanted)
-        return self
-
     def num_of_partitions(self):
         """
         Returns the number of data partitions (Task parallelism).
@@ -398,26 +316,58 @@ class DDF(DDFSketch):
 
         :Example:
 
-        >>> print ddf1.num_of_partitions()
+        >>> print(ddf1.num_of_partitions())
         """
 
         info = self._get_info()
         size = len(info[2])
         return size
 
-    def count(self):
+    def balancer(self, forced=False):
+        """
+
+        """
+
+        from .functions.etl.balancer import WorkloadBalancer
+        settings = {'forced': forced}
+
+        def task_balancer(df, settings):
+            return WorkloadBalancer(settings).transform(df)
+
+        new_state_uuid = self._generate_uuid()
+        COMPSsContext.tasks_map[new_state_uuid] = \
+            {'name': 'balancer',
+             'status': 'WAIT',
+             'lazy': False,
+             'function': [task_balancer, settings],
+             'parent': [self.last_uuid],
+             'output': 1,
+             'input': 1,
+             'info': True
+             }
+
+        self._set_n_input(new_state_uuid, self.settings['input'])
+        return DDF(task_list=self.task_list, last_uuid=new_state_uuid)
+
+    def count(self, total=True):
         """
         Return a number of rows in this DDF.
 
+        :param total: Show the total number (default) or the number over
+         the fragments.
         :return: integer
 
         :Example:
 
-        >>> print ddf1.count()
+        >>> print(ddf1.count())
         """
 
         info = self._get_info()
-        size = sum(info[2])
+        size = info['size']
+
+        if total:
+            size = sum(size)
+
         return size
 
     def cast(self, column, cast):
@@ -432,7 +382,7 @@ class DDF(DDFSketch):
         :return: DDF
         """
 
-        from functions.etl.attributes_changer import with_column_cast
+        from .functions.etl.attributes_changer import with_column_cast
 
         if not isinstance(column, list):
             column = [column]
@@ -454,7 +404,7 @@ class DDF(DDFSketch):
             return with_column_cast(df, params)
 
         new_state_uuid = self._generate_uuid()
-        context.COMPSsContext.tasks_map[new_state_uuid] = \
+        COMPSsContext.tasks_map[new_state_uuid] = \
             {'name': 'cast',
              'status': 'WAIT',
              'lazy': True,
@@ -468,7 +418,7 @@ class DDF(DDFSketch):
 
         return DDF(task_list=self.task_list, last_uuid=new_state_uuid)
 
-    def add_column(self, data2, suffixes=["_l", "_r"]):
+    def add_column(self, data2, suffixes=None):
         """
         Merge two DDF, column-wise.
 
@@ -483,13 +433,17 @@ class DDF(DDFSketch):
 
         >>> ddf1.add_column(ddf2)
         """
-        from functions.etl.add_columns import AddColumnsOperation
+
+        if suffixes is None:
+            suffixes = ['_l', '_r']
+
+        from .functions.etl.add_columns import AddColumnsOperation
 
         def task_add_column(df, params):
             return AddColumnsOperation().transform(df[0], df[1], params)
 
         new_state_uuid = self._generate_uuid()
-        context.COMPSsContext.tasks_map[new_state_uuid] = \
+        COMPSsContext.tasks_map[new_state_uuid] = \
             {'name': 'add_column',
              'status': 'WAIT',
              'lazy': False,
@@ -518,14 +472,14 @@ class DDF(DDFSketch):
         >>> ddf1.group_by(group_by=['col_1']).mean(['col_2']).first(['col_2'])
         """
         settings = {'groupby': group_by, 'operation': {}}
-        from groupby import GroupedDDF
-        from functions.etl.aggregation import AggregationOperation
+        from .groupby import GroupedDDF
+        from .functions.etl.aggregation import AggregationOperation
 
         def task_aggregation(df, params):
             return AggregationOperation().transform(df, params)
 
         new_state_uuid = self._generate_uuid()
-        context.COMPSsContext.tasks_map[new_state_uuid] = \
+        COMPSsContext.tasks_map[new_state_uuid] = \
             {'name': 'groupby',
              'status': 'WAIT',
              'lazy': False,
@@ -558,7 +512,7 @@ class DDF(DDFSketch):
         >>> ddf1.fillna(['col_1'], value=42)
         """
 
-        from functions.etl.clean_missing import FillNa
+        from .functions.etl.clean_missing import FillNa
 
         lazy = False
         if mode is 'VALUE':
@@ -579,7 +533,7 @@ class DDF(DDFSketch):
                         .fill_by_statistic(df)
 
         new_state_uuid = self._generate_uuid()
-        context.COMPSsContext.tasks_map[new_state_uuid] = \
+        COMPSsContext.tasks_map[new_state_uuid] = \
             {'name': 'fill_na',
              'status': 'WAIT',
              'lazy': lazy,
@@ -593,7 +547,7 @@ class DDF(DDFSketch):
 
     def columns(self):
 
-        columns = self._get_info()[0]
+        columns = self._get_info()['cols']
         return columns
 
     def correlation(self, col1, col2):
@@ -608,9 +562,9 @@ class DDF(DDFSketch):
         :return: The result of sample covariance
         """
 
-        if not isinstance(col1, basestring):
+        if not isinstance(col1, str):
             raise ValueError("col1 should be a string.")
-        if not isinstance(col2, basestring):
+        if not isinstance(col2, str):
             raise ValueError("col2 should be a string.")
 
         df, nfrag, tmp = self._ddf_inital_setup(self)
@@ -632,9 +586,9 @@ class DDF(DDFSketch):
         :return: The result of sample covariance
         """
 
-        if not isinstance(col1, basestring):
+        if not isinstance(col1, str):
             raise ValueError("col1 should be a string.")
-        if not isinstance(col2, basestring):
+        if not isinstance(col2, str):
             raise ValueError("col2 should be a string.")
 
         df, nfrag, tmp = self._ddf_inital_setup(self)
@@ -657,13 +611,13 @@ class DDF(DDFSketch):
 
         >>> ddf1.cross_join(ddf2)
         """
-        from functions.etl.cross_join import crossjoin
+        from .functions.etl.cross_join import crossjoin
 
-        def task_cross_join(df, params):
+        def task_cross_join(df, _):
             return crossjoin(df[0], df[1])
 
         new_state_uuid = self._generate_uuid()
-        context.COMPSsContext.tasks_map[new_state_uuid] = \
+        COMPSsContext.tasks_map[new_state_uuid] = \
             {'name': 'cross_join',
              'status': 'WAIT',
              'lazy': False,
@@ -696,13 +650,13 @@ class DDF(DDFSketch):
         >>> ddf1.cross_tab(col1='col_1', col2='col_2')
         """
         from ddf_library.functions.statistics.cross_tab import cross_tab
-        settings = {'col1': col1, 'col2':col2}
+        settings = {'col1': col1, 'col2': col2}
 
         def task_cross_tab(df, params):
             return cross_tab(df, params)
 
         new_state_uuid = self._generate_uuid()
-        context.COMPSsContext.tasks_map[new_state_uuid] = \
+        COMPSsContext.tasks_map[new_state_uuid] = \
             {'name': 'cross_tab',
              'status': 'WAIT',
              'lazy': False,
@@ -783,13 +737,13 @@ class DDF(DDFSketch):
 
         >>> ddf1.subtract(ddf2)
         """
-        from functions.etl.difference import subtract
+        from .functions.etl.difference import subtract
 
-        def task_difference(df, params):
+        def task_difference(df, _):
             return subtract(df[0], df[1])
 
         new_state_uuid = self._generate_uuid()
-        context.COMPSsContext.tasks_map[new_state_uuid] = \
+        COMPSsContext.tasks_map[new_state_uuid] = \
             {'name': 'subtract',
              'status': 'WAIT',
              'lazy': False,
@@ -819,13 +773,13 @@ class DDF(DDFSketch):
 
         >>> ddf1.except_all(ddf2)
         """
-        from functions.etl.difference import except_all
+        from .functions.etl.difference import except_all
 
         def task_except_all(df, _):
             return except_all(df[0], df[1])
 
         new_state_uuid = self._generate_uuid()
-        context.COMPSsContext.tasks_map[new_state_uuid] = \
+        COMPSsContext.tasks_map[new_state_uuid] = \
             {'name': 'subtract',
              'status': 'WAIT',
              'lazy': False,
@@ -853,13 +807,13 @@ class DDF(DDFSketch):
 
         >>> ddf1.distinct('col_1')
         """
-        from functions.etl.distinct import distinct
+        from .functions.etl.distinct import distinct
 
         def task_distinct(df, params):
             return distinct(df, params)
 
         new_state_uuid = self._generate_uuid()
-        context.COMPSsContext.tasks_map[new_state_uuid] = \
+        COMPSsContext.tasks_map[new_state_uuid] = \
             {'name': 'distinct',
              'status': 'WAIT',
              'lazy': False,
@@ -886,13 +840,13 @@ class DDF(DDFSketch):
         >>> ddf1.drop(['col_1', 'col_2'])
         """
 
-        from functions.etl.drop import drop
+        from .functions.etl.drop import drop
 
         def task_drop(df, cols):
             return drop(df, cols)
 
         new_state_uuid = self._generate_uuid()
-        context.COMPSsContext.tasks_map[new_state_uuid] = \
+        COMPSsContext.tasks_map[new_state_uuid] = \
             {'name': 'drop',
              'status': 'WAIT',
              'lazy': True,
@@ -925,7 +879,7 @@ class DDF(DDFSketch):
         >>> ddf1.dropna(['col_1'], mode='REMOVE_ROW')
         """
 
-        from functions.etl.clean_missing import DropNaN
+        from .functions.etl.clean_missing import DropNaN
 
         if mode is 'REMOVE_ROW':
             lazy = True
@@ -942,7 +896,7 @@ class DDF(DDFSketch):
                     .preprocessing(df).drop_columns(df)
 
         new_state_uuid = self._generate_uuid()
-        context.COMPSsContext.tasks_map[new_state_uuid] = \
+        COMPSsContext.tasks_map[new_state_uuid] = \
             {'name': 'dropna',
              'status': 'WAIT',
              'lazy': lazy,
@@ -972,17 +926,18 @@ class DDF(DDFSketch):
         >>> ddf1.filter("(col_1 == 'male') and (col_3 > 42)")
         """
 
-        from functions.etl.filter import filter
+        from .functions.etl.filter import filter
+        settings = {'query': expr}
 
-        def task_filter(df, query):
-            return filter(df, query)
+        def task_filter(df, params):
+            return filter(df, params)
 
         new_state_uuid = self._generate_uuid()
-        context.COMPSsContext.tasks_map[new_state_uuid] = \
+        COMPSsContext.tasks_map[new_state_uuid] = \
             {'name': 'filter',
              'status': 'WAIT',
              'lazy': True,
-             'function': [task_filter, expr],
+             'function': [task_filter, settings],
              'parent': [self.last_uuid],
              'output': 1,
              'input': 1
@@ -992,7 +947,7 @@ class DDF(DDFSketch):
         return DDF(task_list=self.task_list, last_uuid=new_state_uuid)
 
     def geo_within(self, shp_object, lat_col, lon_col, polygon,
-                   attributes=[], suffix='_shp'):
+                   attributes=None, suffix='_shp'):
         """
         Returns the sectors that the each point belongs.
 
@@ -1013,7 +968,10 @@ class DDF(DDFSketch):
         >>> ddf2.geo_within(ddf1, 'LATITUDE', 'LONGITUDE', 'points')
         """
 
-        from functions.geo import GeoWithinOperation
+        from .functions.geo import GeoWithinOperation
+
+        if attributes is None:
+            attributes = []
 
         settings = dict()
         settings['lat_col'] = lat_col
@@ -1026,7 +984,7 @@ class DDF(DDFSketch):
             return GeoWithinOperation().transform(df[0], df[1], params)
 
         new_state_uuid = self._generate_uuid()
-        context.COMPSsContext.tasks_map[new_state_uuid] = \
+        COMPSsContext.tasks_map[new_state_uuid] = \
             {'name': 'geo_within',
              'status': 'WAIT',
              'lazy': False,
@@ -1056,13 +1014,13 @@ class DDF(DDFSketch):
         >>> ddf2.intersect(ddf1)
         """
 
-        from functions.etl.intersect import intersect
+        from .functions.etl.intersect import intersect
 
         def task_intersect(df, _):
             return intersect(df[0], df[1], distinct=True)
 
         new_state_uuid = self._generate_uuid()
-        context.COMPSsContext.tasks_map[new_state_uuid] = \
+        COMPSsContext.tasks_map[new_state_uuid] = \
             {'name': 'intersect',
              'status': 'WAIT',
              'lazy': False,
@@ -1092,13 +1050,13 @@ class DDF(DDFSketch):
         >>> ddf2.intersect_all(ddf1)
         """
 
-        from functions.etl.intersect import intersect
+        from .functions.etl.intersect import intersect
 
         def task_intersect(df, _):
             return intersect(df[0], df[1], distinct=False)
 
         new_state_uuid = self._generate_uuid()
-        context.COMPSsContext.tasks_map[new_state_uuid] = \
+        COMPSsContext.tasks_map[new_state_uuid] = \
             {'name': 'intersect',
              'status': 'WAIT',
              'lazy': False,
@@ -1113,9 +1071,8 @@ class DDF(DDFSketch):
         new_list = self._merge_tasks_list(self.task_list + data2.task_list)
         return DDF(task_list=new_list, last_uuid=new_state_uuid)
 
-    def join(self, data2, key1=[], key2=[], mode='inner',
-             suffixes=['_l', '_r'], keep_keys=False,
-             case=True, sort=True):
+    def join(self, data2, key1=None, key2=None, mode='inner',
+             suffixes=None, keep_keys=False, case=True, sort=True):
         """
         Joins two DDF using the given join expression.
 
@@ -1138,7 +1095,16 @@ class DDF(DDFSketch):
         >>> ddf1.join(ddf2, key1=['col_1'], key2=['col_1'], mode='inner')
         """
 
-        from functions.etl.join import JoinOperation
+        if key1 is None:
+            key1 = []
+
+        if key2 is None:
+            key2 = []
+
+        if suffixes is None:
+            suffixes = ['_l', '_r']
+
+        from .functions.etl.join import JoinOperation
 
         settings = dict()
         settings['key1'] = key1
@@ -1153,7 +1119,7 @@ class DDF(DDFSketch):
             return JoinOperation().transform(df[0], df[1], params, len(df[0]))
 
         new_state_uuid = self._generate_uuid()
-        context.COMPSsContext.tasks_map[new_state_uuid] = \
+        COMPSsContext.tasks_map[new_state_uuid] = \
             {'name': 'join',
              'status': 'WAIT',
              'lazy': False,
@@ -1233,13 +1199,13 @@ class DDF(DDFSketch):
 
         settings = {'function': f, 'alias': alias}
 
-        from functions.etl.map import map as task
+        from .functions.etl.map import map as task
 
         def task_map(df, params):
             return task(df, params)
 
         new_state_uuid = self._generate_uuid()
-        context.COMPSsContext.tasks_map[new_state_uuid] = \
+        COMPSsContext.tasks_map[new_state_uuid] = \
             {'name': 'map',
              'status': 'WAIT',
              'lazy': True,
@@ -1267,16 +1233,19 @@ class DDF(DDFSketch):
         >>> ddf1.replace({0: 'No', 1: 'Yes'}, subset='col_1')
         """
 
-        from functions.etl.replace_values import replace_value, preprocessing
+        from .functions.etl.replace_values import replace_value, preprocessing
 
-        settings = {'replaces': replaces, 'subset': subset}
+        settings = {'replaces': replaces}
+        if subset is not None:
+            settings['subset'] = subset
+
         settings = preprocessing(settings)
 
         def task_replace(df, params):
             return replace_value(df, params)
 
         new_state_uuid = self._generate_uuid()
-        context.COMPSsContext.tasks_map[new_state_uuid] = \
+        COMPSsContext.tasks_map[new_state_uuid] = \
             {'name': 'replace',
              'status': 'WAIT',
              'lazy': True,
@@ -1305,7 +1274,7 @@ class DDF(DDFSketch):
         >>> ddf1.sample()  # a random sample
         """
 
-        from functions.etl.sample import sample
+        from .functions.etl.sample import sample
         settings = dict()
         settings['seed'] = seed
 
@@ -1322,7 +1291,7 @@ class DDF(DDFSketch):
             return sample(df, params)
 
         new_state_uuid = self._generate_uuid()
-        context.COMPSsContext.tasks_map[new_state_uuid] = \
+        COMPSsContext.tasks_map[new_state_uuid] = \
             {'name': 'sample',
              'status': 'WAIT',
              'lazy': False,
@@ -1336,7 +1305,7 @@ class DDF(DDFSketch):
         self._set_n_input(new_state_uuid, self.settings['input'])
         return DDF(task_list=self.task_list, last_uuid=new_state_uuid)
 
-    def save(self, filename, format='csv', storage='hdfs',
+    def save(self, filename, filetype='csv', storage='hdfs',
              header=True, mode='overwrite'):
         """
         Save the data in the storage.
@@ -1344,18 +1313,18 @@ class DDF(DDFSketch):
         Is it a Lazy function: Yes
 
         :param filename: output name;
-        :param format: format file, CSV or JSON;
+        :param filetype: format file, CSV or JSON;
         :param storage: 'fs' to commom file system or 'hdfs' to use HDFS;
         :param header: save with the columns header;
         :param mode: 'overwrite' if file exists, 'ignore' or 'error'
         :return:
         """
 
-        from ddf.functions.etl.save_data import SaveOperation
+        from ddf_library.functions.etl.save_data import SaveOperation
 
         settings = dict()
         settings['filename'] = filename
-        settings['format'] = format
+        settings['format'] = filetype
         settings['storage'] = storage
         settings['header'] = header
         settings['mode'] = mode
@@ -1366,7 +1335,7 @@ class DDF(DDFSketch):
             return SaveOperation().transform_serial(df, params)
 
         new_state_uuid = self._generate_uuid()
-        context.COMPSsContext.tasks_map[new_state_uuid] = \
+        COMPSsContext.tasks_map[new_state_uuid] = \
             {'name': 'save',
              'status': 'WAIT',
              'lazy': True,
@@ -1379,23 +1348,11 @@ class DDF(DDFSketch):
         self._set_n_input(new_state_uuid, self.settings['input'])
         return DDF(task_list=self.task_list, last_uuid=new_state_uuid)
 
-    def _get_info(self):
-
-        self._check_cache()
-        n_input = self.settings['input']
-        info = context.COMPSsContext.schemas_map[self.last_uuid][n_input]
-        if isinstance(info, list):
-            if not isinstance(info[0], list):
-                info = merge_reduce(context.merge_schema, info)
-        info = compss_wait_on(info)
-
-        context.COMPSsContext.schemas_map[self.last_uuid][n_input] = info
-        return info
-
     def schema(self):
 
         info = self._get_info()
-        tmp = pd.DataFrame.from_dict({'columns': info[0], 'dtype': info[1]})
+        tmp = pd.DataFrame.from_dict({'columns': info['cols'],
+                                      'dtypes': info['dtypes']})
         return tmp
 
     def select(self, columns):
@@ -1412,17 +1369,18 @@ class DDF(DDFSketch):
         >>> ddf1.select(['col_1', 'col_2'])
         """
 
-        from functions.etl.select import select
+        from .functions.etl.select import select
 
-        def task_select(df, fields):
-            return select(df, fields)
+        settings = {'columns': columns}
+        def task_select(df, params):
+            return select(df, params)
 
         new_state_uuid = self._generate_uuid()
-        context.COMPSsContext.tasks_map[new_state_uuid] = \
+        COMPSsContext.tasks_map[new_state_uuid] = \
             {'name': 'select',
              'status': 'WAIT',
              'lazy': True,
-             'function': [task_select, columns],
+             'function': [task_select, settings],
              'parent': [self.last_uuid],
              'output': 1,
              'input': 1
@@ -1433,30 +1391,31 @@ class DDF(DDFSketch):
 
     def show(self, n=20):
         """
-        Returns the DDF contents in a concatenated pandas's DataFrame.
+        Print the DDF contents in a concatenated pandas's DataFrame.
 
         :param n: A number of rows in the result (default is 20);
-        :return: Pandas's DataFrame
+        :return: DataFrame in stdout
 
         :Example:
 
-        >>> df = ddf1.show()
+        >>> ddf1.show()
         """
         last_last_uuid = self.task_list[-2]
         self._check_cache()
 
         res = compss_wait_on(self.partitions)
         n_input = self.settings['input']
-        context.COMPSsContext.tasks_map[self.last_uuid]['function'][n_input] = res
+        COMPSsContext.tasks_map[self.last_uuid]['function'][n_input] = res
 
         if len(self.task_list) > 2:
-            context.COMPSsContext.tasks_map[last_last_uuid]['function'][n_input] = res
+            COMPSsContext.tasks_map[last_last_uuid]['function'][n_input] = res
 
         if any([True for r in res if len(r) > 0]):
             res = [r for r in res if len(r) > 0]  # to avoid change dtypes
         df = pd.concat(res, sort=False)[:abs(n)]
         df.reset_index(drop=True, inplace=True)
-        return df
+        print(df)
+        return self
 
     def sort(self, cols,  ascending=None, mode='batcher'):
         """
@@ -1477,7 +1436,7 @@ class DDF(DDFSketch):
         >>> dd1.sort(['col_1', 'col_2'], ascending=[True, False])
         """
 
-        from functions.etl.sort import SortOperation
+        from .functions.etl.sort import SortOperation
 
         settings = {'columns': cols, 'ascending': ascending, 'algorithm': mode}
 
@@ -1485,14 +1444,15 @@ class DDF(DDFSketch):
             return SortOperation().transform(df, params)
 
         new_state_uuid = self._generate_uuid()
-        context.COMPSsContext.tasks_map[new_state_uuid] = \
+        COMPSsContext.tasks_map[new_state_uuid] = \
             {'name': 'sort',
              'status': 'WAIT',
              'lazy': False,
              'function': [task_sort, settings],
              'parent': [self.last_uuid],
              'output': 1,
-             'input': 1
+             'input': 1,
+             'info': True  # only to forward
              }
 
         self._set_n_input(new_state_uuid, self.settings['input'])
@@ -1513,15 +1473,15 @@ class DDF(DDFSketch):
         >>> ddf2a, ddf2b = ddf1.split(0.5)
         """
 
-        from functions.etl.split import split
+        from .functions.etl.split import random_split
 
         settings = {'percentage': percentage, 'seed': seed}
 
         def task_split(df, params):
-            return split(df, params)
+            return random_split(df, params)
 
         new_state_uuid = self._generate_uuid()
-        context.COMPSsContext.tasks_map[new_state_uuid] = \
+        COMPSsContext.tasks_map[new_state_uuid] = \
             {'name': 'split',
              'status': 'WAIT',
              'lazy': False,
@@ -1552,14 +1512,14 @@ class DDF(DDFSketch):
         >>> ddf1.take(10)
         """
 
-        from functions.etl.sample import take
+        from .functions.etl.take import take
         settings = {'value': num}
 
         def task_take(df, params):
             return take(df, params)
 
         new_state_uuid = self._generate_uuid()
-        context.COMPSsContext.tasks_map[new_state_uuid] = \
+        COMPSsContext.tasks_map[new_state_uuid] = \
             {'name': 'take',
              'status': 'WAIT',
              'lazy': False,
@@ -1573,7 +1533,7 @@ class DDF(DDFSketch):
         self._set_n_input(new_state_uuid, self.settings['input'])
         return DDF(task_list=self.task_list, last_uuid=new_state_uuid)
 
-    def toDF(self, columns=None):
+    def to_df(self, columns=None):
         """
         Returns the DDF contents as a pandas's DataFrame.
 
@@ -1590,10 +1550,10 @@ class DDF(DDFSketch):
         res = compss_wait_on(self.partitions)
         n_input = self.settings['input']
 
-        context.COMPSsContext.tasks_map[self.last_uuid]['function'][n_input] = res
+        COMPSsContext.tasks_map[self.last_uuid]['function'][n_input] = res
 
         if len(self.task_list) > 2:
-            context.COMPSsContext.tasks_map[last_last_uuid]['function'][n_input] = res
+            COMPSsContext.tasks_map[last_last_uuid]['function'][n_input] = res
 
         df = pd.concat(res, sort=True)
         if columns:
@@ -1617,13 +1577,13 @@ class DDF(DDFSketch):
         >>> ddf1.union(ddf2)
         """
 
-        from functions.etl.union import union
+        from .functions.etl.union import union
 
         def task_union(df, _):
             return union(df[0], df[1], by_name=False)
 
         new_state_uuid = self._generate_uuid()
-        context.COMPSsContext.tasks_map[new_state_uuid] = \
+        COMPSsContext.tasks_map[new_state_uuid] = \
             {'name': 'union',
              'status': 'WAIT',
              'lazy': False,
@@ -1653,13 +1613,13 @@ class DDF(DDFSketch):
         >>> ddf1.union_by_name(ddf2)
         """
 
-        from functions.etl.union import union
+        from .functions.etl.union import union
 
         def task_union(df, _):
             return union(df[0], df[1], by_name=True)
 
         new_state_uuid = self._generate_uuid()
-        context.COMPSsContext.tasks_map[new_state_uuid] = \
+        COMPSsContext.tasks_map[new_state_uuid] = \
             {'name': 'union',
              'status': 'WAIT',
              'lazy': False,
@@ -1687,7 +1647,7 @@ class DDF(DDFSketch):
         :return: DDF
         """
 
-        from functions.etl.attributes_changer import with_column_renamed
+        from .functions.etl.attributes_changer import with_column_renamed
 
         if not isinstance(old_column, list):
             old_column = [old_column]
@@ -1695,15 +1655,13 @@ class DDF(DDFSketch):
         if not isinstance(new_column, list):
             new_column = [new_column]
 
-        settings = dict()
-        settings['old_column'] = old_column
-        settings['new_column'] = new_column
+        settings = {'old_column': old_column, 'new_column': new_column}
 
         def task_rename(df, params):
             return with_column_renamed(df, params)
 
         new_state_uuid = self._generate_uuid()
-        context.COMPSsContext.tasks_map[new_state_uuid] = \
+        COMPSsContext.tasks_map[new_state_uuid] = \
             {'name': 'rename',
              'status': 'WAIT',
              'lazy': True,
@@ -1716,5 +1674,3 @@ class DDF(DDFSketch):
         self._set_n_input(new_state_uuid, self.settings['input'])
 
         return DDF(task_list=self.task_list, last_uuid=new_state_uuid)
-
-

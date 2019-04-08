@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
 __author__ = "Lucas Miguel S Ponce"
@@ -7,7 +7,10 @@ __email__ = "lucasmsp@gmail.com"
 
 from pycompss.api.task import task
 from pycompss.functions.reduce import merge_reduce
-from pycompss.api.local import local
+from pycompss.api.api import compss_delete_object, compss_wait_on
+# from pycompss.api.local import local # guppy module isnt available in python3
+from pycompss.api.api import compss_delete_object
+
 
 import numpy as np
 
@@ -26,11 +29,13 @@ def correlation(data, settings):
 
     info = [_covariance_stage1(df, settings) for df in data]
     agg_info = merge_reduce(_covariance_stage2, info)
+    compss_delete_object(info)
 
     error = [_covariance_stage3(df, agg_info) for df in data]
-    error = merge_reduce(_describe_stage4, error)
+    egg_error = merge_reduce(_describe_stage4, error)
+    compss_delete_object(error)
 
-    result = _generate_stage5(agg_info, error)
+    result = _generate_stage5(agg_info, egg_error)
 
     return result
 
@@ -45,6 +50,7 @@ def _covariance_stage1(df, settings):
     count = len(df)
     if len(sums) == 0:
         sums = [0, 0]
+
     info = {'columns': columns, 'count': count, 'sum': sums}
 
     return info
@@ -88,8 +94,11 @@ def _describe_stage4(info1, info2):
     return [error1, sse1, sse2]
 
 
-@local
+# @local
 def _generate_stage5(agg_info, info):
+    agg_info = compss_wait_on(agg_info)
+    info = compss_wait_on(info)
+
     error, sse1, sse2 = info
     count = agg_info['count']
     std1 = np.sqrt(np.divide(float(sse1), count - 1))

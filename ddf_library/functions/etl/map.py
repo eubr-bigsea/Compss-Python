@@ -1,9 +1,10 @@
-#!/usr/bin/python
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
 __author__ = "Lucas Miguel S Ponce"
 __email__ = "lucasmsp@gmail.com"
 
+from ddf_library.utils import generate_info
 import numpy as np
 import datetime
 
@@ -24,6 +25,7 @@ def map(data, settings):
     """
     function = settings['function']
     new_column = settings['alias']
+    frag = settings['id_frag']
 
     if len(data) > 0:
         # vectorized_function = np.vectorize(function)
@@ -32,7 +34,7 @@ def map(data, settings):
     else:
         data[new_column] = np.nan
 
-    info = [data.columns.tolist(), data.dtypes.values, [len(data)]]
+    info = generate_info(data, frag)
     return data, info
 
 

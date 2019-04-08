@@ -1,9 +1,10 @@
-#!/usr/bin/python
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
 __author__ = "Lucas Miguel S Ponce"
 __email__ = "lucasmsp@gmail.com"
 
+from ddf_library.utils import generate_info
 from pycompss.api.task import task
 import pandas as pd
 import string
@@ -25,7 +26,7 @@ def crossjoin(data1, data2):
 
     for f, df1 in enumerate(data1):
         for df2 in data2:
-            result[f], info[f] = _crossjoin(result[f], df1, df2)
+            result[f], info[f] = _crossjoin(result[f], df1, df2, f)
 
     output = {'key_data': ['data'], 'key_info': ['info'],
               'data': result, 'info': info}
@@ -33,7 +34,7 @@ def crossjoin(data1, data2):
 
 
 @task(returns=2)
-def _crossjoin(result, df1, df2):
+def _crossjoin(result, df1, df2, frag):
 
     key = 'key'
     while key in df1.columns or key in df2.columns:
@@ -49,5 +50,5 @@ def _crossjoin(result, df1, df2):
     else:
         result = pd.concat([result, product], sort=True)
 
-    info = [result.columns.tolist(), result.dtypes.values, [len(result)]]
+    info = generate_info(result, frag)
     return result, info

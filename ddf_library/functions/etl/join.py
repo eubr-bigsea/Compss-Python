@@ -1,9 +1,10 @@
-#!/usr/bin/python
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
 __author__ = "Lucas Miguel S Ponce"
 __email__ = "lucasmsp@gmail.com"
 
+from ddf_library.utils import generate_info
 from pycompss.api.task import task
 from pycompss.functions.reduce import merge_reduce
 import pandas as pd
@@ -73,11 +74,11 @@ class JoinOperation(object):
                     if over:
                         result[f1], info[f1] = \
                             _join(result[f1], data2[f1], data1[f2],
-                                  params, last)
+                                  params, last, f1)
                         filled = True
                 if not filled:
                     result[f1], info[f1] = fix_columns(data2[f1],
-                                                       sorted_idx1[0], params)
+                                                       sorted_idx1[0], params, f1)
         else:
             overlapping = overlap(sorted_idx1, sorted_idx2, nfrag)
 
@@ -87,11 +88,11 @@ class JoinOperation(object):
                     over, last = overlapping[f1][f2]
                     if over:
                         result[f1], info[f1] = _join(result[f1], data1[f1],
-                                                     data2[f2], params, last)
+                                                     data2[f2], params, last, f1)
                         filled = True
                 if not filled:
                     result[f1], info[f1] = fix_columns(data1[f1],
-                                                       sorted_idx2[0], params)
+                                                       sorted_idx2[0], params, f1)
 
         output = {'key_data': ['data'], 'key_info': ['info'],
                   'data': result, 'info': info}
@@ -216,7 +217,7 @@ def check_dtypes(data1, data2, key1, key2):
 
 
 @task(returns=2)
-def _join(result, data1, data2, params, last):
+def _join(result, data1, data2, params, last, frag):
     """Peform a join and a concatenation with the previosly join."""
     case_sensitive = params.get('case', True)
     keep = params.get('keep_keys', False)
@@ -300,15 +301,15 @@ def _join(result, data1, data2, params, last):
         else:
             data1 = data1.drop(['_merge'], axis=1)
 
-    print "[INFO - JOIN] - columns:", list(data1.columns)
-    print "[INFO - JOIN] - length:", len(data1)
+    # print "[INFO - JOIN] - columns:", list(data1.columns)
+    # print "[INFO - JOIN] - length:", len(data1)
 
-    info = [data1.columns.tolist(), data1.dtypes.values, [len(data1)]]
+    info = generate_info(data1, frag)
     return data1, info
 
 
 @task(returns=2)
-def fix_columns(data1, cols2, params):
+def fix_columns(data1, cols2, params, frag):
     """It is necessary change same columns names in empty partitions."""
     keep = params.get('keep_keys', False)
     suffixes = params.get('suffixes', ['_l', '_r'])
@@ -341,5 +342,5 @@ def fix_columns(data1, cols2, params):
     if not keep:
         data1 = data1.drop(key2, axis=1)
 
-    info = [data1.columns.tolist(), data1.dtypes.values, [len(data1)]]
+    info = generate_info(data1, frag)
     return data1, info

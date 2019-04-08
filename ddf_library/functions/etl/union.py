@@ -1,9 +1,10 @@
-#!/usr/bin/python
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
 __author__ = "Lucas Miguel S Ponce"
 __email__ = "lucasmsp@gmail.com"
 
+from ddf_library.utils import generate_info
 from pycompss.api.task import task
 import pandas as pd
 
@@ -24,7 +25,7 @@ def union(data1, data2, by_name=True):
     result = [[] for _ in range(nfrag)]
     info = [[] for _ in range(nfrag)]
     for f in range(nfrag):
-        result[f], info[f] = _union(data1[f], data2[f], by_name)
+        result[f], info[f] = _union(data1[f], data2[f], by_name, f)
 
     output = {'key_data': ['data'], 'key_info': ['info'],
               'data': result, 'info': info}
@@ -33,7 +34,7 @@ def union(data1, data2, by_name=True):
 
 
 @task(returns=2)
-def _union(df1, df2, by_name):
+def _union(df1, df2, by_name, frag):
     """Perform a partil union."""
 
     if len(df1) == 0:
@@ -53,6 +54,6 @@ def _union(df1, df2, by_name):
 
         result = pd.concat([df1, df2], ignore_index=True, sort=False)
 
-    info = [result.columns.tolist(), result.dtypes.values, [len(result)]]
+    info = generate_info(result, frag)
     return result, info
 

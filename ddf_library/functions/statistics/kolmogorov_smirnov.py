@@ -1,13 +1,17 @@
-#!/usr/bin/python
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
 __author__ = "Lucas Miguel S Ponce"
 __email__ = "lucasmsp@gmail.com"
 
+from ddf_library.utils import merge_info
+from ..etl.select import select
+from ..etl.sort import SortOperation
 
 from pycompss.api.task import task
 from pycompss.functions.reduce import merge_reduce
-from pycompss.api.local import local
+# from pycompss.api.local import local # guppy module isnt available in python3
+from pycompss.api.api import compss_delete_object, compss_wait_on
 
 import numpy as np
 from scipy.stats import distributions
@@ -36,6 +40,7 @@ def kolmogorov_smirnov_one_sample(data, settings):
 
         """
 
+        nfrag = len(data)
         col = settings['col']
         mode = settings.get('mode', 'asymp')
 
@@ -45,32 +50,34 @@ def kolmogorov_smirnov_one_sample(data, settings):
         if not isinstance(col, list):
             col = [col]
 
-        nfrag = len(data)
-
+        info = [0 for _ in range(nfrag)]
         for f in range(nfrag):
-            data[f], _ = _select(data[f], col)
+            params = {'columns': col, 'id_frag':f}
+            data[f], info[f] = _select(data[f], params)
+        info = merge_info(info)
+        info = compss_wait_on(info)
 
-        from ..etl.sort import SortOperation
-        settings_sort = {
+        params = {
             'columns': col,
-            'ascending': [True for _ in range(len(col))]
-             }
+            'ascending': [True for _ in col],
+            'info': [info]
+        }
 
-        sort_output = SortOperation().transform(data, settings_sort)
-        data, info = sort_output['data'], sort_output['info']
-        info = merge_reduce(merge_schema, info)
+        sort_output = SortOperation().transform(data, params)
+        sort_data = sort_output['data']
+        compss_delete_object(data)
 
         for f in range(nfrag):
-            data[f] = _ks_theorical_dist(data[f], info, f, settings)
-        data = merge_reduce(_ks_merge, data)
+            sort_data[f] = _ks_theorical_dist(sort_data[f], info, f, settings)
+        info = merge_reduce(_ks_merge, sort_data)
+        compss_delete_object(sort_data)
 
-        data = _ks_d_critical(data, mode)
-        return data
+        info = _ks_d_critical(info, mode)
+        return info
 
 
 @task(returns=2)
 def _select(data, col):
-    from ..etl.select import select
     data, info = select(data, col)
     return data, info
 
@@ -80,7 +87,8 @@ def _ks_theorical_dist(data, info, f, settings):
     col = settings['col']
     distribution = settings.get('distribution', 'norm')
     args = settings.get('args', ())
-    _, _, n = info
+    n = info['size']
+
     if f == 0:
         n1 = 0
     else:
@@ -115,31 +123,23 @@ def _ks_merge(info1, info2):
     return [[max(error1)], n]
 
 
-@local
+# @local
 def _ks_d_critical(info, mode):
+
+    info = compss_wait_on(info)
     ks_stat, n = info
     ks_stat = ks_stat[0]
 
     if mode == 'asymp':
-        pvalue = distributions.kstwobign.sf(ks_stat * np.sqrt(n))
+        p_value = distributions.kstwobign.sf(ks_stat * np.sqrt(n))
     else:
-        pval_two = distributions.kstwobign.sf(ks_stat * np.sqrt(n))
-        if n > 2666 or pval_two > 0.80 - n * 0.3 / 1000.0:
-            pvalue = pval_two
+        p_val_two = distributions.kstwobign.sf(ks_stat * np.sqrt(n))
+        if n > 2666 or p_val_two > 0.80 - n * 0.3 / 1000.0:
+            p_value = p_val_two
         else:
-            pvalue = distributions.ksone.sf(ks_stat, n) * 2
+            p_value = distributions.ksone.sf(ks_stat, n) * 2
 
-    pvalue = round(pvalue, 10)
+    p_value = round(p_value, 10)
     ks_stat = round(ks_stat, 10)
-    return ks_stat, pvalue
-
-
-@task(returns=1)
-def merge_schema(schema1, schema2):
-
-    columns1, dtypes1, p1 = schema1
-    columns2, dtypes2, p2 = schema2
-
-    schema = [columns1, dtypes1, p1 + p2]
-    return schema
+    return ks_stat, p_value
 

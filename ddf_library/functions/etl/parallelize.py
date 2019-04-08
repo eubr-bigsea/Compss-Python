@@ -1,13 +1,14 @@
-#!/usr/bin/python
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
 from pycompss.api.task import task
 from pycompss.functions.reduce import merge_reduce
-from pycompss.functions.data import chunks
-from pycompss.api.api import compss_wait_on
+from pycompss.api.api import compss_wait_on, compss_delete_object
+from ddf_library.utils import generate_info, merge_schema
 
 import math
 import pandas as pd
+import sys
 
 
 def parallelize(data, nfrag):
@@ -22,71 +23,117 @@ def parallelize(data, nfrag):
        :Note: the result may be unbalanced when the number of rows is too small
     """
 
-    new_size = int(math.ceil(float(len(data))/nfrag))
-    result = [d for d in chunks(data, new_size)]
+    n_rows = len(data)
 
-    while len(result) < nfrag:
-        result.append(pd.DataFrame(columns=result[0].columns))
+    # sizes = _generate_distribution1(n_rows, nfrag)  # only when n >> nfrag
+    sizes = _generate_distribution2(n_rows, nfrag)
 
-    info = []
-    for r in result:
-        info.append([r.columns.tolist(), r.dtypes.values, [len(r)]])
+    cols = data.columns.tolist()
+    data.reset_index(drop=True, inplace=True)
+    result = [pd.DataFrame(columns=cols) for _ in range(nfrag)]
 
-    info = _create_schema(info)
+    info = {'cols': cols,
+            'dtypes': data.dtypes.values,
+            'size': [],
+            'memory': []
+            }
 
-    if len(result) > nfrag:
-        raise Exception("Error in parallelize function")
+    begin = 0
+    for i, n in enumerate(sizes):
+        partition = data.iloc[begin:begin+n]
+        begin += n
+        partition.reset_index(drop=True, inplace=True)
+        result[i] = partition
+        info['size'].append(len(partition))
+        info['memory'].append(sys.getsizeof(partition))
+
+    if len(result) != nfrag:
+        raise Exception("Error in parallelize function.")
 
     return result, info
 
 
-def import_to_ddf(df_list):
+def _generate_distribution1(n_rows, nfrag):
+    """
+    Each fragment will have the same number of rows, except
+    in fragments at end and that doesnt have more available data.
+    """
+    size = n_rows / nfrag
+    size = int(math.ceil(size))
+    sizes = [size for _ in range(nfrag)]
+
+    return sizes
+
+
+def _generate_distribution2(n_rows, nfrag):
+    """Data is splitted among the partitions."""
+
+    size = n_rows / nfrag
+    size = int(math.ceil(size))
+    sizes = [size for _ in range(nfrag)]
+
+    i = 0
+    while sum(sizes) > n_rows:
+        i += 1
+        sizes[i % nfrag] -= 1
+
+    sizes = sorted(sizes, reverse=True)
+    return sizes
+
+
+def import_to_ddf(df_list, schema=None):
     """
     In order to import a list of DataFrames in DDF abstraction, we need to
     check the schema of each partition.
 
     :param df_list: a List of Pandas DataFrames
+    :param schema: A list of columns names, data types and size in each fragment
     :return: a List of Pandas DataFrames and a schema
     """
 
     nfrag = len(df_list)
-    result = [[] for _ in range(nfrag)]
-    info = [[] for _ in range(nfrag)]
 
-    for f in range(nfrag):
-        result[f], info[f] = _get_schema(df_list[f])
+    if schema is None:
+        schema = [_get_schema(df_list[f], f) for f in range(nfrag)]
 
-    info = merge_reduce(merge_schema, info)
-    info = compss_wait_on(info)
+    info_agg = merge_reduce(merge_schema, schema)
+    compss_delete_object(schema)
 
-    info = _create_schema(info)
-    return result, info
+    info_agg = compss_wait_on(info_agg)
+    info = _check_schema(info_agg)
+
+    return df_list, info
 
 
-def _create_schema(info):
-    columns, dtypes, n = 0, 0, 0
-    for f, schema in enumerate(info):
-        if f == 0:
-            columns, dtypes, n = schema
-        else:
-            columnsf, dtypefs, nf = schema
-            if set(columns) != set(columnsf):
-                raise Exception("Partitions have different columns names.")
-            n += nf
-            # Check different datatypes
+def _check_schema(info):
 
-    info = [columns, dtypes, n]
+    if not isinstance(info, dict):
+        raise Exception(info)
+
+    memory = info['memory']
+    human_readable = _human_bytes(sum(memory))
+    print("Size of pandas in memory (bytes): ", memory)
+    print("Total size of pandas in memory: ", human_readable)
 
     return info
 
 
-@task(returns=2)
-def _get_schema(df):
+def _human_bytes(size):
+    """Return the given bytes as a human friendly KB, MB, GB, or TB string"""
+    # 2**10 = 1024
+    power = 2**10
+    n = 0
+    power_of_n = {0: 'B', 1: 'KB', 2: 'MB', 3: 'GB', 4: 'TB'}
+    while size > power:
+        size /= power
+        n += 1
 
-    info = [df.columns.tolist(), df.dtypes.values, [len(df)]]
-    return df, [info]
+    value = "{:.2f} {}".format(size, power_of_n[n])
+    return value
 
 
-@task(returns=1, priority=True)
-def merge_schema(schema1, schema2):
-    return schema1 + schema2
+@task(returns=1)
+def _get_schema(df, f):
+    info = generate_info(df, f)
+    return info
+

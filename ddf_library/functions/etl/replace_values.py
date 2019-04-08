@@ -1,10 +1,10 @@
-#!/usr/bin/python
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
 __author__ = "Lucas Miguel S Ponce"
 __email__ = "lucasmsp@gmail.com"
 
-
+from ddf_library.utils import generate_info
 import numpy as np
 
 
@@ -24,6 +24,7 @@ def replace_value(data, settings):
     """
 
     replaces = settings['replaces']
+    frag = settings['id_frag']
     subset = settings.get('subset', data.columns)
 
     to_replace = dict()
@@ -58,7 +59,7 @@ def replace_value(data, settings):
     #     mask = np.isclose(data[col],  old, rtol=1e-06)
     #     data.ix[mask, col] = new
 
-    info = [data.columns.tolist(), data.dtypes.values, [len(data)]]
+    info = generate_info(data, frag)
 
     return data, info
 

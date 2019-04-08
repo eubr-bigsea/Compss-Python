@@ -6,7 +6,8 @@ __email__ = "lucasmsp@gmail.com"
 
 from pycompss.api.task import task
 from pycompss.functions.reduce import merge_reduce
-from pycompss.api.local import *
+from pycompss.api.api import compss_delete_object, compss_wait_on
+from pycompss.api.local import local
 from ddf_library.ddf import DDFSketch
 
 import numpy as np
@@ -48,7 +49,7 @@ class BinaryClassificationMetrics(DDFSketch):
     >>> print bin_metrics.f1
     """
 
-    def __init__(self, label_col, pred_col, data, true_label=1):
+    def __init__(self, label_col, pred_col, ddf_var, true_label=1):
         """
         :param label_col: Column name of true label values;
         :param pred_col: Colum name of predicted label values;
@@ -57,13 +58,13 @@ class BinaryClassificationMetrics(DDFSketch):
         """
         super(BinaryClassificationMetrics, self).__init__()
 
-        df, nfrag, tmp = self._ddf_inital_setup(data)
+        df, nfrag, tmp = self._ddf_inital_setup(ddf_var)
 
-        stage1 = [CME_stage1(df[f], label_col, pred_col)
-                  for f in range(nfrag)]
-        merged_stage1 = merge_reduce(mergeStage1, stage1)
-
-        result = CME_stage2_binary(merged_stage1, true_label)
+        stage1 = [cme_stage1(df[f], label_col, pred_col) for f in range(nfrag)]
+        merged_stage1 = merge_reduce(merge_stage1, stage1)
+        compss_delete_object(stage1)
+        
+        result = cme_stage2_binary(merged_stage1, true_label)
         confusion_matrix, accuracy, precision, recall, f1 = result
 
         self.confusion_matrix = confusion_matrix
@@ -117,7 +118,7 @@ class MultilabelMetrics(DDFSketch):
     >>> print metrics_multi.f1
     """
 
-    def __init__(self, label_col, pred_col, data):
+    def __init__(self, label_col, pred_col, ddf_var):
         """
         :param label_col: Column name of true label values;
         :param pred_col: Colum name of predicted label values;
@@ -126,13 +127,15 @@ class MultilabelMetrics(DDFSketch):
 
         super(MultilabelMetrics, self).__init__()
 
-        df, nfrag, tmp = self._ddf_inital_setup(data)
+        df, nfrag, tmp = self._ddf_inital_setup(ddf_var)
 
-        stage1 = [CME_stage1(df[f], label_col, pred_col)
-                  for f in range(nfrag)]
-        merged_stage1 = merge_reduce(mergeStage1, stage1)
+        stage1 = [cme_stage1(df[f], label_col, pred_col) for f in range(nfrag)]
+        merged_stage1 = merge_reduce(merge_stage1, stage1)
+        compss_delete_object(stage1)
 
-        result = CME_stage2(merged_stage1)
+        result = cme_stage2(merged_stage1)
+        compss_delete_object(merged_stage1)
+        
         result = compss_wait_on(result)
         confusion_matrix, accuracy, precision, recall, f1, precision_recall \
             = result
@@ -160,7 +163,7 @@ class MultilabelMetrics(DDFSketch):
 
 
 @task(returns=1)
-def CME_stage1(data, col_test, col_predicted):
+def cme_stage1(data, col_test, col_predicted):
     """Create a partial confusion matrix."""
     Reals = data[col_test].values
     Preds = data[col_predicted].values
@@ -176,14 +179,14 @@ def CME_stage1(data, col_test, col_predicted):
 
 
 @task(returns=1)
-def mergeStage1(p1, p2):
+def merge_stage1(p1, p2):
     """Merge partial statistics."""
     p1 = p1.add(p2, fill_value=0)
     return p1
 
 
-@task(returns=list)
-def CME_stage2(confusion_matrix):
+@task(returns=1)
+def cme_stage2(confusion_matrix):
     """Generate the final evaluation."""
     N = confusion_matrix.sum().sum()
     labels = confusion_matrix.index
@@ -215,7 +218,7 @@ def CME_stage2(confusion_matrix):
 
 
 @local
-def CME_stage2_binary(confusion_matrix, true_label):
+def cme_stage2_binary(confusion_matrix, true_label):
     """Generate the final evaluation (for binary classification)."""
     total_size = confusion_matrix.sum().sum()
     labels = confusion_matrix.index
@@ -288,10 +291,12 @@ class RegressionMetrics(DDFSketch):
         df, nfrag, tmp = self._ddf_inital_setup(data)
 
         cols = [label_col, pred_col, col_features]
-        partial = [RME_stage1(df[f], cols) for f in range(nfrag)]
-        statistics = merge_reduce(mergeRME, partial)
-        result = RME_stage2(statistics)
+        partial = [rme_stage1(df[f], cols) for f in range(nfrag)]
 
+        statistics = merge_reduce(rme_merge, partial)
+        compss_delete_object(partial)
+        
+        result = rme_stage2(statistics)
         r2, mse, rmse, mae, msr = result
 
         self.r2 = r2
@@ -317,7 +322,7 @@ class RegressionMetrics(DDFSketch):
 
 
 @task(returns=list)
-def RME_stage1(df, cols):
+def rme_stage1(df, cols):
     """Generate the partial statistics of each fragment."""
     dim = 1
     col_test, col_predicted, col_features = cols
@@ -343,7 +348,7 @@ def RME_stage1(df, cols):
 
 
 @task(returns=list)
-def mergeRME(pstatistic1, pstatistic2):
+def rme_merge(pstatistic1, pstatistic2):
     """Merge the partial statistics."""
     dim = max(pstatistic1[1], pstatistic2[1])
     pstatistic = pstatistic1[0] + pstatistic2[0]
@@ -352,7 +357,7 @@ def mergeRME(pstatistic1, pstatistic2):
 
 
 @local
-def RME_stage2(statistics):
+def rme_stage2(statistics):
     """Generate the final evaluation."""
     dim = statistics[1]
     N, SSE, SSY, abs_error, sum_y = statistics[0]

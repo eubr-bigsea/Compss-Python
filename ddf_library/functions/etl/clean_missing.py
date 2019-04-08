@@ -1,12 +1,15 @@
-#!/usr/bin/python
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
 __author__ = "Lucas Miguel S Ponce"
 __email__ = "lucasmsp@gmail.com"
 
+from ddf_library.utils import generate_info
 from pycompss.api.task import task
 from pycompss.functions.reduce import merge_reduce
-from pycompss.api.local import local
+from pycompss.api.api import compss_wait_on, compss_delete_object
+# from pycompss.api.local import local  # guppy is not supported yet in python3
+
 import pandas as pd
 import numpy as np
 import copy
@@ -35,7 +38,7 @@ class DropNaN(object):
 
         params = [_clean_missing_pre(df, self.settings) for df in data]
         self.settings = merge_reduce(merge_clean_options, params)
-
+        self.settings = compss_wait_on(self.settings)
         return self
 
     def drop_rows(self, data):
@@ -56,7 +59,7 @@ class DropNaN(object):
         info = [[] for _ in range(nfrag)]
 
         for f in range(nfrag):
-            result[f], info[f] = _clean_missing(data[f], settings)
+            result[f], info[f] = _clean_missing(data[f], settings, f)
 
         output = {'key_data': ['data'], 'key_info': ['info'],
                   'data': result, 'info': info}
@@ -98,17 +101,20 @@ class FillNa(object):
             for f in range(nfrag):
                 info[f], result[f] = _median_stage2(data[f], stage1)
             info_stage2 = merge_reduce(_median_stage2_merge, info)
-
+            compss_delete_object(info)
             # 3 Broadcast M M to all processors.
             # 4- Split the elements on each processor into two subsets, L and U.
             # The subset L contains elements that are smaller than MM, and
             # the subset U contains elements that are larger than MM .
             # 5 - Compute SUM L
+            info = [[] for _ in range(nfrag)]
             for f in range(nfrag):
                 info[f] = _median_stage3(result[f], info_stage2)
-            info = merge_reduce(_median_stage3_merge, info)
+            medians_info = merge_reduce(_median_stage3_merge, info)
+            compss_delete_object(info)
 
-            self.settings['values'] = _median_define(info)
+            medians_info = compss_wait_on(medians_info)
+            self.settings['values'] = _median_define(medians_info)
 
         return self
 
@@ -125,7 +131,7 @@ class FillNa(object):
             data.fillna(value=values, inplace=True)
 
         data.reset_index(drop=True, inplace=True)
-        info = [data.columns.tolist(), data.dtypes.values, [len(data)]]
+        info = generate_info(data)
         return data, info
 
     def fill_by_statistic(self, data):
@@ -137,7 +143,7 @@ class FillNa(object):
         info = [[] for _ in range(nfrag)]
 
         for f in range(nfrag):
-            result[f], info[f] = _clean_missing(data[f], settings)
+            result[f], info[f] = _clean_missing(data[f], settings, f)
 
         output = {'key_data': ['data'], 'key_info': ['info'],
                   'data': result, 'info': info}
@@ -274,7 +280,7 @@ def _median_stage3_merge(info1, info2):
     return info1
 
 
-@local
+# @local
 def _median_define(info):
     for att in info:
 
@@ -326,7 +332,7 @@ def _clean_missing_pre(data, params):
         for att in subset:
             dict_mode[att] = data[att].value_counts()
         params['dict_mode'] = dict_mode
-        print dict_mode
+
     return params
 
 
@@ -366,7 +372,7 @@ def merge_clean_options(params1, params2):
 
 
 @task(returns=2)
-def _clean_missing(data, params):
+def _clean_missing(data, params, frag):
     """Perform REMOVE_ROW, REMOVE_COLUMN, VALUE, MEAN, MODE and MEDIAN."""
     attributes = params['attributes']
     cleaning_mode = params['cleaning_mode']
@@ -399,11 +405,10 @@ def _clean_missing(data, params):
             data[att] = data[att].fillna(value=mode)
 
     elif cleaning_mode == 'MEDIAN':
-        print params
         medians = params['values']
         for att in medians:
             data[att] = data[att].fillna(value=medians[att])
 
     data.reset_index(drop=True, inplace=True)
-    info = [data.columns.tolist(), data.dtypes.values, [len(data)]]
+    info = generate_info(data, frag)
     return data, info

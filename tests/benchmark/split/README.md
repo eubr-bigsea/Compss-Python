@@ -8,6 +8,7 @@ The Split operation consists of two stages: First stage uses the schema informat
 
  - 8 workers (32 cores)
  - 100kk rows 
+ - Parameters: fraction=0.2
  - Time to run: 14 seconds
 
 
