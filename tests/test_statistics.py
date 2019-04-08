@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
 from ddf_library.ddf import DDF
@@ -6,46 +6,48 @@ import pandas as pd
 import numpy as np
 
 
-def covariance():
-
-    print "\n|-------- Covariance --------|\n"
-    # df = pd.DataFrame([[1692, 68], [1978, 102],
-    #                    [1884, 110], [2151, 112],
-    #                    [2519, 154]], columns=['a', 'b'])
-    # cov(a,b) = 9107.3
-
-    df = pd.DataFrame([[1.95, 93.1], [1.96, 93.9], [1.95, 89.9],
-                       [1.98, 95.1], [2.10, 100.2]], columns=['a', 'b'])
-    # cov(a,b) = 0.2196
-
-    df1 = DDF().parallelize(df, 4).covariance(col1='a', col2='b')
-    print df1
-    print "etl_test - Covariance - OK"
-
-
 def correlation():
 
-    print "\n|-------- Correlation --------|\n"
+    print("\n|-------- Correlation --------|\n")
 
     df = pd.DataFrame([[8, 81], [8, 80], [6, 75],
                        [5, 65], [7, 91], [6, 80]], columns=['a', 'b'])
-    # corr(a,b) = 0.6475106
 
-    df1 = DDF().parallelize(df, 4).correlation(col1='a', col2='b')
-    print df1
-    print "etl_test - Correlation - OK"
+    corr = DDF().parallelize(df, 4).correlation(col1='a', col2='b')
+    if corr != 0.64755:
+        raise Exception("Error: Correlation (a, b)=", corr)
+    print("etl_test - Correlation - OK")
+
+
+def covariance():
+
+    print("\n|-------- Covariance --------|\n")
+    # df = pd.DataFrame([[1692, 68], [1978, 102],
+    #                    [1884, 110], [2151, 112],
+    #                    [2519, 154]], columns=['a', 'b'])
+    # cov_res = 9107.3
+
+    df = pd.DataFrame([[1.95, 93.1], [1.96, 93.9], [1.95, 89.9],
+                       [1.98, 95.1], [2.10, 100.2]], columns=['a', 'b'])
+    cov_res = 0.2196
+
+    cov = DDF().parallelize(df, 4).covariance(col1='a', col2='b')
+    if cov_res != cov:
+        raise Exception("Error: Covariance (a, b)=", cov)
+    print("etl_test - Covariance - OK")
 
 
 def crosstab():
-    print "\n|-------- CrossTab --------|\n"
+
+    print("\n|-------- CrossTab --------|\n")
     # data = pd.DataFrame([(1, 1), (1, 2), (2, 1), (2, 1),
     #                      (2, 3), (3, 2), (3, 3)], columns=['key', 'value'])
     data = pd.DataFrame([('v1', 'v1'), ('v1', 'v2'), ('v2', 'v1'), ('v2', 'v1'),
                          ('v2', 'v3'), ('v3', 'v2'), ('v3', 'v3')],
                         columns=['key', 'value'])
     ddf_1 = DDF().parallelize(data, 4).cross_tab(col1='key', col2='value')
-    df1 = ddf_1.show()
-    print df1
+    df1 = ddf_1.to_df()
+    print(df1)
     """
     +---------+---+---+---+
     |key_value|  1|  2|  3|
@@ -58,23 +60,24 @@ def crosstab():
 
 
 def describe():
-    print "\n|-------- Describe --------|\n"
-    data3 = pd.DataFrame([[i, i + 5, 'hello'] for i in xrange(5, 15)],
+    print("\n|-------- Describe --------|\n")
+    data3 = pd.DataFrame([[i, i + 5, 'hello'] for i in range(5, 15)],
                          columns=['a', 'b', 'c'])
 
-    data3.loc[15, ['b']] = np.nan
+    data3['d'] = [10, 12, 13, 19, 19, 19, 19, 19, 19, 19]
     data3.loc[0:2, ['c']] = 'Hi'
     data3.loc[6:9, ['c']] = 'world'
-    data3['d'] = [10, 12, 13, 19, 19, 19, 19, 19, 19, 19, np.nan]
+    # data3.loc[15, ['b']] = np.nan
+    print(data3)
 
     df1 = DDF().parallelize(data3, 4).describe()
-    print df1
-    print "etl_test - difference - OK"
+    print(df1)
+    print("etl_test - difference - OK")
 
 
 def frequent_items():
 
-    print "\n|-------- Frequent Items --------|\n"
+    print("\n|-------- Frequent Items --------|\n")
     # data = pd.DataFrame([(1, 1), (1, 2), (2, 1), (2, 1),
     #                      (2, 3), (3, 2), (3, 3)], columns=['key', 'value'])
     data = pd.DataFrame([(1, 2, 3) if i % 2 == 0 else (i, 2 * i, i % 4)
@@ -88,12 +91,12 @@ def frequent_items():
     """
 
     df = DDF().parallelize(data, 4).freq_items(col=['a', 'b'], support=0.4)
-    print df
+    print(df)
 
 
 def kolmogorov_smirnov_one_sample():
 
-    print "\n| ------- Kolmogorov Smirnov test -----|\n"
+    print("\n| ------- Kolmogorov Smirnov test -----|\n")
 
     df = pd.DataFrame()
 
@@ -126,9 +129,14 @@ def kolmogorov_smirnov_one_sample():
                                        distribution='gamma',
                                        args=(15.5, 0, 1./7))
 
-    print ks_onesample
+    print(ks_onesample)
 
 
 if __name__ == '__main__':
-    print "_____Statistics_____"
-    kolmogorov_smirnov_one_sample()
+    print("_____Statistics_____")
+    # correlation()
+    # covariance()
+    # crosstab()
+    # describe()
+    # frequent_items()
+    # kolmogorov_smirnov_one_sample()

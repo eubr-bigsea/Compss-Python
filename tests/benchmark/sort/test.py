@@ -1,52 +1,62 @@
-#!/usr/bin/python
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
+from pycompss.api.api import compss_barrier
 from pycompss.api.task import task
-from ddf_library.ddf import DDF
+from ddf_library.ddf import DDF, generate_info
+
 import pandas as pd
 import numpy as np
 import time
 
 
-@task(returns=1)
-def generate_partition(size, name):
-    df = pd.DataFrame()
-    df[name] = np.random.normal(size=size)
-    return df
+@task(returns=2)
+def generate_partition(size, col_1, col_2):
+    df = pd.DataFrame({col_2: np.random.normal(size=size),
+                       col_1: np.random.randint(0, size*100, size=size)})
+    info = generate_info(df)
+    return df, info
 
 
-def generate_data(total_size, nfrag, col_name):
+def generate_data(total_size, nfrag, col_1, col_2):
 
-    size = total_size / nfrag
+    dfs = [[] for _ in range(nfrag)]
+    info = [[] for _ in range(nfrag)]
+
+    size = total_size // nfrag
     sizes = [size for _ in range(nfrag)]
     sizes[-1] += (total_size - sum(sizes))
 
-    dfs = [generate_partition(size, col_name) for size in sizes]
+    for f, s in enumerate(sizes):
+        dfs[f], info[f] = generate_partition(s, col_1, col_2)
 
-    return dfs
-
-
-def local():
-
-    start_time = time.time()
-    col_name = 'col_0'
-    df = pd.DataFrame()
-    df[col_name] = np.random.normal(size=total_size)
-
-    df.sort_values([col_name], ascending=[True])
-
-    end_time = time.time()
-
-    print (end_time-start_time)
+    return dfs, info
 
 
 if __name__ == "__main__":
-    print "\n|-------- Sort --------|\n"
-    total_size = int(sys.argv[1])
-    nfrag = int(sys.argv[2])
-    col_name = 'col_0'
-    df_list = generate_data(total_size, nfrag, col_name)
 
-    ddf1 = DDF().import_data(df_list).sort([col_name], ascending=[True]).cache()
+    n_rows = int(sys.argv[1])
+    n_frag = int(sys.argv[2])
+    col_1 = 'col_1'
+    col_2 = 'col_2'
 
-    # print ddf1.show()
+    t1 = time.time()
+    df_list, info = generate_data(n_rows, n_frag, col_1, col_2)
+    ddf1 = DDF().import_data(df_list, info)
+
+    t2 = time.time()
+
+    ddf1 = ddf1.sort([col_1], ascending=[True]).cache()
+    compss_barrier()
+    t3 = time.time()
+
+    print("t2-t1:", t2 - t1)
+    print("t3-t2:", t3 - t2)
+    print("t_all:", t3 - t1)
+
+    # print(ddf1.schema())
+    # ddf1.show(100)
+    c = ddf1.to_df()[col_1].values
+    is_sorted = lambda a: np.all(a[:-1] <= a[1:])
+    print(is_sorted(c))
+    print(len(c))

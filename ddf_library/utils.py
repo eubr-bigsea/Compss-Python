@@ -41,7 +41,9 @@ def generate_info(df, f):
 
 
 def merge_info(schemas):
-    return merge_reduce(merge_schema, schemas)
+    if isinstance(schemas, list):
+        schemas = merge_reduce(merge_schema, schemas)
+    return schemas
 
 
 @task(returns=1)

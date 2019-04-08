@@ -1,64 +1,66 @@
-#!/usr/bin/python
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
+# from pycompss.api.api import compss_barrier
 from pycompss.api.task import task
-from ddf_library.ddf import DDF
+from ddf_library.ddf import DDF, generate_info
 
 import pandas as pd
 import numpy as np
 import time
+import sys
 
 
-@task(returns=1)
-def generate_partition(size, col1):
-    df = pd.DataFrame()
 
-    np.random.seed(None)
-    df[col1] = np.random.randint(0, size*100, size=size).tolist()
-    return df
+@task(returns=2)
+def generate_partition(size, col1, col2):
+    df = pd.DataFrame({col1: np.random.randint(0, size*100, size=size),
+                       col2: np.random.randint(0, size*100, size=size)})
+
+    info = generate_info(df)
+    return df, info
 
 
-def generate_data(total_size, nfrag, col1):
+def generate_data(total_size, n_frag, col1, col2):
+    dfs = [[] for _ in range(n_frag)]
+    info = [[] for _ in range(n_frag)]
 
-    size = total_size / nfrag
-    sizes = [size for _ in range(nfrag)]
+    size = total_size // n_frag
+    sizes = [size for _ in range(n_frag)]
     sizes[-1] += (total_size - sum(sizes))
 
-    dfs = [generate_partition(s, col1) for s in sizes]
+    for f, s in enumerate(sizes):
+        dfs[f], info[f] = generate_partition(s, col1, col2)
 
-    return dfs
+    return dfs, info
 
 
 if __name__ == "__main__":
-    print "\n|-------- Split --------|\n"
-    total_size = int(sys.argv[1])
-    nfrag = int(sys.argv[2])
-    col1 = 'col_1'
+
+    n_rows = int(sys.argv[1])
+    n_frag = int(sys.argv[2])
+    col1 = 'column1'
+    col2 = 'column2'
 
     t1 = time.time()
-    df_list = generate_data(total_size, nfrag, col1)
-    ddf1 = DDF().import_data(df_list)
-
-    # df = pd.DataFrame()
-    # df[col1] = np.arange(total_size).tolist()
-    # ddf1 = DDF().parallelize(df, nfrag)
+    print("Generating synthetic data (", n_rows, ") rows...")
+    df_list, info = generate_data(n_rows, n_frag, col1, col2)
+    ddf1 = DDF().import_data(df_list, info)
 
     t2 = time.time()
-
+    print("Running operation/algorithm...")
     ddf1a, ddf1b = ddf1.split(0.2, seed=None)
-
     ddf1a.cache()
-
     ddf1b.cache()
-
+    # compss_barrier()
     t3 = time.time()
 
-    print "t2-t1:", t2 - t1
-    print "t3-t2:", t3 - t2
+    print("t2-t1:", t2 - t1)
+    print("t3-t2:", t3 - t2)
+    print("t_all:", t3 - t1)
 
-    print "t_all:", t3 - t1
+    # print len(ddf1a.to_df())
+    # print len(ddf1b.to_df())
 
-    # print len(ddf1a.toDF())
-    # print len(ddf1b.toDF())
-
-    # print ddf1a.toDF()
+    # print ddf1a.to_df()
+    # print ddf1b.to_df()

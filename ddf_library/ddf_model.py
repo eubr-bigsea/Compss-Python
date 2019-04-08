@@ -4,7 +4,7 @@
 __author__ = "Lucas Miguel S Ponce"
 __email__ = "lucasmsp@gmail.com"
 
-import cPickle as pickle
+import _pickle as pickle
 from .ddf_base import DDFSketch
 
 
@@ -90,14 +90,14 @@ def save_model_hdfs(model, path, namenode='localhost', port=9000,
     :param port: NameNode port (default, 9000).
     :param overwrite: Overwrite if file already exists (default, True);
     """
-    from hdfspycompss.HDFS import HDFS
+    from hdfspycompss.hdfs import HDFS
     dfs = HDFS(host=namenode, port=port)
 
     if dfs.exist(path) and not overwrite:
         raise Exception("File already exists in this source.")
 
     to_save = pickle.dumps(model, 0)
-    dfs.writeBlock(path, to_save, append=False, overwrite=True)
+    dfs.write_block(path, to_save, append=False, overwrite=True)
     return [-1]
 
 
@@ -122,12 +122,12 @@ def load_model_hdfs(filepath, namenode='localhost', port=9000):
     :param port: NameNode port (default, 9000).
     :return: Returns a model
     """
-    from hdfspycompss.HDFS import HDFS
-    from hdfspycompss.Block import Block
+    from hdfspycompss.hdfs import HDFS
+    from hdfspycompss.block import Block
 
     dfs = HDFS(host=namenode, port=port)
     blk = dfs.findNBlocks(filepath, 1)
-    to_load = Block(blk).readBinary()
+    to_load = Block(blk).read_binary()
     model = None
     if len(to_load) > 0:
         model = pickle.loads(to_load)

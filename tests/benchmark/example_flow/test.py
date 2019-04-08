@@ -2,54 +2,60 @@
 # -*- coding: utf-8 -*-
 
 from pycompss.api.task import task
-from ddf_library.ddf import DDF
+from pycompss.api.api import compss_barrier
+from ddf_library.ddf import DDF, generate_info
 
 import pandas as pd
 import numpy as np
 import time
+import sys
 
 
-@task(returns=1)
+@task(returns=2)
 def generate_partition(size, col_feature, col_label):
     df = pd.DataFrame()
     df[col_feature] = np.random.normal(size=size).tolist()
     df[col_label] = np.random.random_integers(0, 10000, size=size).tolist()
-    return df
+    info = generate_info(df)
+
+    return df, info
 
 
-def generate_data(total_size, nfrag, col_feature, col_label, dim):
+def generate_data(total_size, nfrag, col1, col2):
 
-    size = total_size / nfrag
+    dfs = [[] for _ in range(nfrag)]
+    info = [[] for _ in range(nfrag)]
+
+    size = total_size // nfrag
     sizes = [size for _ in range(nfrag)]
     sizes[-1] += (total_size - sum(sizes))
 
-    dfs = [generate_partition(s, col_feature, col_label, dim) for s in sizes]
+    for f, s in enumerate(sizes):
+        dfs[f], info[f] = generate_partition(s, col1, col2)
 
-    return dfs
+    return dfs, info
 
 
 if __name__ == "__main__":
-    print "\n|-------- Example Flow --------|\n"
-    total_size = int(sys.argv[1])
-    nfrag = int(sys.argv[2])
-    dim = 2
+
+    n_rows = int(sys.argv[1])
+    n_frag = int(sys.argv[2])
     col1 = 'col_1'
-    col_label = 'group'
+    col2 = 'group'
 
     t1 = time.time()
-    df_list = generate_data(total_size, nfrag, col1, col_label, dim)
-
-    ddf1 = DDF().import_data(df_list)
-
+    df_list, info = generate_data(n_rows, n_frag, col1, col2)
+    ddf1 = DDF().import_data(df_list, info)
     t2 = time.time()
+
     ddf1 = ddf1.select([col1])\
         .filter("col_1 > 0.0")\
         .map(lambda row: row['col_1'] + 1, 'col_2').cache()
-
+    compss_barrier()
     t3 = time.time()
 
-    print "t2-t1:", t2 - t1
-    print "t3-t2:", t3 - t2
+    print("t2-t1:", t2 - t1)
+    print("t3-t2:", t3 - t2)
 
-    print "t_all:", t3 - t1
-    # print len(ddf1.toDF())
+    print("t_all:", t3 - t1)
+    # print len(ddf1.to_df())

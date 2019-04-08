@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
 
@@ -11,15 +11,256 @@ import pandas as pd
 from pycompss.api.task import task
 from pycompss.functions.reduce import merge_reduce
 from pycompss.api.api import compss_wait_on
-from pycompss.api.local import *
-from ddf_library.ddf import DDF
+# from pycompss.api.local import *
+from ddf_library.ddf import DDF, generate_info
 from ddf_library.ddf_model import ModelDDF
 
 __all__ = ['KNearestNeighbors', 'GaussianNB', 'LogisticRegression', 'SVM']
 
 
-import sys
-sys.path.append('../../')
+
+class GaussianNB(ModelDDF):
+    """
+    The Naive Bayes algorithm is an intuitive method that uses the
+    probabilities of each attribute belonged to each class to make a prediction.
+    It is a supervised learning approach that you would  come up with if you
+    wanted to model a predictive probabilistically modeling problem.
+
+    Naive bayes simplifies the calculation of probabilities by assuming that
+    the probability of each attribute belonging to a given class value is
+    independent of all other attributes. The probability of a class value given
+    a value of an attribute is called the conditional probability. By
+    multiplying the conditional probabilities together for each attribute for
+    a given class value, we have the probability of a data instance belonging
+    to that class.
+
+    To make a prediction we can calculate probabilities of the instance
+    belonged to each class and select the class value with the highest
+    probability.
+
+    :Example:
+
+    >>> nb = GaussianNB(feature_col='features', label_col='label').fit(ddf1)
+    >>> ddf2 = nb.transform(ddf1)
+    """
+
+    def __init__(self, feature_col, label_col, pred_col=None):
+        """
+        :param feature_col: Feature column name;
+        :param label_col: Label column name;
+        :param pred_col: Output prediction name
+         (default, *'prediction_GaussianNB'*);
+        """
+        super(GaussianNB, self).__init__()
+
+        if not pred_col:
+            pred_col = 'prediction_GaussianNB'
+
+        self.settings = dict()
+        self.settings['feature_col'] = feature_col
+        self.settings['label_col'] = label_col
+        self.settings['pred_col'] = pred_col
+
+        self.model = []
+        self.name = 'GaussianNB'
+
+    def fit(self, data):
+        """
+        Fit the model.
+
+        :param data: DDF
+        :return: trained model
+        """
+
+        df, nfrag, tmp = self._ddf_inital_setup(data)
+
+        cols = [self.settings['feature_col'], self.settings['label_col']]
+
+        # generate a dictionary with the sum of all attributes separed by class
+        clusters, means = [[] for _ in range(nfrag)], [[] for _ in range(nfrag)]
+        for i in range(nfrag):
+            clusters[i], means[i] = _nb_separate_by_class(df[i], cols)
+
+        # generate a total sum and len of each class
+        mean = merge_reduce(_nb_merge_means, means)
+
+        # compute the partial variance
+        partial_var = [_nb_calc_var(mean, clusters[i]) for i in range(nfrag)]
+        merged_fitted = merge_reduce(_nb_merge_var, partial_var)
+
+        # compute standard deviation
+        summaries = _nb_calc_stdev(merged_fitted)
+
+        self.model = {'model': summaries}
+
+        return self
+
+    def fit_transform(self, data):
+        """
+        Fit the model and transform.
+
+        :param data: DDF
+        :return: DDF
+        """
+
+        self.fit(data)
+        ddf = self.transform(data)
+
+        return ddf
+
+    def transform(self, data):
+        """
+        :param data: DDF
+        :return: DDF
+        """
+        if len(self.model) == 0:
+            raise Exception("Model is not fitted.")
+
+        df, nfrag, tmp = self._ddf_inital_setup(data)
+
+        result = [[] for _ in range(nfrag)]
+        info = [[] for _ in range(nfrag)]
+        for f in range(nfrag):
+            result[f], info[f] = _nb_predict_chunck(df[f], self.model['model'],
+                                                    self.settings, f)
+
+        uuid_key = self._ddf_add_task(task_name='task_transform_nb',
+                                      status='COMPLETED', lazy=False,
+                                      function={0: result},
+                                      parent=[tmp.last_uuid],
+                                      n_output=1, n_input=1, info=info)
+
+        self._set_n_input(uuid_key, 0)
+        return DDF(task_list=tmp.task_list, last_uuid=uuid_key)
+
+
+@task(returns=2)
+def _nb_separate_by_class(df_train, cols):
+    """Sumarize all label in each fragment."""
+    features, label = cols
+    # a dictionary where:
+    #   - keys are unique labels;
+    #   - values are list of features
+    summaries1 = {}
+    means = {}
+    for key in df_train[label].unique():
+        values = df_train.loc[df_train[label] == key][features].tolist()
+        summaries1[key] = values
+        means[key] = [len(values), np.sum(values, axis=0)]
+
+    return summaries1, means
+
+
+@task(returns=1)
+def _nb_merge_means(summ1, summ2):
+    """Merge the statitiscs about each class (without variance)."""
+
+    for att in summ2:
+        if att in summ1:
+            summ1[att] = [summ1[att][0] + summ2[att][0],
+                          np.add(summ1[att][1], summ2[att][1])]
+        else:
+            summ1[att] = summ2[att]
+
+    return summ1
+
+
+@task(returns=1)
+def _nb_calc_var(mean, separated):
+    """Calculate the variance of each class."""
+
+    summary = {}
+    for key in separated:
+        size, summ = mean[key]
+        avg_class = np.divide(summ, size)
+        errors = np.subtract(separated[key], avg_class)
+        sse_partial = np.sum(np.power(errors, 2), axis=0)
+        summary[key] = [sse_partial, size, avg_class]
+
+    return summary
+
+
+@task(returns=1)
+def _nb_merge_var(summ1, summ2):
+    """Merge the statitiscs about each class (with variance)."""
+    for att in summ2:
+        if att in summ1:
+            summ1[att] = [np.add(summ1[att][0], summ2[att][0]),
+                          summ1[att][1], summ1[att][2]]
+        else:
+            summ1[att] = summ2[att]
+    return summ1
+
+
+# @local
+def _nb_calc_stdev(summaries):
+    """Calculate the standart desviation of each class."""
+    summaries = compss_wait_on(summaries)
+    new_summaries = {}
+    for att in summaries:
+        sse_partial, size, avg = summaries[att]
+        std = np.sqrt(np.divide(sse_partial, size))
+        new_summaries[att] = [avg, std]
+
+    return new_summaries
+
+
+@task(returns=2)
+def _nb_predict_chunck(data, summaries, settings, frag):
+    """Predict all records in a fragment."""
+
+    features_col = settings['feature_col']
+    predicted_label = settings['pred_col']
+    pi = 3.1415926535
+    n = len(data)
+    data.reset_index(drop=True, inplace=True)
+
+    for class_v, class_summaries in summaries.items():
+        avgs, stds = class_summaries
+        dim = len(avgs)
+        dens, nums = np.zeros(dim), np.zeros(dim)
+
+        for i, (avg, std) in enumerate(zip(avgs, stds)):
+            if std == 0:
+                std = 0.0000001
+
+            dens[i] = (2 * pow(std, 2))
+            nums[i] = np.divide(1.0, (math.sqrt(2*pi) * std))
+
+        summaries[class_v] = [avgs, dens, nums]
+
+    predictions = np.zeros(n, dtype=int)
+    for i in range(n):
+        predictions[i] = _nb_predict(summaries, data[features_col].iat[i])
+
+    data[predicted_label] = predictions.tolist()
+
+    info = generate_info(data, frag)
+    return data, info
+
+
+def _nb_predict(summaries, input_vector):
+    """Predict a feature."""
+    probabilities = _nb_class_probabilities(summaries, input_vector)
+    best_label, best_prob = None, -1
+    for classValue, probability in probabilities.items():
+        if best_label is None or probability > best_prob:
+            best_prob = probability
+            best_label = classValue
+    return best_label
+
+
+def _nb_class_probabilities(summaries, x):
+    """Do the probability's calculation of all records."""
+    probs = {}
+
+    for class_v, class_summaries in summaries.items():
+        probs[class_v] = 1
+        avgs, dens, nums = class_summaries
+        for i, (avg,  den, num) in enumerate(zip(avgs, dens, nums)):
+            probs[class_v] *= num * math.exp(-(pow(x[i] - avg, 2) / den))
+
+    return probs
 
 
 class KNearestNeighbors(ModelDDF):
@@ -116,8 +357,8 @@ class KNearestNeighbors(ModelDDF):
 
         result = [[] for _ in range(nfrag)]
         info = [[] for _ in range(nfrag)]
-        for i in range(nfrag):
-            result[i], info[i] = _knn_classify_block_(df[i], self.settings)
+        for f in range(nfrag):
+            result[f], info[f] = _knn_classify_block_(df[f], self.settings, f)
 
         uuid_key = self._ddf_add_task(task_name='task_transform_knn',
                                       status='COMPLETED', lazy=False,
@@ -161,7 +402,7 @@ def merge_lists(list1, list2):
 
 
 @task(returns=2)
-def _knn_classify_block_(data, settings):
+def _knn_classify_block_(data, settings, frag):
     """Perform a partial classification."""
     col_features = settings['feature_col']
     pred_col = settings.get('pred_col', "prediction_kNN")
@@ -175,262 +416,7 @@ def _knn_classify_block_(data, settings):
     values = model.predict(data[col_features].tolist())
     data[pred_col] = values.tolist()
 
-    info = [data.columns.tolist(), data.dtypes.values, [len(data)]]
-    return data, info
-
-
-class SVM(ModelDDF):
-    """
-    Support vector machines (SVM) is a supervised learning model used for
-    binary classification. Given a set of training examples, each marked as
-    belonging to one or the other of two categories, a SVM training algorithm
-    builds a model that assigns new examples to one category or the other,
-    making it a non-probabilistic binary linear classifier.
-
-    An SVM model is a representation of the examples as points in space, mapped
-    so that the examples of the separate categories are divided by a clear gap
-    that is as wide as possible. New examples are then mapped into that same
-    space and predicted to belong to a category based on which side of the gap
-    they fall. This algorithm is effective in high dimensional spaces and it
-    is still effective in cases where number of dimensions is greater than
-    the number of samples.
-
-    The algorithm reads a dataset composed by labels (-1 or 1) and
-    features (numeric fields).
-
-    :Example:
-
-    >>> svm = SVM(feature_col='features', label_col='label',
-    >>>           max_iters=10).fit(ddf1)
-    >>> ddf2 = svm.transform(ddf1)
-    """
-
-    def __init__(self, feature_col, label_col, pred_col=None,
-                 coef_lambda=0.1, coef_lr=0.01, threshold=0.001, max_iters=100):
-        """
-        :param feature_col: Feature column name;
-        :param label_col: Label column name;
-        :param pred_col: Output prediction name (default, *'prediction_SVM'*);
-        :param coef_lambda: Regularization parameter (default, 0.1);
-        :param coef_lr: Learning rate parameter (default, 0.1);
-        :param threshold: Tolerance for stopping criterion (default, 0.001);
-        :param max_iters: Number max of iterations (default, 100).
-        """
-        super(SVM, self).__init__()
-
-        if not pred_col:
-            pred_col = 'prediction_SVM'
-
-        self.settings = dict()
-        self.settings['feature_col'] = feature_col
-        self.settings['label_col'] = label_col
-        self.settings['pred_col'] = pred_col
-        self.settings['coef_lambda'] = coef_lambda
-        self.settings['coef_lr'] = coef_lr
-        self.settings['threshold'] = threshold
-        self.settings['maxIters'] = max_iters
-
-        self.model = []
-        self.name = 'SVM'
-
-    def fit(self, data):
-        """
-        Fit the model.
-
-        :param data: DDF
-        :return: trained model
-        """
-
-        coef_lambda = float(self.settings.get('coef_lambda', 0.1))
-        coef_lr = float(self.settings.get('coef_lr', 0.01))
-        coef_threshold = float(self.settings.get('coef_threshold', 0.001))
-        coef_max_iter = int(self.settings.get('coef_maxIters', 100))
-
-        df, nfrag, tmp = self._ddf_inital_setup(data)
-
-        col_label = self.settings['label_col']
-        col_feature = self.settings['feature_col']
-
-        w = [0]
-        old_cost = np.inf
-
-        cost_grad_p = [[] for _ in range(nfrag)]
-
-        for it in range(coef_max_iter):
-            if it == 0:
-                for f in range(nfrag):
-                    cost_grad_p[f], df[f] = \
-                        _calc_cost_grad_first(df[f], f, coef_lambda, w, 
-                                              col_label, col_feature)
-            else:
-                for f in range(nfrag):
-                    cost_grad_p[f] = _calc_cost_grad(df[f], f, coef_lambda, w) 
-
-            cost_grad = merge_reduce(_accumulate_cost_grad, cost_grad_p)
-            cost_grad = compss_wait_on(cost_grad)
-
-            cost = cost_grad[0]
-            thresold = np.abs(old_cost - cost)
-            if thresold <= coef_threshold:
-                break
-            else:
-                old_cost = cost
-
-            w = _update_weight(coef_lr, cost_grad, w)
-        print "[INFO] - Final Cost %.4f" % cost
-
-        self.model = [w]
-
-        return self
-
-    def fit_transform(self, data):
-        """
-        Fit the model and transform.
-
-        :param data: DDF
-        :return: DDF
-        """
-
-        self.fit(data)
-        ddf = self.transform(data)
-
-        return ddf
-
-    def transform(self, data):
-        """
-
-        :param data: DDF
-        :return: DDF
-        """
-
-        if len(self.model) == 0:
-            raise Exception("Model is not fitted.")
-
-        cols = [self.settings['feature_col'], self.settings['pred_col']]
-
-        df, nfrag, tmp = self._ddf_inital_setup(data)
-
-        result = [[] for _ in range(nfrag)]
-        info = [[] for _ in range(nfrag)]
-        for f in range(nfrag):
-            result[f], info[f] = _predict_partial(df[f], self.model[0], cols)
-
-        uuid_key = self._ddf_add_task(task_name='task_transform_svm',
-                                      status='COMPLETED', lazy=False,
-                                      function={0: result},
-                                      parent=[tmp.last_uuid],
-                                      n_output=1, n_input=1, info=info)
-
-        self._set_n_input(uuid_key, 0)
-        return DDF(task_list=tmp.task_list, last_uuid=uuid_key)
-
-
-@local
-def _update_weight(coef_lr, grad, w):
-    """Update the svm's weight."""
-    dim = len(grad[1])
-    if dim != len(w):
-        w = np.zeros(dim)
-
-    w = np.subtract(w, np.multiply(coef_lr, grad[1]))
-    return w
-
-
-@task(returns=2)
-def _calc_cost_grad_first(train_data, f, coef_lambda, w, label, features):
-    """Calculate the partial cost and gradient."""
-    size_train = len(train_data)
-    labels = train_data[label].values
-    train_data = train_data[features].values
-
-    if size_train > 0:
-
-        dim = len(train_data[0])
-        ypp, grad, cost = np.zeros(size_train), np.zeros(dim), 0
-
-        if dim != len(w):
-            w = [0 for _ in range(dim)]  # initial
-
-        for i in range(size_train):
-            ypp[i] = np.matmul(train_data[i], w)
-            condition = labels[i] * ypp[i]
-            if (condition - 1) < 0:
-                cost += (1 - condition)
-
-        for d in range(dim):
-            grad[d] = 0
-            if f is 0:
-                grad[d] += np.abs(coef_lambda * w[d])
-
-            for i in range(size_train):
-                i2 = labels[i]
-                condition = i2 * ypp[i]
-                if (condition - 1) < 0:
-                    grad[d] -= i2 * train_data[i][d]
-
-        return [cost, grad], [labels, train_data]
-    else:
-        return [0, 0], [labels, train_data]
-
-
-@task(returns=1)
-def _calc_cost_grad(train_data, f, coef_lambda, w):
-    """Calculate the partial cost and gradient."""
-    labels, train_data = train_data
-    size_train = len(train_data)
-    
-    if size_train > 0:
-
-        dim = len(train_data[0])
-        ypp, grad, cost = np.zeros(size_train), np.zeros(dim), 0
-
-        for i in range(size_train):
-            ypp[i] = np.matmul(train_data[i], w)
-            condition = labels[i] * ypp[i]
-            if (condition - 1) < 0:
-                cost += (1 - condition)
-
-        for d in range(dim):
-            grad[d] = 0
-            if f is 0:
-                grad[d] += np.abs(coef_lambda * w[d])
-
-            for i in range(size_train):
-                i2 = labels[i]
-                condition = i2 * ypp[i]
-                if (condition - 1) < 0:
-                    grad[d] -= i2 * train_data[i][d]
-
-        return [cost, grad]
-    else:
-        return [0, 0]
-    
-    
-@task(returns=1)
-def _accumulate_cost_grad(cost_grad_p1, cost_grad_p2):
-    """Merge cost and gradient."""
-    cost_p1, grad_p1 = cost_grad_p1
-    cost_p2, grad_p2 = cost_grad_p2
-
-    cost_p1 += cost_p2
-    grad_p1 = np.add(grad_p1, grad_p2)
-
-    return [cost_p1, grad_p1]
-
-
-@task(returns=2)
-def _predict_partial(data, w, cols):
-    """Predict all records in a fragments."""
-    features, predicted_label = cols
-
-    if len(data) > 0:
-        values = np.matmul(data[features].tolist(), w)
-        values = np.where(values >= 0, 1, -1)
-        data[predicted_label] = values.tolist()
-    else:
-        data[predicted_label] = np.nan
-
-    info = [data.columns.tolist(), data.dtypes.values, [len(data)]]
+    info = generate_info(data, frag)
     return data, info
 
 
@@ -539,9 +525,9 @@ class LogisticRegression(ModelDDF):
 
         result = [[] for _ in range(nfrag)]
         info = [[] for _ in range(nfrag)]
-        for i in range(nfrag):
-            result[i], info[i] = _logr_predict(df[i], self.settings,
-                                               self.model[0])
+        for f in range(nfrag):
+            result[f], info[f] = _logr_predict(df[f], self.settings,
+                                               self.model[0], f)
 
         uuid_key = self._ddf_add_task(task_name='task_transform_logr',
                                       status='COMPLETED', lazy=False,
@@ -635,8 +621,9 @@ def _logr_agg_sga(info1, info2):
     return [gradient, size, dim, theta]
 
 
-@local
+# @local
 def _logr_calc_theta(info, coef_lr, it, regularization, threshold):
+    info = compss_wait_on(info)
     gradient = info[0]
     theta = info[3]
 
@@ -651,7 +638,7 @@ def _logr_calc_theta(info, coef_lr, it, regularization, threshold):
 
 
 @task(returns=2)
-def _logr_predict(data, settings, theta):
+def _logr_predict(data, settings, theta, frag):
 
     col_features = settings['feature_col']
     pred_col = settings['pred_col']
@@ -660,54 +647,63 @@ def _logr_predict(data, settings, theta):
     xs = np.c_[np.ones(size), np.array(data[col_features].tolist())]
     data[pred_col] = [int(round(_logr_sigmoid(x, theta))) for x in xs]
 
-    info = [data.columns.tolist(), data.dtypes.values, [len(data)]]
+    info = generate_info(data, frag)
     return data, info
 
 
-class GaussianNB(ModelDDF):
+class SVM(ModelDDF):
     """
-    The Naive Bayes algorithm is an intuitive method that uses the
-    probabilities of each attribute belonged to each class to make a prediction.
-    It is a supervised learning approach that you would  come up with if you
-    wanted to model a predictive probabilistically modeling problem.
+    Support vector machines (SVM) is a supervised learning model used for
+    binary classification. Given a set of training examples, each marked as
+    belonging to one or the other of two categories, a SVM training algorithm
+    builds a model that assigns new examples to one category or the other,
+    making it a non-probabilistic binary linear classifier.
 
-    Naive bayes simplifies the calculation of probabilities by assuming that
-    the probability of each attribute belonging to a given class value is
-    independent of all other attributes. The probability of a class value given
-    a value of an attribute is called the conditional probability. By
-    multiplying the conditional probabilities together for each attribute for
-    a given class value, we have the probability of a data instance belonging
-    to that class.
+    An SVM model is a representation of the examples as points in space, mapped
+    so that the examples of the separate categories are divided by a clear gap
+    that is as wide as possible. New examples are then mapped into that same
+    space and predicted to belong to a category based on which side of the gap
+    they fall. This algorithm is effective in high dimensional spaces and it
+    is still effective in cases where number of dimensions is greater than
+    the number of samples.
 
-    To make a prediction we can calculate probabilities of the instance
-    belonged to each class and select the class value with the highest
-    probability.
+    The algorithm reads a dataset composed by labels (-1 or 1) and
+    features (numeric fields).
 
     :Example:
 
-    >>> nb = GaussianNB(feature_col='features', label_col='label').fit(ddf1)
-    >>> ddf2 = nb.transform(ddf1)
+    >>> svm = SVM(feature_col='features', label_col='label',
+    >>>           max_iters=10).fit(ddf1)
+    >>> ddf2 = svm.transform(ddf1)
     """
 
-    def __init__(self, feature_col, label_col, pred_col=None):
+    def __init__(self, feature_col, label_col, pred_col=None,
+                 coef_lambda=0.1, coef_lr=0.01, threshold=0.001, max_iters=100):
         """
         :param feature_col: Feature column name;
         :param label_col: Label column name;
-        :param pred_col: Output prediction name
-         (default, *'prediction_GaussianNB'*);
+        :param pred_col: Output prediction name (default, *'prediction_SVM'*);
+        :param coef_lambda: Regularization parameter (default, 0.1);
+        :param coef_lr: Learning rate parameter (default, 0.1);
+        :param threshold: Tolerance for stopping criterion (default, 0.001);
+        :param max_iters: Number max of iterations (default, 100).
         """
-        super(GaussianNB, self).__init__()
+        super(SVM, self).__init__()
 
         if not pred_col:
-            pred_col = 'prediction_GaussianNB'
+            pred_col = 'prediction_SVM'
 
         self.settings = dict()
         self.settings['feature_col'] = feature_col
         self.settings['label_col'] = label_col
         self.settings['pred_col'] = pred_col
+        self.settings['coef_lambda'] = coef_lambda
+        self.settings['coef_lr'] = coef_lr
+        self.settings['threshold'] = threshold
+        self.settings['maxIters'] = max_iters
 
         self.model = []
-        self.name = 'GaussianNB'
+        self.name = 'SVM'
 
     def fit(self, data):
         """
@@ -717,26 +713,45 @@ class GaussianNB(ModelDDF):
         :return: trained model
         """
 
+        coef_lambda = float(self.settings.get('coef_lambda', 0.1))
+        coef_lr = float(self.settings.get('coef_lr', 0.01))
+        coef_threshold = float(self.settings.get('coef_threshold', 0.001))
+        coef_max_iter = int(self.settings.get('coef_maxIters', 100))
+
         df, nfrag, tmp = self._ddf_inital_setup(data)
 
-        cols = [self.settings['feature_col'], self.settings['label_col']]
+        col_label = self.settings['label_col']
+        col_feature = self.settings['feature_col']
 
-        # generate a dictionary with the sum of all attributes separed by class
-        clusters, means = [[] for _ in range(nfrag)], [[] for _ in range(nfrag)]
-        for i in range(nfrag):
-            clusters[i], means[i] = _nb_separate_by_class(df[i], cols)
+        w = [0]
+        old_cost = np.inf
 
-        # generate a total sum and len of each class
-        mean = merge_reduce(_nb_merge_means, means)
+        cost_grad_p = [[] for _ in range(nfrag)]
 
-        # compute the partial variance
-        partial_var = [_nb_calc_var(mean, clusters[i]) for i in range(nfrag)]
-        merged_fitted = merge_reduce(_nb_merge_var, partial_var)
+        for it in range(coef_max_iter):
+            if it == 0:
+                for f in range(nfrag):
+                    cost_grad_p[f], df[f] = \
+                        _calc_cost_grad_first(df[f], f, coef_lambda, w,
+                                              col_label, col_feature)
+            else:
+                for f in range(nfrag):
+                    cost_grad_p[f] = _calc_cost_grad(df[f], f, coef_lambda, w)
 
-        # compute standard deviation
-        summaries = _nb_calc_stdev(merged_fitted)
+            cost_grad = merge_reduce(_accumulate_cost_grad, cost_grad_p)
+            cost_grad = compss_wait_on(cost_grad)
 
-        self.model = {'model': summaries}
+            cost = cost_grad[0]
+            thresold = np.abs(old_cost - cost)
+            if thresold <= coef_threshold:
+                break
+            else:
+                old_cost = cost
+
+            w = _update_weight(coef_lr, cost_grad, w)
+        print("[INFO] - Final Cost {:.4f}".format(cost))
+
+        self.model = [w]
 
         return self
 
@@ -755,21 +770,24 @@ class GaussianNB(ModelDDF):
 
     def transform(self, data):
         """
+
         :param data: DDF
         :return: DDF
         """
+
         if len(self.model) == 0:
             raise Exception("Model is not fitted.")
+
+        cols = [self.settings['feature_col'], self.settings['pred_col']]
 
         df, nfrag, tmp = self._ddf_inital_setup(data)
 
         result = [[] for _ in range(nfrag)]
         info = [[] for _ in range(nfrag)]
-        for i in range(nfrag):
-            result[i], info[i] = _nb_predict_chunck(df[i], self.model['model'],
-                                                    self.settings)
+        for f in range(nfrag):
+            result[f], info[f] = _predict_partial(df[f], self.model[0], cols, f)
 
-        uuid_key = self._ddf_add_task(task_name='task_transform_nb',
+        uuid_key = self._ddf_add_task(task_name='task_transform_svm',
                                       status='COMPLETED', lazy=False,
                                       function={0: result},
                                       parent=[tmp.last_uuid],
@@ -779,130 +797,109 @@ class GaussianNB(ModelDDF):
         return DDF(task_list=tmp.task_list, last_uuid=uuid_key)
 
 
-@task(returns=2)
-def _nb_separate_by_class(df_train, cols):
-    """Sumarize all label in each fragment."""
-    features, label = cols
-    # a dictionary where:
-    #   - keys are unique labels;
-    #   - values are list of features
-    summaries1 = {}
-    means = {}
-    for key in df_train[label].unique():
-        values = df_train.loc[df_train[label] == key][features].tolist()
-        summaries1[key] = values
-        means[key] = [len(values), np.sum(values, axis=0)]
+def _update_weight(coef_lr, grad, w):
+    """Update the svm's weight."""
+    dim = len(grad[1])
+    if dim != len(w):
+        w = np.zeros(dim)
 
-    return summaries1, means
-
-
-@task(returns=1)
-def _nb_merge_means(summ1, summ2):
-    """Merge the statitiscs about each class (without variance)."""
-
-    for att in summ2:
-        if att in summ1:
-            summ1[att] = [summ1[att][0] + summ2[att][0],
-                          np.add(summ1[att][1], summ2[att][1])]
-        else:
-            summ1[att] = summ2[att]
-
-    return summ1
-
-
-@task(returns=1)
-def _nb_calc_var(mean, separated):
-    """Calculate the variance of each class."""
-
-    summary = {}
-    for key in separated:
-        size, summ = mean[key]
-        avg_class = np.divide(summ, size)
-        errors = np.subtract(separated[key], avg_class)
-        sse_partial = np.sum(np.power(errors, 2), axis=0)
-        summary[key] = [sse_partial, size, avg_class]
-
-    return summary
-
-
-@task(returns=1)
-def _nb_merge_var(summ1, summ2):
-    """Merge the statitiscs about each class (with variance)."""
-    for att in summ2:
-        if att in summ1:
-            summ1[att] = [np.add(summ1[att][0], summ2[att][0]),
-                          summ1[att][1], summ1[att][2]]
-        else:
-            summ1[att] = summ2[att]
-    return summ1
-
-
-@local
-def _nb_calc_stdev(summaries):
-    """Calculate the standart desviation of each class."""
-    new_summaries = {}
-    for att in summaries:
-        sse_partial, size, avg = summaries[att]
-        std = np.sqrt(np.divide(sse_partial, size))
-        new_summaries[att] = [avg, std]
-
-    return new_summaries
+    w = np.subtract(w, np.multiply(coef_lr, grad[1]))
+    return w
 
 
 @task(returns=2)
-def _nb_predict_chunck(data, summaries, settings):
-    """Predict all records in a fragment."""
+def _calc_cost_grad_first(train_data, f, coef_lambda, w, label, features):
+    """Calculate the partial cost and gradient."""
+    size_train = len(train_data)
+    labels = train_data[label].values
+    train_data = train_data[features].values
 
-    features_col = settings['feature_col']
-    predicted_label = settings['pred_col']
-    pi = 3.1415926535
-    n = len(data)
-    data.reset_index(drop=True, inplace=True)
+    if size_train > 0:
 
-    for class_v, class_summaries in summaries.iteritems():
-        avgs, stds = class_summaries
-        dim = len(avgs)
-        dens, nums = np.zeros(dim), np.zeros(dim)
+        dim = len(train_data[0])
+        ypp, grad, cost = np.zeros(size_train), np.zeros(dim), 0
 
-        for i, (avg, std) in enumerate(zip(avgs, stds)):
-            if std == 0:
-                std = 0.0000001
+        if dim != len(w):
+            w = [0 for _ in range(dim)]  # initial
 
-            dens[i] = (2 * pow(std, 2))
-            nums[i] = np.divide(1.0, (math.sqrt(2*pi) * std))
+        for i in range(size_train):
+            ypp[i] = np.matmul(train_data[i], w)
+            condition = labels[i] * ypp[i]
+            if (condition - 1) < 0:
+                cost += (1 - condition)
 
-        summaries[class_v] = [avgs, dens, nums]
+        for d in range(dim):
+            grad[d] = 0
+            if f is 0:
+                grad[d] += np.abs(coef_lambda * w[d])
 
-    predictions = np.zeros(n, dtype=int)
-    for i in range(n):
-        predictions[i] = _nb_predict(summaries, data[features_col].iat[i])
+            for i in range(size_train):
+                i2 = labels[i]
+                condition = i2 * ypp[i]
+                if (condition - 1) < 0:
+                    grad[d] -= i2 * train_data[i][d]
 
-    data[predicted_label] = predictions.tolist()
+        return [cost, grad], [labels, train_data]
+    else:
+        return [0, 0], [labels, train_data]
 
-    info = [data.columns.tolist(), data.dtypes.values, [len(data)]]
+
+@task(returns=1)
+def _calc_cost_grad(train_data, f, coef_lambda, w):
+    """Calculate the partial cost and gradient."""
+    labels, train_data = train_data
+    size_train = len(train_data)
+
+    if size_train > 0:
+
+        dim = len(train_data[0])
+        ypp, grad, cost = np.zeros(size_train), np.zeros(dim), 0
+
+        for i in range(size_train):
+            ypp[i] = np.matmul(train_data[i], w)
+            condition = labels[i] * ypp[i]
+            if (condition - 1) < 0:
+                cost += (1 - condition)
+
+        for d in range(dim):
+            grad[d] = 0
+            if f is 0:
+                grad[d] += np.abs(coef_lambda * w[d])
+
+            for i in range(size_train):
+                i2 = labels[i]
+                condition = i2 * ypp[i]
+                if (condition - 1) < 0:
+                    grad[d] -= i2 * train_data[i][d]
+
+        return [cost, grad]
+    else:
+        return [0, 0]
+
+
+@task(returns=1)
+def _accumulate_cost_grad(cost_grad_p1, cost_grad_p2):
+    """Merge cost and gradient."""
+    cost_p1, grad_p1 = cost_grad_p1
+    cost_p2, grad_p2 = cost_grad_p2
+
+    cost_p1 += cost_p2
+    grad_p1 = np.add(grad_p1, grad_p2)
+
+    return [cost_p1, grad_p1]
+
+
+@task(returns=2)
+def _predict_partial(data, w, cols, frag):
+    """Predict all records in a fragments."""
+    features, predicted_label = cols
+
+    if len(data) > 0:
+        values = np.matmul(data[features].tolist(), w)
+        values = np.where(values >= 0, 1, -1)
+        data[predicted_label] = values.tolist()
+    else:
+        data[predicted_label] = np.nan
+
+    info = generate_info(data, frag)
     return data, info
-
-
-def _nb_predict(summaries, input_vector):
-    """Predict a feature."""
-    probabilities = _nb_class_probabilities(summaries, input_vector)
-    best_label, best_prob = None, -1
-    for classValue, probability in probabilities.iteritems():
-        if best_label is None or probability > best_prob:
-            best_prob = probability
-            best_label = classValue
-    return best_label
-
-
-def _nb_class_probabilities(summaries, x):
-    """Do the probability's calculation of all records."""
-    probs = {}
-
-    for class_v, class_summaries in summaries.iteritems():
-        probs[class_v] = 1
-        avgs, dens, nums = class_summaries
-        for i, (avg,  den, num) in enumerate(zip(avgs, dens, nums)):
-            probs[class_v] *= num * math.exp(-(pow(x[i] - avg, 2) / den))
-
-    return probs
-

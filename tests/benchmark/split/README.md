@@ -23,3 +23,10 @@ The Split operation consists of two stages: First stage uses the schema informat
 ![trace](./trace.png)
 
 
+## Execution time by Input size
+
+To the next test, we executed this application using five different numbers of rows (100kk, 200kk, 500kk, 800kk, 1000kk). Furthermore, each configuration was executed five times. In this experiment, we excluded the time to data generation. 
+
+![time_per_size](./time_per_size.png)
+
+

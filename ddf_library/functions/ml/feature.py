@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
 __author__ = "Lucas Miguel S Ponce"
@@ -7,16 +7,13 @@ __email__ = "lucasmsp@gmail.com"
 from pycompss.api.task import task
 from pycompss.functions.reduce import merge_reduce
 from pycompss.api.api import compss_wait_on
-from ddf_library.ddf import DDF, DDFSketch
+from ddf_library.ddf import DDF, DDFSketch, generate_info
 from ddf_library.ddf_model import ModelDDF
-from pycompss.api.local import *
+# from pycompss.api.local import *  # requires guppy
 import numpy as np
 import pandas as pd
 import re
 import itertools
-
-import sys
-sys.path.append('../../')
 
 preprocessing = ['Binarizer', 'StringIndexer', 'IndexToString', 'OneHotEncoder',
                  'MaxAbsScaler', 'MinMaxScaler', 'StandardScaler']
@@ -104,7 +101,7 @@ def _feature_assemble_(df, settings):
 
             df[name] = np.concatenate((tmp1, tmp2), axis=1).tolist()
 
-    info = [df.columns.tolist(), df.dtypes.values, [len(df)]]
+    info = generate_info(df, 0)
     return df, info
 
 
@@ -187,7 +184,7 @@ def _vector_slicer(df, settings):
         values = np.array(df[input_col].tolist())[:, idx]
         df[output_col] = values.tolist()
 
-    info = [df.columns.tolist(), df.dtypes.values, [len(df)]]
+    info = generate_info(df, 0)
     return df, info
 
 
@@ -255,7 +252,7 @@ def _binarizer(df, settings):
         values = Binarizer(threshold=threshold).fit_transform(values)
         df[output_col] = values.tolist()
 
-    info = [df.columns.tolist(), df.dtypes.values, [len(df)]]
+    info = generate_info(df, 0)
     return df, info
 
 
@@ -393,7 +390,7 @@ def _tokenizer_(data, settings):
     else:
         data[output_col] = np.ravel(result)
 
-    info = [data.columns.tolist(), data.dtypes.values, [len(data)]]
+    info = generate_info(data, 0)
     return data, info
 
 
@@ -535,7 +532,7 @@ def _remove_stopwords(data, settings, stopwords):
 
         data[alias] = np.reshape(new_data, -1, order='C')
 
-    info = [data.columns.tolist(), data.dtypes.values, [len(data)]]
+    info = generate_info(data, 0)
     return data, info
 
 
@@ -602,7 +599,7 @@ def _ngram(df, settings):
         grams = [ngrammer(row) for row in values]
         df[output_col] = grams
 
-    info = [df.columns.tolist(), df.dtypes.values, [len(df)]]
+    info = generate_info(df, 0)
     return df, info
 
 
@@ -742,7 +739,7 @@ def _transform_one_hot(df, categories, settings):
 
         df[output_col] = enc.transform(df[input_col].values).tolist()
 
-    info = [df.columns.tolist(), df.dtypes.values, [len(df)]]
+    info = generate_info(df, 0)
     return df, info
 
 
@@ -899,9 +896,10 @@ def merge_lists(list1, list2):
     return list1
 
 
-@local
+# @local
 def create_vocabulary(word_dic):
     """Create a partial mode."""
+    word_dic = compss_wait_on(word_dic)
     docs_list = [[i[0], i[1][0], i[1][1]] for i in word_dic.items()]
     names = ['Word', 'TotalFrequency', 'DistinctFrequency']
     voc = pd.DataFrame(docs_list, columns=names)\
@@ -948,7 +946,7 @@ def _transform_BoW(data, vocabulary, params):
 
     data[alias] = vector.tolist()
 
-    info = [data.columns.tolist(), data.dtypes.values, [len(data)]]
+    info = generate_info(data, 0)
     return data, info
 
 
@@ -1120,7 +1118,7 @@ def construct_tf_idf(data, vocabulary, params, num_doc):
 
     data[alias] = vector.tolist()
 
-    info = [data.columns.tolist(), data.dtypes.values, [len(data)]]
+    info = generate_info(data, 0)
     return data, info
 
 
@@ -1281,7 +1279,7 @@ def _minmax_scaler(data, settings, minmax):
         data[alias] = data[col].apply(
                 lambda xs: calculation(xs, minimum, maximum, min_r, max_r))
 
-    info = [data.columns.tolist(), data.dtypes.values, [len(data)]]
+    info = generate_info(data, 0)
     return data, info
 
 
@@ -1438,7 +1436,7 @@ def _maxabs_scaler(data, minmax, settings):
         data[alias] = data[col].apply(
                 lambda xs: calculation(xs, minimum, maximum))
 
-    info = [data.columns.tolist(), data.dtypes.values, [len(data)]]
+    info = generate_info(data, 0)
     return data, info
 
 
@@ -1538,7 +1536,7 @@ class StandardScaler(ModelDDF):
         info = [[] for _ in range(nfrag)]
         for f in range(nfrag):
             result[f], info[f] = _stardard_scaler(df[f], self.settings,
-                                                  mean, sse)
+                                                  mean, sse, f)
 
         uuid_key = self._ddf_add_task(task_name='transform_standard_scaler',
                                       status='COMPLETED', lazy=False,
@@ -1609,7 +1607,7 @@ def _merge_sse(sum1, sum2):
 
 
 @task(returns=2)
-def _stardard_scaler(data, settings, mean, sse):
+def _stardard_scaler(data, settings, mean, sse, frag):
     """Normalize by Standard mode."""
     features = settings['input_col']
     alias = settings['output_col']
@@ -1635,7 +1633,7 @@ def _stardard_scaler(data, settings, mean, sse):
         values = data[col].tolist()
         data[alias] = scaler.transform(values).tolist()
 
-    info = [data.columns.tolist(), data.dtypes.values, [len(data)]]
+    info = generate_info(data, frag)
     return data, info
 
 
@@ -1978,7 +1976,7 @@ def pca_cov_merger(info1, info2):
 
     return [np.add(cov1, cov2), total_size]
 
-@local
+# @local
 def pca_eigen_decomposition(info, n_components):
     """Generate an eigen decomposition."""
 

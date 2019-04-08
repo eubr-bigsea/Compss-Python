@@ -320,7 +320,7 @@ class DDF(DDFSketch):
         """
 
         info = self._get_info()
-        size = len(info[2])
+        size = len(info['size'])
         return size
 
     def balancer(self, forced=False):
@@ -437,6 +437,8 @@ class DDF(DDFSketch):
         if suffixes is None:
             suffixes = ['_l', '_r']
 
+        settings = {'suffixes': suffixes}
+
         from .functions.etl.add_columns import AddColumnsOperation
 
         def task_add_column(df, params):
@@ -447,10 +449,11 @@ class DDF(DDFSketch):
             {'name': 'add_column',
              'status': 'WAIT',
              'lazy': False,
-             'function': [task_add_column, suffixes],
+             'function': [task_add_column, settings],
              'parent': [self.last_uuid, data2.last_uuid],
              'output': 1,
-             'input': 2
+             'input': 2,
+             'info': True
              }
 
         self._set_n_input(new_state_uuid, self.settings['input'])
@@ -840,17 +843,19 @@ class DDF(DDFSketch):
         >>> ddf1.drop(['col_1', 'col_2'])
         """
 
+        settings = {'columns': columns}
+
         from .functions.etl.drop import drop
 
-        def task_drop(df, cols):
-            return drop(df, cols)
+        def task_drop(df, params):
+            return drop(df, params)
 
         new_state_uuid = self._generate_uuid()
         COMPSsContext.tasks_map[new_state_uuid] = \
             {'name': 'drop',
              'status': 'WAIT',
              'lazy': True,
-             'function': [task_drop, columns],
+             'function': [task_drop, settings],
              'parent': [self.last_uuid],
              'output': 1,
              'input': 1
@@ -1217,6 +1222,36 @@ class DDF(DDFSketch):
         self._set_n_input(new_state_uuid, self.settings['input'])
         return DDF(task_list=self.task_list, last_uuid=new_state_uuid)
 
+    def repartition(self, nfrag=-1, distribution=None):
+        """
+
+        """
+
+        from .functions.etl.repartition import repartition
+
+        if distribution is not None:
+            settings = {'distribution': distribution}
+
+        settings = {'nfrag': nfrag}
+
+        def task_repartition(df, params):
+            return repartition(df, params)
+
+        new_state_uuid = self._generate_uuid()
+        COMPSsContext.tasks_map[new_state_uuid] = \
+            {'name': 'repartition',
+             'status': 'WAIT',
+             'lazy': False,
+             'function': [task_repartition, settings],
+             'parent': [self.last_uuid],
+             'output': 1,
+             'input': 1,
+             'info': True
+             }
+
+        self._set_n_input(new_state_uuid, self.settings['input'])
+        return DDF(task_list=self.task_list, last_uuid=new_state_uuid)
+
     def replace(self, replaces, subset=None):
         """
         Replace one or more values to new ones.
@@ -1555,7 +1590,7 @@ class DDF(DDFSketch):
         if len(self.task_list) > 2:
             COMPSsContext.tasks_map[last_last_uuid]['function'][n_input] = res
 
-        df = pd.concat(res, sort=True)
+        df = pd.concat(res, sort=False)
         if columns:
             df = df[columns]
 

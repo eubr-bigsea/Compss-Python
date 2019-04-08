@@ -1,46 +1,50 @@
-#!/usr/bin/python
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
 from pycompss.api.task import task
-from ddf_library.ddf import DDF
+from ddf_library.ddf import DDF, generate_info
 
 import pandas as pd
 import numpy as np
 
 
-@task(returns=1)
+@task(returns=2)
 def generate_partition(size, col_name):
-    df = pd.DataFrame()
     np.random.seed(123)
-    df[col_name] = np.random.normal(1, 1000, size=size).tolist()
-    return df
+    df = pd.DataFrame({col_name: np.random.normal(1, 1000, size=size)})
+    info = generate_info(df)
+    return df, info
 
 
 def generate_data(total_size, nfrag, col_name):
 
-    size = total_size / nfrag
+    dfs = [[] for _ in range(nfrag)]
+    info = [[] for _ in range(nfrag)]
+
+    size = total_size // nfrag
     sizes = [size for _ in range(nfrag)]
     sizes[-1] += (total_size - sum(sizes))
 
-    dfs = [generate_partition(size, col_name) for size in sizes]
+    for f, s in enumerate(sizes):
+        dfs[f], info[f] = generate_partition(s, col_name)
 
-    return dfs
+    return dfs, info
 
-def local():
+
+def local(size):
     from scipy import stats
-
-    size = 1000
     np.random.seed(123)
-    X = np.random.normal(1, 1000, size=size).tolist()
-    print stats.kstest(X, 'norm')
+    x = np.random.normal(1, 1000, size=size).tolist()
+    print(stats.kstest(x, 'norm'))
+
 
 if __name__ == "__main__":
-    print "\n|-------- KS Test --------|\n"
-    total_size = int(sys.argv[1])
-    nfrag = int(sys.argv[2])
+
+    n_rows = int(sys.argv[1])
+    n_frag = int(sys.argv[2])
     col_name = 'feature'
 
-    df_list = generate_data(total_size, nfrag, col_name)
+    df_list, info = generate_data(n_rows, n_frag, col_name)
 
-    ddf1 = DDF().import_data(df_list).kolmogorov_smirnov_one_sample(col_name)
-    print ddf1
+    result = DDF().import_data(df_list, info).kolmogorov_smirnov_one_sample(col_name)
+    print(result)

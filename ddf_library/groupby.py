@@ -4,8 +4,8 @@
 __author__ = "Lucas Miguel S Ponce"
 __email__ = "lucasmsp@gmail.com"
 
-import context
-from .ddf import DDF
+from ddf_library.context import COMPSsContext
+from ddf_library.ddf import DDF
 
 
 class GroupedDDF(DDF):
@@ -30,8 +30,7 @@ class GroupedDDF(DDF):
     def __init__(self, ddf_var):
         self.last_uuid = ddf_var.last_uuid
         self.ddf_var = ddf_var
-        self.parameters = context.COMPSsContext() \
-            .get_task_function(self.last_uuid)[1]
+        self.parameters = COMPSsContext().get_task_function(self.last_uuid)[1]
 
         super(GroupedDDF, self).__init__(task_list=ddf_var.task_list,
                                          last_uuid=self.last_uuid)
@@ -60,7 +59,7 @@ class GroupedDDF(DDF):
                     alias[col].append("{}({})".format(f, col))
 
         self.parameters['aliases'] = alias
-        context.COMPSsContext.tasks_map[self.last_uuid]['function'][1] = \
+        COMPSsContext.tasks_map[self.last_uuid]['function'][1] = \
             self.parameters
 
         return self.ddf_var
@@ -241,6 +240,6 @@ class GroupedDDF(DDF):
         self.parameters['operation'] = exprs
         self.parameters['aliases'] = aliases
 
-        context.COMPSsContext.tasks_map[self.last_uuid]['function'][1] = \
+        COMPSsContext.tasks_map[self.last_uuid]['function'][1] = \
             self.parameters
 

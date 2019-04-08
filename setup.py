@@ -5,13 +5,21 @@ def get_requirements():
     """
     lists the requirements to install.
     """
-    requirements = []
     try:
         with open('requirements.txt') as f:
             requirements = f.read().splitlines()
     except Exception as ex:
         requirements = []
     return requirements
+
+
+def get_readme():
+    try:
+        with open('README.md') as f:
+            readme = f.read()
+    except Exception as ex:
+        readme = ''
+    return readme
 
 
 setuptools.setup(
@@ -24,28 +32,18 @@ setuptools.setup(
      url="https://github.com/eubr-bigsea/Compss-Python",
      license='Apache License, Version 2.0',
      platforms=['Linux'],
-     long_description="""
-
-     The Distributed DataFrame Library provides distributed algorithms and operations ready to use as a library implemented over PyCOMPSs programming model. Currently, it is highly focused on ETL (extract-
-     transform-load) and Machine Learning algorithms to Data Science tasks. DDF is greatly inspired by Spark's DataFrame and its operators.
-
-     Currently, an operation can be of two types, transformations or actions. Action operations are those that produce a final result (whether to save to a file or to display on screen). Transformation
-     operations are those that will transform an input DDF into another output DDF. Besides this classification, there are operations with one processing stage and those with two or more stages of processing (those that
-     need to exchange information between the partitions).
-
-     When running DDF operation/algorithms, a context variable (COMPSs Context) will check the possibility of optimizations during the scheduling of COMPS tasks. These optimizations can be of the type: grouping one 
-     stage operations to a single task COMPSs and stacking operations until an action operation is found.
-    """,
+     long_description=get_readme(),
      classifiers=[
-         "Programming Language :: Python :: 2.7",
+         'Programming Language :: Python :: 3',
+         "Programming Language :: Python :: 3.6",
          'License :: OSI Approved :: Apache Software License',
          "Operating System :: POSIX :: Linux",
          "Topic :: Software Development :: Libraries",
          "Topic :: Software Development :: Libraries :: Python Modules",
          "Topic :: System :: Distributed Computing",
      ],
-    packages=setuptools.find_packages(),
-    install_requires=get_requirements(),
+     packages=setuptools.find_packages(),
+     install_requires=get_requirements(),
 
  )
 

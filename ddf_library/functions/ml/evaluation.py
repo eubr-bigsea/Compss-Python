@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
 __author__ = "Lucas Miguel S Ponce"
@@ -7,17 +7,17 @@ __email__ = "lucasmsp@gmail.com"
 from pycompss.api.task import task
 from pycompss.functions.reduce import merge_reduce
 from pycompss.api.api import compss_delete_object, compss_wait_on
-from pycompss.api.local import local
+# from pycompss.api.local import local  # it needs guppy
 from ddf_library.ddf import DDFSketch
 
 import numpy as np
 import pandas as pd
 
-import sys
-sys.path.append('../../')
-
 __all__ = ['BinaryClassificationMetrics', 'MultilabelMetrics',
            'RegressionMetrics']
+
+
+# TODO : replace ix to iat
 
 
 class BinaryClassificationMetrics(DDFSketch):
@@ -40,13 +40,13 @@ class BinaryClassificationMetrics(DDFSketch):
 
     >>> bin_metrics = BinaryClassificationMetrics(label_col='label',
     >>>                                           pred_col='pred', data=ddf1)
-    >>> print bin_metrics.get_metrics()
+    >>> print(bin_metrics.get_metrics())
     >>> # or using:
-    >>> print bin_metrics.confusion_matrix
-    >>> print bin_metrics.accuracy
-    >>> print bin_metrics.recall
-    >>> print bin_metrics.precision
-    >>> print bin_metrics.f1
+    >>> print(bin_metrics.confusion_matrix)
+    >>> print(bin_metrics.accuracy)
+    >>> print(bin_metrics.recall)
+    >>> print(bin_metrics.precision)
+    >>> print(bin_metrics.f1)
     """
 
     def __init__(self, label_col, pred_col, ddf_var, true_label=1):
@@ -64,7 +64,8 @@ class BinaryClassificationMetrics(DDFSketch):
         merged_stage1 = merge_reduce(merge_stage1, stage1)
         compss_delete_object(stage1)
         
-        result = cme_stage2_binary(merged_stage1, true_label)
+        result = cme_stage2_binary(merged_stage1, int(true_label))
+        result = compss_wait_on(result)
         confusion_matrix, accuracy, precision, recall, f1 = result
 
         self.confusion_matrix = confusion_matrix
@@ -108,14 +109,14 @@ class MultilabelMetrics(DDFSketch):
 
     >>> metrics_multi = MultilabelMetrics(label_col='label',
     >>>                                   pred_col='prediction', data=ddf1)
-    >>> print metrics_multi.get_metrics()
+    >>> print(metrics_multi.get_metrics())
     >>> # or using:
-    >>> print metrics_multi.confusion_matrix
-    >>> print metrics_multi.precision_recall
-    >>> print metrics_multi.accuracy
-    >>> print metrics_multi.recall
-    >>> print metrics_multi.precision
-    >>> print metrics_multi.f1
+    >>> print(metrics_multi.confusion_matrix)
+    >>> print(metrics_multi.precision_recall)
+    >>> print(metrics_multi.accuracy)
+    >>> print(metrics_multi.recall)
+    >>> print(metrics_multi.precision)
+    >>> print(metrics_multi.f1)
     """
 
     def __init__(self, label_col, pred_col, ddf_var):
@@ -165,15 +166,20 @@ class MultilabelMetrics(DDFSketch):
 @task(returns=1)
 def cme_stage1(data, col_test, col_predicted):
     """Create a partial confusion matrix."""
-    Reals = data[col_test].values
-    Preds = data[col_predicted].values
 
-    labels = np.unique(np.concatenate((np.unique(Reals), np.unique(Preds)), 0))
+    data = data.groupby([col_test,
+                         col_predicted]).size().reset_index(name='counts')
 
-    df = pd.DataFrame(columns=labels, index=labels).fillna(0)
+    uniques = np.concatenate((data[col_test].astype(int),
+                              data[col_predicted].astype(int)), axis=0)
+    uniques = np.unique(uniques)
 
-    for real, pred in zip(Reals, Preds):
-        df.at[real, pred] += 1
+    df = pd.DataFrame(columns=uniques, index=uniques).fillna(0)
+    del uniques
+
+    # O(n_unique_labels)
+    for real, pred, count in data[[col_test, col_predicted, 'counts']].values:
+        df.at[real, pred] += count
 
     return df
 
@@ -188,52 +194,55 @@ def merge_stage1(p1, p2):
 @task(returns=1)
 def cme_stage2(confusion_matrix):
     """Generate the final evaluation."""
-    N = confusion_matrix.sum().sum()
+    n_rows = confusion_matrix.sum().sum()
     labels = confusion_matrix.index
-    acertos = 0
-    Precisions = []  # TPR
-    Recalls = []  # FPR
+    accuracy = 0
+    _precisions = []  # TPR
+    _recalls = []  # FPR
 
     for i in labels:
-        acertos += confusion_matrix[i].ix[i]
-        TP = confusion_matrix[i].ix[i]
-        Precisions.append(np.divide(float(TP), confusion_matrix.ix[i].sum()))
-        Recalls.append(np.divide(float(TP), confusion_matrix[i].sum()))
+        accuracy += confusion_matrix[i].at[i]
 
-    Accuracy = float(acertos) / N
+        true_positive = confusion_matrix[i].at[i]
+        _precisions.append(true_positive / confusion_matrix.loc[i].sum())
+        _recalls.append(true_positive / confusion_matrix[i].sum())
 
-    F1s = []
-    for p, r in zip(Precisions, Recalls):
-        F1s.append(2 * (p * r) / (p + r))
+    accuracy = accuracy / n_rows
+
+    _f1s = []
+    for p, r in zip(_precision, Recalls):
+        _f1s.append(2 * (p * r) / (p + r))
 
     precision_recall = \
-        pd.DataFrame(np.array([Precisions, Recalls, F1s]).T,
-                     columns=['Precision', 'Recall', "F-Mesure"])
+        pd.DataFrame(np.array([_precisions, _recalls, _f1s]).T,
+                     columns=['Precision', 'Recall', "F-Measure"])
 
-    Precision = np.mean(Precisions)
-    Recall = np.mean(Recalls)
-    F1 = 2 * (Precision * Recall) / (Precision + Recall)
+    precision = np.mean(_precisions)
+    recall = np.mean(_recalls)
+    f1 = 2 * (precision * recall) / (precision + recall)
 
-    return [confusion_matrix, Accuracy, Precision, Recall, F1, precision_recall]
+    return [confusion_matrix, accuracy, precision,
+            recall, f1, precision_recall]
 
 
-@local
+# @local
+@task(returns=1)
 def cme_stage2_binary(confusion_matrix, true_label):
     """Generate the final evaluation (for binary classification)."""
-    total_size = confusion_matrix.sum().sum()
+    n_rows = confusion_matrix.sum().sum()
     labels = confusion_matrix.index
-    acertos = 0
+    accuracy = 0
 
     for i in labels:
-        acertos += confusion_matrix[i].ix[i]
+        accuracy += confusion_matrix[i].at[i]
 
-    TP = confusion_matrix[true_label].ix[true_label]
-    Precision = float(TP) / confusion_matrix.ix[true_label].sum()
-    Recall = float(TP) / confusion_matrix[true_label].sum()
-    Accuracy = float(acertos) / total_size
-    F1 = 2 * (Precision * Recall) / (Precision + Recall)
+    true_positive = confusion_matrix[true_label].at[true_label]
+    _precision = true_positive / confusion_matrix.loc[true_label].sum()
+    _recall = true_positive / confusion_matrix[true_label].sum()
+    accuracy = accuracy / n_rows
+    _f1 = 2 * (_precision * _recall) / (_precision + _recall)
 
-    return [confusion_matrix, Accuracy, Precision, Recall, F1]
+    return [confusion_matrix, accuracy, _precision, _recall, _f1]
 
 
 class RegressionMetrics(DDFSketch):
@@ -297,6 +306,7 @@ class RegressionMetrics(DDFSketch):
         compss_delete_object(partial)
         
         result = rme_stage2(statistics)
+        result = compss_wait_on(result)
         r2, mse, rmse, mae, msr = result
 
         self.r2 = r2
@@ -330,7 +340,7 @@ def rme_stage1(df, cols):
 
     if len(df) > 0:
         df.reset_index(drop=True, inplace=True)
-        head = df.loc[0, col_features]
+        head = df.loc[0, col_features] # TODO
         if isinstance(head, list):
             dim = len(head)
 
@@ -347,7 +357,7 @@ def rme_stage1(df, cols):
     return [table, dim]
 
 
-@task(returns=list)
+@task(returns=1)
 def rme_merge(pstatistic1, pstatistic2):
     """Merge the partial statistics."""
     dim = max(pstatistic1[1], pstatistic2[1])
@@ -355,8 +365,8 @@ def rme_merge(pstatistic1, pstatistic2):
     return [pstatistic, dim]
 
 
-
-@local
+# @local
+@task(returns=1)
 def rme_stage2(statistics):
     """Generate the final evaluation."""
     dim = statistics[1]
