@@ -126,7 +126,7 @@ def load_model_hdfs(filepath, namenode='localhost', port=9000):
     from hdfspycompss.block import Block
 
     dfs = HDFS(host=namenode, port=port)
-    blk = dfs.findNBlocks(filepath, 1)
+    blk = dfs.find_n_blocks(filepath, 1)
     to_load = Block(blk).read_binary()
     model = None
     if len(to_load) > 0:

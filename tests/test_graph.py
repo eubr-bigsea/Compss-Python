@@ -1,12 +1,12 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 
-from ddf.ddf import DDF
+from ddf_library.ddf import DDF
 
 
 def graph_pagerank():
 
-    from ddf.functions.graph import PageRank
+    from ddf_library.functions.graph import PageRank
     data1 = DDF().load_text('/edgelist_PageRank.csv', num_of_parts=4)\
         .select(['inlink', 'outlink'])
 

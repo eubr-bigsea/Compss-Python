@@ -1,16 +1,21 @@
-#!/usr/bin/python
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
 __author__ = "Lucas Miguel S Ponce"
 __email__ = "lucasmsp@gmail.com"
 
-import pandas as pd
-import numpy as np
+
+from ddf_library.utils import generate_info
 from pycompss.api.task import task
 from pycompss.api.local import *
 from pycompss.functions.reduce import merge_reduce
-import pyqtree
 
+import pyqtree
+import shapefile
+from io import BytesIO, StringIO
+
+import pandas as pd
+import numpy as np
 import networkx as nx
 from datetime import timedelta, datetime
 
@@ -33,8 +38,7 @@ def read_shapefile(settings, nfrag):
 
     .. note:: pip install pyshp
     """
-    import shapefile
-    from io import BytesIO, StringIO
+
     from hdfspycompss.Block import Block
     from hdfspycompss.HDFS import HDFS
     host = settings.get('host', 'localhost')
@@ -133,7 +137,7 @@ class GeoWithinOperation(object):
         info = [[] for _ in range(nfrag)]
         result = [[] for _ in range(nfrag)]
         for f in range(nfrag):
-            result[f], info[f] = _get_sectors(data[f], settings)
+            result[f], info[f] = _get_sectors(data[f], settings, f)
 
         output = {'key_data': ['data'], 'key_info': ['info'],
                   'data': result, 'info': info}
@@ -196,13 +200,13 @@ class GeoWithinOperation(object):
         return settings
 
 
-@task(returns=list, priority=True)
+@task(returns=1, priority=True)
 def _merge_shapefile(shape1, shape2):
     return pd.concat([shape1, shape2], sort=False, ignore_index=True)
 
 
 @task(returns=2)
-def _get_sectors(data_input, settings):
+def _get_sectors(data_input, settings, frag):
     """Retrieve the sectors of each fragment."""
     shp_object = settings['shp_object']
     spindex = settings['spindex']
@@ -241,14 +245,12 @@ def _get_sectors(data_input, settings):
         data_input = data_input.drop([key], axis=1)
     else:
 
-        import numpy as np
         for a in [a + alias for a in attributes]:
             data_input[a] = np.nan
 
     data_input = data_input.reset_index(drop=True)
 
-    info = [data_input.columns.tolist(), data_input.dtypes.values,
-            [len(data_input)]]
+    info = generate_info(data_input, frag)
     return data_input, info
 
 
@@ -294,7 +296,7 @@ class STDBSCAN(object):
         lon_col = settings['lon_col']
 
         grids, divs = _fragment(df, nfrag, lat_col, lon_col)
-        print "[INFO] - Matrix: {}x{}".format(divs[0], divs[1])
+        print ("[INFO] - Matrix: {}x{}".format(divs[0], divs[1]))
         nlat, nlon = divs
 
         # stage1 and stage2: partitionize and local dbscan

@@ -12,31 +12,38 @@ import sys
 
 
 @task(returns=2)
-def _generate_partition(size, f):
-    df = pd.DataFrame({'a': np.random.randint(0, size * 100, size=size)})
+def _generate_partition(size, f, dim, max_size):
+    if max_size is None:
+        max_size = size * 100
+
+    cols = ["col{}".format(c) for c in range(dim)]
+    df = pd.DataFrame({c: np.random.randint(0, max_size, size=size)
+                       for c in cols})
     info = generate_info(df, f)
     return df, info
 
 
-def generate_data(sizes):
+def generate_data(sizes, dim=1, max_size=None):
 
     nfrag = len(sizes)
     dfs = [[] for _ in range(nfrag)]
     info = [[] for _ in range(nfrag)]
 
     for f, s in enumerate(sizes):
-        dfs[f], info[f] = _generate_partition(s, f)
+        dfs[f], info[f] = _generate_partition(s, f, dim, max_size)
 
     return dfs, info
 
 
-def generate_info(df, f):
-    info = {'cols': df.columns.tolist(),
-            'dtypes': df.dtypes.values,
-            'size': [len(df)],
-            'memory': [sys.getsizeof(df)],  # bytes
-            'frag': [f]
-            }
+def generate_info(df, f, info=None):
+    if info is None:
+        info = dict()
+    info['cols'] = df.columns.tolist()
+    info['dtypes'] = df.dtypes.values
+    info['size'] = [len(df)]
+    info['memory'] = [sys.getsizeof(df)]  # bytes
+    info['frag'] = [f]
+
     return info
 
 
@@ -44,6 +51,14 @@ def merge_info(schemas):
     if isinstance(schemas, list):
         schemas = merge_reduce(merge_schema, schemas)
     return schemas
+
+
+def concatenate_pandas(df):
+    if any([True for r in df if len(r) > 0]):
+        df = [r for r in df if len(r) > 0]  # to avoid change dtypes
+    df = pd.concat(df, sort=False, ignore_index=True)
+    df.reset_index(drop=True, inplace=True)
+    return df
 
 
 @task(returns=1)
@@ -71,3 +86,13 @@ def merge_schema(schema1, schema2):
     # dtypes = info['dtypes'][0]  # TODO
 
     return schema
+
+
+@task(returns=1)
+def _get_schema(df, f):
+    info = generate_info(df, f)
+    return info
+
+
+def _feature_to_array(data, col):
+    return np.array(data[col].tolist())

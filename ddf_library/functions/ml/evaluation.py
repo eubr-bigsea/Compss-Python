@@ -268,7 +268,10 @@ class RegressionMetrics(DDFSketch):
 
     * **Coefficient of Determination (R2):** Iis the proportion of the
       variance in the dependent variable that is predictable from the
-      independent variable(s).
+      independent variable(s). Best possible score is 1.0 and it can be
+      negative (because the model can be arbitrarily worse). A constant model
+      that always predicts the expected value of y, disregarding the input
+      features, would get a R^2 score of 0.0.
 
     * **Explained Variance:** Measures the proportion to which a mathematical
       model accounts for the variation (dispersion) of a given data set.
@@ -306,7 +309,6 @@ class RegressionMetrics(DDFSketch):
         compss_delete_object(partial)
         
         result = rme_stage2(statistics)
-        result = compss_wait_on(result)
         r2, mse, rmse, mae, msr = result
 
         self.r2 = r2
@@ -331,28 +333,28 @@ class RegressionMetrics(DDFSketch):
         return result
 
 
-@task(returns=list)
+@task(returns=1)
 def rme_stage1(df, cols):
     """Generate the partial statistics of each fragment."""
     dim = 1
     col_test, col_predicted, col_features = cols
     sse_partial = ssy_partial = abs_error = sum_y = 0.0
 
-    if len(df) > 0:
+    size = len(df)
+    if size > 0:
         df.reset_index(drop=True, inplace=True)
-        head = df.loc[0, col_features] # TODO
+        head = df.loc[0, col_features]
         if isinstance(head, list):
             dim = len(head)
 
-        error = (df[col_test] - df[col_predicted]).values
+        sum_y = df[col_test].sum()
+        ssy_partial = np.sum(df[col_test] ** 2)
 
-        sse_partial = np.sum(error**2)
+        error = (df[col_test] - df[col_predicted]).values
+        del df
+        sse_partial = np.sum(error ** 2)
         abs_error = np.sum(np.absolute(error))
 
-        sum_y = df[col_test].sum()
-        ssy_partial = np.sum(df[col_test]**2)
-
-    size = len(df)
     table = np.array([size, sse_partial, ssy_partial, abs_error, sum_y])
     return [table, dim]
 
@@ -366,28 +368,39 @@ def rme_merge(pstatistic1, pstatistic2):
 
 
 # @local
-@task(returns=1)
 def rme_stage2(statistics):
     """Generate the final evaluation."""
+    statistics = compss_wait_on(statistics)
     dim = statistics[1]
-    N, SSE, SSY, abs_error, sum_y = statistics[0]
+    n_rows, sse, ssy, abs_error, sum_y = statistics[0]
 
-    y_mean = float(sum_y) / N
-    SS0 = N*np.square(y_mean)
+    if n_rows == 0:
+        raise Exception("You must have inform a sample of rows.")
 
-    SST = SSY - SS0  # SST is the total sum of squares
-    SSR = float(SST - SSE)
+    y_mean = sum_y / n_rows
+    ss0 = n_rows * (y_mean ** 2)
 
-    R2 = SSR/SST
+    # SST = Sum of Squares Total
+    # SSE = Sum of Squared Errors
+    # SSR = Regression Sum of Squares
+    sst = ssy - ss0
+    ssr = sst - sse
+
+    r2 = ssr/sst
 
     # MSE = Mean Square Errors = Error Mean Square = Residual Mean Square
-    MSE = float(SSE)/(N-dim-1)
-    RMSE = np.sqrt(MSE)
+    den = n_rows - dim - 1
+    if den == 0:
+        msg = "You must have at least {} sample of rows.".format(dim)
+        raise Exception(msg)
 
-    MAE = float(abs_error)/(N-dim-1)
+    mse = sse / den
+    rmse = np.sqrt(mse)
 
-    # MSR = MSRegression = Mean Square of Regression
-    MSR = SSR/dim
+    mae = abs_error / den
 
-    return R2, MSE, RMSE, MAE, MSR
+    # MSR = Mean Square of Regression
+    msr = ssr/dim
+
+    return r2, mse, rmse, mae, msr
 

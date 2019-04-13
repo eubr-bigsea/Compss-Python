@@ -18,7 +18,6 @@ from ddf_library.ddf_model import ModelDDF
 __all__ = ['KNearestNeighbors', 'GaussianNB', 'LogisticRegression', 'SVM']
 
 
-
 class GaussianNB(ModelDDF):
     """
     The Naive Bayes algorithm is an intuitive method that uses the

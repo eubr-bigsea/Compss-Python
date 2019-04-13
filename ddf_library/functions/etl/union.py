@@ -18,7 +18,6 @@ def union(data1, data2, by_name=True):
     :param by_name: True to concatenate by column name (Default).
     :return:        Returns a list with nfrag pandas's dataframe.
 
-    :note: Need schema as input
     """
 
     nfrag = len(data1)

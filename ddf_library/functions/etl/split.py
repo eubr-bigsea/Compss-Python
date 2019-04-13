@@ -68,12 +68,13 @@ def _split_allocate(n_list, fraction, nfrag):
     sizes = [int(math.ceil(n * fraction)) for n in n_list]
 
     val = sum(sizes)
-    for i in range(nfrag):
-        if val == size:
-            break
-        if sizes[i] > 0:
-            sizes[i] -= 1
-            val -= 1
+    while val != size:
+        for i in range(nfrag):
+            if val == size:
+                break
+            if sizes[i] > 0:
+                sizes[i] -= 1
+                val -= 1
 
     return sizes
 
@@ -86,16 +87,16 @@ def _split_get(data, fraction, seed, frag):
 
     if n > 0:
         np.random.seed(seed)
-        idx = np.random.randint(0, n, size=fraction)
-        split2 = data[~data.index.isin(idx)]
+        idx = np.random.randint(0, n+1, size=fraction)
+        split2 = data[~data.index.isin(idx)].copy()
         data = data[data.index.isin(idx)]
     else:
         split2 = data.copy()
 
     data.reset_index(drop=True, inplace=True)
-    info1 = generate_info(data, frag)
-
     split2.reset_index(drop=True, inplace=True)
+
+    info1 = generate_info(data, frag)
     info2 = generate_info(split2, frag)
 
     return data, info1, split2, info2

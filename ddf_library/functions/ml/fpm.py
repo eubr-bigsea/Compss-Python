@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
 
@@ -17,7 +17,7 @@ from pycompss.api.api import compss_wait_on
 from pycompss.api.local import local
 
 
-from ddf_library.ddf import DDF, DDFSketch
+from ddf_library.ddf import DDF, DDFSketch, generate_info
 
 __all__ = ['AssociationRules', 'FPGrowth']
 

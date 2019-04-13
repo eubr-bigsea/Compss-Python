@@ -17,7 +17,7 @@ from pycompss.api.api import compss_wait_on
 
 from ddf_library.ddf_base import DDFSketch
 from ddf_library.context import COMPSsContext
-from ddf_library.utils import generate_info
+from ddf_library.utils import generate_info, concatenate_pandas
 
 import pandas as pd
 import copy
@@ -1222,6 +1222,45 @@ class DDF(DDFSketch):
         self._set_n_input(new_state_uuid, self.settings['input'])
         return DDF(task_list=self.task_list, last_uuid=new_state_uuid)
 
+    def range_partition(self, columns, ascending=None, nfrag=None):
+        """
+
+        """
+
+        from .functions.etl.repartition import range_partition
+
+        if not isinstance(columns, list):
+            columns = [columns]
+
+        if ascending is None:
+            ascending = True
+
+        if not isinstance(ascending, list):
+            ascending = [ascending for _ in columns]
+
+        settings = {'columns': columns, 'ascending': ascending}
+
+        if nfrag is not None:
+            settings['nfrag'] = nfrag
+
+        def task_range_partition(df, params):
+            return range_partition(df, params)
+
+        new_state_uuid = self._generate_uuid()
+        COMPSsContext.tasks_map[new_state_uuid] = \
+            {'name': 'range_partition',
+             'status': 'WAIT',
+             'lazy': False,
+             'function': [task_range_partition, settings],
+             'parent': [self.last_uuid],
+             'output': 1,
+             'input': 1,
+             'info': True
+             }
+
+        self._set_n_input(new_state_uuid, self.settings['input'])
+        return DDF(task_list=self.task_list, last_uuid=new_state_uuid)
+
     def repartition(self, nfrag=-1, distribution=None):
         """
 
@@ -1407,6 +1446,7 @@ class DDF(DDFSketch):
         from .functions.etl.select import select
 
         settings = {'columns': columns}
+
         def task_select(df, params):
             return select(df, params)
 
@@ -1416,6 +1456,78 @@ class DDF(DDFSketch):
              'status': 'WAIT',
              'lazy': True,
              'function': [task_select, settings],
+             'parent': [self.last_uuid],
+             'output': 1,
+             'input': 1
+             }
+
+        self._set_n_input(new_state_uuid, self.settings['input'])
+        return DDF(task_list=self.task_list, last_uuid=new_state_uuid)
+
+    def select_expression(self, *exprs):
+        """
+        Projects a set of SQL expressions and returns a new DataFrame.
+        This is a variant of select() that accepts SQL expressions.
+
+        Is it a Lazy function: Yes
+
+        :param exprs: SQL expressions.
+        :return: DDF
+
+        .. note: These operations are supported by select_exprs:
+
+        * Arithmetic operations except for the left shift (<<) and right shift
+         (>>) operators, e.g., 'col' + 2 * pi / s ** 4 % 42 - the_golden_ratio
+        * Comparison operations, including chained comparisons,
+         e.g., 2 < df < df2
+        * Boolean operations, e.g., df < df2 and df3 < df4 or not df_bool
+        * list and tuple literals, e.g., [1, 2] or (1, 2)
+        * Subscript expressions, e.g., df[0]
+        * Math functions: sin, cos, exp, log, expm1, log1p, sqrt, sinh, cosh,
+         tanh, arcsin, arccos, arctan, arccosh, arcsinh, arctanh, abs, arctan2
+         and log10.
+        * This Python syntax is not allowed:
+
+         * Expressions
+
+          - Function calls other than math functions.
+          - is/is not operations
+          - if expressions
+          - lambda expressions
+          - list/set/dict comprehensions
+          - Literal dict and set expressions
+          - yield expressions
+          - Generator expressions
+          - Boolean expressions consisting of only scalar values
+
+         * Statements: Neither simple nor compound statements are allowed.
+          This includes things like for, while, and if.
+
+        You must explicitly reference any local variable that you want to use
+        in an expression by placing the @ character in front of the name.
+
+        .. seealso:: Visit this `link <https://pandas-docs.github.io/pandas-docs
+            -travis/reference/api/pandas.eval.html#pandas.eval>`__ to more
+            information about eval options.
+
+        :Example:
+
+        >>> ddf1.select_exprs('col1 = age * 2', "abs(age)")
+        """
+
+        from .functions.etl.select import select_exprs
+
+        settings = {'exprs': exprs}
+
+        def task_select_exprs(df, params):
+            return select_exprs(df, params)
+
+        new_state_uuid = self._generate_uuid()
+        COMPSsContext.tasks_map[new_state_uuid] = \
+            {'name': 'select_exprs',
+             'status': 'WAIT',
+             'lazy': True,
+             'function': [task_select_exprs, settings],
              'parent': [self.last_uuid],
              'output': 1,
              'input': 1
@@ -1435,6 +1547,7 @@ class DDF(DDFSketch):
 
         >>> ddf1.show()
         """
+        # TODO: do not deserialize all partitions. Use the schema info.
         last_last_uuid = self.task_list[-2]
         self._check_cache()
 
@@ -1445,14 +1558,13 @@ class DDF(DDFSketch):
         if len(self.task_list) > 2:
             COMPSsContext.tasks_map[last_last_uuid]['function'][n_input] = res
 
-        if any([True for r in res if len(r) > 0]):
-            res = [r for r in res if len(r) > 0]  # to avoid change dtypes
-        df = pd.concat(res, sort=False)[:abs(n)]
-        df.reset_index(drop=True, inplace=True)
+        df = concatenate_pandas(res)[:abs(n)]
+
         print(df)
         return self
 
-    def sort(self, cols,  ascending=None, mode='batcher'):
+    #TODO: change mode docstring
+    def sort(self, cols,  ascending=None, mode='by_range'):
         """
         Returns a sorted DDF by the specified column(s).
 
@@ -1590,7 +1702,7 @@ class DDF(DDFSketch):
         if len(self.task_list) > 2:
             COMPSsContext.tasks_map[last_last_uuid]['function'][n_input] = res
 
-        df = pd.concat(res, sort=False)
+        df = concatenate_pandas(res)
         if columns:
             df = df[columns]
 
@@ -1625,7 +1737,8 @@ class DDF(DDFSketch):
              'function': [task_union, {}],
              'parent': [self.last_uuid,  data2.last_uuid],
              'output': 1,
-             'input': 2
+             'input': 2,
+             'info': True
              }
 
         self._set_n_input(new_state_uuid, self.settings['input'])

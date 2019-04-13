@@ -1,25 +1,23 @@
-#!/usr/bin/python
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
 
 __author__ = "Lucas Miguel S Ponce"
 __email__ = "lucasmsp@gmail.com"
 
+from ddf_library.ddf import DDF, generate_info
+from ddf_library.ddf_model import ModelDDF
+
+from pycompss.api.task import task
+from pycompss.api.api import compss_wait_on
+from pycompss.functions.reduce import merge_reduce
+# from pycompss.api.local import *  # it requires guppy
 
 import numpy as np
 import pandas as pd
-from pycompss.api.task import task
-from pycompss.functions.reduce import merge_reduce
-from pycompss.api.local import *
-from ddf_library.ddf import DDF
-from ddf_library.ddf_model import ModelDDF
 
 __all__ = ['Kmeans', 'DBSCAN']
 
-
-import uuid
-import sys
-sys.path.append('../../')
 
 
 class Kmeans(ModelDDF):
@@ -89,8 +87,6 @@ class Kmeans(ModelDDF):
 
         df, nfrag, tmp = self._ddf_inital_setup(data)
 
-        # print compss_wait_on(df)
-
         k = int(self.settings['k'])
         max_iterations = int(self.settings.get('max_iters', 100))
         epsilon = float(self.settings.get('epsilon', 0.001))
@@ -125,7 +121,7 @@ class Kmeans(ModelDDF):
             idx = merge_reduce(_kmeans_reduceCentersTask, idx)
             centroids = _kmeans_compute_centroids(idx)
             it += 1
-            print '[INFO] - Iteration:' + str(it)
+            print('[INFO] - Iteration: ', it)
 
         self.model = pd.DataFrame([[c] for c in centroids],
                                   columns=["Clusters"])
@@ -164,7 +160,7 @@ class Kmeans(ModelDDF):
         for f in range(nfrag):
             result[f], info[f] = _kmeans_assigment_cluster(df[f],
                                                            features_col,
-                                                           self.model, alias)
+                                                           self.model, alias, f)
 
         uuid_key = self._ddf_add_task(task_name='task_transform_kmeans',
                                       status='COMPLETED', lazy=False,
@@ -243,17 +239,19 @@ def _kmeans_reduceCentersTask(a, b):
             a[key] = (a[key][0] + b[key][0], a[key][1] + b[key][1])
     return a
 
-@local
+
+# @local
 def _kmeans_compute_centroids(centroids):
     """ Next we need a function to compute the centroid of a cluster.
         The centroid is simply the mean of all of the examples currently
         assigned to the cluster."""
+    centroids = compss_wait_on(centroids)
     centroids = [np.divide(centroids[c][1], centroids[c][0]) for c in centroids]
     return centroids
 
 
 @task(returns=2)
-def _kmeans_assigment_cluster(data, columns, model, alias):
+def _kmeans_assigment_cluster(data, columns, model, alias, frag):
 
     mu = model['Clusters'].tolist()
     XP = np.array(data[columns].values)
@@ -266,7 +264,7 @@ def _kmeans_assigment_cluster(data, columns, model, alias):
 
     data[alias] = values
     
-    info = [data.columns.tolist(), data.dtypes.values, [len(data)]]
+    info = generate_info(data, frag)
     return data, info
 
 
@@ -311,7 +309,7 @@ def _kmeans_get_idx(size, k):
     return n
 
 
-@task(returns=list)
+@task(returns=1)
 def _kmeans_initMode_random(xp, idxs):
     sampled = xp[idxs]
     return [sampled, 0]
@@ -359,13 +357,12 @@ def _kmeans_init_parallel(xp, k, size, n_list, nfrag):
 
     centroids = compss_wait_on(centroids)
 
-    print "centroids", centroids
-
     return centroids
 
-@local
-def _kmeans_generate_candidate(info, n_list):
 
+# @local
+def _kmeans_generate_candidate(info, n_list):
+    info = compss_wait_on(info)
     distribution = info[0]/info[1]
     # Calculate the distribution for sampling a new center
     idx = np.random.choice(range(len(distribution)), 1, p=distribution)[0]
@@ -373,14 +370,13 @@ def _kmeans_generate_candidate(info, n_list):
     acc = 0
     for nfrag, limit in enumerate(n_list):
         if idx < limit:
-            print [idx, nfrag]
             return [idx, nfrag]
         idx -= limit
 
     return [idx, len(n_list)]
 
 
-@task(returns=list)
+@task(returns=1)
 def _kmeans_initC(xp):
     indices = np.random.randint(0, len(xp), 1)
     sample = xp[indices]
@@ -395,7 +391,7 @@ def _kmeans_get_new_centroid(centroids, xp, idx):
     return centroids
 
 
-@task(returns=list)
+@task(returns=1)
 def _kmeans_cost(XP, clusters):
     """Calculate the cost of data with respect to the current centroids."""
 
@@ -406,7 +402,7 @@ def _kmeans_cost(XP, clusters):
     return [dists, sum(dists)]
 
 
-@task(returns=list)
+@task(returns=1)
 def _kmeans_merge_cost(info1, info2):
     dist = np.concatenate((info1[0], info2[0]))
     cost = info1[1] + info2[1]

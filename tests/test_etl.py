@@ -406,6 +406,23 @@ def rename():
     print("etl_test - with_column - OK")
 
 
+def range_partition():
+    print("\n|-------- Range partition --------|\n")
+    n_rows = 1000
+    data = pd.DataFrame({'a': np.random.randint(0, 100000, size=n_rows),
+                         'b': np.random.randint(0, 100000, size=n_rows)})
+
+    ddf_1 = DDF().parallelize(data, 4).range_partition(columns=['a', 'b'],
+                                                       nfrag=6)
+    f = ddf_1.num_of_partitions()
+    print(ddf_1.count(total=False))
+    print(f == 6)
+    df1 = ddf_1.to_df().sort_values(by=['a', 'b'])
+    data = data.sort_values(by=['a', 'b'])
+    assert_frame_equal(df1, data, check_index_type=False)
+    print("etl_test - repartition - OK")
+
+
 def replace():
     print("\n|-------- Replace Values --------|\n")
     data = pd.DataFrame([[i, i + 5, 0] for i in range(10)],
@@ -458,38 +475,58 @@ def select():
     print("etl_test - select - OK")
 
 
+def select_expression():
+    print("\n|-------- Select Exprs --------|\n")
+    data = pd.DataFrame([[i, -i + 5, 1] for i in range(10)],
+                        columns=['a', 'b', 'c'])
+
+    ddf_1 = DDF().parallelize(data, 4).select_expression('col2 = a * -1',
+                                                         'col3 = col2 * 2 + c',
+                                                         'a')
+    df1 = ddf_1.to_df()
+    res_rep = pd.DataFrame([[0, 1, 0], [-1, -1, 1], [-2, -3, 2], [-3, -5, 3],
+                            [-4, -7, 4], [-5, -9, 5], [-6, -11, 6],
+                            [-7, -13, 7], [-8, -15, 8], [-9, -17, 9]],
+                           columns=['col2', 'col3', 'a'])
+    assert_frame_equal(df1, res_rep, check_index_type=False)
+    print("etl_test - select exprs - OK")
+
+
 def sort():
     print("\n|-------- Sort --------|\n")
-    power_of2 = [2, 4, 8, 16, 32, 64]
+    power_of2 =  [4]#[2, 4, 8, 16, 32, ]
     not_power = [1, 3, 5, 6, 7, 31, 63]
-    modes = ['batcher', 'oddeven']
+    modes = ['batcher', 'oddeven', 'by_range']
 
     for f in power_of2:
-
-        n1 = np.random.randint(0, 300, f)
+        print("# fragments: ", f)
+        n1 = np.random.randint(0, 10000, f)
         # data = pd.DataFrame({'a': np.random.randint(1, 1000, n1)})
         # ddf_1 = DDF().parallelize(data, f)
 
-        data, info = generate_data(n1)
+        data, info = generate_data(n1, dim=2, max_size=1000)
         ddf_1 = DDF().import_data(data, info)
 
-        size_b = ddf_1.count(total=False)
-        print(size_b)
+        # size_b = ddf_1.count(total=False)
+        print("Sorting...")
         t1 = time.time()
-        ddf_2 = ddf_1.sort(['a'], ascending=[True], mode=modes[0]).cache()
+        ddf_2 = ddf_1.sort(['col0', 'col1'],
+                           ascending=[True, False], mode=modes[2]).cache()
         t2 = time.time()
+        print("... End")
+        print('time elapsed: ', t2 - t1)
 
-        size_a = ddf_2.count(total=False)
-        a = ddf_2.to_df()['a'].values
-        print('time elapsed: ', t2-t1)
-
-        is_sorted = lambda a: np.all(a[:-1] <= a[1:])
-        val = (is_sorted(a) and sum(n1) == len(a))
-        if not val:
-            print("error with nfrag=", f)
-            print(size_b)
-            print(size_a)
-            print(a)
+        # size_a = ddf_2.count(total=False)
+        # df = ddf_2.to_df()
+        # a = df['col0'].values
+        #
+        # is_sorted = lambda a: np.all(a[:-1] <= a[1:])
+        # val = (is_sorted(a) and sum(n1) == len(a))
+        # if not val:
+        #     print("error with nfrag=", f)
+        #     print("size before {}: {}".format(sum(size_b), size_b))
+        #     print("size after {}: {}".format(sum(size_a), size_a))
+        #     print(a)
 
 
 def subtract():
@@ -580,13 +617,15 @@ if __name__ == '__main__':
     # import_data()
     # intersect()
     # intersect_all()
-    read_data()
+    # read_data()
     # map()
     # rename()
     # repartition()
+    range_partition()
     # replace()
     # sample()
     # select()
+    # select_expression()
     # sort()
     # split()
     # subtract()
