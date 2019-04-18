@@ -11,7 +11,7 @@ from pycompss.api.api import compss_wait_on, compss_delete_object
 
 from ddf_library.ddf import DDF, DDFSketch
 from ddf_library.ddf_model import ModelDDF
-from ddf_library.utils import generate_info, _feature_to_array
+from ddf_library.utils import generate_info
 
 import numpy as np
 import pandas as pd
@@ -32,21 +32,25 @@ class PCA(ModelDDF):
     >>> ddf2 = pca.transform(ddf1)
     """
 
-    def __init__(self, input_col, n_components, output_col=None):
+    def __init__(self, input_col, output_col, n_components, remove=False):
         """
         :param input_col: Input feature column;
         :param n_components: Number of output components;
-        :param output_col: Output feature column (default, *'prediction_PCA'*).
+        :param output_col: A list of output feature column or a suffix name.
         """
         super(PCA, self).__init__()
 
-        if not output_col:
-            output_col = 'prediction_PCA'
+        if not isinstance(input_col, list):
+            input_col = [input_col]
+
+        if not isinstance(output_col, list):
+            output_col = ['{}{}'.format(col, output_col) for col in input_col]
 
         self.settings = dict()
         self.settings['input_col'] = input_col
         self.settings['output_col'] = output_col
         self.settings['n_components'] = n_components
+        self.settings['remove'] = remove
 
         self.name = 'PCA'
         self.var_exp = self.cum_var_exp = \
@@ -115,12 +119,13 @@ class PCA(ModelDDF):
         model = self.model['model']
         features_col = self.settings['input_col']
         pred_col = self.settings['output_col']
+        remove = self.settings['remove']
 
         result = [[] for _ in range(nfrag)]
         info = [[] for _ in range(nfrag)]
         for f in range(nfrag):
             result[f], info[f] = _pca_transform(df[f], features_col,
-                                                pred_col, model, f)
+                                                pred_col, model, f, remove)
 
         uuid_key = self._ddf_add_task(task_name='transform_pca',
                                       status='COMPLETED', lazy=False,
@@ -139,9 +144,7 @@ def pca_count(data, col):
     partial_size = len(data)
     partial_sum = 0
     if partial_size > 0:
-        # data = data[cols].values
-        # partial_sum = reduce(lambda l1, l2: np.add(l1, l2), data)
-        partial_sum = _feature_to_array(data, col).sum(axis=0)
+        partial_sum = data[col].values.sum(axis=0)
     return [partial_size, partial_sum]
 
 
@@ -161,11 +164,8 @@ def partial_multiply(data, col, info):
 
     if len(data) > 0:
         mean_vec = np.array(info[1]) / total_size
-        # mean_vec = np.array(map(lambda x: float(x) / total_size, info[1]))
 
-        # x_std = data[col].values.tolist()
-        # x_std = np.array(x_std)
-        x_std = _feature_to_array(data, col)
+        x_std = data[col].values
 
         first_part = x_std - mean_vec
         cov_mat = first_part.T.dot(first_part)
@@ -207,14 +207,28 @@ def pca_eigen_decomposition(info, n_components):
 
 
 @task(returns=2)
-def _pca_transform(data, features, pred_col, matrix_w, frag):
+def _pca_transform(data, features, pred_col, matrix_w, frag, remove):
     """Reduce the dimensionality based in the created model."""
-    tmp = []
-    if len(data) > 0:
-        array = np.array(data[features].values.tolist())
-        tmp = array.dot(matrix_w).tolist()
+    n_components = min([len(pred_col), len(matrix_w)])
+    pred_col = pred_col[0: n_components]
 
-    data[pred_col] = tmp
+    if len(data) > 0:
+        array = data[features].values
+
+        if not remove:
+            to_remove = [c for c in pred_col if c in data.columns]
+        else:
+            to_remove = features
+
+        data.drop(to_remove, axis=1, inplace=True)
+
+        res = array.dot(matrix_w)
+
+        data = pd.concat([data, pd.DataFrame(res, columns=pred_col)], axis=1)
+
+    else:
+        for col in pred_col:
+            data[col] = np.nan
 
     info = generate_info(data, frag)
     return data, info

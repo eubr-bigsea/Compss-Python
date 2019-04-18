@@ -9,7 +9,7 @@ from pycompss.functions.reduce import merge_reduce
 from pycompss.api.api import compss_wait_on, compss_delete_object
 from ddf_library.ddf import DDF, DDFSketch
 from ddf_library.ddf_model import ModelDDF
-from ddf_library.utils import generate_info, _feature_to_array
+from ddf_library.utils import generate_info
 # from pycompss.api.local import *  # requires guppy
 import numpy as np
 import pandas as pd
@@ -33,7 +33,7 @@ class MinMaxScaler(ModelDDF):
     >>> ddf2 = scaler.transform(ddf1)
     """
 
-    def __init__(self, input_col, output_col, feature_range=(0, 1)):
+    def __init__(self, input_col, output_col=None, feature_range=(0, 1)):
         """
         :param input_col: Column with the features;
         :param output_col: Output column;
@@ -41,16 +41,22 @@ class MinMaxScaler(ModelDDF):
         """
         super(MinMaxScaler, self).__init__()
 
+        if not isinstance(input_col, list):
+            input_col = [input_col]
+
         if not output_col:
             output_col = input_col
+
+        if not isinstance(output_col, list):
+            output_col = ['{}{}'.format(col, output_col) for col in input_col]
 
         if not isinstance(feature_range, tuple) or \
                 feature_range[0] >= feature_range[1]:
             raise Exception("You must inform a valid `feature_range`.")
 
         self.settings = dict()
-        self.settings['input_col'] = [input_col]
-        self.settings['output_col'] = [output_col]
+        self.settings['input_col'] = input_col
+        self.settings['output_col'] = output_col
         self.settings['feature_range'] = feature_range
 
         self.model = []
@@ -124,22 +130,20 @@ def _agg_maxmin(df, columns):
     """Generate a list of min and max values, excluding NaN values."""
     min_max_p = []
     if len(df) > 0:
-        for col in columns:
-            p = [np.min(df[col].values, axis=0), np.max(df[col].values, axis=0)]
-            min_max_p.append(p)
+        min_max_p = [np.min(df[columns].values, axis=0),
+                     np.max(df[columns].values, axis=0)]
+
     return min_max_p
 
 
 @task(returns=1)
 def _merge_maxmin(minmax1, minmax2):
     """Merge min and max values."""
-    minmax = []
+
     if len(minmax1) > 0 and len(minmax2) > 0:
-        for feature in zip(minmax1, minmax2):
-            di, dj = feature
-            minimum = di[0] if di[0] < dj[0] else dj[0]
-            maximum = di[1] if di[1] > dj[1] else dj[1]
-            minmax.append([minimum, maximum])
+        minimum = np.min([minmax1[0], minmax2[0]], axis=0)
+        maximum = np.max([minmax1[1], minmax2[1]], axis=0)
+        minmax = [minimum, maximum]
     elif len(minmax1) == 0:
         minmax = minmax2
     else:
@@ -157,30 +161,35 @@ def _minmax_scaler(data, settings, minmax, frag):
     if len(alias) != len(features):
         alias = features
 
-    from sklearn.preprocessing import MinMaxScaler
+    if len(data) > 0:
 
-    for i, (alias, col) in enumerate(zip(alias, features)):
+        from sklearn.preprocessing import MinMaxScaler
 
-        if len(data) > 0:
-            minimum, maximum = minmax[i]
-            minimum = np.array(minimum)
-            maximum = np.array(maximum)
+        values = data[features].values
+        to_remove = [c for c in alias if c in data.columns]
+        data.drop(to_remove, axis=1, inplace=True)
 
-            scale_ = (max_r - min_r) / (maximum - minimum)
+        minimum, maximum = minmax
+        minimum = np.array(minimum)
+        maximum = np.array(maximum)
 
-            scaler = MinMaxScaler()
-            scaler.data_min_ = minimum
-            scaler.data_max_ = maximum
-            scaler.scale_ = scale_
-            scaler.data_range_ = maximum - minimum
-            scaler.min_ = min_r - minimum * scale_
+        scale_ = (max_r - min_r) / (maximum - minimum)
 
-            values = data[col].tolist()
-            res = scaler.transform(values)
-            del values
-            data[alias] = res.tolist()
-        else:
-            data[alias] = np.nan
+        scaler = MinMaxScaler()
+        scaler.data_min_ = minimum
+        scaler.data_max_ = maximum
+        scaler.scale_ = scale_
+        scaler.data_range_ = maximum - minimum
+        scaler.min_ = min_r - minimum * scale_
+
+        res = scaler.transform(values)
+        del values
+
+        data = pd.concat([data, pd.DataFrame(res, columns=alias)], axis=1)
+
+    else:
+        for col in alias:
+            data[col] = np.nan
 
     info = generate_info(data, frag)
     return data, info
@@ -204,19 +213,25 @@ class MaxAbsScaler(ModelDDF):
     >>> ddf2 = scaler.transform(ddf1)
     """
 
-    def __init__(self, input_col, output_col):
+    def __init__(self, input_col, output_col=None):
         """
         :param input_col: Column with the features;
         :param output_col: Output column;
         """
         super(MaxAbsScaler, self).__init__()
 
+        if not isinstance(input_col, list):
+            input_col = [input_col]
+
         if not output_col:
             output_col = input_col
 
+        if not isinstance(output_col, list):
+            output_col = ['{}{}'.format(col, output_col) for col in input_col]
+
         self.settings = dict()
-        self.settings['input_col'] = [input_col]
-        self.settings['output_col'] = [output_col]
+        self.settings['input_col'] = input_col
+        self.settings['output_col'] = output_col
 
         self.model = []
         self.name = 'MaxAbsScaler'
@@ -234,10 +249,10 @@ class MaxAbsScaler(ModelDDF):
         columns = self.settings['input_col']
         # generate a list of the min and the max element to each subset.
         minmax_partial = \
-            [_agg_maxabs(df[f], columns) for f in range(nfrag)]
+            [_agg_maxmin(df[f], columns) for f in range(nfrag)]
 
         # merge them into only one list
-        minmax = merge_reduce(_merge_maxabs, minmax_partial)
+        minmax = merge_reduce(_merge_maxmin, minmax_partial)
         minmax = compss_wait_on(minmax)
         compss_delete_object(minmax_partial)
 
@@ -285,38 +300,6 @@ class MaxAbsScaler(ModelDDF):
         return DDF(task_list=tmp.task_list, last_uuid=uuid_key)
 
 
-@task(returns=1)
-def _agg_maxabs(df, columns):
-    """Generate a list of min and max values, excluding NaN values."""
-    min_max_p = []
-
-    if len(df) > 0:
-        for col in columns:
-            p = [np.min(df[col].values, axis=0), np.max(df[col].values, axis=0)]
-            min_max_p.append(p)
-
-    return min_max_p
-
-
-@task(returns=list)
-def _merge_maxabs(minmax1, minmax2):
-    """Merge max abs values."""
-    maxabs = []
-    if len(minmax1) > 0 and len(minmax2) > 0:
-        for feature in zip(minmax1, minmax2):
-            d_esq, d_dir = feature
-
-            minimum = [min([di, dj]) for di, dj in zip(d_esq[0], d_dir[0])]
-            maximum = [max([di, dj]) for di, dj in zip(d_esq[1], d_dir[1])]
-            maxabs.append([minimum, maximum])
-    elif len(minmax1) > len(minmax2):
-        maxabs = minmax1
-    else:
-        maxabs = minmax2
-
-    return maxabs
-
-
 @task(returns=2)
 def _maxabs_scaler(data, minmax, settings, frag):
     """Normalize by range mode."""
@@ -326,31 +309,35 @@ def _maxabs_scaler(data, minmax, settings, frag):
     if len(alias) != len(features):
         alias = features
 
-    from sklearn.preprocessing import MaxAbsScaler
+    if len(data) > 0:
 
-    for i, (alias, col) in enumerate(zip(alias, features)):
+        from sklearn.preprocessing import MaxAbsScaler
 
-        if len(data) > 0:
-            values = data[col].tolist()
+        values = data[features].values
+        to_remove = [c for c in alias if c in data.columns]
+        data.drop(to_remove, axis=1, inplace=True)
 
-            minimum, maximum = minmax[i]
-            minimum = np.array(minimum)
-            maximum = np.array(maximum)
+        minimum, maximum = minmax
+        minimum = np.abs(minimum)
+        maximum = np.abs(maximum)
 
-            max_abs = np.maximum(np.abs(minimum), np.abs(maximum))
-            scale = max_abs.copy()
-            scale[scale == 0.0] = 1.0
+        max_abs = np.max([minimum, maximum], axis=0)
+        scale = max_abs.copy()
+        scale[scale == 0.0] = 1.0
 
-            scaler = MaxAbsScaler()
-            scaler.n_samples_seen_ = len(values)
-            scaler.max_abs_ = max_abs
-            scaler.scale_ = scale
+        scaler = MaxAbsScaler()
+        scaler.n_samples_seen_ = len(values)
+        scaler.max_abs_ = max_abs
+        scaler.scale_ = scale
 
-            res = scaler.transform(values)
-            del values
-            data[alias] = res.tolist()
-        else:
-            data[alias] = np.nan
+        res = scaler.transform(values)
+        del values
+
+        data = pd.concat([data, pd.DataFrame(res, columns=alias)], axis=1)
+
+    else:
+        for col in alias:
+            data[col] = np.nan
 
     info = generate_info(data, frag)
     return data, info
@@ -384,12 +371,18 @@ class StandardScaler(ModelDDF):
         """
         super(StandardScaler, self).__init__()
 
+        if not isinstance(input_col, list):
+            input_col = [input_col]
+
         if not output_col:
             output_col = input_col
 
+        if not isinstance(output_col, list):
+            output_col = ['{}{}'.format(col, output_col) for col in input_col]
+
         self.settings = dict()
-        self.settings['input_col'] = [input_col]
-        self.settings['output_col'] = [output_col]
+        self.settings['input_col'] = input_col
+        self.settings['output_col'] = output_col
         self.settings['with_mean'] = with_mean
         self.settings['with_std'] = with_std
 
@@ -420,7 +413,7 @@ class StandardScaler(ModelDDF):
 
         # using this mean, compute the variance of each subset column
         for f in range(nfrag):
-            sse[f] = _agg_sse(arrays[f], features, mean)
+            sse[f] = _agg_sse(arrays[f], mean)
         merged_sse = merge_reduce(_merge_sse, sse)
 
         mean = compss_wait_on(mean)
@@ -477,36 +470,29 @@ class StandardScaler(ModelDDF):
 @task(returns=2)
 def _agg_sum(df, features):
     """Pre-compute some values."""
-    sum_partial = []
-    data = {}
-    for feature in features:
-        x = np.array(df[feature].tolist())
-        sum_p = [np.nansum(x, axis=0), len(x)]
-        sum_partial.append(sum_p)
-        data[feature] = x
-    return data, sum_partial
+
+    df = df[features].values
+    sum_partial = [np.nansum(df, axis=0), len(df)]
+
+    return df, sum_partial
 
 
 @task(returns=1, priority=True)
 def _merge_sum(sum1, sum2):
     """Merge pre-computation."""
-    sum_count = []
-    for f_i, f_j in zip(sum1, sum2):
-        count = f_i[1] + f_j[1]
-        sums = np.add(f_i[0], f_j[0])
-        sum_count.append([sums, count])
+    count = sum1[1] + sum2[1]
+    sums = np.add(sum1[0], sum2[0])
+    sum_count = [sums, count]
 
     return sum_count
 
 
 @task(returns=1)
-def _agg_sse(df, features, sum_count):
+def _agg_sse(df, sum_count):
     """Perform a partial SSE calculation."""
-    sum_sse = []
 
-    for i, (sum_f, col) in enumerate(zip(sum_count, features)):
-        means = np.array(sum_f[0]) / sum_f[1]
-        sum_sse.append(np.sum((df[col]-means)**2, axis=0))
+    means = np.array(sum_count[0]) / sum_count[1]
+    sum_sse = np.sum((df - means)**2, axis=0)
 
     return sum_sse
 
@@ -514,9 +500,7 @@ def _agg_sse(df, features, sum_count):
 @task(returns=1, priority=True)
 def _merge_sse(sum1, sum2):
     """Merge the partial SSE."""
-    sum_count = []
-    for di, dj in zip(sum1, sum2):
-        sum_count.append(di + dj)
+    sum_count = sum1 + sum2
     return sum_count
 
 
@@ -531,28 +515,32 @@ def _stardard_scaler(data, settings, mean, sse, frag):
     if len(alias) != len(features):
         alias = features
 
-    from sklearn.preprocessing import StandardScaler
-    for i, (alias, col) in enumerate(zip(alias, features)):
+    if len(data) > 0:
 
-        if len(data) > 0:
-            size = mean[i][1]
+        from sklearn.preprocessing import StandardScaler
 
-            var_ = np.array(sse[i]) / size
-            mean_ = np.array(mean[i][0]) / size
+        values = data[features].values
+        to_remove = [c for c in alias if c in data.columns]
+        data.drop(to_remove, axis=1, inplace=True)
 
-            scaler = StandardScaler()
-            scaler.mean_ = mean_ if with_mean else None
-            scaler.scale_ = np.sqrt(var_) if with_std else None
-            scaler.var_ = var_ if with_std else None
-            scaler.n_samples_seen_ = size
+        size = mean[1]
+        var_ = np.array(sse) / size
+        mean_ = np.array(mean[0]) / size
 
-            values = data[col].tolist()
-            res = scaler.transform(values)
-            del values
+        scaler = StandardScaler()
+        scaler.mean_ = mean_ if with_mean else None
+        scaler.scale_ = np.sqrt(var_) if with_std else None
+        scaler.var_ = var_ if with_std else None
+        scaler.n_samples_seen_ = size
 
-            data[alias] = res.tolist()
-        else:
-            data[alias] = np.nan
+        res = scaler.transform(values)
+        del values
+
+        data = pd.concat([data, pd.DataFrame(res, columns=alias)], axis=1)
+
+    else:
+        for col in alias:
+            data[col] = np.nan
 
     info = generate_info(data, frag)
     return data, info

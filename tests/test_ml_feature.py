@@ -30,8 +30,9 @@ def binarizer():
 def maxabs_scaler():
     print("_____Testing MaxAbsScaler _____")
 
+    cols = ['x', 'y', 'z']
     df_maxabs = pd.DataFrame([[1., -1., 2.], [2., 0., 0.], [0., 1., -1.]],
-                             columns=['x', 'y', 'z'])
+                             columns=cols)
 
     # Creating DDF from DataFrame
     ddf_maxabs = DDF().parallelize(df_maxabs, 4)
@@ -43,11 +44,11 @@ def maxabs_scaler():
     ddf_maxabs = assembler.transform(ddf_maxabs)
 
     from ddf_library.functions.ml.feature import MaxAbsScaler
-    ddf_maxabs = MaxAbsScaler(input_col='features',
-                              output_col='features_norm') \
-        .fit_transform(ddf_maxabs).select(['features_norm'])
+    ddf_maxabs = MaxAbsScaler(input_col=cols) \
+        .fit_transform(ddf_maxabs)
 
-    res = ddf_maxabs.to_df('features_norm').tolist()
+    res = ddf_maxabs.to_df(cols).values.tolist()
+    print(res)
     sol = [[0.5, -1., 1], [1.,  0., 0.], [0., 1., -0.5]]
     if not np.allclose(res, sol):
         raise Exception(" Output different from expected.")
@@ -57,22 +58,19 @@ def maxabs_scaler():
 def minmax_scaler():
     print("_____Testing MinMaxScaler _____")
 
+    cols = ['x', 'y']
     df_minmax = pd.DataFrame([[-1, 2], [-0.5, 6], [0, 10], [1, 18]],
-                             columns=['x', 'y'])
+                             columns=cols)
 
     ddf_minmax = DDF().parallelize(df_minmax, 4)
 
-    # Creating a column of features
-    from ddf_library.functions.ml.feature import VectorAssembler
-    assembler = VectorAssembler(input_col=["x", "y"], output_col="features")
-    ddf_minmax = assembler.transform(ddf_minmax)
-
     from ddf_library.functions.ml.feature import MinMaxScaler
-    ddf_minmax = MinMaxScaler(input_col='features', output_col='features_norm')\
-        .fit_transform(ddf_minmax).select(['features_norm'])
+    ddf_minmax = MinMaxScaler(input_col=cols)\
+        .fit_transform(ddf_minmax)
 
-    res = ddf_minmax.to_df('features_norm').tolist()
+    res = ddf_minmax.to_df(cols).values.tolist()
     sol = [[0., 0.], [0.25, 0.25], [0.5,  0.5], [1., 1.]]
+    print(res)
     if not np.allclose(res, sol):
         raise Exception(" Output different from expected.")
     print("Ok")
@@ -80,21 +78,18 @@ def minmax_scaler():
 
 def std_scaler():
     print("_____Testing StandardScaler _____")
+    cols = ['x', 'y']
     df_std = pd.DataFrame([[0, 0], [0, 0], [1, 1], [1, 1]],
-                          columns=['x', 'y'])
+                          columns=cols)
     ddf_std = DDF().parallelize(df_std, 4)
 
-    # Creating a column of features
-    from ddf_library.functions.ml.feature import VectorAssembler
-    assembler = VectorAssembler(input_col=["x", "y"], output_col="features")
-    ddf_std = assembler.transform(ddf_std)
-
     from ddf_library.functions.ml.feature import StandardScaler
-    scaler = StandardScaler(input_col='features', output_col='features_norm',
-                            with_mean=True, with_std=True).fit(ddf_std)
-    ddf_std = scaler.transform(ddf_std).select(['features_norm'])
+    scaler = StandardScaler(input_col=cols, with_mean=True,
+                            with_std=True).fit(ddf_std)
+    ddf_std = scaler.transform(ddf_std)
 
-    res = ddf_std.to_df('features_norm').tolist()
+    res = ddf_std.to_df(cols).values.tolist()
+    print(res)
     sol = [[-1., -1.], [-1., -1.], [1., 1.], [1., 1.]]
     if not np.allclose(res, sol):
         raise Exception(" Output different from expected.")
@@ -109,20 +104,17 @@ def pca():
     df.dropna(how="all", inplace=True)
     columns = df.columns.tolist()
     columns.remove('class')
-
     ddf = DDF().parallelize(df, 4)
-    from ddf_library.functions.ml.feature import VectorAssembler
-    assembler = VectorAssembler(input_col=columns, output_col="features")
-    ddf = assembler.transform(ddf)
 
     from ddf_library.functions.ml.feature import StandardScaler
-    ddf_std = StandardScaler(input_col='features',
-                             output_col='features_norm').fit_transform(ddf)
+    ddf_std = StandardScaler(input_col=columns).fit_transform(ddf)
 
+    n_components = 2
+    new_columns = ['col{}'.format(i) for i in range(n_components)]
     from ddf_library.functions.ml.feature import PCA
-    pca = PCA(input_col='features_norm', output_col='features_pca',
-              n_components=2)
-    res = pca.fit_transform(ddf_std).to_df('features_pca')[0:10].tolist()
+    pca = PCA(input_col=columns, output_col=new_columns,
+              n_components=n_components)
+    res = pca.fit_transform(ddf_std).to_df(new_columns).values.tolist()[0:10]
 
     sol = [[-2.26454173, -0.505703903],
            [-2.08642550,  0.655404729],
@@ -188,10 +180,10 @@ if __name__ == '__main__':
     print("_____Testing Features operations_____")
 
     # binarizer()
-    # pca()
+    pca()
     # poly_expansion()
     # onehot_encoder()
-    maxabs_scaler()
-    minmax_scaler()
-    std_scaler()
-
+    # maxabs_scaler()
+    # minmax_scaler()
+    # std_scaler()
+    #

@@ -94,5 +94,22 @@ def _get_schema(df, f):
     return info
 
 
-def _feature_to_array(data, col):
-    return np.array(data[col].tolist())
+def divide_idx_in_frags(ids, n_list):
+
+    ids = np.sort(ids)
+
+    list_ids = [[] for _ in n_list]
+    top, bottom = 0, 0
+
+    for frag, limit in enumerate(n_list):
+        top += limit
+        idx_bellow = [i for i in ids if i < top]
+        list_ids[frag] = np.subtract(idx_bellow, bottom).tolist()
+        bottom = top
+        ids = ids[len(idx_bellow):]
+        if len(ids) == 0:
+            break
+
+    return list_ids
+
+

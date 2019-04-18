@@ -11,7 +11,7 @@ from pycompss.api.api import compss_wait_on
 
 from ddf_library.ddf import DDF, DDFSketch
 from ddf_library.ddf_model import ModelDDF
-from ddf_library.utils import generate_info, _feature_to_array
+from ddf_library.utils import generate_info
 
 import numpy as np
 import pandas as pd

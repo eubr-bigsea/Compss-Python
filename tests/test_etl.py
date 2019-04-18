@@ -545,7 +545,8 @@ def subtract():
 
 def split():
     print("\n|-------- Split --------|\n")
-    data = pd.DataFrame([[i, i+5, 0] for i in range(10)],
+    size = 100
+    data = pd.DataFrame([[i, i+5, 0] for i in range(size)],
                         columns=['a', 'b', 'c'])
 
     ddf_1a, ddf_1b = DDF().parallelize(data, 4).split(0.5)
@@ -554,7 +555,7 @@ def split():
 
     s = any(pd.concat([df1, df2]).duplicated(['a', 'b', 'c']))
     t = len(df1)+len(df2)
-    if s or t != 10:
+    if s or t != size:
         raise Exception("Split")
     print("etl_test - split - OK")
 
@@ -621,13 +622,13 @@ if __name__ == '__main__':
     # map()
     # rename()
     # repartition()
-    range_partition()
+    # range_partition()
     # replace()
     # sample()
     # select()
     # select_expression()
     # sort()
-    # split()
+    split()
     # subtract()
     # take()
     # union()   # TODO test the differents datatypes

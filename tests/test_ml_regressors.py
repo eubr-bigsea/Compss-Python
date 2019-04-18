@@ -25,12 +25,18 @@ def simple_regression():
     clf.fit(diabetes_x, diabetes_y)
     sol = clf.predict(diabetes_x)
 
-    df = pd.DataFrame.from_dict({'features': diabetes_x, 'y': diabetes_y})
+    diabetes_x = np.array(diabetes_x).flatten()
+    df = pd.DataFrame.from_dict({'features': diabetes_x,
+                                 'y': diabetes_y,
+                                 'sol': sol})
+
     ddf_simple = DDF().parallelize(df, 4)
 
     from ddf_library.functions.ml.regression import OrdinaryLeastSquares
     model = OrdinaryLeastSquares('features', 'y').fit(ddf_simple)
-    ddf_pred = model.transform(ddf_simple)
+    ddf_pred = model.transform(ddf_simple, pred_col='pred_LinearReg')
+
+    # ddf_pred.show()
 
     sol_ddf = ddf_pred.to_df('pred_LinearReg')
     if not np.allclose(sol, sol_ddf):
@@ -38,7 +44,7 @@ def simple_regression():
     else:
         print("OK - Ordinary Least Squares.")
 
-    return ddf_pred
+    return ddf_pred, 'features'
 
 
 def sgb_regression():
@@ -47,27 +53,30 @@ def sgb_regression():
     diabetes = datasets.load_diabetes()
 
     # Use only one feature
-    diabetes_x = diabetes.data.tolist()
-    # diabetes_x = diabetes.data[:, 0: 4].tolist()
+    # diabetes_x = diabetes.data.tolist()
+    diabetes_x = diabetes.data[:, 0: 4].tolist()
     diabetes_y = diabetes.target.tolist()
-    df = pd.DataFrame.from_dict({'features': diabetes_x, 'y': diabetes_y})
-    ddf = DDF().parallelize(df, 4)
 
+    cols = ['col{}'.format(i) for i in range(len(diabetes_x[0]))]
+    df = pd.DataFrame(diabetes_x, columns=cols)
+    df['y'] = diabetes_y
+
+    ddf = DDF().parallelize(df, 4)
     # Testing 'SGB' linear regressor
     ddf_train, ddf_test = ddf.split(0.7)
 
-    from ddf_library.functions.ml.regression import SGDRegressor
-    model = SGDRegressor('features', 'y', max_iter=20, alpha=1).fit(ddf_train)
+    from ddf_library.functions.ml.regression import GDRegressor
+    model = GDRegressor(cols, 'y', max_iter=100, alpha=1).fit(ddf_train)
     pred_ddf = model.transform(ddf_test)
 
     pred_ddf.show()
 
-    return pred_ddf
+    return pred_ddf, cols
 
 
-def regressor_evaluator(ddf_pred):
+def regressor_evaluator(ddf_pred, cols):
     from ddf_library.functions.ml.evaluation import RegressionMetrics
-    metrics = RegressionMetrics(col_features='features', label_col='y',
+    metrics = RegressionMetrics(col_features=cols, label_col='y',
                                 pred_col='pred_LinearReg', data=ddf_pred)
 
     print(metrics.get_metrics())
@@ -134,7 +143,7 @@ def evaluator_metrics():
 
 if __name__ == '__main__':
     print("_____Testing Regressors_____")
-    # pred_ddf = simple_regression()
-    pred_ddf = sgb_regression()
-    regressor_evaluator(pred_ddf)
+    # pred_ddf, cols = simple_regression()
+    pred_ddf, cols = sgb_regression()
+    regressor_evaluator(pred_ddf, cols)
     # evaluator_metrics()

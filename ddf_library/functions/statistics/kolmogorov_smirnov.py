@@ -104,7 +104,8 @@ def _ks_theorical_dist(data, info, f, settings):
 
     if len(data) > 0:
 
-        values = data[col].values.flatten()
+        values = data[col].values
+        del data
 
         cdf = getattr(distributions, distribution).cdf
         cdf_vals = cdf(values, *args)

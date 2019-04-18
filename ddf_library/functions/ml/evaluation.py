@@ -170,8 +170,11 @@ def cme_stage1(data, col_test, col_predicted):
     data = data.groupby([col_test,
                          col_predicted]).size().reset_index(name='counts')
 
-    uniques = np.concatenate((data[col_test].astype(int),
-                              data[col_predicted].astype(int)), axis=0)
+    data[col_test] = data[col_test].astype(int)
+    data[col_predicted] = data[col_predicted].astype(int)
+
+    uniques = np.concatenate((data[col_test],
+                              data[col_predicted]), axis=0)
     uniques = np.unique(uniques)
 
     df = pd.DataFrame(columns=uniques, index=uniques).fillna(0)
