@@ -19,7 +19,7 @@ extraction = ['CountVectorizer', 'TfidfVectorizer']
 preprocessing = ['Binarizer', 'StringIndexer', 'IndexToString',
                  'OneHotEncoder', 'PolynomialExpansion']
 scalers = ['MaxAbsScaler', 'MinMaxScaler', 'StandardScaler']
-selection = ['VectorAssembler', 'VectorSlicer']
+# selection = ['VectorAssembler', 'VectorSlicer']
 text_operations = ['Tokenizer', 'RegexTokenizer', 'RemoveStopWords',
                    'NGram']
 

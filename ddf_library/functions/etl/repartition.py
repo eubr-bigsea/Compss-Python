@@ -63,10 +63,9 @@ def range_partition(data, settings):
     :param data: A list of pandas dataframes;
     :param settings: A dictionary with:
      - info:
-     - size:
-     - columns:
+     - columns: Columns name to perform a range partition;
      - ascending:
-     - nfrag:
+     - nfrag: Number of partitions;
 
     :return: A list of pandas dataframes;
     """
@@ -100,12 +99,6 @@ def range_partition(data, settings):
         result = [[] for _ in range(nfrag_target)]
         info = [{} for _ in range(nfrag_target)]
 
-        # for f2 in range(nfrag):
-        #     for f in range(nfrag_target):
-        #         result[f] = merge_partitions(result[f], splitted[f2],
-        #         f, info[f])
-        #     compss_delete_object(splitted[f2])
-
         for f in range(nfrag_target):
             frags = [get_partition(splitted[f2], f) for f2 in range(nfrag)]
             tmp = merge_reduce(concat2pandas, frags)
@@ -119,20 +112,6 @@ def range_partition(data, settings):
     output = {'key_data': ['data'], 'key_info': ['info'],
               'data': result, 'info': info}
     return output
-
-
-# @task(returns=1, info=INOUT)
-# def merge_partitions(df, df2, frag, info):
-#     tmp = df2[frag]
-#     del df2
-#
-#     if len(df) == 0:
-#         df = tmp
-#     else:
-#         df = pd.concat([df, tmp], ignore_index=True)
-#
-#     generate_info(df, frag, info)
-#     return df
 
 
 def range_bounds(data, nfrag, sizes, cols, ascending, nfrag_target):
@@ -198,31 +177,30 @@ def split_by_boundary(data, cols, ascending, bounds, info):
     bounds = pd.DataFrame(bounds, columns=cols)
     bounds[aux_col] = -1
 
-    tmp = data[cols].copy()
-    tmp[aux_col] = tmp.index
+    data[aux_col] = data.index
+    data = pd.concat([data, bounds], sort=False)
+    del bounds
 
-    values_bounds = pd.concat([tmp, bounds])
-    del tmp, bounds
-    values_bounds.sort_values(by=cols, ascending=ascending, inplace=True)
-    values_bounds.reset_index(drop=True, inplace=True)
+    data.sort_values(by=cols, ascending=ascending, inplace=True)
+    data.reset_index(drop=True, inplace=True)
 
-    idxs_bounds = values_bounds.index[values_bounds[aux_col] == -1]
+    idxs_bounds = data.index[data[aux_col] == -1]
 
     for s, idx in enumerate(idxs_bounds):
 
         if s == 0:
-            t = values_bounds.iloc[0:idx]
+            t = data.iloc[0:idx]
             t.drop(aux_col, axis=1, inplace=True)
             splits[s] = t
 
         else:
             idx0 = idxs_bounds[s-1]
-            t = values_bounds.iloc[idx0 + 1:idx]
+            t = data.iloc[idx0 + 1:idx]
             t.drop(aux_col, axis=1, inplace=True)
             splits[s] = t
 
         if (s+1) == len(idxs_bounds):
-            t = values_bounds.iloc[idx + 1:]
+            t = data.iloc[idx + 1:]
             t.drop(aux_col, axis=1, inplace=True)
             splits[s+1] = t
 
@@ -236,7 +214,12 @@ def get_partition(splits, frag):
 
 @task(returns=1)
 def concat2pandas(df1, df2):
-    return df1 + df2
+    if len(df1) > 0:
+        if len(df2) > 0:
+            return df1 + df2
+        else:
+            return df1
+    return df2
     # return pd.concat([df1, df2], ignore_index=True)
 
 
@@ -247,6 +230,8 @@ def _gen_partition(df, frag):
         df = pd.concat(df, ignore_index=True, sort=False)
     else:
         df = df[0]
+
+    df.reset_index(drop=True, inplace=True)
 
     info = generate_info(df, frag)
 

@@ -34,17 +34,20 @@ class Tokenizer(object):
                  to_lowercase=True):
         """
         :param input_col: Input column with sentences;
-        :param output_col: Output column (overwrite the *'input_col'* if None);
+        :param output_col: Output column (*'input_col'_tokenized* if None);
         :param min_token_length: Minimum tokens length (default is 2);
         :param to_lowercase: To convert words to lowercase (default is True).
         """
 
+        if isinstance(input_col, list):
+            raise Exception('`input_col` must be a single column')
+
         if not output_col:
-            output_col = input_col
+            output_col = "{}_tokenized".format(input_col)
 
         self.settings = dict()
-        self.settings['inputcol'] = [input_col]
-        self.settings['outputcol'] = [output_col]
+        self.settings['inputcol'] = input_col
+        self.settings['outputcol'] = output_col
         self.settings['min_token_length'] = min_token_length
         self.settings['to_lowercase'] = to_lowercase
 
@@ -76,25 +79,30 @@ class RegexTokenizer(object):
 
     :Example:
 
-    >>> ddf2 = RegexTokenizer(input_col='col_0', pattern=r'\s+').transform(ddf1)
+    >>> ddf2 = RegexTokenizer(input_col='col_0', pattern=r"(?u)\b\w\w+\b")\
+    ...         .transform(ddf1)
     """
 
     def __init__(self, input_col, output_col=None, pattern=r'\s+',
                  min_token_length=2, to_lowercase=True):
         """
         :param input_col: Input column with sentences;
-        :param output_col: Output column (overwrite the *'input_col'* if None);
-        :param pattern: Regex pattern in Java dialect, default is *r'\s+'*;
+        :param output_col: Output column (*'input_col'_tokenized* if None);
+        :param pattern: Regex pattern in Java dialect,
+         default *r"(?u)\b\w\w+\b"*;
         :param min_token_length: Minimum tokens length (default is 2);
         :param to_lowercase: To convert words to lowercase (default is True).
         """
 
+        if isinstance(input_col, list):
+            raise Exception('`input_col` must be a single column')
+
         if not output_col:
-            output_col = input_col
+            output_col = "{}_tokenized".format(input_col)
 
         self.settings = dict()
-        self.settings['inputcol'] = [input_col]
-        self.settings['outputcol'] = [output_col]
+        self.settings['inputcol'] = input_col
+        self.settings['outputcol'] = output_col
         self.settings['min_token_length'] = min_token_length
         self.settings['to_lowercase'] = to_lowercase
         self.settings['pattern'] = pattern
@@ -126,33 +134,33 @@ def _tokenizer_(data, settings):
     output_col = settings['outputcol']
     min_token_length = settings['min_token_length']
     to_lowercase = settings['to_lowercase']
-    pattern = settings.get('pattern', r'\s+')
+    pattern = settings.get('pattern', r"(?u)\b\w\w+\b")
     frag = settings['id_frag']
 
+    token_pattern = re.compile(pattern)
+    tokenizer = lambda doc: token_pattern.findall(doc)
+
     result = []
-    for field in data[input_col].values:
-        row = []
-        for sentence in field:
-            toks = re.split(pattern, sentence)
-            col = []
+    if len(data) > 0:
+
+        for sentence in data[input_col].values:
+            toks = tokenizer(sentence)
+            row = []
             for t in toks:
                 if len(t) > min_token_length:
                     if to_lowercase:
-                        col.append(t.lower())
+                        row.append(t.lower())
                     else:
-                        col.append(t)
-            row.append(col)
-        result.append(row)
+                        row.append(t)
+            result.append(row)
 
-    if isinstance(output_col, list):
-        for i, col in enumerate(output_col):
-            tmp = np.array(result)[:, i]
-            if len(tmp) > 0:
-                data[col] = tmp
-            else:
-                data[col] = np.nan
     else:
-        data[output_col] = np.ravel(result)
+        result = np.nan
+
+    if output_col in data.columns:
+        data.drop([output_col], axis=1, inplace=True)
+
+    data[output_col] = result
 
     info = generate_info(data, frag)
     return data, info
@@ -176,20 +184,17 @@ class RemoveStopWords(DDFSketch):
                  stops_words_list=None):
         """
         :param input_col: Input columns with the tokens;
-        :param output_col: Output column;
+        :param output_col: Output column (*'input_col'_rm_stopwords* if None);
         :param case_sensitive: To compare words using case sensitive (default);
         :param stops_words_list: Optional, a list of words to be removed.
         """
         super(RemoveStopWords, self).__init__()
 
-        if not isinstance(input_col, list):
-            input_col = [input_col]
-            if not output_col:
-                output_col = 'col_rm_stopwords'
+        if isinstance(input_col, list):
+            raise Exception('`input_col` must be a single column')
 
-        else:
-            if not output_col:
-                output_col = input_col
+        if not output_col:
+            output_col = "{}_rm_stopwords".format(input_col)
 
         self.settings = dict()
         self.settings['news_stops_words'] = stops_words_list
@@ -244,16 +249,16 @@ class RemoveStopWords(DDFSketch):
         return DDF(task_list=tmp.task_list, last_uuid=uuid_key)
 
 
-@task(returns=list)
+@task(returns=1)
 def read_stopwords(data1, input_col):
     if len(data1) > 0:
-        data1 = np.reshape(data1[input_col], -1, order='C')
+        data1 = data1[input_col].values
     else:
         data1 = np.array([])
     return data1
 
 
-@task(returns=list)
+@task(returns=1)
 def merge_stopwords(data1, data2):
 
     data1 = np.concatenate((data1, data2), axis=0)
@@ -263,8 +268,8 @@ def merge_stopwords(data1, data2):
 @task(returns=2)
 def _remove_stopwords(data, settings, stopwords, frag):
     """Remove stopwords from a column."""
-    columns = settings['input_col']
-    alias = settings['output_col']
+    column = settings['input_col']
+    output_col = settings['output_col']
 
     # stopwords must be in 1-D
     new_stops = np.reshape(settings['news_stops_words'], -1, order='C')
@@ -273,28 +278,27 @@ def _remove_stopwords(data, settings, stopwords, frag):
     else:
         stopwords = new_stops
 
-    new_data = []
+    tmp = []
     if data.shape[0] > 0:
         if settings['case_sensitive']:
             stopwords = set(stopwords)
-            for index, row in data.iterrows():
-                col = []
-                for entry in row[columns]:
-                    col.append(list(set(entry).difference(stopwords)))
-                new_data.append(col)
+            for tokens in data[column].values:
+                tmp.append(list(set(tokens).difference(stopwords)))
 
         else:
-            stopwords = [tok.lower() for tok in stopwords]
-            stopwords = set(stopwords)
+            stopwords = set([tok.lower() for tok in stopwords])
 
-            for index, row in data.iterrows():
-                col = []
-                for entry in row[columns]:
-                    entry = [tok.lower() for tok in entry]
-                    col.append(list(set(entry).difference(stopwords)))
-                new_data.append(col)
+            for tokens in data[column].values:
+                entry = [tok.lower() for tok in tokens]
+                tmp.append(list(set(entry).difference(stopwords)))
 
-        data[alias] = np.reshape(new_data, -1, order='C')
+    else:
+        tmp = np.nan
+
+    if output_col in data.columns:
+        data.drop([output_col], axis=1, inplace=True)
+
+    data[output_col] = tmp
 
     info = generate_info(data, frag)
     return data, info
@@ -315,11 +319,14 @@ class NGram(object):
 
         :param input_col: Input columns with the tokens;
         :param n: Number integer. Default = 2;
-        :param output_col: Output column. Default, overwrite input_col;
+        :param output_col: Output column. Default, add suffix '_ngram';
 
         """
+        if isinstance(input_col, list):
+            raise Exception('`input_col` must be a single column')
+
         if not output_col:
-            output_col = input_col
+            output_col = "{}_ngram".format(input_col)
 
         self.settings = dict()
         self.settings['inputcol'] = input_col
@@ -347,13 +354,12 @@ class NGram(object):
 
 def _ngram(df, settings):
 
+    input_col = settings['inputcol']
     output_col = settings['outputcol']
     frag = settings['id_frag']
 
-    if len(df) == 0:
-        df[output_col] = np.nan
-    else:
-        input_col = settings['inputcol']
+    if len(df) > 0:
+
         from nltk.util import ngrams
 
         n = settings['n']
@@ -361,9 +367,15 @@ def _ngram(df, settings):
         def ngrammer(row):
             return [" ".join(gram) for gram in ngrams(row, n)]
 
-        values = df[input_col].tolist()
-        grams = [ngrammer(row) for row in values]
-        df[output_col] = grams
+        tmp = [ngrammer(row) for row in df[input_col].values]
+
+    else:
+        tmp = np.nan
+
+    if output_col in df.columns:
+        df.drop([output_col], axis=1, inplace=True)
+
+    df[output_col] = tmp
 
     info = generate_info(df, frag)
     return df, info

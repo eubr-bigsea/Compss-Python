@@ -2,22 +2,24 @@
 
 Perform the Kolmogorov-Smirnov test for goodness of fit. This implementation of Kolmogorov–Smirnov test is a two-sided test for the null hypothesis that the sample is drawn from a continuous distribution.
 
-The algorithm start first by creating a new data with only the column to be tested. Then, this column is sorted by sort algorithm (available in DDF library). If the number of fragments is a power of 2, Batcher odd–even mergesort otherwise uses a commom parallel Odd-Even. 
-
-After that, the minimal distance between the empirical data and the CDFs is calculated in each partition. Finally, these distances is merged to generate the p-value.
+The algorithm start first by creating a new data with only the column to be tested. Then, this column is sorted by sort algorithm (available in DDF library). After that, the minimal distance between the empirical data and the CDFs is calculated in each partition. Finally, these distances is merged to generate the p-value.
 
 
-# Use Case:
+## Internal algorithms
 
- - Number of workers/partitions: 8 workers / 32 fragments
- - Data length: 100kk rows
- - Parameters: distribution='norm'
- - Time to run: 232 seconds
+This algorithm executes internaly the following operations/algorithms: 
+
+1. Select: To project only the right column, reducing the data;
+2. Range Partition: Used to be possible the sorting stage;
+3. Sort Operation: To compare each row with the theorical CDFs;
+
+
+In this sense, any improvement on these operations will benefit also this current algorithm. 
 
 
 ## DAG
 
-Using 4 fragments (only to preview)
+DAG using 4 cores/fragments
 
 ![dag](./dag.png)
 
@@ -25,5 +27,6 @@ Using 4 fragments (only to preview)
 ## Trace
 
 ![trace](./trace.png)
+
 
 

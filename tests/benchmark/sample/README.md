@@ -10,9 +10,14 @@ The Sample operation consists of two stages: First stage uses the schema informa
 # Use Case:
 
  - 8 workers (32 cores)
- - 100kk rows 
  - Parameters: fraction=0.2
- - Time to run: 15 seconds
+
+
+## Execution time by Input size
+
+To the next test, we executed this application using five different numbers of rows (100kk, 200kk, 500kk, 800kk, 1000kk). Furthermore, each configuration was executed five times. In this experiment, we excluded the time to data generation. 
+
+![time_per_size](./time_per_size.png)
 
 
 ## DAG

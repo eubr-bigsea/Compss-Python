@@ -4,13 +4,17 @@
 __author__ = "Lucas Miguel S Ponce"
 __email__ = "lucasmsp@gmail.com"
 
-from pycompss.api.task import task
-from pycompss.functions.reduce import merge_reduce
-from pycompss.api.api import compss_wait_on
 from ddf_library.ddf import DDF, DDFSketch
 from ddf_library.ddf_model import ModelDDF
 from ddf_library.utils import generate_info
+
+
+from pycompss.api.task import task
+from pycompss.functions.reduce import merge_reduce
+from pycompss.api.api import compss_wait_on
 # from pycompss.api.local import *  # requires guppy
+
+
 import numpy as np
 import pandas as pd
 import itertools
@@ -30,7 +34,7 @@ class CountVectorizer(ModelDDF):
                  min_df=1.0, binary=True):
         """
         :param input_col: Input column name with the tokens;
-        :param output_col: Output column name;
+        :param output_col: Output field (default, add suffix '_vectorized');
         :param vocab_size: Maximum size of the vocabulary. If -1, no limits
          will be applied. (default, -1)
         :param min_tf: Specifies the minimum number of different documents a
@@ -45,8 +49,11 @@ class CountVectorizer(ModelDDF):
         """
         super(CountVectorizer, self).__init__()
 
+        if isinstance(input_col, list):
+            raise Exception('`input_col` must be a single column')
+
         if not output_col:
-            output_col = input_col
+            output_col = "{}_vectorized".format(input_col)
 
         self.settings = dict()
         self.settings['input_col'] = [input_col]
@@ -75,7 +82,7 @@ class CountVectorizer(ModelDDF):
 
         result_p = [[] for _ in range(nfrag)]
         for f in range(nfrag):
-            result_p[f] = wordCount(df[f], self.settings)
+            result_p[f] = _wordcount(df[f], self.settings)
         word_dic = merge_reduce(merge_wordCount, result_p)
 
         vocabulary = create_vocabulary(word_dic)
@@ -115,8 +122,8 @@ class CountVectorizer(ModelDDF):
         result = [[] for _ in range(nfrag)]
         info = [[] for _ in range(nfrag)]
         for f in range(nfrag):
-            result[f], info[f] = _transform_BoW(df[f], vocabulary,
-                                                self.settings)
+            result[f], info[f] = _transform_bow(df[f], vocabulary,
+                                                self.settings, f)
 
         uuid_key = self._ddf_add_task(task_name='transform_count_vectorizer',
                                       status='COMPLETED', lazy=False,
@@ -129,16 +136,16 @@ class CountVectorizer(ModelDDF):
 
 
 @task(returns=dict)
-def wordCount(data, params):
+def _wordcount(data, params):
     """Auxilar method to create a model."""
     wordcount = {}
-    columns = params['input_col']
+    column = params['input_col']
     # first:   Number of all occorrences with term t
     # second:  Number of diferent documents with term t
     # third:   temporary - only to idetify the last occorrence
 
-    for i_doc, doc in enumerate(data[columns].values):
-        doc = np.array(list(itertools.chain(doc))).flatten()
+    for i_doc, doc in enumerate(data[column].values):
+
         for token in doc:
             if token not in wordcount:
                 wordcount[token] = [1, 1, i_doc]
@@ -197,29 +204,37 @@ def filter_words(vocabulary, params):
 
 
 @task(returns=2)
-def _transform_BoW(data, vocabulary, params):
-    alias = params['output_col']
-    columns = params['input_col']
+def _transform_bow(data, vocabulary, params, frag):
+    output_col = params['output_col']
+    column = params['input_col']
     binary = params['binary']
-    vector = np.zeros((len(data), len(vocabulary)), dtype=np.int)
 
     vocabulary = vocabulary['Word'].values
     data.reset_index(drop=True, inplace=True)
-    for i, point in data.iterrows():
-        lines = point[columns].values
-        lines = np.array(list(itertools.chain(lines))).flatten()
-        for e, w in enumerate(vocabulary):
-            if binary:
-                if w in lines:
-                    vector[i][e] = 1
+
+    if len(data) > 0:
+        vector = np.zeros((len(data), len(vocabulary)), dtype=np.int)
+        for i, lines in data[column].values:
+            for e, w in enumerate(vocabulary):
+                if binary:
+                    if w in lines:
+                        vector[i][e] = 1
+                    else:
+                        vector[i][e] = 0
                 else:
-                    vector[i][e] = 0
-            else:
-                vector[i][e] = (lines == w).sum()
+                    vector[i][e] = (lines == w).sum()
 
-    data[alias] = vector.tolist()
+        vector = vector.tolist()
 
-    info = generate_info(data, 0)
+    else:
+        vector = np.nan
+
+    if output_col in data.columns:
+        ddata.drop([output_col], axis=1, inplace=True)
+
+    df[output_col] = vector
+
+    info = generate_info(data, frag)
     return data, info
 
 
@@ -239,7 +254,7 @@ class TfidfVectorizer(ModelDDF):
                  min_df=1.0):
         """
         :param input_col: Input column name with the tokens;
-        :param output_col: Output column name;
+        :param output_col: Output field (default, add suffix '_vectorized');
         :param vocab_size: Maximum size of the vocabulary. If -1, no limits
          will be applied. (default, -1)
         :param min_tf: Specifies the minimum number of different documents a
@@ -253,8 +268,11 @@ class TfidfVectorizer(ModelDDF):
         """
         super(TfidfVectorizer, self).__init__()
 
+        if isinstance(input_col, list):
+            raise Exception('`input_col` must be a single column')
+
         if not output_col:
-            output_col = input_col
+            output_col = "{}_vectorized".format(input_col)
 
         self.settings = dict()
         self.settings['input_col'] = [input_col]
@@ -282,7 +300,7 @@ class TfidfVectorizer(ModelDDF):
 
         result_p = [[] for _ in range(nfrag)]
         for f in range(nfrag):
-            result_p[f] = wordCount(df[f], self.settings)
+            result_p[f] = _wordcount(df[f], self.settings)
         word_dic = merge_reduce(merge_wordCount, result_p)
         vocabulary = create_vocabulary(word_dic)
 
@@ -325,7 +343,7 @@ class TfidfVectorizer(ModelDDF):
         info = [[] for _ in range(nfrag)]
         for f in range(nfrag):
             result[f], info[f] = \
-                construct_tf_idf(df[f], vocabulary, self.settings, count)
+                construct_tf_idf(df[f], vocabulary, self.settings, count, f)
 
         uuid_key = self._ddf_add_task(task_name='task_transform_tfidf',
                                       status='COMPLETED', lazy=False,
@@ -350,7 +368,7 @@ def mergeCount(data1, data2):
 
 
 @task(returns=2)
-def construct_tf_idf(data, vocabulary, params, num_doc):
+def construct_tf_idf(data, vocabulary, params, num_doc, frag):
     """Construct the tf-idf feature.
 
     TF(t)  = (Number of times term t appears in a document)
@@ -391,5 +409,5 @@ def construct_tf_idf(data, vocabulary, params, num_doc):
 
     data[alias] = vector.tolist()
 
-    info = generate_info(data, 0)
+    info = generate_info(data, frag)
     return data, info

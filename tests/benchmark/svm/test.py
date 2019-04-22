@@ -1,8 +1,11 @@
-#!/usr/bin/python
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
 from pycompss.api.task import task
+from pycompss.api.api import compss_barrier
+
 from ddf_library.ddf import DDF
+from ddf_library.utils import generate_info
 from ddf_library.functions.ml.classification import SVM
 
 import pandas as pd
@@ -10,69 +13,64 @@ import numpy as np
 import time
 
 
-@task(returns=1)
-def generate_partition(size, col_feature, col_label, dim):
-    df = pd.DataFrame()
-    df[col_feature] = np.random.normal(size=(size, dim)).tolist()
-    df[col_label] = np.random.choice([-1, 1], size=size).tolist()
-    return df
+@task(returns=2)
+def generate_partition(size, col_feature, col_label, dim, frag):
+    df = pd.DataFrame(np.random.normal(size=(size, dim)), columns=col_feature)
+    df[col_label] = np.random.choice([-1, 1], size=size)
+
+    info = generate_info(df, frag)
+    return df, info
 
 
 def generate_data(total_size, nfrag, col_feature, col_label, dim):
 
-    size = total_size / nfrag
+    dfs = [[] for _ in range(nfrag)]
+    info = [[] for _ in range(nfrag)]
+
+    size = total_size // nfrag
     sizes = [size for _ in range(nfrag)]
     sizes[-1] += (total_size - sum(sizes))
 
-    dfs = [generate_partition(s, col_feature, col_label, dim) for s in sizes]
+    for f, s in enumerate(sizes):
+        dfs[f], info[f] = generate_partition(s, col_feature, col_label, dim, f)
 
-    return dfs
-
-
-# def plot(df_list, col_feature, col_label):
-#
-#     df = pd.concat(df_list)
-#     xy = np.array(df[col_feature].tolist())
-#     label = df[col_label].values
-#
-#     import matplotlib.pyplot as plt
-#     plt.scatter(xy[:, 0], xy[:, 1], c=label)
-#     plt.savefig('svm.png')
+    return dfs, info
 
 
 if __name__ == "__main__":
-    print "\n|-------- SVM --------|\n"
-    total_size = int(sys.argv[1])
-    nfrag = int(sys.argv[2])
+
+    n_rows = int(sys.argv[1])
+    n_frag = int(sys.argv[2])
     dim = 2
-    col_feature = 'features'
+    cols = ["col{}".format(c) for c in range(dim)]
     col_label = 'label'
 
     t1 = time.time()
-
-    df_list = generate_data(total_size, nfrag, col_feature, col_label, dim)
-
-    ddf1 = DDF().import_data(df_list)
-
+    df_list, info = generate_data(n_rows, n_frag, cols, col_label, dim)
+    ddf1 = DDF().import_data(df_list, info)
+    compss_barrier()
     t2 = time.time()
+    print("Time to generate and import data - t2-t1:", t2 - t1)
 
-    ddf_train, ddf_test = ddf1.split(0.10, seed=123)
-
+    ddf_train, ddf_test = ddf1.split(0.70)
+    ddf_train = ddf_train.cache()
+    ddf_test = ddf_test.cache()
+    compss_barrier()
     t3 = time.time()
+    print("Time to split data - t3-t2:", t3 - t2)
 
-    sv = SVM(feature_col=col_feature,
-             label_col=col_label, max_iters=20, coef_lr=0.1).fit(ddf_train)
-
+    sv = SVM(feature_col=cols, label_col=col_label,
+             max_iters=20, coef_lr=0.01).fit(ddf_train)
+    compss_barrier()
     t4 = time.time()
 
+    print("Time to fit SVM - t4-t3:", t4 - t3)
     ddf_test = sv.transform(ddf_test).cache()
-
+    compss_barrier()
     t5 = time.time()
+    print("Time to transform SVM - t5-t4:", t5 - t4)
 
-    print "t2-t1:", t2 - t1
-    print "t3-t2:", t3 - t2
-    print "t4-t3:", t4 - t3
-    print "t5-t4:", t5 - t4
-    print "t_all:", t5 - t1
-    # print ddf_test.show()
-    # plot(df_list, col_feature, col_label)
+    print("t_all:", t5 - t1)
+    #ddf_test.show()
+
+

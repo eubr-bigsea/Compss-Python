@@ -3,7 +3,7 @@
 
 from ddf_library.ddf import DDF
 from ddf_library.utils import generate_info
-from ddf_library.functions.ml.feature import StandardScaler, VectorAssembler
+from ddf_library.functions.ml.feature import StandardScaler
 
 from pycompss.api.api import compss_barrier
 from pycompss.api.task import task
@@ -43,32 +43,33 @@ if __name__ == "__main__":
     n_frag = int(sys.argv[2])
     dim = 2
     cols = ["col{}".format(c) for c in range(dim)]
-    col_name = 'features'
 
     t1 = time.time()
     df_list, info = generate_data(n_rows, n_frag, cols, dim)
     ddf1 = DDF().import_data(df_list, info)
-    ddf1 = VectorAssembler(input_col=cols, output_col=col_name, remove=True)\
-        .transform(ddf1).cache()
 
     compss_barrier()
     t2 = time.time()
-    print("t2-t1:", t2 - t1)
+    print("Time to generate and to import_data (t2-t1):", t2 - t1)
 
-    ddf_train, ddf_test = ddf1.split(0.7)
+    ddf_train, ddf_test = ddf1.split(0.5)
     ddf_train = ddf_train.cache()
     ddf_test = ddf_test.cache()
 
     compss_barrier()
     t3 = time.time()
-    print("t3-t1:", t3 - t1)
+    print("Time to split (t3-t2):", t3 - t2)
 
-    scaler = StandardScaler(input_col=col_name).fit(ddf_train)
+    scaler = StandardScaler(input_col=cols).fit(ddf_train)
+    t4 = time.time()
+    print("Time to StandardScaler.fit (t4-t3):", t4 - t3)
+
     ddf1 = scaler.transform(ddf1)
     compss_barrier()
-    t4 = time.time()
-    print("t4-t3:", t4 - t3)
+    t5 = time.time()
+    print("Time to StandardScaler.transform (t5-t4):", t5 - t4)
     print("t_all:", t4 - t1)
 
+    # ddf1.show()
     # print(ddf_train.count())
     # print(ddf_test.count())
