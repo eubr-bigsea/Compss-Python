@@ -20,6 +20,7 @@ from ddf_library.context import COMPSsContext
 from ddf_library.utils import generate_info, concatenate_pandas
 
 import pandas as pd
+import numpy as np
 import copy
 import sys
 
@@ -349,7 +350,7 @@ class DDF(DDFSketch):
         self._set_n_input(new_state_uuid, self.settings['input'])
         return DDF(task_list=self.task_list, last_uuid=new_state_uuid)
 
-    def count(self, total=True):
+    def count_rows(self, total=True):
         """
         Return a number of rows in this DDF.
 
@@ -359,7 +360,7 @@ class DDF(DDFSketch):
 
         :Example:
 
-        >>> print(ddf1.count())
+        >>> print(ddf1.count_rows())
         """
 
         info = self._get_info()
@@ -913,6 +914,41 @@ class DDF(DDFSketch):
         self._set_n_input(new_state_uuid, self.settings['input'])
         return DDF(task_list=self.task_list, last_uuid=new_state_uuid)
 
+    def explode(self, column):
+        """
+        Returns a new row for each element in the given array.
+
+        Is it a Lazy function: Yes
+
+        :param column: Column name to be unnest;
+        :return: DDF
+
+        :Example:
+
+        >>> ddf1.explode('col_1')
+        """
+
+        settings = {'column': column}
+
+        from .functions.etl.explode import explode
+
+        def task_explode(df, params):
+            return explode(df, params)
+
+        new_state_uuid = self._generate_uuid()
+        COMPSsContext.tasks_map[new_state_uuid] = \
+            {'name': 'explode',
+             'status': 'WAIT',
+             'lazy': True,
+             'function': [task_explode, settings],
+             'parent': [self.last_uuid],
+             'output': 1,
+             'input': 1
+             }
+
+        self._set_n_input(new_state_uuid, self.settings['input'])
+        return DDF(task_list=self.task_list, last_uuid=new_state_uuid)
+
     def filter(self, expr):
         """
         Filters rows using the given condition.
@@ -1004,6 +1040,39 @@ class DDF(DDFSketch):
         new_list = self._merge_tasks_list(self.task_list + shp_object.task_list)
         return DDF(task_list=new_list, last_uuid=new_state_uuid)
 
+    def hash_partition(self, columns, nfrag=None):
+        """
+
+        """
+
+        from .functions.etl.repartition import hash_partition
+
+        if not isinstance(columns, list):
+            columns = [columns]
+
+        settings = {'columns': columns}
+
+        if nfrag is not None:
+            settings['nfrag'] = nfrag
+
+        def task_hash_partition(df, params):
+            return hash_partition(df, params)
+
+        new_state_uuid = self._generate_uuid()
+        COMPSsContext.tasks_map[new_state_uuid] = \
+            {'name': 'hash_partition',
+             'status': 'WAIT',
+             'lazy': False,
+             'function': [task_hash_partition, settings],
+             'parent': [self.last_uuid],
+             'output': 1,
+             'input': 1,
+             'info': True
+             }
+
+        self._set_n_input(new_state_uuid, self.settings['input'])
+        return DDF(task_list=self.task_list, last_uuid=new_state_uuid)
+
     def intersect(self, data2):
         """
         Returns a new DDF containing rows in both DDF. This is equivalent to
@@ -1077,7 +1146,7 @@ class DDF(DDFSketch):
         return DDF(task_list=new_list, last_uuid=new_state_uuid)
 
     def join(self, data2, key1=None, key2=None, mode='inner',
-             suffixes=None, keep_keys=False, case=True, sort=True):
+             suffixes=None, keep_keys=False, case=True):
         """
         Joins two DDF using the given join expression.
 
@@ -1092,7 +1161,6 @@ class DDF(DDFSketch):
          Default is ['_l', '_r'];
         :param keep_keys: True to keep keys of second DDF (default is False);
         :param case: True to keep the keys as case sensitive;
-        :param sort: To sort data at first;
         :return: DDF
 
         :Example:
@@ -1111,17 +1179,15 @@ class DDF(DDFSketch):
 
         from .functions.etl.join import JoinOperation
 
-        settings = dict()
-        settings['key1'] = key1
-        settings['key2'] = key2
-        settings['option'] = mode
-        settings['keep_keys'] = keep_keys
-        settings['case'] = case
-        settings['sort'] = sort
-        settings['suffixes'] = suffixes
+        settings = {'key1': key1,
+                    'key2': key2,
+                    'option': mode,
+                    'keep_keys': keep_keys,
+                    'case': case,
+                    'suffixes': suffixes}
 
         def task_join(df, params):
-            return JoinOperation().transform(df[0], df[1], params, len(df[0]))
+            return JoinOperation().transform(df[0], df[1], params)
 
         new_state_uuid = self._generate_uuid()
         COMPSsContext.tasks_map[new_state_uuid] = \
@@ -1130,7 +1196,9 @@ class DDF(DDFSketch):
              'lazy': False,
              'function': [task_join, settings],
              'parent': [self.last_uuid, data2.last_uuid],
-             'output': 1, 'input': 2}
+             'output': 1,
+             'input': 2,
+             'info': True}
 
         self._set_n_input(new_state_uuid, self.settings['input'])
         self._set_n_input(new_state_uuid, data2.settings['input'])
@@ -1547,24 +1615,22 @@ class DDF(DDFSketch):
 
         >>> ddf1.show()
         """
-        # TODO: do not deserialize all partitions. Use the schema info.
-        last_last_uuid = self.task_list[-2]
+
         self._check_cache()
 
-        res = compss_wait_on(self.partitions)
-        n_input = self.settings['input']
-        COMPSsContext.tasks_map[self.last_uuid]['function'][n_input] = res
+        n_rows_frags = self.count_rows(False)
 
-        if len(self.task_list) > 2:
-            COMPSsContext.tasks_map[last_last_uuid]['function'][n_input] = res
+        from .functions.etl.take import take
+        res = take(self.partitions, {'value': n,
+                                     'info': [{'size': n_rows_frags}]})
+        res = compss_wait_on(res['data'])
 
-        df = concatenate_pandas(res)[:abs(n)]
+        df = concatenate_pandas(res)
 
         print(df)
         return self
 
-    #TODO: change mode docstring
-    def sort(self, cols,  ascending=None, mode='by_range'):
+    def sort(self, cols,  ascending=None):
         """
         Returns a sorted DDF by the specified column(s).
 
@@ -1573,16 +1639,13 @@ class DDF(DDFSketch):
         :param cols: list of columns to be sorted;
         :param ascending: list indicating whether the sort order
             is ascending (True) for each column (Default, True);
-        :param mode: 'batcher' to sort by Batcher odd–even mergesort
-                (default if nfrag is power of 2) or 'oddeven' to
-                commom Odd-Even (if nfrag is not a power of 2);
         :return: DDF
 
         :Example:
 
         >>> dd1.sort(['col_1', 'col_2'], ascending=[True, False])
         """
-
+        mode = 'by_range'
         from .functions.etl.sort import SortOperation
 
         settings = {'columns': cols, 'ascending': ascending, 'algorithm': mode}
@@ -1680,11 +1743,12 @@ class DDF(DDFSketch):
         self._set_n_input(new_state_uuid, self.settings['input'])
         return DDF(task_list=self.task_list, last_uuid=new_state_uuid)
 
-    def to_df(self, columns=None):
+    def to_df(self, columns=None, split=False):
         """
         Returns the DDF contents as a pandas's DataFrame.
 
         :param columns: Optional, list of new column names (string);
+        :param split:
         :return: Pandas's DataFrame
 
         :Example:
@@ -1702,17 +1766,24 @@ class DDF(DDFSketch):
         if len(self.task_list) > 2:
             COMPSsContext.tasks_map[last_last_uuid]['function'][n_input] = res
 
-        df = concatenate_pandas(res)
-        if columns:
-            df = df[columns]
+        if split:
+            if columns:
+                df = [d[columns] for d in res]
+            else:
+                df = res
+        else:
+            df = concatenate_pandas(res)
+            if columns:
+                df = df[columns]
 
-        df.reset_index(drop=True, inplace=True)
+            df.reset_index(drop=True, inplace=True)
         return df
 
     def union(self, data2):
         """
         Combine this data set with some other DDF. Also as standard in SQL,
-        this function resolves columns by position (not by name).
+        this function resolves columns by position (not by name). The old names
+        are replaced to 'col_' + index.
 
         Is it a Lazy function: No
 
@@ -1726,15 +1797,17 @@ class DDF(DDFSketch):
 
         from .functions.etl.union import union
 
-        def task_union(df, _):
-            return union(df[0], df[1], by_name=False)
+        settings = {'by_name': False}
+
+        def task_union(df, params):
+            return union(df[0], df[1], params)
 
         new_state_uuid = self._generate_uuid()
         COMPSsContext.tasks_map[new_state_uuid] = \
             {'name': 'union',
              'status': 'WAIT',
              'lazy': False,
-             'function': [task_union, {}],
+             'function': [task_union, settings],
              'parent': [self.last_uuid,  data2.last_uuid],
              'output': 1,
              'input': 2,
@@ -1763,18 +1836,21 @@ class DDF(DDFSketch):
 
         from .functions.etl.union import union
 
-        def task_union(df, _):
-            return union(df[0], df[1], by_name=True)
+        settings = {'by_name': True}
+
+        def task_union(df, params):
+            return union(df[0], df[1], params)
 
         new_state_uuid = self._generate_uuid()
         COMPSsContext.tasks_map[new_state_uuid] = \
             {'name': 'union',
              'status': 'WAIT',
              'lazy': False,
-             'function': [task_union, {}],
+             'function': [task_union, settings],
              'parent': [self.last_uuid,  data2.last_uuid],
              'output': 1,
-             'input': 2
+             'input': 2,
+             'info': True
              }
 
         self._set_n_input(new_state_uuid, self.settings['input'])

@@ -9,11 +9,14 @@ from pycompss.api.parameter import INOUT
 from pycompss.functions.reduce import merge_reduce
 from pycompss.api.api import compss_wait_on, compss_delete_object
 
+from ddf_library.utils import concatenate_pandas, generate_info, \
+    create_auxiliary_column
 from .parallelize import _generate_distribution2
 from .balancer import _balancer
-from ddf_library.utils import concatenate_pandas, generate_info
+
 import numpy as np
 import pandas as pd
+import xxhash
 
 
 def repartition(data, settings):
@@ -37,6 +40,7 @@ def repartition(data, settings):
     info = settings['info'][0]
     target_dist = settings.get('shape', [])
     nfrag = settings.get('nfrag', len(data))
+
     if nfrag < 1:
         nfrag = len(data)
 
@@ -101,11 +105,12 @@ def range_partition(data, settings):
 
         for f in range(nfrag_target):
             frags = [get_partition(splitted[f2], f) for f2 in range(nfrag)]
-            tmp = merge_reduce(concat2pandas, frags)
-            compss_delete_object(frags)
-            result[f], info[f] = _gen_partition(tmp, f)
-            compss_delete_object(tmp)
+            tmp = merge_reduce(concat2pandas, frags[0:-1])
+            result[f], info[f] = _gen_partition(tmp, frags[-1], f)
 
+        compss_delete_object(frags)
+        compss_delete_object(tmp)
+        compss_delete_object(splitted)
     else:
         result = data
 
@@ -167,75 +172,45 @@ def _determine_bounds(sample, cols, ascending, nfrag_target):
 
 @task(returns=1)
 def split_by_boundary(data, cols, ascending, bounds, info):
-    # TODO: find a better way to select rows between ranges
+    # doesnt need to properly sort, other approach like nargsort might be work
 
     n_splits = len(bounds)+1
     splits = {f: pd.DataFrame(columns=info['cols'], dtype=info['dtypes'])
               for f in range(n_splits)}
+    aux_col = create_auxiliary_column(info['cols'])
 
-    aux_col = 'aux_split_by_boundary'
+    # creation of keys DataFrame with all bounds
     bounds = pd.DataFrame(bounds, columns=cols)
     bounds[aux_col] = -1
-
-    data[aux_col] = data.index
-    data = pd.concat([data, bounds], sort=False)
+    keys = data[cols]
+    keys[aux_col] = data.index
+    keys = pd.concat([keys, bounds], sort=False)
     del bounds
 
-    data.sort_values(by=cols, ascending=ascending, inplace=True)
-    data.reset_index(drop=True, inplace=True)
+    # sort only the DataFrame with columns. It consumes more space,
+    # but is faster
+    keys.sort_values(by=cols, ascending=ascending, inplace=True)
+    keys.reset_index(drop=True, inplace=True)
 
-    idxs_bounds = data.index[data[aux_col] == -1]
+    idxs_bounds = keys.index[keys[aux_col] == -1]
+    aux_col_idx = keys.columns.get_loc(aux_col)
 
     for s, idx in enumerate(idxs_bounds):
 
         if s == 0:
-            t = data.iloc[0:idx]
-            t.drop(aux_col, axis=1, inplace=True)
-            splits[s] = t
+            list_idx = keys.iloc[0:idx, aux_col_idx]
+            splits[s] = data.iloc[list_idx]
 
         else:
             idx0 = idxs_bounds[s-1]
-            t = data.iloc[idx0 + 1:idx]
-            t.drop(aux_col, axis=1, inplace=True)
-            splits[s] = t
+            list_idx = keys.iloc[idx0 + 1:idx, aux_col_idx]
+            splits[s] = data.iloc[list_idx]
 
         if (s+1) == len(idxs_bounds):
-            t = data.iloc[idx + 1:]
-            t.drop(aux_col, axis=1, inplace=True)
-            splits[s+1] = t
+            list_idx = keys.iloc[idx + 1:, aux_col_idx]
+            splits[s+1] = data.iloc[list_idx]
 
     return splits
-
-
-@task(returns=1)
-def get_partition(splits, frag):
-    return [splits[frag]]
-
-
-@task(returns=1)
-def concat2pandas(df1, df2):
-    if len(df1) > 0:
-        if len(df2) > 0:
-            return df1 + df2
-        else:
-            return df1
-    return df2
-    # return pd.concat([df1, df2], ignore_index=True)
-
-
-@task(returns=2)
-def _gen_partition(df, frag):
-
-    if len(df) > 1:
-        df = pd.concat(df, ignore_index=True, sort=False)
-    else:
-        df = df[0]
-
-    df.reset_index(drop=True, inplace=True)
-
-    info = generate_info(df, frag)
-
-    return df, info
 
 
 @task(returns=1)
@@ -246,6 +221,110 @@ def _sample_keys(data, cols, sample_size):
     data.reset_index(drop=True, inplace=True)
     data = data.sample(n=sample_size, replace=False)
     return data
+
+
+@task(returns=1)
+def get_partition(splits, frag):
+    return splits[frag]
+
+
+@task(returns=1)
+def concat2pandas(df1, df2):
+    return pd.concat([df1, df2], ignore_index=True, sort=False)
+
+
+@task(returns=2)
+def _gen_partition(df, df2, frag):
+    df = pd.concat([df, df2], ignore_index=True, sort=False)
+    df.reset_index(drop=True, inplace=True)
+    info = generate_info(df, frag)
+    return df, info
+
+
+def hash_partition(data, settings):
+    """
+    A Partitioner that partitions are organized by hash function.
+
+    :param data: A list of pandas dataframes;
+    :param settings: A dictionary with:
+     - info:
+     - columns: Columns name to perform a hash partition;
+     - nfrag: Number of partitions;
+
+    :return: A list of pandas dataframes;
+    """
+    info = settings['info'][0]
+    nfrag = len(data)
+    cols = settings['columns']
+    nfrag_target = settings.get('nfrag', nfrag)
+
+    if nfrag_target < 1:
+        raise Exception('You must have at least one partition.')
+
+    elif nfrag_target > 1:
+
+        splitted = [split_by_hash(data[f], cols, info, nfrag_target)
+                    for f in range(nfrag)]
+
+        result = [[] for _ in range(nfrag_target)]
+        info = [{} for _ in range(nfrag_target)]
+
+        for f in range(nfrag_target):
+            for f2 in range(nfrag):
+                result[f], info[f] = merge_splits(result[f], splitted[f2], f)
+
+    else:
+        result = data
+
+    output = {'key_data': ['data'], 'key_info': ['info'],
+              'data': result, 'info': info}
+    return output
+
+
+@task(returns=1)
+def split_by_hash(df, cols, info, nfrag):
+    splits = {f: pd.DataFrame(columns=info['cols'], dtype=info['dtypes'])
+              for f in range(nfrag)}
+
+    df.reset_index(drop=True, inplace=True)
+    if len(df) > 0:
+
+        keys = df[cols].astype(str).values.sum(axis=1).reshape((-1, 1))
+        keys.flags.writeable = False
+        idxs = np.apply_along_axis(hashcode, 1, keys) % nfrag
+
+        for f in range(nfrag):
+            idx = np.argwhere(idxs == f).flatten()
+            if len(idx) > 0:
+                splits[f] = df.iloc[idx]
+
+    return splits
+
+
+def hashcode(x):
+    return xxhash.xxh64_intdigest(x[0], seed=42)
+    # option 2:
+    # return hash(x)
+    # option 3:
+    # from pyhashxx import Hashxx
+    # return = Hashxx(x[0], seed=42).digest()
+
+
+@task(returns=2)
+def merge_splits(df1, df2, frag):
+
+    df2 = df2[frag]
+
+    if len(df1) == 0:
+        df1 = df2
+    elif len(df2) > 0:
+        df1 = pd.concat([df1, df2], ignore_index=True, sort=False)
+
+    df1.reset_index(drop=True, inplace=True)
+
+    info = generate_info(df1, frag)
+
+    return df1, info
 
 
 """

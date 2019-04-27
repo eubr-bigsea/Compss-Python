@@ -5,9 +5,14 @@ __author__ = "Lucas Miguel S Ponce"
 __email__ = "lucasmsp@gmail.com"
 
 from ddf_library.utils import generate_info
+
 from pycompss.api.task import task
+from pycompss.api.api import compss_wait_on
+
 import numpy as np
 
+
+# Use schema to avoid submit empty tasks
 
 def take(data, settings):
     """
@@ -31,7 +36,7 @@ def take(data, settings):
     info = settings['info'][0]
     value = settings['value']
 
-    idxs = _take_define_sample(info, value, nfrag)
+    idxs = _take_define_sample(info, value)
 
     result = [[] for _ in range(nfrag)]
     info = [[] for _ in range(nfrag)]
@@ -44,28 +49,25 @@ def take(data, settings):
     return output
 
 
-@task(returns=1)
-def _take_define_sample(info, head, nfrag):
+# @task(returns=1)
+def _take_define_sample(info, head):
     """Define the head N indexes to be sampled."""
+    info = compss_wait_on(info)
     n_list = info['size']
     total = sum(n_list)
 
     if total < head:
         head = total
 
-    list_ids = [0 for _ in range(nfrag)]
+    cumsum = np.cumsum(n_list)
+    idx = next(x for x, val in enumerate(cumsum) if val >= head)
 
-    frag = 0
-    while head > 0:
-        off = head - n_list[frag]
-        if off < 0:
-            off = head
-        else:
-            off = n_list[frag]
+    list_ids = n_list[0: idx+1]
+    list_ids[-1] -= (cumsum[idx] - head)
 
-        list_ids[frag] = off
-        head -= off
-        frag += 1
+    diff = len(n_list) - len(list_ids)
+    diff = [0 for _ in range(diff)]
+    list_ids += diff
 
     return list_ids
 

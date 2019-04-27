@@ -56,26 +56,25 @@ class AggregationOperation(object):
         for f in range(nfrag):
             partial_agg[f], info[f] = _aggregate(data[f], settings, f)
 
-        # 2º perform a range partition
+        # 2º perform a hash partition
         info = merge_reduce(merge_schema, info)
-        info = compss_wait_on(info)
-        from .repartition import range_partition
+
+        from .repartition import hash_partition
         params = {'nfrag': nfrag,
                   'columns': settings['groupby'],
                   'info': [info]}
 
-        output_range = range_partition(partial_agg, params)
-        range_data = output_range['data']
-        nfrag = len(range_data)
+        repartition = hash_partition(partial_agg, params)['data']
+        nfrag = len(repartition)
 
         # 3º perform a global aggregation
         info = [[] for _ in range(nfrag)]
         result = [[] for _ in range(nfrag)]
         for f in range(nfrag):
-            result[f], info[f] = _merge_aggregation(range_data[f], settings, f)
+            result[f], info[f] = _merge_aggregation(repartition[f], settings, f)
 
         compss_delete_object(partial_agg)
-        compss_delete_object(range_data)
+        compss_delete_object(repartition)
         output = {'key_data': ['data'], 'key_info': ['info'],
                   'data': result, 'info': info}
         return output

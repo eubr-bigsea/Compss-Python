@@ -120,7 +120,7 @@ def etl():
         etl_test_7: Avaliar capacidade 'count' and 'take'
     """)
 
-    v = data1.select(['rings']).count()
+    v = data1.select(['rings']).count_rows()
     df = data1.select(['rings']).take(7).show()
 
     print("etl_test_7a:", v)
@@ -177,7 +177,7 @@ def balancer():
         df1 = ddf_1.to_df()['a'].values
 
         ddf_2 = ddf_1.balancer(forced=True).cache()
-        size_a = ddf_2.count(total=False)
+        size_a = ddf_2.count_rows(total=False)
         df2 = ddf_1.to_df()['a'].values
 
         print('After:', size_a)
@@ -272,6 +272,22 @@ def except_all():
     """
 
 
+def explode():
+    print("\n|-------- Explode --------|\n")
+
+    df_size = 1 * 10 ** 3
+
+    df = pd.DataFrame(np.random.randint(1, df_size, (df_size, 2)),
+                      columns=list("AB"))
+    df['C'] = df[['A', 'B']].values.tolist()
+
+    col = 'C'
+
+    ddf1 = DDF().parallelize(df, 4).explode(col)
+    ddf1.show()
+    print("etl_test - explode - OK")
+
+
 def filter():
     print("\n|-------- Filter --------|\n")
     data = pd.DataFrame([[i, i + 5] for i in range(10)], columns=['a', 'b'])
@@ -308,6 +324,28 @@ def fill_na():
 
     print(df1a.to_df())
     print("A: 9.5 - B: 14.5 - D: 19.0 - E: 10.0 - G: 19.0 - H: 5.0 - I: 8.5")
+
+
+def hash_partition():
+    print("\n|-------- Hash partition --------|\n")
+    n_rows = 1000
+    data = pd.DataFrame({'a': np.random.randint(0, 100000, size=n_rows),
+                         'b': np.random.randint(0, 100000, size=n_rows),
+                         'c': np.random.randint(0, 100000, size=n_rows)
+                         })
+    data['b'] = data['b'].astype(str)
+
+    ddf_1 = DDF().parallelize(data, 4).hash_partition(columns=['a', 'b'],
+                                                      nfrag=6)
+    f = ddf_1.num_of_partitions()
+    c = ddf_1.count_rows(total=False)
+    print(ddf_1.count_rows(total=False))
+    print(sum(c) == n_rows)
+    print(f == 6)
+    df1 = ddf_1.to_df().sort_values(by=['a', 'b'])
+    data = data.sort_values(by=['a', 'b'])
+    assert_frame_equal(df1, data, check_index_type=False)
+    print("etl_test - hash_partition - OK")
 
 
 def import_data():
@@ -415,7 +453,7 @@ def range_partition():
     ddf_1 = DDF().parallelize(data, 4).range_partition(columns=['a', 'b'],
                                                        nfrag=6)
     f = ddf_1.num_of_partitions()
-    print(ddf_1.count(total=False))
+    print(ddf_1.count_rows(total=False))
     print(f == 6)
     df1 = ddf_1.to_df().sort_values(by=['a', 'b'])
     data = data.sort_values(by=['a', 'b'])
@@ -494,9 +532,8 @@ def select_expression():
 
 def sort():
     print("\n|-------- Sort --------|\n")
-    power_of2 =  [4]#[2, 4, 8, 16, 32, ]
+    power_of2 = [4]#[2, 4, 8, 16, 32, ]
     not_power = [1, 3, 5, 6, 7, 31, 63]
-    modes = ['batcher', 'oddeven', 'by_range']
 
     for f in power_of2:
         print("# fragments: ", f)
@@ -507,26 +544,26 @@ def sort():
         data, info = generate_data(n1, dim=2, max_size=1000)
         ddf_1 = DDF().import_data(data, info)
 
-        # size_b = ddf_1.count(total=False)
+        size_b = ddf_1.count_rows(total=False)
         print("Sorting...")
         t1 = time.time()
         ddf_2 = ddf_1.sort(['col0', 'col1'],
-                           ascending=[True, False], mode=modes[2]).cache()
+                           ascending=[True, False]).cache()
         t2 = time.time()
         print("... End")
         print('time elapsed: ', t2 - t1)
 
-        # size_a = ddf_2.count(total=False)
-        # df = ddf_2.to_df()
-        # a = df['col0'].values
-        #
-        # is_sorted = lambda a: np.all(a[:-1] <= a[1:])
-        # val = (is_sorted(a) and sum(n1) == len(a))
-        # if not val:
-        #     print("error with nfrag=", f)
-        #     print("size before {}: {}".format(sum(size_b), size_b))
-        #     print("size after {}: {}".format(sum(size_a), size_a))
-        #     print(a)
+        size_a = ddf_2.count_rows(total=False)
+        df = ddf_2.to_df()
+        a = df['col0'].values
+
+        is_sorted = lambda a: np.all(a[:-1] <= a[1:])
+        val = (is_sorted(a) and sum(n1) == len(a))
+        if not val:
+            print("error with nfrag=", f)
+            print("size before {}: {}".format(sum(size_b), size_b))
+            print("size after {}: {}".format(sum(size_a), size_a))
+            print(a)
 
 
 def subtract():
@@ -573,30 +610,46 @@ def take():
 
 def union():
     print("\n|-------- Union --------|\n")
-    data = pd.DataFrame([[i, 5, 10] for i in range(10)],
-                        columns=['a', 'b', 'c'])
-    data1 = pd.DataFrame([["i{}".format(i), 7] for i in range(5)],
-                         columns=['b', 'a'])
+    size1 = 20
+    size2 = 15
+    total_expected = size1 + size2
+
+    data = pd.DataFrame([["left_{}".format(i), 'middle_b']
+                         for i in range(size1)], columns=['a', 'b'])
+    data1 = pd.DataFrame([["left_{}".format(i), 42, "right_{}".format(i)]
+                          for i in range(size1, size1+size2)],
+                         columns=['b', 'a', 'c'])
 
     ddf_1a = DDF().parallelize(data, 4)
     ddf_1b = DDF().parallelize(data1, 4)
     ddf_2 = ddf_1a.union(ddf_1b)
     df1 = ddf_2.to_df()
     print(df1)
-    print("etl_test - union - OK")
+    counts = ddf_2.count_rows(total=False)
+    print(counts)
+    if sum(counts) != total_expected:
+        raise Exception('Error in union')
 
 
 def union_by_name():
     print("\n|-------- Union by Name --------|\n")
-    data = pd.DataFrame([[i, 5] for i in range(10)], columns=['a', 'b'])
-    data1 = pd.DataFrame([["i{}".format(i), 7] for i in range(5)],
-                         columns=['b', 'a'])
+    size1 = 3
+    size2 = 15
+    total_expected = size1 + size2
+
+    data = pd.DataFrame([[i, 5] for i in range(size1)], columns=['a', 'b'])
+    data1 = pd.DataFrame([["i{}".format(i), 7, 'c']
+                          for i in range(size2)], columns=['b', 'a', 'c'])
 
     ddf_1a = DDF().parallelize(data, 4)
     ddf_1b = DDF().parallelize(data1, 4)
     ddf_2 = ddf_1a.union_by_name(ddf_1b)
     df1 = ddf_2.to_df()
     print(df1)
+    counts = ddf_2.count_rows(total=False)
+    print(counts)
+    if sum(counts) != total_expected:
+        raise Exception('Error in union_by_name')
     print("etl_test - union by name - OK")
 
 
@@ -604,12 +657,13 @@ if __name__ == '__main__':
     print("_____ETL_____")
 
     # add_columns()
-    aggregation()
+    # aggregation()
     # balancer()
     # cast()
     # cross_join()
     # # etl()
     # except_all()
+    # explode()
     # filter()
     # fill_na()  #TODO change dtypes
     # distinct()
@@ -622,6 +676,7 @@ if __name__ == '__main__':
     # map()
     # rename()
     # repartition()
+    # hash_partition()
     # range_partition()
     # replace()
     # sample()
@@ -631,5 +686,5 @@ if __name__ == '__main__':
     # split()
     # subtract()
     # take()
-    # union()   # TODO test the differents datatypes
-    # union_by_name() # TODO test the differents datatypes
+    # union()
+    union_by_name()
