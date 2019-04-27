@@ -4,11 +4,12 @@
 __author__ = "Lucas Miguel S Ponce"
 __email__ = "lucasmsp@gmail.com"
 
+from ddf_library.ddf import DDFSketch
+
 from pycompss.api.task import task
 from pycompss.functions.reduce import merge_reduce
 from pycompss.api.api import compss_delete_object, compss_wait_on
 # from pycompss.api.local import local  # it needs guppy
-from ddf_library.ddf import DDFSketch
 
 import numpy as np
 import pandas as pd

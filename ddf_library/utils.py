@@ -6,8 +6,10 @@ __email__ = "lucasmsp@gmail.com"
 
 from pycompss.api.task import task
 from pycompss.functions.reduce import merge_reduce
+
 import numpy as np
 import pandas as pd
+import uuid
 import sys
 
 
@@ -95,6 +97,14 @@ def _get_schema(df, f):
 
 
 def divide_idx_in_frags(ids, n_list):
+    """
+    Retrieve the real index (index in a fragment n) given a global index and
+    the size of each fragment.
+
+    :param ids:
+    :param n_list:
+    :return:
+    """
 
     ids = np.sort(ids)
 
@@ -111,5 +121,19 @@ def divide_idx_in_frags(ids, n_list):
             break
 
     return list_ids
+
+
+def _gen_uuid():
+    return str(uuid.uuid4())
+
+
+def create_auxiliary_column(columns):
+    condition = True
+    col = "aux_column"
+    while condition:
+        col = _gen_uuid()[0:8]
+        condition = col in columns
+    return col
+
 
 

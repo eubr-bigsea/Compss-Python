@@ -4,17 +4,16 @@
 __author__ = "Lucas Miguel S Ponce"
 __email__ = "lucasmsp@gmail.com"
 
-import pandas as pd
-import numpy as np
 from ddf_library.ddf import DDF, DDFSketch
 
 from pycompss.api.task import task
 from pycompss.functions.reduce import merge_reduce
-from pycompss.api.local import *
-__all__ = ['PageRank']
+# from pycompss.api.local import *
 
-import sys
-sys.path.append('../../')
+import pandas as pd
+import numpy as np
+
+__all__ = ['PageRank']
 
 
 class PageRank(DDFSketch):
@@ -88,7 +87,7 @@ class PageRank(DDFSketch):
 
         del counts_in
 
-        for iteration in xrange(max_iterations):
+        for iteration in range(max_iterations):
             """Calculate the partial contribution of each vertex."""
             contributions = [_calc_contribuitions(adj_list[i], rank_list[i])
                              for i in range(nfrag)]

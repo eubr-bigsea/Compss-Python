@@ -26,10 +26,9 @@ class AddColumnsOperation(object):
         :param df2: A list with nfrag pandas's DataFrame;
         :param suffixes: Suffixes for attributes (a list with 2 values);
         :return: Returns a list with nfrag pandas's dataframe.
-
         """
 
-        suffixes = settings.get('suffices', ['_l', '_r'])
+        suffixes = settings.get('suffixes', ['_l', '_r'])
         nfrag1, nfrag2 = len(df1), len(df2)
         info1, info2 = settings['info'][0], settings['info'][1]
         len1, len2 = info1['size'], info2['size']

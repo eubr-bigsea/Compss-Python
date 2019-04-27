@@ -6,9 +6,8 @@ __author__ = "Lucas Miguel S Ponce"
 __email__ = "lucasmsp@gmail.com"
 
 
-import uuid
 from ddf_library.context import COMPSsContext
-from ddf_library.utils import merge_schema
+from ddf_library.utils import merge_schema, _gen_uuid
 from pycompss.functions.reduce import merge_reduce
 from pycompss.api.api import compss_wait_on
 
@@ -42,9 +41,9 @@ class DDFSketch(object):
         Generate a unique id
         :return: uuid
         """
-        new_state_uuid = str(uuid.uuid4())
+        new_state_uuid = _gen_uuid()
         while new_state_uuid in COMPSsContext.tasks_map:
-            new_state_uuid = str(uuid.uuid4())
+            new_state_uuid = _gen_uuid()
         return new_state_uuid
 
     @staticmethod
