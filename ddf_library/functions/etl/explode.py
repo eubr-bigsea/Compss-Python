@@ -15,9 +15,9 @@ def explode(data, settings):
     Split a column where the content is a list.
 
     :param data: pandas's DataFrame;
-    :param settings:
+    :param settings: a dictionary with:
         - 'column': The column name which will be exploded;
-    :return: A pandas's DataFrame with only the columns choosed.
+    :return: A pandas's DataFrame.
     """
     column = settings['column']
     frag = settings['id_frag']
@@ -31,21 +31,8 @@ def explode(data, settings):
 
 def unnest(df, col):
     # https://stackoverflow.com/questions/45885143/explode-lists-with
-    # -different-lengths-in-pandas?noredirect=1&lq=1
+    # -different-lengths-in-pandas
     x = df.iloc[:, :-1].values.repeat(df[col].apply(len), 0)
     y = df[col].apply(pd.Series).stack().values.reshape(-1, 1)
 
     return pd.DataFrame(np.hstack((x, y)), columns=df.columns)
-
-
-# def unnest(df, col):
-#     # https://stackoverflow.com/questions/53218931/how-to-unnest-explode
-#     # -a-column-in-a-pandas-dataframe
-#     unnested = (df.apply(lambda x: pd.Series(x[col]), axis=1)
-#                 .stack()
-#                 .reset_index(level=1, drop=True))
-#     unnested.name = col
-#     return df.drop(col, axis=1).join(unnested)
-
-
-

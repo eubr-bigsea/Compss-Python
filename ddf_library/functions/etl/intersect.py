@@ -9,17 +9,15 @@ from pycompss.api.task import task
 import pandas as pd
 import numpy as np
 
-# from pycompss.api.local import local  # requires guppy
-
 
 def intersect(data1, data2, distinct=False):
     """
     Returns a new DataFrame containing rows in both frames.
 
-    :param data1: A list with nfrag pandas's dataframe;
-    :param data2: Other list with nfrag pandas's dataframe;
+    :param data1: A list with nfrag pandas's DataFrame;
+    :param data2: Other list with nfrag pandas's DataFrame;
     :param distinct:
-    :return: Returns a new pandas dataframe
+    :return: Returns a new pandas DataFrame
 
     .. note:: Rows with NA elements will not be take in count.
     """
@@ -64,7 +62,7 @@ def _intersection(df1, df2, index, nfrag, frag):
     keys2 = df2.columns.tolist()
 
     if set(keys) == set(keys2) and len(df1) > 0:
-
+        indicator = []
         if index > 0:
             indicator = df1['_merge'].values
             df1.drop(['_merge'], axis=1, inplace=True)
@@ -94,6 +92,3 @@ def _intersection(df1, df2, index, nfrag, frag):
 
     info = generate_info(df1, frag)
     return df1, info
-
-
-

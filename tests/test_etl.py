@@ -386,23 +386,57 @@ def intersect_all():
     print("etl_test - intersect all - OK")
 
 
-# def join():
-#     print "\n|-------- Join --------|\n"
-#     data = pd.DataFrame([[i, i + 5, 0] for i in range(10)],
-#                         columns=['a', 'b', 'c'])
-#
-#     ddf_1a = DDF().parallelize(data, 4)
-#     ddf_1b = DDF().parallelize(data, 4)
-#     ddf_2 = ddf_1a.join(ddf_1b, key1=['a'], key2=['a'])
-#     df1 = ddf_2.cache().show()
-#     res_join = pd.DataFrame([[0, 5, 0, 5, 0], [1, 6, 0, 6, 0],
-#                              [2, 7, 0, 7, 0], [3, 8, 0, 8, 0],
-#                              [4, 9, 0, 9, 0], [5, 10, 0, 10, 0],
-#                              [6, 11, 0, 11, 0], [7, 12, 0, 12, 0],
-#                              [8, 13, 0, 13, 0], [9, 14, 0, 14, 0]],
-#                             columns=['a', 'b_l', 'c_l', 'b_r', 'c_r'])
-#     assert_frame_equal(df1, res_join, check_index_type=False)
-#     print "etl_test - join - OK"
+def join():
+    print("\n|--------  inner join --------|\n")
+
+    data1 = pd.DataFrame([[i, i + 5, 0] for i in range(10)],
+                         columns=['a', 'b', 'c'])
+    data2 = data1.copy()
+    data2.sample(frac=1,  replace=False)
+
+    ddf_1a = DDF().parallelize(data1, 4)
+    ddf_1b = DDF().parallelize(data2, 4)
+    ddf_2 = ddf_1a.join(ddf_1b, key1=['a'], key2=['a'], case=False)
+    df1 = ddf_2.to_df().sort_values(by=['a'])
+    print(df1)
+
+    print("etl_test - inner join - OK")
+
+    print("\n|--------  left join --------|\n")
+    data1 = pd.DataFrame([[i, i + 5, 0] for i in range(100)],
+                         columns=['a', 'b', 'c'])
+    data2 = data1.copy()[0:50]
+    data2.sample(frac=1,  replace=False)
+    data2.drop(['b', 'c'], axis=1, inplace=True)
+    data2['d'] = 'd'
+
+    ddf_1a = DDF().parallelize(data1, 4)
+    ddf_1b = DDF().parallelize(data2, 4)
+    ddf_2 = ddf_1a.join(ddf_1b, key1=['a'], key2=['a'], mode='left')
+    df1 = ddf_2.to_df().sort_values(by=['a'])
+    print(df1)
+
+    print("etl_test - left join - OK")
+
+    print("\n|--------  right join --------|\n")
+    data1 = pd.DataFrame([[i, i + 5, 0] for i in range(100)],
+                         columns=['a', 'b', 'c'])
+    data1['b'] = data1['b'].astype('Int8')
+    data1['c'] = data1['c'].astype('Int8')
+
+    data2 = data1.copy()
+    data1 = data1[0:50]
+    data2.sample(frac=1,  replace=False)
+    data2.drop(['b', 'c'], axis=1, inplace=True)
+    data2['d'] = 'd'
+
+    ddf_1a = DDF().parallelize(data1, 4)
+    ddf_1b = DDF().parallelize(data2, 4)
+    ddf_2 = ddf_1a.join(ddf_1b, key1=['a'], key2=['a'], mode='right')
+    df1 = ddf_2.to_df().sort_values(by=['a'])
+    print(df1)
+
+    print("etl_test - right join - OK")
 
 
 def map():
@@ -672,6 +706,7 @@ if __name__ == '__main__':
     # import_data()
     # intersect()
     # intersect_all()
+    # join()
     # read_data()
     # map()
     # rename()
@@ -682,9 +717,9 @@ if __name__ == '__main__':
     # sample()
     # select()
     # select_expression()
-    # sort()
+    sort()
     # split()
     # subtract()
     # take()
     # union()
-    union_by_name()
+    #union_by_name()

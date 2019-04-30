@@ -13,16 +13,14 @@ import pandas as pd
 
 
 class AggregationOperation(object):
-    """Aggregation.
+    """Computes aggregates and returns the result as a DataFrame."""
 
-    Computes aggregates and returns the result as a DataFrame.
-    """
-
-    def transform(self, data, settings):
+    @staticmethod
+    def transform(data, settings):
         """AggregationOperation.
 
-        :param data: A list with nfrag pandas's dataframe;
-        :param params: A dictionary that contains:
+        :param data: A list with nfrag pandas's DataFrame;
+        :param settings: A dictionary that contains:
             - groupby: A list with the columns names to aggregates;
             - aliases: A dictionary with the aliases of all aggregated columns;
             - operation: A dictionary with the functions to be applied in
@@ -104,7 +102,7 @@ def _aggregate(data, params, f):
     operation = _replace_functions_name(operation)
     data = data.groupby(columns).agg(operation)
 
-    newidx = []
+    new_idx = []
     i = 0
     old = None
     # renaming
@@ -112,10 +110,10 @@ def _aggregate(data, params, f):
         if old != n1:
             old = n1
             i = 0
-        newidx.append(target[n1][i])
+        new_idx.append(target[n1][i])
         i += 1
 
-    data.columns = newidx
+    data.columns = new_idx
     data = data.reset_index()
     data.reset_index(drop=True, inplace=True)
 
@@ -157,8 +155,8 @@ def _collect_list(x):
 def _collect_set(x):
     """Part of the generation of a set from a group.
 
-    collect_list and collect_set must be diferent functions,
-    otherwise pandas will raise error.
+    collect_list and collect_set must be different functions, otherwise
+    pandas will raise error.
     """
     return x.tolist()
 

@@ -13,14 +13,14 @@ import sys
 
 def parallelize(data, nfrag):
     """
-       Method to split the data in nfrag parts. This method simplifies
-       the use of chunks.
+    Method to split the data in nfrag parts. This method simplifies
+    the use of chunks.
 
-       :param data: The np.array or list to do the split.
-       :param nfrag: A number of partitions
-       :return The array splitted.
+    :param data: The np.array or list to do the split.
+    :param nfrag: A number of partitions
+    :return: A list of pandas DataFrame.
 
-       :Note: the result may be unbalanced when the number of rows is too small
+    :Note: the result may be unbalanced when the number of rows is too small
     """
 
     n_rows = len(data)
@@ -66,7 +66,7 @@ def _generate_distribution1(n_rows, nfrag):
 
 
 def _generate_distribution2(n_rows, nfrag):
-    """Data is splitted among the partitions."""
+    """Data is divided among the partitions."""
 
     size = n_rows / nfrag
     size = int(np.ceil(size))

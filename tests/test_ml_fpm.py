@@ -106,11 +106,13 @@ def ml_fpm_fpgrowth():
     # rules1 = rules1.show(n=5)
     # itemset = itemset.cache().show(n=10)
     # rules2 = ar.show(n=5)
-    print 'RESULT itemset:', itemset.show()
-    print "RESULT rules1:", rules1.show()
+    print('RESULT itemset:')
+    itemset.show()
+    print("RESULT rules1:")
+    rules1.show()
     # print "RESULT rules2:", rules2
 
 
 if __name__ == '__main__':
-    print "_____Testing Frequent Pattern Mining_____"
+    print("_____Testing Frequent Pattern Mining_____")
     ml_fpm_fpgrowth()

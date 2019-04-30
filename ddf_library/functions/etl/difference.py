@@ -12,8 +12,7 @@ import pandas as pd
 def subtract(data1, data2):
     """
     Returns a new set with containing rows in the first frame but not
-     in the second one. This is equivalent to EXCEPT DISTINCT in SQL.
-
+    in the second one. This is equivalent to EXCEPT DISTINCT in SQL.
 
     :param data1: A list of pandas's DataFrame;
     :param data2: The second list of pandas's DataFrame;
@@ -87,7 +86,7 @@ def except_all(data1, data2):
 
 @task(returns=2)
 def _except(df1, df2, last, frag):
-    """Peform a Difference partial operation keeping duplicated rows."""
+    """Perform a Difference partial operation keeping duplicated rows."""
 
     name1, name2 = list(df1.columns), list(df2.columns)
     if len(df1) > 0 and len(df2) > 0:
@@ -112,6 +111,3 @@ def _except(df1, df2, last, frag):
 
     info = generate_info(df1, frag)
     return df1, info
-
-
-

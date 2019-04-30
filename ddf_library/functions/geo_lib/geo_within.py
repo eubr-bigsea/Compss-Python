@@ -5,7 +5,7 @@ __author__ = "Lucas Miguel S Ponce"
 __email__ = "lucasmsp@gmail.com"
 
 
-from ddf_library.utils import generate_info
+from ddf_library.utils import generate_info, create_auxiliary_column
 
 from pycompss.api.task import task
 from pycompss.functions.reduce import merge_reduce
@@ -67,38 +67,29 @@ class GeoWithinOperation(object):
         shp_object = compss_wait_on(shp_object)
         polygon = settings.get('polygon', 'points')
         if settings.get('lat_long', True):
-            LAT_pos, LON_pos = 0, 1
+            lat_idx, lon_idx = 0, 1
         else:
-            LAT_pos, LON_pos = 1, 0
-
-        xmin, ymin = float('+inf'), float('+inf')
-        xmax, ymax = float('-inf'), float('-inf')
-
-        # TODO: Can be optimized
-        for i, sector in shp_object.iterrows():
-            for point in sector[polygon]:
-                xmin = min(xmin, point[LON_pos])
-                ymin = min(ymin, point[LAT_pos])
-                xmax = max(xmax, point[LON_pos])
-                ymax = max(ymax, point[LAT_pos])
+            lat_idx, lon_idx = 1, 0
 
         # create the main bound box
+        points_by_sector = shp_object[polygon].values.tolist()
+        mins_maxs = []
+        for sector in points_by_sector:
+            mins_maxs.append(_find_minmax(sector, lon_idx, lat_idx))
+        mins_maxs = np.array(mins_maxs)
+
+        xmin, ymin = np.min(mins_maxs[:, 0]), np.min(mins_maxs[:, 1])
+        xmax, ymax = np.max(mins_maxs[:, 2]), np.max(mins_maxs[:, 3])
+
+        # Pyqtree is a pure Python spatial index for GIS or rendering usage.
+        # It stores and quickly retrieves items from a 2x2 rectangular grid
+        # area, and grows in depth and detail as more items are added.
         spindex = pyqtree.Index(bbox=[xmin, ymin, xmax, ymax])
 
         # than, insert all sectors bbox
-        for inx, sector in shp_object.iterrows():
-            points = []
-            xmin = float('+inf')
-            ymin = float('+inf')
-            xmax = float('-inf')
-            ymax = float('-inf')
-            for point in sector[polygon]:
-                points.append((point[LON_pos], point[LAT_pos]))
-                xmin = min(xmin, point[LON_pos])
-                ymin = min(ymin, point[LAT_pos])
-                xmax = max(xmax, point[LON_pos])
-                ymax = max(ymax, point[LAT_pos])
-            spindex.insert(item=inx, bbox=[xmin, ymin, xmax, ymax])
+        for i, sector in enumerate(mins_maxs):
+            xmin, ymin, xmax, ymax = sector
+            spindex.insert(item=i, bbox=[xmin, ymin, xmax, ymax])
 
         settings['spindex'] = spindex
         settings['shp_object'] = shp_object
@@ -106,9 +97,20 @@ class GeoWithinOperation(object):
         return settings
 
 
+def _find_minmax(sector, lon_idx, lat_idx):
+    sector = np.array(sector)
+    mins = np.nanmin(sector, axis=0)
+    maxs = np.nanmax(sector, axis=0)
+    xmin, ymin = mins[lon_idx], mins[lat_idx]
+    xmax, ymax = maxs[lon_idx], maxs[lat_idx]
+    return [xmin, ymin, xmax, ymax]
+
+
 @task(returns=1, priority=True)
 def _merge_shapefile(shape1, shape2):
-    return pd.concat([shape1, shape2], sort=False, ignore_index=True)
+    shape1 = pd.concat([shape1, shape2], sort=False, ignore_index=True)
+    shape1.reset_index(drop=True, inplace=True)
+    return shape1
 
 
 @task(returns=2)
@@ -117,42 +119,63 @@ def _get_sectors(data_input, settings, frag):
     shp_object = settings['shp_object']
     spindex = settings['spindex']
 
-    alias = settings.get('alias', '_sector_position')
-    attributes = settings.get('attributes', shp_object.columns)
-    sector_position = []
-    col_lat, col_long = settings['lat_col'], settings['lon_col']
+    alias = settings.get('alias', '_shp')
+    attributes = settings.get('attributes', list(shp_object.columns))
+    col_lat, col_lon = settings['lat_col'], settings['lon_col']
     polygon_col = settings.get('polygon', 'points')
+    polygon_col_idx = shp_object.columns.get_loc(polygon_col)
+
+    data_input.reset_index(drop=True, inplace=True)
+    sector_position = []
 
     if len(data_input) > 0:
-        for i, point in data_input.iterrows():
-            y = float(point[col_lat])
-            x = float(point[col_long])
+        for i, point in enumerate(data_input[[col_lon, col_lat]].values):
+            x, y = point
 
+            # first, find the squares where point is inside (coarse-grained)
             # (xmin,ymin,xmax,ymax)
             matches = spindex.intersect([x, y, x, y])
 
+            # then, to all selected squares, check if point is in polygon
+            # (fine-grained)
             for shp_inx in matches:
-                row = shp_object.loc[shp_inx]
-                polygon = Path(row[polygon_col])
+                row = shp_object.iat[shp_inx, polygon_col_idx]
+                polygon = Path(row)
                 if polygon.contains_point([y, x]):
-                    content = [i] + row[attributes].tolist()
-                    sector_position.append(content)
+                    sector_position.append([i, shp_inx])
 
     if len(sector_position) > 0:
-        attributes = ['index_geoWithin'] + attributes
-        cols = ["{}{}".format(a, alias) for a in attributes]
-        tmp = pd.DataFrame(sector_position, columns=cols)
+        cols = list(data_input.columns)
+        col_tmp1 = create_auxiliary_column(cols)
+        col_tmp2 = create_auxiliary_column(cols+[col_tmp1])
+        df = pd.DataFrame(sector_position, columns=[col_tmp1, col_tmp2])
 
-        key = 'index_geoWithin'+alias
-        data_input = pd.merge(data_input, tmp,
-                              left_index=True, right_on=key)
-        data_input = data_input.drop([key], axis=1)
+        # filter rows in data_input and shp_object
+        data_input = data_input[data_input.index.isin(df[col_tmp1].values)]
+
+        shp_object = shp_object[attributes]
+        shp_object.columns = ["{}{}".format(c, alias) for c in attributes]
+        shp_object = shp_object[shp_object.index.isin(df[col_tmp2].values)]
+
+        # merge with idx of each point
+        data_input = data_input.merge(df, how='inner',
+                                      left_index=True, right_on=col_tmp1,
+                                      copy=False)
+        del df
+
+        # merge with each sector
+        data_input = data_input.merge(shp_object, how='inner',
+                                      left_on=col_tmp2, right_index=True,
+                                      copy=False)
+        del shp_object
+
+        data_input = data_input.drop([col_tmp1, col_tmp2], axis=1)
     else:
 
+        data_input = data_input[0:0]
         for a in [a + alias for a in attributes]:
             data_input[a] = np.nan
 
-    data_input = data_input.reset_index(drop=True)
-
+    data_input.reset_index(drop=True, inplace=True)
     info = generate_info(data_input, frag)
     return data_input, info

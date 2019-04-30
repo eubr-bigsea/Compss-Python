@@ -14,12 +14,10 @@ import numpy as np
 
 
 class JoinOperation(object):
-    """Join Operation.
+    """Joins with another DataFrame, using the given join expression."""
 
-    Joins with another DataFrame, using the given join expression.
-    """
-
-    def preprocessing(self, params):
+    @staticmethod
+    def preprocessing(params):
         key1 = params.get('key1', [])
         key2 = params.get('key2', [])
         option = params.get('option', 'inner')
@@ -32,26 +30,25 @@ class JoinOperation(object):
                 ]):
             raise \
                 Exception('You must inform the keys of first '
-                          'and second dataframe. You also must '
+                          'and second DataFrame. You also must '
                           'inform the join type (inner, left or right join).')
         return key1, key2, params
 
     def transform(self, data1, data2, settings):
         """
-        :param data1: A list with nfrag pandas's dataframe;
-        :param data2: Other list with nfrag pandas's dataframe;
+        :param data1: A list of pandas's DataFrame;
+        :param data2: Other list of pandas's DataFrame;
         :param settings: A dictionary that contains:
             - 'option': 'inner' to InnerJoin, 'left' to left join and
                         'right' to right join.
-            - 'key1': A list of keys of the first dataframe;
-            - 'key2': A list of keys of the second dataframe;
+            - 'key1': A list of keys of the first DataFrame;
+            - 'key2': A list of keys of the second DataFrame;
             - 'case': True to case-sensitive (default, True);
-            - 'keep_keys': True to keep the keys of the second dataset,
+            - 'keep_keys': True to keep the keys of the second data set,
                            (default, False).
             - 'suffixes': Suffixes for attributes, a list with 2 values
                           (default, [_l,_r]);
-        :return: Returns a list with nfrag pandas's dataframe.
-
+        :return: Returns a list of pandas's DataFrame.
         """
 
         key1, key2, settings = self.preprocessing(settings)
@@ -79,7 +76,7 @@ class JoinOperation(object):
 
 @task(returns=2)
 def _join(data1, data2, params, frag):
-    """Peform a join and a concatenation with the previosly join."""
+    """Perform a join and a concatenation with the previously join."""
     case_sensitive = params.get('case', True)
     keep = params.get('keep_keys', False)
     suffixes = params.get('suffixes', ['_l', '_r'])
@@ -101,7 +98,7 @@ def _join(data1, data2, params, frag):
                             how=opt, copy=False)
 
     else:
-        # create a temporary copy of the two dataframe
+        # create a temporary copy of the two DataFrame
         # with the keys in lower caption
         aux_col1 = create_auxiliary_column(cols1)
         aux_col2 = create_auxiliary_column(cols2)
@@ -156,7 +153,7 @@ def clean_df(data1, data2, key1, key2, l_suf, r_suf, cols1, cols2, keep):
 
 
 def rename_cols(data, cols1, cols2, key, suf, keep, op):
-    """Rename columns based in the columns of other dataset."""
+    """Rename columns based in the columns of other data set."""
     convert = {}
     for col in cols1:
         if col in cols2:
@@ -169,5 +166,3 @@ def rename_cols(data, cols1, cols2, key, suf, keep, op):
 
     data = data.rename(columns=convert)
     return data, key
-
-

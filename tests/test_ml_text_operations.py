@@ -53,6 +53,32 @@ def vectorize(ddf1):
     result1.show()
 
 
+def CountVectorizer():
+
+    from ddf_library.functions.ml.feature import CountVectorizer, Tokenizer
+    corpus = [
+             'This is the first document',
+             'This document is the second document',
+             'And this is the third one',
+             'Is this the first document',
+        ]
+    df = pd.DataFrame.from_dict({'col_0': corpus})
+
+    test_data = DDF().parallelize(df, num_of_parts=2)
+
+    tokenized = Tokenizer(input_col='col_0',
+                          min_token_length=1).transform(test_data)
+
+    tokenized.show()
+
+    counter = CountVectorizer(input_col='col_0_tokenized').fit(tokenized)
+
+    counter.save_model('/tfidf_vectorizer')
+    result = counter.transform(tokenized, output_col='vec_')
+    result.show()
+    pass
+
+
 def TfidfVectorizer():
 
     from ddf_library.functions.ml.feature import TfidfVectorizer, Tokenizer
@@ -69,10 +95,12 @@ def TfidfVectorizer():
     tokenized = Tokenizer(input_col='col_0',
                           min_token_length=1).transform(test_data)
 
-    counter = TfidfVectorizer(input_col='col_0_tokenized', output_col='col_2')\
+    counter = TfidfVectorizer(input_col='col_0_tokenized')\
         .fit(tokenized)
+
+    print (counter.model['vocabulary'])
     counter.save_model('/tfidf_vectorizer')
-    result = counter.transform(tokenized)
+    result = counter.transform(tokenized,  output_col='col_2')
     result.show()
     pass
 
@@ -91,7 +119,7 @@ def categorization():
     converted = model.transform(data)
 
     result = IndexToString(input_col='category_indexed', model=model) \
-        .transform(converted).drop(['id']).show()
+        .transform(converted).drop(['id'])
 
     result.show()
 
@@ -101,5 +129,6 @@ if __name__ == '__main__':
     # ddf1 = tokenizer()
     # ddf2 = remove_stopwords(ddf1)
     # ddf3 = ngram(ddf2)
-    TfidfVectorizer()
-    # categorization()
+    # TfidfVectorizer()
+    # CountVectorizer()
+    categorization()

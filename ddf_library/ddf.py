@@ -967,11 +967,11 @@ class DDF(DDFSketch):
         >>> ddf1.filter("(col_1 == 'male') and (col_3 > 42)")
         """
 
-        from .functions.etl.filter import filter
+        from .functions.etl.filter import filter_rows
         settings = {'query': expr}
 
         def task_filter(df, params):
-            return filter(df, params)
+            return filter_rows(df, params)
 
         new_state_uuid = self._generate_uuid()
         COMPSsContext.tasks_map[new_state_uuid] = \
@@ -1011,13 +1011,11 @@ class DDF(DDFSketch):
 
         from .functions.geo import GeoWithinOperation
 
-        if attributes is None:
-            attributes = []
-
         settings = dict()
         settings['lat_col'] = lat_col
         settings['lon_col'] = lon_col
-        settings['attributes'] = attributes
+        if attributes is not None:
+            settings['attributes'] = attributes
         settings['polygon'] = polygon
         settings['alias'] = suffix
 
@@ -1336,10 +1334,10 @@ class DDF(DDFSketch):
 
         from .functions.etl.repartition import repartition
 
-        if distribution is not None:
-            settings = {'distribution': distribution}
-
         settings = {'nfrag': nfrag}
+
+        if distribution is not None:
+            settings['distribution'] = distribution
 
         def task_repartition(df, params):
             return repartition(df, params)

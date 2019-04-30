@@ -35,8 +35,8 @@ def read_shapefile(settings, nfrag):
     .. note:: pip install pyshp
     """
 
-    from hdfspycompss.Block import Block
-    from hdfspycompss.HDFS import HDFS
+    from hdfspycompss.block import Block
+    from hdfspycompss.hdfs import HDFS
     host = settings.get('host', 'localhost')
     port = settings.get('port', 9000)
     dfs = HDFS(host=host, port=port)
@@ -47,11 +47,11 @@ def read_shapefile(settings, nfrag):
 
     # reading shapefile as a binary file in HDFS
     filename = settings['shp_path']
-    blks = dfs.findNBlocks(filename, 1)
-    shp_path = Block(blks[0]).readBinary()
+    blks = dfs.find_n_blocks(filename, 1)
+    shp_path = Block(blks[0]).read_binary()
     filename = settings['dbf_path']
-    blks = dfs.findNBlocks(filename, 1)
-    dbf_path = Block(blks[0]).readBinary()
+    blks = dfs.find_n_blocks(filename, 1)
+    dbf_path = Block(blks[0]).read_binary()
     shp_io = BytesIO(shp_path)
     dbf_io = BytesIO(dbf_path)
 
@@ -71,31 +71,29 @@ def read_shapefile(settings, nfrag):
     # position of each selected field
     num_fields = [fields[f] for f in header]
 
-    header.append(polygon)
     data = []
+    data_points = []
     for i, sector in enumerate(sectors):
         attributes = []
         r = records[i]
         for t in num_fields:
             attributes.append(r[t-1])
+        data.append(attributes)
 
         points = []
         for point in sector.shape.points:
+            a, b = point[0], point[1]
             if lat_long:
-                points.append([point[1], point[0]])
+                points.append([b, a])
             else:
-                points.append([point[0], point[1]])
-        attributes.append(points)
-        data.append(attributes)
+                points.append([a, b])
+        data_points.append(points)
 
     geo_data = pd.DataFrame(data, columns=header)
 
-    # forcing pandas to infer the dtype
-    tmp = geo_data.drop(polygon, axis=1)
-    vector = geo_data[polygon]
-    buff = tmp.to_csv(index=False)
-    geo_data = pd.read_csv(StringIO(unicode(buff)))
-    geo_data[polygon] = vector
+    # forcing pandas to infer the dtype (before pandas 0.23)
+    geo_data = geo_data.infer_objects()
+    geo_data[polygon] = data_points
 
     info = []
     geo_data = np.array_split(geo_data, nfrag)
