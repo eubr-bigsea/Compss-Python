@@ -7,12 +7,13 @@ __email__ = "lucasmsp@gmail.com"
 from ddf_library.utils import generate_info
 
 
-def filter(data, settings):
+def filter_rows(data, settings):
     """
     Filters rows using the given condition.
 
     :param data: A pandas's DataFrame;
-    :param query: A valid query.
+    :param settings: a dictionary with:
+     - query: A valid query.
     :return: A pandas's DataFrame.
 
     .. seealso:: Visit this `link <https://pandas.pydata.org/pandas-docs/
@@ -28,6 +29,3 @@ def filter(data, settings):
     result = data.query(query)
     info = generate_info(result, frag)
     return result, info
-
-
-

@@ -4,23 +4,23 @@
 from pycompss.api.task import task
 from pycompss.functions.reduce import merge_reduce
 from pycompss.api.api import compss_wait_on, compss_delete_object
-from ddf_library.utils import generate_info, merge_schema
+from ddf_library.utils import merge_schema, _get_schema
 
-import math
 import pandas as pd
+import numpy as np
 import sys
 
 
 def parallelize(data, nfrag):
     """
-       Method to split the data in nfrag parts. This method simplifies
-       the use of chunks.
+    Method to split the data in nfrag parts. This method simplifies
+    the use of chunks.
 
-       :param data: The np.array or list to do the split.
-       :param nfrag: A number of partitions
-       :return The array splitted.
+    :param data: The np.array or list to do the split.
+    :param nfrag: A number of partitions
+    :return: A list of pandas DataFrame.
 
-       :Note: the result may be unbalanced when the number of rows is too small
+    :Note: the result may be unbalanced when the number of rows is too small
     """
 
     n_rows = len(data)
@@ -59,17 +59,17 @@ def _generate_distribution1(n_rows, nfrag):
     in fragments at end and that doesnt have more available data.
     """
     size = n_rows / nfrag
-    size = int(math.ceil(size))
+    size = int(np.ceil(size))
     sizes = [size for _ in range(nfrag)]
 
     return sizes
 
 
 def _generate_distribution2(n_rows, nfrag):
-    """Data is splitted among the partitions."""
+    """Data is divided among the partitions."""
 
     size = n_rows / nfrag
-    size = int(math.ceil(size))
+    size = int(np.ceil(size))
     sizes = [size for _ in range(nfrag)]
 
     i = 0
@@ -112,7 +112,11 @@ def _check_schema(info):
 
     memory = info['memory']
     human_readable = _human_bytes(sum(memory))
-    print("Size of pandas in memory (bytes): ", memory)
+    avg = _human_bytes(np.mean(memory))
+    median = _human_bytes(np.median(memory))
+
+    print("Memory size of a "
+          "partition: avg({}), median({})".format(avg, median))
     print("Total size of pandas in memory: ", human_readable)
 
     return info
@@ -132,8 +136,4 @@ def _human_bytes(size):
     return value
 
 
-@task(returns=1)
-def _get_schema(df, f):
-    info = generate_info(df, f)
-    return info
 

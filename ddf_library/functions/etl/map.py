@@ -28,7 +28,6 @@ def map(data, settings):
     frag = settings['id_frag']
 
     if len(data) > 0:
-        # vectorized_function = np.vectorize(function)
         data[new_column] = data.apply(function, axis=1)
 
     else:

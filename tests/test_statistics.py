@@ -139,4 +139,4 @@ if __name__ == '__main__':
     # crosstab()
     # describe()
     # frequent_items()
-    # kolmogorov_smirnov_one_sample()
+    kolmogorov_smirnov_one_sample()

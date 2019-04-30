@@ -3,12 +3,36 @@
 
 from ddf_library.ddf import DDF
 import pandas as pd
+import numpy as np
+
+
+def binarizer():
+    print("\n_____Testing Binarizer_____\n")
+
+    df = pd.DataFrame([[1., -1., 2.], [2., 0., 0.], [0., 1., -1.]],
+                      columns=['x', 'y', 'z'])
+    ddf = DDF().parallelize(df, 4)
+
+    from ddf_library.functions.ml.feature import VectorAssembler, Binarizer
+    assembler = VectorAssembler(input_col=["x", "y", 'z'],
+                                output_col="features")
+    ddf = assembler.transform(ddf)
+
+    res = Binarizer(input_col='features', threshold=0)\
+        .transform(ddf).to_df('features').tolist()
+
+    sol = [[1., 0., 1.], [1., 0., 0.], [0., 1., 0.]]
+    if not np.allclose(res, sol):
+        raise Exception(" Output different from expected.")
+    print("Ok")
+
 
 def maxabs_scaler():
-    print "_____Testing Feature Scalers_____"
+    print("_____Testing MaxAbsScaler _____")
 
+    cols = ['x', 'y', 'z']
     df_maxabs = pd.DataFrame([[1., -1., 2.], [2., 0., 0.], [0., 1., -1.]],
-                             columns=['x', 'y', 'z'])
+                             columns=cols)
 
     # Creating DDF from DataFrame
     ddf_maxabs = DDF().parallelize(df_maxabs, 4)
@@ -20,136 +44,97 @@ def maxabs_scaler():
     ddf_maxabs = assembler.transform(ddf_maxabs)
 
     from ddf_library.functions.ml.feature import MaxAbsScaler
-    ddf_maxabs = MaxAbsScaler(input_col='features',
-                              output_col='features_norm') \
-        .fit_transform(ddf_maxabs).select(['features_norm'])
+    ddf_maxabs = MaxAbsScaler(input_col=cols) \
+        .fit_transform(ddf_maxabs)
 
-    print "MaxAbsScaler :\n", ddf_maxabs.show()
-    """
-    [[0.5, -1.,  1.],
-     [1.,   0.,  0.],
-     [0.,   1., -0.5]]
-    """
+    res = ddf_maxabs.to_df(cols).values.tolist()
+    print(res)
+    sol = [[0.5, -1., 1], [1.,  0., 0.], [0., 1., -0.5]]
+    if not np.allclose(res, sol):
+        raise Exception(" Output different from expected.")
+    print("Ok")
 
 
 def minmax_scaler():
-    print "_____Testing Feature Scalers_____"
+    print("_____Testing MinMaxScaler _____")
 
+    cols = ['x', 'y']
     df_minmax = pd.DataFrame([[-1, 2], [-0.5, 6], [0, 10], [1, 18]],
-                             columns=['x', 'y'])
+                             columns=cols)
 
     ddf_minmax = DDF().parallelize(df_minmax, 4)
 
-    # Creating a column of features
-    from ddf_library.functions.ml.feature import VectorAssembler
-    assembler = VectorAssembler(input_col=["x", "y"], output_col="features")
-    ddf_minmax = assembler.transform(ddf_minmax)
-
-
     from ddf_library.functions.ml.feature import MinMaxScaler
-    ddf_minmax = MinMaxScaler(input_col='features', output_col='features_norm')\
-        .fit_transform(ddf_minmax).select(['features_norm'])
+    ddf_minmax = MinMaxScaler(input_col=cols)\
+        .fit_transform(ddf_minmax)
 
-
-    print "\nMinMaxScaler :\n", ddf_minmax.show()
-    """
-    [[0.   0.]
-     [0.25 0.25]
-     [0.5  0.5]
-     [1.   1.]]
-    """
-
+    res = ddf_minmax.to_df(cols).values.tolist()
+    sol = [[0., 0.], [0.25, 0.25], [0.5,  0.5], [1., 1.]]
+    print(res)
+    if not np.allclose(res, sol):
+        raise Exception(" Output different from expected.")
+    print("Ok")
 
 
 def std_scaler():
+    print("_____Testing StandardScaler _____")
+    cols = ['x', 'y']
     df_std = pd.DataFrame([[0, 0], [0, 0], [1, 1], [1, 1]],
-                          columns=['x', 'y'])
+                          columns=cols)
     ddf_std = DDF().parallelize(df_std, 4)
 
-    # Creating a column of features
-    from ddf_library.functions.ml.feature import VectorAssembler
-    assembler = VectorAssembler(input_col=["x", "y"], output_col="features")
-    ddf_std = assembler.transform(ddf_std)
-
     from ddf_library.functions.ml.feature import StandardScaler
-    scaler = StandardScaler(input_col='features', output_col='features_norm',
-                            with_mean=True, with_std=True).fit(ddf_std)
-    ddf_std = scaler.transform(ddf_std).select(['features_norm'])
+    scaler = StandardScaler(input_col=cols, with_mean=True,
+                            with_std=True).fit(ddf_std)
+    ddf_std = scaler.transform(ddf_std)
+
+    res = ddf_std.to_df(cols).values.tolist()
+    print(res)
+    sol = [[-1., -1.], [-1., -1.], [1., 1.], [1., 1.]]
+    if not np.allclose(res, sol):
+        raise Exception(" Output different from expected.")
+    print("Ok")
 
 
-    print "\nStandardScaler :\n", ddf_std.show()
-    """
-    [[-1. - 1.]
-     [-1. - 1.]
-     [1.    1.]
-     [1.    1.]]
-    """
+def pca():
 
-def ml_feature_dimensionality():
+    print("\n_____Testing PCA_____\n")
 
-    print "\n_____Testing PCA_____\n"
-
-    df = pd.read_csv('tests/iris-dataset.csv', sep=',')
+    df = pd.read_csv('./iris-dataset.csv', sep=',')
     df.dropna(how="all", inplace=True)
     columns = df.columns.tolist()
     columns.remove('class')
-
     ddf = DDF().parallelize(df, 4)
-    from ddf_library.functions.ml.feature import VectorAssembler
-    assembler = VectorAssembler(input_col=columns, output_col="features")
-    ddf = assembler.transform(ddf)
 
     from ddf_library.functions.ml.feature import StandardScaler
-    ddf_std = StandardScaler(input_col='features',
-                             output_col='features_norm').fit_transform(ddf)
+    ddf_std = StandardScaler(input_col=columns).fit_transform(ddf)
 
+    n_components = 2
+    new_columns = ['col{}'.format(i) for i in range(n_components)]
     from ddf_library.functions.ml.feature import PCA
-    pca = PCA(input_col='features_norm', output_col='features_pca',
-              n_components=2)
-    ddf_pca = pca.fit_transform(ddf_std).select(['features', 'features_pca'])
-    print "Eigenvectors:\n", pca.model['eig_vecs']
-    print "Eigenvalues:\n", pca.model['eig_vals']
-    """
-    Eigenvectors:
-    [[ 0.52237162 -0.37231836 -0.72101681  0.26199559]
-     [-0.26335492 -0.92555649  0.24203288 -0.12413481]
-     [ 0.58125401 -0.02109478  0.14089226 -0.80115427]
-     [ 0.56561105 -0.06541577  0.6338014   0.52354627]]
-    
-    Eigenvalues:
-    [ 2.93035378  0.92740362  0.14834223  0.02074601]
-    """
+    pca = PCA(input_col=columns, output_col=new_columns,
+              n_components=n_components)
+    res = pca.fit_transform(ddf_std).to_df(new_columns).values.tolist()[0:10]
 
-    print "PCA output :\n", ddf_pca.show()
-    """
-    [[-2.26454173 -0.505703903]
-     [-2.08642550  0.655404729]
-     [-2.36795045  0.318477311]
-     [-2.30419716  0.575367713]
-     [-2.38877749 -0.674767397]
-     [-2.07053681 -1.51854856]
-     [-2.44571134 -0.0745626750]
-     [-2.23384186 -0.247613932]
-     [-2.34195768  1.09514636]
-     [-2.18867576  0.448629048]
-     [-2.16348656 -1.07059558]
-     [-2.32737775 -0.158587455]
-     [-2.22408272  0.709118158]
-     [-2.63971626  0.938281982]
-     [-2.19229151 -1.88997851]
-     [-2.25146521 -2.72237108]
-     [-2.20275048 -1.51375028]
-     [-2.19017916 -0.514304308]
-     [-1.89407429 -1.43111071]
-     [-2.33994907 -1.15803343] 
-    """
-    pass
+    sol = [[-2.26454173, -0.505703903],
+           [-2.08642550,  0.655404729],
+           [-2.36795045,  0.318477311],
+           [-2.30419716,  0.575367713],
+           [-2.38877749, -0.674767397],
+           [-2.07053681, -1.51854856],
+           [-2.44571134, -0.0745626750],
+           [-2.23384186, -0.247613932],
+           [-2.34195768,  1.09514636],
+           [-2.18867576,  0.448629048]]
+    sol_vals = [2.93035378,  0.92740362,  0.14834223,  0.02074601]
+    if not np.allclose(res, sol) and \
+            np.allclose(pca.model['eig_vals'], sol_vals):
+        raise Exception(" Output different from expected.")
+    print("Ok")
 
 
 def poly_expansion():
-    # ---------------------------------------
-    #               Polynomial Expansion
-    # ---------------------------------------
+    print("\n_____Testing PolynomialExpansion_____\n")
 
     df = pd.DataFrame([[0, 1], [2, 3], [4, 5]], columns=['x', 'y'])
     ddf = DDF().parallelize(df, 4)
@@ -160,67 +145,45 @@ def poly_expansion():
 
     from ddf_library.functions.ml.feature import PolynomialExpansion
 
-    ddf = PolynomialExpansion(input_col='features', degree=2).transform(ddf)
+    res = PolynomialExpansion(input_col='features', degree=2)\
+        .transform(ddf).to_df('features').tolist()
 
-    print "PolynomialExpansion output :\n", ddf.show()
-    """
-                                    features  x  y
-    0     [1.0, 0.0, 1.0, 0.0, 0.0, 1.0]  0  1
-    1     [1.0, 2.0, 3.0, 4.0, 6.0, 9.0]  2  3
-    2  [1.0, 4.0, 5.0, 16.0, 20.0, 25.0]  4  5
-    """
-
-
-def binarizer():
-    # ---------------------------------------
-    #               Binarizer
-    # ---------------------------------------
-
-    df = pd.DataFrame([[0, 1], [2, 3], [4, 5]], columns=['x', 'y'])
-    ddf = DDF().parallelize(df, 4)
-
-    from ddf_library.functions.ml.feature import VectorAssembler, Binarizer
-    assembler = VectorAssembler(input_col=["x", "y"], output_col="features")
-    ddf = assembler.transform(ddf)
-
-    ddf = Binarizer(input_col='features', threshold=5.0).transform(ddf)
-
-    print "Binarizer output :\n", ddf.show()
-    """
-                                 features  x  y
-    0  [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]  0  1
-    1  [0.0, 0.0, 0.0, 0.0, 1.0, 1.0]  2  3
-    2  [0.0, 0.0, 0.0, 1.0, 1.0, 1.0]  4  5
-    """
-    pass
+    sol = [[1.0, 0.0, 1.0, 0.0, 0.0, 1.0],
+           [1.0, 2.0, 3.0, 4.0, 6.0, 9.0],
+           [1.0, 4.0, 5.0, 16.0, 20.0, 25.0]]
+    if not np.allclose(res, sol):
+        raise Exception(" Output different from expected.")
+    print("Ok")
 
 
 def onehot_encoder():
-    # ---------------------------------------
-    #               OneHotEncoder
-    # ---------------------------------------
+    print("\n_____Testing OneHotEncoder_____\n")
 
     from ddf_library.functions.ml.feature import OneHotEncoder
     df = pd.DataFrame([['Male', 1], ['Female', 3],
                        ['Female', 2]], columns=['x', 'y'])
     ddf = DDF().parallelize(df, 4)
 
-    ddf = OneHotEncoder(input_col=['x', 'y']).fit_transform(ddf)
-    print "OneHotEncoder output :\n", ddf.show()
-    """
-            x  y            features_onehot
-    0    Male  1  [0.0, 1.0, 1.0, 0.0, 0.0]
-    1  Female  3  [1.0, 0.0, 0.0, 0.0, 1.0]
-    2  Female  2  [1.0, 0.0, 0.0, 1.0, 0.0]
-    """
-    pass
+    res = OneHotEncoder(input_col=['x', 'y'])\
+        .fit_transform(ddf)\
+        .to_df('features_onehot').tolist()
+
+    sol = [[0.0, 1.0, 1.0, 0.0, 0.0],
+           [1.0, 0.0, 0.0, 0.0, 1.0],
+           [1.0, 0.0, 0.0, 1.0, 0.0]]
+    if not np.allclose(res, sol):
+        raise Exception(" Output different from expected.")
+    print("Ok")
 
 
 if __name__ == '__main__':
-    print "_____Testing Features operations_____"
+    print("_____Testing Features operations_____")
 
-    # ml_feature_dimensionality()
+    # binarizer()
+    pca()
     # poly_expansion()
     # onehot_encoder()
-    # binarizer()
-
+    # maxabs_scaler()
+    # minmax_scaler()
+    # std_scaler()
+    #

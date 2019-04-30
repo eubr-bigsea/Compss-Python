@@ -1,5 +1,6 @@
-#!/usr/bin/python
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
+
 
 from ddf_library.ddf import DDF
 import numpy as np
@@ -16,70 +17,64 @@ def base():
                                  }) \
         .replace({'Iris-setosa': 1.0,
                   'Iris-versicolor': -1.0,
-                  'Iris-virginica': 1.0}, subset=['class'])
+                  'Iris-virginica': 1.0}, subset=['class']).cast('class',
+                                                                 'integer')
 
-    ddf = ddf.cast('class', 'integer')
-
-    # assembling a group of attributes as features and removing them after
-    from ddf_library.functions.ml.feature import VectorAssembler
-    assembler = VectorAssembler(input_col=["sepal_length", "sepal_width",
-                                           "petal_length", "petal_width"],
-                                output_col="features")
-    ddf = assembler.transform(ddf).drop(["sepal_length", "sepal_width",
-                                         "petal_length", "petal_width"])
+    cols = ["sepal_length", "sepal_width", "petal_length", "petal_width"]
 
     # scaling using StandardScaler
     from ddf_library.functions.ml.feature import StandardScaler
-    ddf = StandardScaler(input_col='features', output_col='features')\
-        .fit_transform(ddf)
+    ddf = StandardScaler(input_col=cols).fit_transform(ddf)
 
     # splitting 25% to use as training set and 75% as test
-    ddf_train, ddf_test = ddf.split(0.25)
+    ddf_train, ddf_test = ddf.split(0.50)
 
     return ddf_train, ddf_test
 
 
 def gaussian(ddf_train, ddf_test):
-
+    cols = ["sepal_length", "sepal_width", "petal_length", "petal_width"]
     from ddf_library.functions.ml.classification import GaussianNB
-    nb = GaussianNB(feature_col='features', label_col='class')\
+    nb = GaussianNB(feature_col=cols, label_col='class')\
         .fit(ddf_train)
     nb.save_model('/gaussian_nb')  # save this fitted model in HDFS
     ddf_pred = nb.transform(ddf_test)
-
     return ddf_pred
 
 
 def knn(ddf_train, ddf_test):
+    cols = ["sepal_length", "sepal_width", "petal_length", "petal_width"]
 
     from ddf_library.functions.ml.classification import KNearestNeighbors
-    knn = KNearestNeighbors(k=1, feature_col='features', label_col='class')\
+    knn = KNearestNeighbors(k=1, feature_col=cols, label_col='class')\
         .fit(ddf_train)
     knn.save_model('/knn')
-    ddf_pred = knn.transform(ddf_test)
+    ddf_pred = knn.transform(ddf_test, pred_col='prediction')
 
     return ddf_pred
 
 
 def logistic_regression(ddf_train, ddf_test):
+    cols = ["sepal_length", "sepal_width", "petal_length", "petal_width"]
 
     from ddf_library.functions.ml.classification import LogisticRegression
-    logr = LogisticRegression(feature_col='features', label_col='class',
-                              max_iters=10).fit(ddf_train)
+    logr = LogisticRegression(feature_col=cols, label_col='class',
+                              max_iters=10, regularization=0.1,
+                              threshold=0.1).fit(ddf_train)
     logr.save_model('/logistic_regression')
-    f = lambda row: -1.0 if row['prediction_LogReg'] == 0.0 else 1.0
-    ddf_pred = logr.transform(ddf_test).map(f, 'prediction_LogReg')
+
+    ddf_pred = logr.transform(ddf_test, pred_col='prediction')
 
     return ddf_pred
 
 
 def svm(ddf_train, ddf_test):
-
+    cols = ["sepal_length", "sepal_width", "petal_length", "petal_width"]
     from ddf_library.functions.ml.classification import SVM
-    svm = SVM(feature_col='features', label_col='class',
-              max_iters=10).fit(ddf_train)
+    svm = SVM(feature_col=cols, label_col='class', max_iters=100,
+              coef_lambda=1, coef_lr=0.01).fit(ddf_train)
     svm.save_model('/svm')
-    ddf_pred = svm.transform(ddf_test)
+    ddf_pred = svm.transform(ddf_test, pred_col='prediction')
 
     return ddf_pred
 
@@ -94,7 +89,7 @@ def binary_evaluator(ddf_pred, pred_col):
 
     # Get some metrics
     print("Binary Metrics:\n", metrics_bin.get_metrics(), '\n',
-          metrics_multi.confusion_matrix)
+          metrics_bin.confusion_matrix)
 
 
 def multi_label_evaluator(ddf_pred, pred_col):
@@ -137,10 +132,10 @@ if __name__ == '__main__':
     print("_____Testing Machine Learning Classifiers_____")
 
     ddf_train, ddf_test = base()
-    ddf_pred = gaussian(ddf_train, ddf_test)
+    # ddf_pred = gaussian(ddf_train, ddf_test)
     # ddf_pred = knn(ddf_train, ddf_test)
     # ddf_pred = logistic_regression(ddf_train, ddf_test)
-    # ddf_pred = svm(ddf_train, ddf_test)
+    ddf_pred = svm(ddf_train, ddf_test)
     # ddf_pred.show()
-    binary_evaluator(ddf_pred, 'prediction_GaussianNB')
+    binary_evaluator(ddf_pred, 'prediction')
     # ml_classifiers_part2(ddf_pred)

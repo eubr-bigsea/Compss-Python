@@ -7,8 +7,10 @@ __email__ = "lucasmsp@gmail.com"
 from pycompss.api.task import task
 from pycompss.api.parameter import INOUT
 from pycompss.functions.reduce import merge_reduce
+
 from .parallelize import _generate_distribution2
 from ddf_library.utils import generate_info
+
 import numpy as np
 import pandas as pd
 

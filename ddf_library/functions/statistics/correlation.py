@@ -101,14 +101,14 @@ def _generate_stage5(agg_info, info):
 
     error, sse1, sse2 = info
     count = agg_info['count']
-    std1 = np.sqrt(np.divide(float(sse1), count - 1))
-    std2 = np.sqrt(np.divide(float(sse2), count - 1))
+    std1 = np.sqrt(np.divide(sse1, count - 1))
+    std2 = np.sqrt(np.divide(sse2, count - 1))
 
     if std1 == 0 or std2 == 0:
         corr = np.nan
     else:
 
-        cov = np.divide(float(error), count-1)
+        cov = error / (count-1)
         corr = round(np.divide(cov, std1*std2), 5)
 
     return corr

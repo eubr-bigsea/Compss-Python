@@ -1,13 +1,14 @@
 # Requirements to use all functions in DDF Library.
 
-Cython>=0.25.2
+pandas>=0.23.4
+scikit-learn==0.20.3
+numpy>=1.16.0
+xxhash
+scipy>=1.2.1
 Pyqtree>=0.24
 matplotlib>=1.5.1
 networkx>=1.11
-numpy>=1.16.0
-pandas>=0.23.4
 pyshp==1.2.11
 python_dateutil==2.6.1
-scikit-learn==0.20.3
 nltk
-scipy>=1.2.1
+

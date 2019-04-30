@@ -31,22 +31,32 @@ class SortOperation(object):
                 commom Odd-Even (if nfrag is not a power of 2);
         :return: A list with nfrag pandas's dataframe
 
-        ..note: This operation doesnt change the schema.
         """
 
         nfrag = len(data)
         settings = self.preprocessing(settings)
-        algorithm = settings.get('algorithm', 'batcher')
+        algorithm = settings.get('algorithm', 'by_range')
 
         info = settings['info'][0]
-        if nfrag == 1:
+        if nfrag == 1 or algorithm is 'by_range':
+
+            if nfrag > 1:
+                from .repartition import range_partition
+                params = {'nfrag': nfrag,
+                          'columns': settings['columns'],
+                          'ascending': settings['ascending'],
+                          'info': [info]}
+                output_range = range_partition(data, params)
+                data, info = output_range['data'], output_range['info']
+                nfrag = len(data)
+
             result = [[] for _ in range(nfrag)]
             for f in range(nfrag):
                 result[f] = partial_sort(data[f], settings)
+
         elif self.is_power2(nfrag) and algorithm is 'batcher':
             print("Sort Operation using Batcher odd–even mergesort.")
             result, info = self._sort_by_batcher(data, settings)
-
         else:
             print("Sort Operation using classical Odd–Even sort.")
             result = self._sort_by_oddeven(data, settings, nfrag)
@@ -371,7 +381,7 @@ def sorting(df, cols, ascending):
 
     # approach 2 (https://github.com/pandas-dev/pandas/issues/17111)
     for col, asc in zip(reversed(cols), reversed(ascending)):
-        df.sort_values(col, inplace=True, ascending=asc, kind='mergesort')
+        df.sort_values(col, inplace=True, ascending=asc, kind='quicksort')
 
     #  approach 3
     # ascending = ascending[0]
@@ -387,7 +397,7 @@ def sorting(df, cols, ascending):
     # del order
 
     t2 = time.time()
-    print("Time inside sorting: ", t2-t1)
+    print("Time to sort {} rows: {}s".format(len(df), t2-t1))
     return df
 
 

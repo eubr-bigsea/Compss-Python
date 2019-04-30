@@ -13,7 +13,8 @@ def drop(data, settings):
     Nothing is done if schema doesn't contain the given column name(s).
 
     :param data: A pandas's DataFrame;
-    :param columns: A list with the columns names to be removed;
+    :param settings: A dictionary with:
+     - columns: A list with the columns names to be removed;
     :return: A pandas's DataFrame.
     """
 
@@ -25,7 +26,3 @@ def drop(data, settings):
     data.drop(columns, axis=1, inplace=True)
     info = generate_info(data, frag)
     return data, info
-
-
-
-

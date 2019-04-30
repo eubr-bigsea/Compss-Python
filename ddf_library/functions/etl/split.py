@@ -27,15 +27,14 @@ def random_split(data, settings):
     """
     nfrag = len(data)
 
-    idxs, seed = _preprocessing(settings, nfrag)
+    idxs = _preprocessing(settings, nfrag)
     out1 = [[] for _ in range(nfrag)]
     out2 = [[] for _ in range(nfrag)]
     info1 = [[] for _ in range(nfrag)]
     info2 = [[] for _ in range(nfrag)]
 
     for i, fraction in enumerate(idxs):
-        out1[i], info1[i], out2[i], info2[i] = \
-            _split_get(data[i], fraction,  seed, i)
+        out1[i], info1[i], out2[i], info2[i] = _split_get(data[i], fraction, i)
 
     output = {'key_data': ['data1', 'data2'],
               'key_info': ['info1', 'info2'],
@@ -46,9 +45,7 @@ def random_split(data, settings):
 
 def _preprocessing(settings, nfrag):
     percentage = settings.get('percentage', 0.5)
-    seed = settings.get('seed', None)
     info = settings['info'][0]
-
     n_list = info['size']
 
     if percentage < 0 or percentage > 1:
@@ -56,7 +53,7 @@ def _preprocessing(settings, nfrag):
 
     idxs = _split_allocate(n_list, percentage, nfrag)
 
-    return idxs, seed
+    return idxs
 
 
 def _split_allocate(n_list, fraction, nfrag):
@@ -68,34 +65,33 @@ def _split_allocate(n_list, fraction, nfrag):
     sizes = [int(math.ceil(n * fraction)) for n in n_list]
 
     val = sum(sizes)
-    for i in range(nfrag):
-        if val == size:
-            break
-        if sizes[i] > 0:
-            sizes[i] -= 1
-            val -= 1
+    while val != size:
+        for i in range(nfrag):
+            if val == size:
+                break
+            if sizes[i] > 0:
+                sizes[i] -= 1
+                val -= 1
 
     return sizes
 
 
 @task(returns=4)
-def _split_get(data, fraction, seed, frag):
+def _split_get(data, value, frag):
     """Retrieve the split."""
 
     n = len(data)
 
     if n > 0:
-        np.random.seed(seed)
-        idx = np.random.randint(0, n, size=fraction)
-        split2 = data[~data.index.isin(idx)]
-        data = data[data.index.isin(idx)]
+        data = data.sample(frac=1).reset_index(drop=True)
+
+        split2 = data.iloc[value:].reset_index(drop=True)
+        data = data.iloc[:value].reset_index(drop=True)
+
     else:
         split2 = data.copy()
 
-    data.reset_index(drop=True, inplace=True)
     info1 = generate_info(data, frag)
-
-    split2.reset_index(drop=True, inplace=True)
     info2 = generate_info(split2, frag)
 
     return data, info1, split2, info2

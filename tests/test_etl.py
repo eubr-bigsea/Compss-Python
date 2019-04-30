@@ -120,7 +120,7 @@ def etl():
         etl_test_7: Avaliar capacidade 'count' and 'take'
     """)
 
-    v = data1.select(['rings']).count()
+    v = data1.select(['rings']).count_rows()
     df = data1.select(['rings']).take(7).show()
 
     print("etl_test_7a:", v)
@@ -154,12 +154,10 @@ def aggregation():
 
     express = {'a': ['count'], 'b': ['first', 'last']}
     ddf_1 = DDF().parallelize(data3, 4).group_by(['c']).agg(express)
-    df1 = ddf_1.cache().show()
-    print(df1)
+    ddf_1.show()
 
     ddf_1 = DDF().parallelize(data3, 4).group_by(['a', 'c']).count('*')
-    df1 = ddf_1.cache().show()
-    print(df1)
+    ddf_1.show()
     print("etl_test - aggregation - OK", end=' ')
 
 
@@ -179,7 +177,7 @@ def balancer():
         df1 = ddf_1.to_df()['a'].values
 
         ddf_2 = ddf_1.balancer(forced=True).cache()
-        size_a = ddf_2.count(total=False)
+        size_a = ddf_2.count_rows(total=False)
         df2 = ddf_1.to_df()['a'].values
 
         print('After:', size_a)
@@ -274,6 +272,22 @@ def except_all():
     """
 
 
+def explode():
+    print("\n|-------- Explode --------|\n")
+
+    df_size = 1 * 10 ** 3
+
+    df = pd.DataFrame(np.random.randint(1, df_size, (df_size, 2)),
+                      columns=list("AB"))
+    df['C'] = df[['A', 'B']].values.tolist()
+
+    col = 'C'
+
+    ddf1 = DDF().parallelize(df, 4).explode(col)
+    ddf1.show()
+    print("etl_test - explode - OK")
+
+
 def filter():
     print("\n|-------- Filter --------|\n")
     data = pd.DataFrame([[i, i + 5] for i in range(10)], columns=['a', 'b'])
@@ -310,6 +324,28 @@ def fill_na():
 
     print(df1a.to_df())
     print("A: 9.5 - B: 14.5 - D: 19.0 - E: 10.0 - G: 19.0 - H: 5.0 - I: 8.5")
+
+
+def hash_partition():
+    print("\n|-------- Hash partition --------|\n")
+    n_rows = 1000
+    data = pd.DataFrame({'a': np.random.randint(0, 100000, size=n_rows),
+                         'b': np.random.randint(0, 100000, size=n_rows),
+                         'c': np.random.randint(0, 100000, size=n_rows)
+                         })
+    data['b'] = data['b'].astype(str)
+
+    ddf_1 = DDF().parallelize(data, 4).hash_partition(columns=['a', 'b'],
+                                                      nfrag=6)
+    f = ddf_1.num_of_partitions()
+    c = ddf_1.count_rows(total=False)
+    print(ddf_1.count_rows(total=False))
+    print(sum(c) == n_rows)
+    print(f == 6)
+    df1 = ddf_1.to_df().sort_values(by=['a', 'b'])
+    data = data.sort_values(by=['a', 'b'])
+    assert_frame_equal(df1, data, check_index_type=False)
+    print("etl_test - hash_partition - OK")
 
 
 def import_data():
@@ -350,23 +386,57 @@ def intersect_all():
     print("etl_test - intersect all - OK")
 
 
-# def join():
-#     print "\n|-------- Join --------|\n"
-#     data = pd.DataFrame([[i, i + 5, 0] for i in range(10)],
-#                         columns=['a', 'b', 'c'])
-#
-#     ddf_1a = DDF().parallelize(data, 4)
-#     ddf_1b = DDF().parallelize(data, 4)
-#     ddf_2 = ddf_1a.join(ddf_1b, key1=['a'], key2=['a'])
-#     df1 = ddf_2.cache().show()
-#     res_join = pd.DataFrame([[0, 5, 0, 5, 0], [1, 6, 0, 6, 0],
-#                              [2, 7, 0, 7, 0], [3, 8, 0, 8, 0],
-#                              [4, 9, 0, 9, 0], [5, 10, 0, 10, 0],
-#                              [6, 11, 0, 11, 0], [7, 12, 0, 12, 0],
-#                              [8, 13, 0, 13, 0], [9, 14, 0, 14, 0]],
-#                             columns=['a', 'b_l', 'c_l', 'b_r', 'c_r'])
-#     assert_frame_equal(df1, res_join, check_index_type=False)
-#     print "etl_test - join - OK"
+def join():
+    print("\n|--------  inner join --------|\n")
+
+    data1 = pd.DataFrame([[i, i + 5, 0] for i in range(10)],
+                         columns=['a', 'b', 'c'])
+    data2 = data1.copy()
+    data2.sample(frac=1,  replace=False)
+
+    ddf_1a = DDF().parallelize(data1, 4)
+    ddf_1b = DDF().parallelize(data2, 4)
+    ddf_2 = ddf_1a.join(ddf_1b, key1=['a'], key2=['a'], case=False)
+    df1 = ddf_2.to_df().sort_values(by=['a'])
+    print(df1)
+
+    print("etl_test - inner join - OK")
+
+    print("\n|--------  left join --------|\n")
+    data1 = pd.DataFrame([[i, i + 5, 0] for i in range(100)],
+                         columns=['a', 'b', 'c'])
+    data2 = data1.copy()[0:50]
+    data2.sample(frac=1,  replace=False)
+    data2.drop(['b', 'c'], axis=1, inplace=True)
+    data2['d'] = 'd'
+
+    ddf_1a = DDF().parallelize(data1, 4)
+    ddf_1b = DDF().parallelize(data2, 4)
+    ddf_2 = ddf_1a.join(ddf_1b, key1=['a'], key2=['a'], mode='left')
+    df1 = ddf_2.to_df().sort_values(by=['a'])
+    print(df1)
+
+    print("etl_test - left join - OK")
+
+    print("\n|--------  right join --------|\n")
+    data1 = pd.DataFrame([[i, i + 5, 0] for i in range(100)],
+                         columns=['a', 'b', 'c'])
+    data1['b'] = data1['b'].astype('Int8')
+    data1['c'] = data1['c'].astype('Int8')
+
+    data2 = data1.copy()
+    data1 = data1[0:50]
+    data2.sample(frac=1,  replace=False)
+    data2.drop(['b', 'c'], axis=1, inplace=True)
+    data2['d'] = 'd'
+
+    ddf_1a = DDF().parallelize(data1, 4)
+    ddf_1b = DDF().parallelize(data2, 4)
+    ddf_2 = ddf_1a.join(ddf_1b, key1=['a'], key2=['a'], mode='right')
+    df1 = ddf_2.to_df().sort_values(by=['a'])
+    print(df1)
+
+    print("etl_test - right join - OK")
 
 
 def map():
@@ -404,6 +474,25 @@ def rename():
                             [8, 13, 0], [9, 14, 0]], columns=['A', 'b', 'c'])
     assert_frame_equal(df1, res_with, check_index_type=False)
     print("etl_test - with_column - OK")
+
+
+def range_partition():
+    print("\n|-------- Range partition --------|\n")
+    n_rows = 1000
+    data = pd.DataFrame({'a': np.random.randint(0, 100000, size=n_rows),
+                         'b': np.random.randint(0, 100000, size=n_rows),
+                         'c': np.random.randint(0, 100000, size=n_rows)
+                         })
+
+    ddf_1 = DDF().parallelize(data, 4).range_partition(columns=['a', 'b'],
+                                                       nfrag=6)
+    f = ddf_1.num_of_partitions()
+    print(ddf_1.count_rows(total=False))
+    print(f == 6)
+    df1 = ddf_1.to_df().sort_values(by=['a', 'b'])
+    data = data.sort_values(by=['a', 'b'])
+    # assert_frame_equal(df1, data, check_index_type=False)
+    print("etl_test - repartition - OK")
 
 
 def replace():
@@ -458,37 +547,56 @@ def select():
     print("etl_test - select - OK")
 
 
+def select_expression():
+    print("\n|-------- Select Exprs --------|\n")
+    data = pd.DataFrame([[i, -i + 5, 1] for i in range(10)],
+                        columns=['a', 'b', 'c'])
+
+    ddf_1 = DDF().parallelize(data, 4).select_expression('col2 = a * -1',
+                                                         'col3 = col2 * 2 + c',
+                                                         'a')
+    df1 = ddf_1.to_df()
+    res_rep = pd.DataFrame([[0, 1, 0], [-1, -1, 1], [-2, -3, 2], [-3, -5, 3],
+                            [-4, -7, 4], [-5, -9, 5], [-6, -11, 6],
+                            [-7, -13, 7], [-8, -15, 8], [-9, -17, 9]],
+                           columns=['col2', 'col3', 'a'])
+    assert_frame_equal(df1, res_rep, check_index_type=False)
+    print("etl_test - select exprs - OK")
+
+
 def sort():
     print("\n|-------- Sort --------|\n")
-    power_of2 = [2, 4, 8, 16, 32, 64]
+    power_of2 = [4]#[2, 4, 8, 16, 32, ]
     not_power = [1, 3, 5, 6, 7, 31, 63]
-    modes = ['batcher', 'oddeven']
 
     for f in power_of2:
-
-        n1 = np.random.randint(0, 300, f)
+        print("# fragments: ", f)
+        n1 = np.random.randint(0, 10000, f)
         # data = pd.DataFrame({'a': np.random.randint(1, 1000, n1)})
         # ddf_1 = DDF().parallelize(data, f)
 
-        data, info = generate_data(n1)
+        data, info = generate_data(n1, dim=2, max_size=1000)
         ddf_1 = DDF().import_data(data, info)
 
-        size_b = ddf_1.count(total=False)
-        print(size_b)
+        size_b = ddf_1.count_rows(total=False)
+        print("Sorting...")
         t1 = time.time()
-        ddf_2 = ddf_1.sort(['a'], ascending=[True], mode=modes[0]).cache()
+        ddf_2 = ddf_1.sort(['col0', 'col1'],
+                           ascending=[True, False]).cache()
         t2 = time.time()
+        print("... End")
+        print('time elapsed: ', t2 - t1)
 
-        size_a = ddf_2.count(total=False)
-        a = ddf_2.to_df()['a'].values
-        print('time elapsed: ', t2-t1)
+        size_a = ddf_2.count_rows(total=False)
+        df = ddf_2.to_df()
+        a = df['col0'].values
 
         is_sorted = lambda a: np.all(a[:-1] <= a[1:])
         val = (is_sorted(a) and sum(n1) == len(a))
         if not val:
             print("error with nfrag=", f)
-            print(size_b)
-            print(size_a)
+            print("size before {}: {}".format(sum(size_b), size_b))
+            print("size after {}: {}".format(sum(size_a), size_a))
             print(a)
 
 
@@ -508,7 +616,8 @@ def subtract():
 
 def split():
     print("\n|-------- Split --------|\n")
-    data = pd.DataFrame([[i, i+5, 0] for i in range(10)],
+    size = 100
+    data = pd.DataFrame([[i, i+5, 0] for i in range(size)],
                         columns=['a', 'b', 'c'])
 
     ddf_1a, ddf_1b = DDF().parallelize(data, 4).split(0.5)
@@ -517,7 +626,7 @@ def split():
 
     s = any(pd.concat([df1, df2]).duplicated(['a', 'b', 'c']))
     t = len(df1)+len(df2)
-    if s or t != 10:
+    if s or t != size:
         raise Exception("Split")
     print("etl_test - split - OK")
 
@@ -535,30 +644,46 @@ def take():
 
 def union():
     print("\n|-------- Union --------|\n")
-    data = pd.DataFrame([[i, 5, 10] for i in range(10)],
-                        columns=['a', 'b', 'c'])
-    data1 = pd.DataFrame([["i{}".format(i), 7] for i in range(5)],
-                         columns=['b', 'a'])
+    size1 = 20
+    size2 = 15
+    total_expected = size1 + size2
+
+    data = pd.DataFrame([["left_{}".format(i), 'middle_b']
+                         for i in range(size1)], columns=['a', 'b'])
+    data1 = pd.DataFrame([["left_{}".format(i), 42, "right_{}".format(i)]
+                          for i in range(size1, size1+size2)],
+                         columns=['b', 'a', 'c'])
 
     ddf_1a = DDF().parallelize(data, 4)
     ddf_1b = DDF().parallelize(data1, 4)
     ddf_2 = ddf_1a.union(ddf_1b)
     df1 = ddf_2.to_df()
     print(df1)
-    print("etl_test - union - OK")
+    counts = ddf_2.count_rows(total=False)
+    print(counts)
+    if sum(counts) != total_expected:
+        raise Exception('Error in union')
 
 
 def union_by_name():
     print("\n|-------- Union by Name --------|\n")
-    data = pd.DataFrame([[i, 5] for i in range(10)], columns=['a', 'b'])
-    data1 = pd.DataFrame([["i{}".format(i), 7] for i in range(5)],
-                         columns=['b', 'a'])
+    size1 = 3
+    size2 = 15
+    total_expected = size1 + size2
+
+    data = pd.DataFrame([[i, 5] for i in range(size1)], columns=['a', 'b'])
+    data1 = pd.DataFrame([["i{}".format(i), 7, 'c']
+                          for i in range(size2)], columns=['b', 'a', 'c'])
 
     ddf_1a = DDF().parallelize(data, 4)
     ddf_1b = DDF().parallelize(data1, 4)
     ddf_2 = ddf_1a.union_by_name(ddf_1b)
     df1 = ddf_2.to_df()
     print(df1)
+    counts = ddf_2.count_rows(total=False)
+    print(counts)
+    if sum(counts) != total_expected:
+        raise Exception('Error in union_by_name')
     print("etl_test - union by name - OK")
 
 
@@ -572,6 +697,7 @@ if __name__ == '__main__':
     # cross_join()
     # # etl()
     # except_all()
+    # explode()
     # filter()
     # fill_na()  #TODO change dtypes
     # distinct()
@@ -580,16 +706,21 @@ if __name__ == '__main__':
     # import_data()
     # intersect()
     # intersect_all()
-    read_data()
+    # join()
+    # read_data()
     # map()
     # rename()
     # repartition()
+    # hash_partition()
+    # range_partition()
     # replace()
     # sample()
     # select()
-    # sort()
+    # select_expression()
+    sort()
     # split()
     # subtract()
     # take()
-    # union()   # TODO test the differents datatypes
-    # union_by_name() # TODO test the differents datatypes
+    # union()
+    # union_by_name()
+
