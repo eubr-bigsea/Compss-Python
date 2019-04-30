@@ -12,6 +12,8 @@ from pycompss.api.api import compss_wait_on
 import numpy as np
 
 
+# Use schema to avoid submit empty tasks
+
 def take(data, settings):
     """
     Returns the first n elements of the input panda's DataFrame.

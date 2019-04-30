@@ -8,6 +8,7 @@ from pycompss.api.task import task
 from pycompss.api.parameter import INOUT
 from pycompss.functions.reduce import merge_reduce
 from pycompss.api.api import compss_wait_on, compss_delete_object
+from pycompss.api.constraint import constraint
 
 from ddf_library.utils import concatenate_pandas, generate_info, \
     create_auxiliary_column
@@ -17,6 +18,7 @@ from .balancer import _balancer
 import numpy as np
 import pandas as pd
 import xxhash
+import time
 
 
 def repartition(data, settings):
@@ -81,8 +83,11 @@ def range_partition(data, settings):
     nfrag_target = settings.get('nfrag', nfrag)
     ascending = settings.get('ascending', True)
 
+    if not isinstance(cols, list):
+        cols = [cols]
+
     if not isinstance(ascending, list):
-        ascending = [ascending for _ in cols]
+        ascending = [ascending] * len(cols)
 
     if nfrag_target < 1:
         raise Exception('You must have at least one partition.')
@@ -97,26 +102,41 @@ def range_partition(data, settings):
 
         print("[INFO] - Number of partitions update to: ", nfrag_target)
 
-        splitted = [split_by_boundary(data[f], cols, ascending,
-                                      bounds, info) for f in range(nfrag)]
+        splitted = [0 for _ in range(nfrag)]
+        # create a matrix 2-D where:
+        # row is each original frag in splitted, nfrag
+        # column is each bucket in splitted, next divisible of nfrag_target
+        nfrags_new = find_next_divisible(nfrag_target, 10)
+        frags = [[[] for _ in range(nfrags_new)] for _ in range(nfrag)]
+
+        for f in range(nfrag):
+            splitted[f] = split_by_boundary(data[f], cols, ascending,
+                                            bounds, info, nfrags_new)
+
+            for f2 in range(0, nfrags_new, 10):
+                frags[f][f2:f2+10] = get_partition(splitted[f], f2, f2+10)
+        compss_delete_object(splitted)
 
         result = [[] for _ in range(nfrag_target)]
         info = [{} for _ in range(nfrag_target)]
 
         for f in range(nfrag_target):
-            frags = [get_partition(splitted[f2], f) for f2 in range(nfrag)]
-            tmp = merge_reduce(concat2pandas, frags[0:-1])
-            result[f], info[f] = _gen_partition(tmp, frags[-1], f)
+            fs = [frags[t][f] for t in range(nfrag)]
+            tmp = merge_reduce(concat2pandas, fs[0:-1])
+            result[f], info[f] = _gen_partition(tmp, fs[-1], f)
 
         compss_delete_object(frags)
-        compss_delete_object(tmp)
-        compss_delete_object(splitted)
+
     else:
         result = data
 
     output = {'key_data': ['data'], 'key_info': ['info'],
               'data': result, 'info': info}
     return output
+
+
+def find_next_divisible(m, n):
+    return n * int(np.ceil(m / n))
 
 
 def range_bounds(data, nfrag, sizes, cols, ascending, nfrag_target):
@@ -170,13 +190,13 @@ def _determine_bounds(sample, cols, ascending, nfrag_target):
     return bounds
 
 
+@constraint(ComputingUnits="2")  # approach to have more available memory
 @task(returns=1)
-def split_by_boundary(data, cols, ascending, bounds, info):
+def split_by_boundary(data, cols, ascending, bounds, info, nfrags_new):
     # doesnt need to properly sort, other approach like nargsort might be work
 
-    n_splits = len(bounds)+1
-    splits = {f: pd.DataFrame(columns=info['cols'], dtype=info['dtypes'])
-              for f in range(n_splits)}
+    splits = [pd.DataFrame(columns=info['cols'], dtype=info['dtypes'])
+              for _ in range(nfrags_new)]
     aux_col = create_auxiliary_column(info['cols'])
 
     # creation of keys DataFrame with all bounds
@@ -187,10 +207,13 @@ def split_by_boundary(data, cols, ascending, bounds, info):
     keys = pd.concat([keys, bounds], sort=False)
     del bounds
 
+    t1 = time.time()
     # sort only the DataFrame with columns. It consumes more space,
     # but is faster
     keys.sort_values(by=cols, ascending=ascending, inplace=True)
     keys.reset_index(drop=True, inplace=True)
+    t2 = time.time()
+    print("sort in split_by_boundary: ", t2-t1)
 
     idxs_bounds = keys.index[keys[aux_col] == -1]
     aux_col_idx = keys.columns.get_loc(aux_col)
@@ -223,11 +246,12 @@ def _sample_keys(data, cols, sample_size):
     return data
 
 
-@task(returns=1)
-def get_partition(splits, frag):
-    return splits[frag]
+@task(returns=10)
+def get_partition(splits, fin, fout):
+    return splits[fin: fout]
 
 
+@constraint(ComputingUnits="2")  # approach to have more available memory
 @task(returns=1)
 def concat2pandas(df1, df2):
     return pd.concat([df1, df2], ignore_index=True, sort=False)
@@ -235,6 +259,7 @@ def concat2pandas(df1, df2):
 
 @task(returns=2)
 def _gen_partition(df, df2, frag):
+
     df = pd.concat([df, df2], ignore_index=True, sort=False)
     df.reset_index(drop=True, inplace=True)
     info = generate_info(df, frag)

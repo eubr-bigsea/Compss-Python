@@ -31,9 +31,9 @@ def replace_value(data, settings):
     for col in subset:
         to_replace[col] = replaces
 
-    regexes = settings.get('regex', False)  # only if is string
+    regex = settings.get('regex', False)  # only if is string
 
-    data.replace(to_replace=to_replace, regex=regexes, inplace=True)
+    data.replace(to_replace=to_replace, regex=regex, inplace=True)
 
     info = generate_info(data, frag)
 
@@ -46,4 +46,3 @@ def preprocessing(settings):
     if not isinstance(replaces, dict):
         raise Exception('You must inform a valid replaces settings !')
     return settings
-

@@ -13,10 +13,10 @@ def distinct(data, cols):
     """
     Returns a new DataFrame containing the distinct rows in this DataFrame.
 
-    :param data: A list with nfrag pandas's dataframe;
+    :param data: A list with nfrag pandas's DataFrame;
     :param cols: A list with the columns names to take in count
-                (if no field is choosen, all fields are used).
-    :return: Returns a list with nfrag pandas's dataframe.
+                (if no field is chosen, all fields are used).
+    :return: Returns a list with nfrag pandas's DataFrame.
     """
     nfrag = len(data)
 
@@ -83,8 +83,8 @@ def _drop_duplicates(data1, data2, cols, frag):
     n1 = len(data1)
     n2 = len(data2)
     if (n1+n2) > 0:
-        alls_cols = data1.columns
-        tmp_col = get_column(alls_cols)
+        all_cols = data1.columns
+        tmp_col = get_column(all_cols)
         n = n1 + n2
 
         # Create a temporary column for referencing
@@ -93,21 +93,21 @@ def _drop_duplicates(data1, data2, cols, frag):
 
         # if cols is empty, all fields will be used)
         if len(cols) == 0:
-            cols = alls_cols
+            cols = all_cols
 
         # Create a new dataFrame with only unique rows
         # Version 0.21.0 introduces the method infer_objects() for converting
-        # columns of a DataFrame that have an object datatype to a more
+        # columns of a DataFrame that have an object data type to a more
         # specific type.
         data = data.infer_objects()\
             .drop_duplicates(cols, keep='first')\
             .reset_index(drop=True)
 
         # Keep rows of each dataFrame based in the temporary one
-        tmp1 = data.loc[data[tmp_col] == 'p1', alls_cols].values
+        tmp1 = data.loc[data[tmp_col] == 'p1', all_cols].values
         m1 = len(tmp1)
         data1.iloc[0:m1, :] = tmp1
-        tmp1 = data.loc[data[tmp_col] == 'p2', alls_cols].values
+        tmp1 = data.loc[data[tmp_col] == 'p2', all_cols].values
         m2 = len(tmp1)
         data2.iloc[0:m2, :] = tmp1
 
