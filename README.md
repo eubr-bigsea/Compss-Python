@@ -55,8 +55,7 @@ operations to a single task COMPSs and stacking operations until an action opera
    - **Frequent Pattern Mining**: FP-Growth and Association Rules
    - **Classification**: K-Nearest Neighbors, Gaussian Naive Bayes, Logistic Regression, SVM
    - **Clustering**: K-means (using random or k-means|| initialization method), DBSCAN
-   - **Regression**: Linear Regression using method of least squares (works only for 2-D data) or using 
-   Stochastic Gradient Descent
+   - **Regression**: Linear Regression using method of least squares (works only for 2-D data) or using Gradient Descent
   - **Geographic Operations**: Load data from shapefile, Geo Within (Select rows that exists within a specified shape)
   - **Graph Operations**: Initially, only Page Rank are present
 

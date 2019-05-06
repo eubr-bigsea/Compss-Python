@@ -11,7 +11,8 @@ from pycompss.api.parameter import FILE_OUT
 
 class SaveOperation(object):
 
-    def preprocessing(self, settings, nfrag):
+    @staticmethod
+    def preprocessing(settings, nfrag):
         if any(['format' not in settings,
                 'filename' not in settings]):
             raise \
@@ -69,7 +70,8 @@ class SaveOperation(object):
                     _save_json_fs(output, data[f])
         return data
 
-    def transform_serial(self, data, settings):
+    @staticmethod
+    def transform_serial(data, settings):
         storage = settings.get('storage', 'hdfs')
         format_file = settings['format']
         filename = settings['filename']

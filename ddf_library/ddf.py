@@ -22,10 +22,6 @@ from ddf_library.utils import generate_info, concatenate_pandas
 import pandas as pd
 import numpy as np
 import copy
-import sys
-
-if sys.version_info[0] < 3:
-    raise Exception("Must be using Python 3")
 
 
 __all__ = ['DDF', 'generate_info']
@@ -1043,7 +1039,7 @@ class DDF(DDFSketch):
 
         """
 
-        from .functions.etl.repartition import hash_partition
+        from .functions.etl.hash_partitioner import hash_partition
 
         if not isinstance(columns, list):
             columns = [columns]
@@ -1293,7 +1289,7 @@ class DDF(DDFSketch):
 
         """
 
-        from .functions.etl.repartition import range_partition
+        from .functions.etl.range_partitioner import range_partition
 
         if not isinstance(columns, list):
             columns = [columns]

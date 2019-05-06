@@ -335,7 +335,7 @@ def hash_partition():
                          })
     data['b'] = data['b'].astype(str)
 
-    ddf_1 = DDF().parallelize(data, 4).hash_partition(columns=['a', 'b'],
+    ddf_1 = DDF().parallelize(data, 12).hash_partition(columns=['a', 'b'],
                                                       nfrag=6)
     f = ddf_1.num_of_partitions()
     c = ddf_1.count_rows(total=False)
@@ -491,7 +491,7 @@ def range_partition():
     print(f == 6)
     df1 = ddf_1.to_df().sort_values(by=['a', 'b'])
     data = data.sort_values(by=['a', 'b'])
-    # assert_frame_equal(df1, data, check_index_type=False)
+    assert_frame_equal(df1, data, check_index_type=False)
     print("etl_test - repartition - OK")
 
 
@@ -579,6 +579,7 @@ def sort():
         ddf_1 = DDF().import_data(data, info)
 
         size_b = ddf_1.count_rows(total=False)
+        print("size before {}: {}".format(sum(size_b), size_b))
         print("Sorting...")
         t1 = time.time()
         ddf_2 = ddf_1.sort(['col0', 'col1'],
@@ -588,15 +589,15 @@ def sort():
         print('time elapsed: ', t2 - t1)
 
         size_a = ddf_2.count_rows(total=False)
+        print("size after {}: {}".format(sum(size_a), size_a))
         df = ddf_2.to_df()
+        print(df)
         a = df['col0'].values
 
         is_sorted = lambda a: np.all(a[:-1] <= a[1:])
         val = (is_sorted(a) and sum(n1) == len(a))
         if not val:
             print("error with nfrag=", f)
-            print("size before {}: {}".format(sum(size_b), size_b))
-            print("size after {}: {}".format(sum(size_a), size_a))
             print(a)
 
 
