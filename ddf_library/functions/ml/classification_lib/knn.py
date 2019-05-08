@@ -11,7 +11,6 @@ from ddf_library.ddf_model import ModelDDF
 from pycompss.api.task import task
 from pycompss.functions.reduce import merge_reduce
 from pycompss.api.api import compss_wait_on
-# from pycompss.api.local import *
 
 import math
 import numpy as np
@@ -21,12 +20,11 @@ import pandas as pd
 class KNearestNeighbors(ModelDDF):
 
     """K-Nearest Neighbor is a algorithm used that can be used for both
-    classification and regression predictive problems. However, it is more
-    widely used in classification problems. In a classification, the
+    classification and regression predictive problems. In a classification, the
     algorithm computes from a simple majority vote of the K nearest neighbors
     of each point present in the training set. The choice of the parameter
-    K is very crucial in this algorithm, and depends on the dataset.
-    However, values of one or tree is more commom.
+    K is very crucial in this algorithm, and depends on data set.
+    However, values of one or tree is more common.
 
     :Example:
 
@@ -135,20 +133,12 @@ def _knn_create_model(df, label, features, nfrag, k):
 
 @task(returns=1)
 def merge_lists(list1, list2):
-    """Merge all elements in an unique dataframe to be part of a knn model."""
+    """Merge all elements in an unique DataFrame to be part of a knn model."""
     l1, f1, i1, nfrag, k = list1
     l2, f2, i2, _, _ = list2
 
     f1 = f1 + f2
     l1 = l1 + l2
-
-
-    # if len(l1) != 0 and len(l2) != 0:
-    #     l1 = np.concatenate((l1, l2), axis=0)
-    #     f1 = np.concatenate((f1, f2), axis=0)
-    #
-    # elif len(l1) < len(l2):
-    #     l1, f1 = l2, f2
 
     i = i1+i2 + 1
     if i == (nfrag - 1):

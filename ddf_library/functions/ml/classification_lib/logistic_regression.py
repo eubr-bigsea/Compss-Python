@@ -11,7 +11,6 @@ from ddf_library.ddf_model import ModelDDF
 from pycompss.api.task import task
 from pycompss.functions.reduce import merge_reduce
 from pycompss.api.api import compss_wait_on, compss_delete_object
-# from pycompss.api.local import *
 
 import numpy as np
 import pandas as pd
@@ -37,19 +36,19 @@ class LogisticRegression(ModelDDF):
 
     :Example:
 
-    >>> logr = LogisticRegression(feature_col='features',
+    >>> cls = LogisticRegression(feature_col='features',
     >>>                           label_col='label').fit(ddf1)
-    >>> ddf2 = logr.transform(ddf1)
+    >>> ddf2 = cls.transform(ddf1)
     """
 
     def __init__(self, feature_col, label_col, alpha=0.1,
-                 regularization=0.1, max_iters=100, threshold=0.01):
+                 regularization=0.1, max_iter=100, threshold=0.01):
         """
         :param feature_col: Feature column name;
         :param label_col: Label column name;
         :param alpha: Learning rate parameter (default, 0.1);
         :param regularization: Regularization parameter (default, 0.1);
-        :param max_iters: Maximum number of iterations (default, 100);
+        :param max_iter: Maximum number of iterations (default, 100);
         :param threshold: Tolerance for stopping criterion (default, 0.01);
         """
         super(LogisticRegression, self).__init__()
@@ -60,7 +59,7 @@ class LogisticRegression(ModelDDF):
         self.settings['alpha'] = alpha
         self.settings['regularization'] = regularization
         self.settings['threshold'] = threshold
-        self.settings['iters'] = max_iters
+        self.settings['max_iter'] = max_iter
 
         self.model = []
         self.name = 'LogisticRegression'
@@ -79,11 +78,11 @@ class LogisticRegression(ModelDDF):
         col_feature = self.settings['feature_col']
         alpha = self.settings.get('alpha', 0.1)
         reg = self.settings.get('regularization', 0.1)
-        iters = self.settings.get('iters', 100)
+        max_iter = self.settings.get('max_iter', 100)
         threshold = self.settings.get('threshold', 0.001)
 
-        parameters = _logr_compute_coeffs(df, col_feature, col_label, alpha,
-                                          iters, threshold, reg, nfrag)
+        parameters = _logr_compute_theta(df, col_feature, col_label, alpha,
+                                         max_iter, threshold, reg, nfrag)
 
         self.model = [compss_wait_on(parameters)]
         return self
@@ -144,8 +143,8 @@ def _logr_sigmoid(scores):
     return 1 / (1 + np.exp(-scores))
 
 
-def _logr_compute_coeffs(data, features, label, alpha, iters,
-                         threshold, reg, nfrag):
+def _logr_compute_theta(data, features, label, alpha, max_iter,
+                        threshold, reg, nfrag):
     """
     Perform a logistic regression via Gradient Ascent
     """
@@ -157,7 +156,7 @@ def _logr_compute_coeffs(data, features, label, alpha, iters,
     xy = [[] for _ in range(nfrag)]
     gr_in = [[] for _ in range(nfrag)]
 
-    while (it < iters) and not converged:
+    while (it < max_iter) and not converged:
         # grEin = gradient of in-sample Error
         if it == 0:
             for f in range(nfrag):
@@ -258,7 +257,7 @@ def _logr_calc_theta(info, coef_lr, it, regularization, threshold):
     # update coefficients
     alpha = coef_lr/(1+it)
     theta += coef_lr*(gradient - regularization*theta)
-    # theta += coef_lr*gradient
+
     converged = False
     cost = alpha * np.sum(gradient*gradient)
     print("[INFO] Logistic Regressing - it {} - cost:{:.4f}".format(it, cost))

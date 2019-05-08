@@ -11,7 +11,6 @@ from ddf_library.ddf_model import ModelDDF
 from pycompss.api.task import task
 from pycompss.functions.reduce import merge_reduce
 from pycompss.api.api import compss_wait_on
-# from pycompss.api.local import *
 
 import math
 import numpy as np
@@ -39,31 +38,26 @@ class GaussianNB(ModelDDF):
 
     :Example:
 
-    >>> nb = GaussianNB(feature_col='features', label_col='label').fit(ddf1)
-    >>> ddf2 = nb.transform(ddf1)
+    >>> cls = GaussianNB(feature_col='features', label_col='label').fit(ddf1)
+    >>> ddf2 = cls.transform(ddf1)
     """
 
-    def __init__(self, feature_col, label_col, pred_col=None):
+    def __init__(self, feature_col, label_col):
         """
         :param feature_col: Feature column name;
         :param label_col: Label column name;
-        :param pred_col: Output prediction name
-         (default, *'prediction_GaussianNB'*);
+
         """
         super(GaussianNB, self).__init__()
 
         if not isinstance(feature_col, list):
             feature_col = [feature_col]
 
-        if not pred_col:
-            pred_col = 'prediction_GaussianNB'
-
         self.settings = dict()
         self.settings['feature_col'] = feature_col
         self.settings['label_col'] = label_col
-        self.settings['pred_col'] = pred_col
 
-        self.model = []
+        self.model = dict()
         self.name = 'GaussianNB'
 
     def fit(self, data):
@@ -78,9 +72,9 @@ class GaussianNB(ModelDDF):
 
         cols = [self.settings['feature_col'], self.settings['label_col']]
 
-        # generate a dictionary with the sum of all attributes separed by class
+        # generate a dictionary with the sum of all attributes by class
         clusters = [[] for _ in range(nfrag)]
-        means = [[] for _ in range(nfrag)]
+        means = clusters[:]
         for i in range(nfrag):
             clusters[i], means[i] = _nb_separate_by_class(df[i], cols)
 
@@ -92,30 +86,38 @@ class GaussianNB(ModelDDF):
         merged_fitted = merge_reduce(_nb_merge_var, partial_var)
 
         # compute standard deviation
-        summaries = _nb_calc_stdev(merged_fitted)
+        summaries = _nb_calc_std(merged_fitted)
 
-        self.model = {'model': summaries}
+        self.model['model'] = summaries
+        self.model['name'] = self.name
 
         return self
 
-    def fit_transform(self, data):
+    def fit_transform(self, data, pred_col='prediction_GaussianNB'):
         """
         Fit the model and transform.
 
         :param data: DDF
+        :param pred_col: Output prediction name
+         (default, *'prediction_GaussianNB'*);
         :return: DDF
         """
 
         self.fit(data)
-        ddf = self.transform(data)
+        ddf = self.transform(data, pred_col)
 
         return ddf
 
-    def transform(self, data):
+    def transform(self, data, pred_col='prediction_GaussianNB'):
         """
         :param data: DDF
+        :param pred_col: Output prediction name
+         (default, *'prediction_GaussianNB'*);
         :return: DDF
         """
+
+        self.settings['pred_col'] = pred_col
+
         if len(self.model) == 0:
             raise Exception("Model is not fitted.")
 
@@ -124,8 +126,8 @@ class GaussianNB(ModelDDF):
         result = [[] for _ in range(nfrag)]
         info = [[] for _ in range(nfrag)]
         for f in range(nfrag):
-            result[f], info[f] = _nb_predict_chunck(df[f], self.model['model'],
-                                                    self.settings, f)
+            result[f], info[f] = _nb_predict(df[f], self.model['model'],
+                                             self.settings, f)
 
         uuid_key = self._ddf_add_task(task_name='task_transform_nb',
                                       status='COMPLETED', lazy=False,
@@ -139,7 +141,7 @@ class GaussianNB(ModelDDF):
 
 @task(returns=2)
 def _nb_separate_by_class(df_train, cols):
-    """Sumarize all label in each fragment."""
+    """Summarize all label in each fragment."""
     features, label = cols
     # a dictionary where:
     #   - keys are unique labels;
@@ -155,17 +157,17 @@ def _nb_separate_by_class(df_train, cols):
 
 
 @task(returns=1)
-def _nb_merge_means(summ1, summ2):
-    """Merge the statitiscs about each class (without variance)."""
+def _nb_merge_means(info1, info2):
+    """Merge statistics about each class (without variance)."""
 
-    for att in summ2:
-        if att in summ1:
-            summ1[att] = [summ1[att][0] + summ2[att][0],
-                          np.add(summ1[att][1], summ2[att][1])]
+    for att in info2:
+        if att in info1:
+            info1[att] = [info1[att][0] + info2[att][0],
+                          np.add(info1[att][1], info2[att][1])]
         else:
-            summ1[att] = summ2[att]
+            info1[att] = info2[att]
 
-    return summ1
+    return info1
 
 
 @task(returns=1)
@@ -174,8 +176,8 @@ def _nb_calc_var(mean, separated):
 
     summary = {}
     for key in separated:
-        size, summ = mean[key]
-        avg_class = np.divide(summ, size)
+        size, info = mean[key]
+        avg_class = np.divide(info, size)
         errors = np.subtract(separated[key], avg_class)
         sse_partial = np.sum(np.power(errors, 2), axis=0)
         summary[key] = [sse_partial, size, avg_class]
@@ -184,25 +186,23 @@ def _nb_calc_var(mean, separated):
 
 
 @task(returns=1)
-def _nb_merge_var(summ1, summ2):
-    """Merge the statitiscs about each class (with variance)."""
-    for att in summ2:
-        if att in summ1:
-            summ1[att] = [np.add(summ1[att][0], summ2[att][0]),
-                          summ1[att][1], summ1[att][2]]
+def _nb_merge_var(info1, info2):
+    """Merge the statistics about each class (with variance)."""
+    for att in info2:
+        if att in info1:
+            info1[att] = [np.add(info1[att][0], info2[att][0]),
+                          info1[att][1], info1[att][2]]
         else:
-            summ1[att] = summ2[att]
-    return summ1
+            info1[att] = info2[att]
+    return info1
 
 
-# @local
-def _nb_calc_stdev(summaries):
-    """Calculate the standart desviation of each class."""
+def _nb_calc_std(summaries):
+    """Calculate the standard deviation of each class."""
     summaries = compss_wait_on(summaries)
     new_summaries = {}
     for att in summaries:
         sse_partial, size, avg = summaries[att]
-        # std = np.sqrt(np.divide(sse_partial, size))
         var = np.divide(sse_partial, size)
         new_summaries[att] = [avg, var, size]
 
@@ -210,12 +210,11 @@ def _nb_calc_stdev(summaries):
 
 
 @task(returns=2)
-def _nb_predict_chunck(data, summaries, settings, frag):
+def _nb_predict(data, summaries, settings, frag):
     """Predict all records in a fragment."""
 
     features_col = settings['feature_col']
     predicted_label = settings['pred_col']
-    # pi = 3.1415926
 
     data.reset_index(drop=True, inplace=True)
 
@@ -237,51 +236,10 @@ def _nb_predict_chunck(data, summaries, settings, frag):
     array = data[features_col].values
     predictions = clf.predict(array)
 
-    # for class_v, class_summaries in summaries.items():
-    #     avgs, stds, _ = class_summaries
-    #     dim = len(avgs)
-    #     dens, nums = np.zeros(dim), np.zeros(dim)
-    #
-    #     for i, (avg, std) in enumerate(zip(avgs, stds)):
-    #         if std == 0:
-    #             std = 0.0000001
-    #
-    #         dens[i] = (2 * pow(std, 2))
-    #         nums[i] = np.divide(1.0, (math.sqrt(2*pi) * std))
-    #
-    #     summaries[class_v] = [avgs, dens, nums]
-    #
-    # array = data[features_col].values
-    #
-    # def _nb_predict(input_vector, model=summaries):
-    #     """Predict a feature."""
-    #     probabilities = _nb_class_probabilities(model, input_vector)
-    #     best_label, best_prob = None, -1
-    #     for classValue in probabilities:
-    #         probability = probabilities[classValue]
-    #         if best_label is None or probability > best_prob:
-    #             best_prob = probability
-    #             best_label = classValue
-    #     return best_label
-    #
-    # predictions = np.apply_along_axis(_nb_predict, 1, array)
-
     if predicted_label in data:
         data.drop([predicted_label], axis=1, inplace=True)
 
-    data[predicted_label] = predictions  #.tolist()
+    data[predicted_label] = predictions
 
     info = generate_info(data, frag)
     return data, info
-
-
-# def _nb_class_probabilities(summaries, x):
-#     """Do the probability's calculation of all records."""
-#     probs = {}
-#
-#     for class_v, class_summaries in summaries.items():
-#         probs[class_v] = 1
-#         avgs, dens, nums = class_summaries
-#         probs[class_v] = np.prod(nums * np.exp(-(pow(x - avgs, 2) / dens)))
-#
-#     return probs

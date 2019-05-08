@@ -57,7 +57,7 @@ class JoinOperation(object):
         nfrag = max([nfrag1, nfrag2])
 
         # first, perform a hash partition to shuffle both data
-        from .repartition import hash_partition
+        from .hash_partitioner import hash_partition
         hash_params1 = {'columns': key1, 'nfrag': nfrag, 'info': [info1]}
         hash_params2 = {'columns': key2, 'nfrag': nfrag, 'info': [info2]}
         output1 = hash_partition(data1, hash_params1)

@@ -11,7 +11,6 @@ from ddf_library.ddf_model import ModelDDF
 from pycompss.api.task import task
 from pycompss.functions.reduce import merge_reduce
 from pycompss.api.api import compss_wait_on
-# from pycompss.api.local import *
 
 import math
 import numpy as np
@@ -34,25 +33,25 @@ class SVM(ModelDDF):
     is still effective in cases where number of dimensions is greater than
     the number of samples.
 
-    The algorithm reads a dataset composed by labels (-1 or 1) and
+    The algorithm reads a data set composed by labels (-1 or 1) and
     features (numeric fields).
 
     :Example:
 
-    >>> svm = SVM(feature_col='features', label_col='label',
-    >>>           max_iters=10).fit(ddf1)
-    >>> ddf2 = svm.transform(ddf1)
+    >>> cls = SVM(feature_col='features', label_col='label',
+    >>>           max_iter=10).fit(ddf1)
+    >>> ddf2 = cls.transform(ddf1)
     """
 
     def __init__(self, feature_col, label_col, coef_lambda=0.1,
-                 coef_lr=0.01, threshold=0.001, max_iters=100):
+                 coef_lr=0.01, threshold=0.001, max_iter=100):
         """
         :param feature_col: Feature column name;
         :param label_col: Label column name;
         :param coef_lambda: Regularization parameter (default, 0.1);
         :param coef_lr: Learning rate parameter (default, 0.1);
         :param threshold: Tolerance for stopping criterion (default, 0.001);
-        :param max_iters: Number max of iterations (default, 100).
+        :param max_iter: Number max of iterations (default, 100).
         """
         super(SVM, self).__init__()
 
@@ -62,7 +61,7 @@ class SVM(ModelDDF):
         self.settings['coef_lambda'] = coef_lambda
         self.settings['coef_lr'] = coef_lr
         self.settings['threshold'] = threshold
-        self.settings['max_iters'] = max_iters
+        self.settings['max_iter'] = max_iter
 
         self.model = []
         self.name = 'SVM'
@@ -78,7 +77,7 @@ class SVM(ModelDDF):
         coef_lambda = float(self.settings.get('coef_lambda', 0.1))
         coef_lr = float(self.settings.get('coef_lr', 0.01))
         coef_threshold = float(self.settings.get('coef_threshold', 0.001))
-        coef_max_iter = int(self.settings.get('max_iters', 100))
+        coef_max_iter = int(self.settings.get('max_iter', 100))
 
         df, nfrag, tmp = self._ddf_inital_setup(data)
 
@@ -104,8 +103,8 @@ class SVM(ModelDDF):
             w, cost = _update_weight(coef_lr, cost_grad, w, coef_lambda)
 
             print("[INFO] SVM - it {} - cost:{:.4f}".format(it, cost))
-            thresold = np.abs(old_cost - cost)
-            if thresold <= coef_threshold:
+            threshold = np.abs(old_cost - cost)
+            if threshold <= coef_threshold:
                 break
             else:
                 old_cost = cost
@@ -160,9 +159,9 @@ class SVM(ModelDDF):
         return DDF(task_list=tmp.task_list, last_uuid=uuid_key)
 
 
-def _update_weight(coef_lr, costgrad, w, coef_lambda):
+def _update_weight(coef_lr, cost_grad, w, coef_lambda):
     """Update the svm's weight."""
-    cost, grad = compss_wait_on(costgrad)
+    cost, grad = compss_wait_on(cost_grad)
 
     dim = len(grad)
     if dim != len(w):
@@ -217,26 +216,6 @@ def _calc_cost_grad(train_data, w):
         cost = np.sum(1 - conditions[idx])
 
         grad = - np.dot(labels[idx], train_data[idx])
-
-        # dim = len(train_data[0])
-        # ypp, grad, cost = np.zeros(size_train), np.zeros(dim), 0
-        #
-        # for i in range(size_train):
-        #     ypp[i] = np.matmul(train_data[i], w)
-        #     condition = labels[i] * ypp[i]
-        #     if (condition - 1) < 0:
-        #         cost += (1 - condition)
-        #
-        # for d in range(dim):
-        #     grad[d] = 0
-        #     if f is 0:
-        #         grad[d] += np.abs(coef_lambda * w[d])
-        #
-        #     for i in range(size_train):
-        #         i2 = labels[i]
-        #         condition = i2 * ypp[i]
-        #         if (condition - 1) < 0:
-        #             grad[d] -= i2 * train_data[i][d]
 
         return [cost, grad]
     else:

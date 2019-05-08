@@ -18,26 +18,24 @@ import pyqtree
 
 
 class GeoWithinOperation(object):
-    """
-    Returns the sectors that the each point belongs.
-    """
+    """Returns the sectors that the each point belongs."""
 
     def transform(self, data, shp_object, settings):
         """
-        :param data: A list of pandas dataframe;
-        :param shp_object: The dataframe created by the function ReadShapeFile;
+        :param data: A list of pandas DataFrame;
+        :param shp_object: The DataFrame created by the function ReadShapeFile;
         :param settings: A dictionary that contains:
-            - lat_col: Column which represents the Latitute field in the data;
+            - lat_col: Column which represents the Latitude field in the data;
             - lon_col: Column which represents the Longitude field in the data;
-            - lat_long: True  if the coordenates is (lat,log),
-                        False if is (long,lat). Default is True;
+            - lat_long: True  if the coordinates is (lat, log),
+                        False if is (long, lat). Default is True;
             - polygon: Field in shp_object where is store the
                 coordinates of each sector;
             - attributes: Attributes to retrieve from shapefile, empty to all
                     (default, empty);
             - alias: Alias for shapefile attributes
                 (default, 'sector_position');
-        :return: Returns a list of pandas daraframe.
+        :return: Returns a list of pandas DataFrame.
         """
 
         nfrag = len(data)
@@ -63,7 +61,8 @@ class GeoWithinOperation(object):
         settings = self.prepare_spindex(settings, shp_object)
         return settings
 
-    def prepare_spindex(self, settings, shp_object):
+    @staticmethod
+    def prepare_spindex(settings, shp_object):
         shp_object = compss_wait_on(shp_object)
         polygon = settings.get('polygon', 'points')
         if settings.get('lat_long', True):
@@ -73,13 +72,13 @@ class GeoWithinOperation(object):
 
         # create the main bound box
         points_by_sector = shp_object[polygon].values.tolist()
-        mins_maxs = []
+        min_max = []
         for sector in points_by_sector:
-            mins_maxs.append(_find_minmax(sector, lon_idx, lat_idx))
-        mins_maxs = np.array(mins_maxs)
+            min_max.append(_find_minmax(sector, lon_idx, lat_idx))
+        min_max = np.array(min_max)
 
-        xmin, ymin = np.min(mins_maxs[:, 0]), np.min(mins_maxs[:, 1])
-        xmax, ymax = np.max(mins_maxs[:, 2]), np.max(mins_maxs[:, 3])
+        xmin, ymin = np.min(min_max[:, 0]), np.min(min_max[:, 1])
+        xmax, ymax = np.max(min_max[:, 2]), np.max(min_max[:, 3])
 
         # Pyqtree is a pure Python spatial index for GIS or rendering usage.
         # It stores and quickly retrieves items from a 2x2 rectangular grid

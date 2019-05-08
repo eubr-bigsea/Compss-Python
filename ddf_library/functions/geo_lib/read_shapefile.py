@@ -21,16 +21,17 @@ def read_shapefile(settings, nfrag):
     Reads a shapefile using the shp and dbf file.
 
     :param settings: A dictionary that contains:
-        - host: The host of the Namenode HDFS; (default, default)
-        - port: Port of the Namenode HDFS; (default, 0)
+        - host: The host of the NameNode HDFS; (default, default)
+        - port: Port of the NameNode HDFS; (default, 0)
         - shp_path: Path to the shapefile (.shp)
         - dbf_path: Path to the shapefile (.dbf)
         - polygon: Alias to the new column to store the
-            polygon coordenates (default, 'points');
-        - attributes: List of attributes to keep in the dataframe,
+            polygon coordinates (default, 'points');
+        - attributes: List of attributes to keep in the DataFrame,
             empty to use all fields;
-        - lat_long: True  if the coordenates is (lat,log),
+        - lat_long: True  if the coordinates is (lat,log),
             False if is (long,lat). Default is True;
+    :param nfrag: The number of partitions to split this data set.
 
     .. note:: pip install pyshp
     """
@@ -47,11 +48,11 @@ def read_shapefile(settings, nfrag):
 
     # reading shapefile as a binary file in HDFS
     filename = settings['shp_path']
-    blks = dfs.find_n_blocks(filename, 1)
-    shp_path = Block(blks[0]).read_binary()
+    blocks = dfs.find_n_blocks(filename, 1)
+    shp_path = Block(blocks[0]).read_binary()
     filename = settings['dbf_path']
-    blks = dfs.find_n_blocks(filename, 1)
-    dbf_path = Block(blks[0]).read_binary()
+    blocks = dfs.find_n_blocks(filename, 1)
+    dbf_path = Block(blocks[0]).read_binary()
     shp_io = BytesIO(shp_path)
     dbf_io = BytesIO(dbf_path)
 

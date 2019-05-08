@@ -11,7 +11,6 @@ from ddf_library.ddf_model import ModelDDF
 from pycompss.api.task import task
 from pycompss.api.api import compss_wait_on
 from pycompss.functions.reduce import merge_reduce
-# from pycompss.api.local import *  # it requires guppy
 
 import numpy as np
 import pandas as pd
@@ -40,29 +39,29 @@ class Kmeans(ModelDDF):
 
     :Example:
 
-    >>> kmeans = Kmeans(feature_col='features', n_clusters=2,
+    >>> clu = Kmeans(feature_col='features', n_clusters=2,
     >>>                 init_mode='random').fit(ddf1)
-    >>> ddf2 = kmeans.transform(ddf1)
+    >>> ddf2 = clu.transform(ddf1)
     """
 
-    def __init__(self, feature_col, n_clusters=3, max_iters=100,
+    def __init__(self, feature_col, n_clusters=3, max_iter=100,
                  epsilon=0.01, init_mode='k-means||'):
         """
         :param feature_col: Feature column name;
         :param n_clusters: Number of clusters;
-        :param max_iters: Number maximum of iterations;
+        :param max_iter: Number maximum of iterations;
         :param epsilon: tolerance value (default, 0.01);
         :param init_mode: *'random'* or *'k-means||'*.
         """
         super(Kmeans, self).__init__()
 
         if init_mode not in ['random', 'k-means||']:
-            raise Exception("This implementation only suports 'random' and "
+            raise Exception("This implementation only supports 'random' and "
                             "k-means|| as a initialization mode. ")
 
         self.settings = dict()
         self.settings['feature_col'] = feature_col
-        self.settings['max_iters'] = max_iters
+        self.settings['max_iter'] = max_iter
         self.settings['init_mode'] = init_mode
         self.settings['k'] = n_clusters
         self.settings['epsilon'] = epsilon
@@ -80,7 +79,7 @@ class Kmeans(ModelDDF):
         df, nfrag, tmp = self._ddf_inital_setup(data)
 
         k = int(self.settings['k'])
-        max_iterations = int(self.settings.get('max_iters', 100))
+        max_iterations = int(self.settings.get('max_iter', 100))
         epsilon = float(self.settings.get('epsilon', 0.001))
         init_mode = self.settings.get('init_mode', 'k-means||')
         features_col = self.settings['feature_col']
@@ -95,7 +94,7 @@ class Kmeans(ModelDDF):
         size, n_list = info
 
         if size < k:
-            raise Exception("Number of Clusters K is greather "
+            raise Exception("Number of Clusters K is greater "
                             "than number of rows.")
 
         if init_mode == "random":
@@ -226,7 +225,7 @@ def _kmeans_find_closest(xp, centroids):
 
     new_centroids = dict()
     for k in range(n_clusters):
-        new_centroids[k] = [0, [], []]
+        new_centroids[k] = [0, np.array([]), np.array([])]
 
     if len(xp) > 0:
 
@@ -254,11 +253,10 @@ def _kmeans_merge_keys(a, b):
     return a
 
 
-# @local
 def _kmeans_compute_centroids(centroids):
-    """ Next we need a function to compute the centroid of a cluster.
-        The centroid is simply the mean of all of the examples currently
-        assigned to the cluster."""
+    """Next we need a function to compute the centroid of a cluster.
+       The centroid is simply the mean of all of the examples currently
+       assigned to the cluster."""
     centroids = compss_wait_on(centroids)
     costs = np.sum([centroids[c][2] for c in centroids])
     centroids = [np.divide(centroids[c][1], centroids[c][0])
@@ -292,7 +290,7 @@ def _kmeans_predict(data, columns, model, alias, frag):
 
 # ------ INIT MODE: random
 def _kmeans_init_random(xp, k, size, n_list):
-    # define where get the inital core.
+    # define where get the initial core.
     ids = _kmeans_select_random_seeds(size, k)
 
     from ddf_library.utils import divide_idx_in_frags
@@ -320,8 +318,8 @@ def _kmeans_select_random_seeds(size, k):
 
 
 @task(returns=1)
-def _kmeans_get_random(xp, idxs):
-    sampled = xp[idxs]
+def _kmeans_get_random(xp, idx):
+    sampled = xp[idx]
     return sampled
 
 
@@ -353,8 +351,8 @@ def _kmeans_init_parallel(xp, k, n_list, nfrag):
 
     oversampling_l = 2  # oversampling factor
 
-    fs_valids = [f for f, values in enumerate(n_list) if values > 0]
-    f = np.random.choice(fs_valids, 1, replace=False)[0]
+    frags_not_empty = [f for f, values in enumerate(n_list) if values > 0]
+    f = np.random.choice(frags_not_empty, 1, replace=False)[0]
     centroids = _kmeans_init_clusters(xp[f])
 
     """
@@ -368,8 +366,8 @@ def _kmeans_init_parallel(xp, k, n_list, nfrag):
     print("[INFO] Starting K-means|| with log(phi):", phi)
 
     for _ in range(phi):
-        candidates = [_kmeans_probality(xp[f], rss_n, centroids,
-                                        oversampling_l, f)
+        candidates = [_kmeans_probability(xp[f], rss_n, centroids,
+                                          oversampling_l, f)
                       for f in range(nfrag)]
         centroids = merge_reduce(_kmeans_merge_candidates, candidates)
 
@@ -378,7 +376,7 @@ def _kmeans_init_parallel(xp, k, n_list, nfrag):
 
     """
     To reduce the number of centers, assigns weights to the points in C 
-    and reclusters these weighted points to obtain k centers
+    and re-clusters these weighted points to obtain k centers
     """
 
     weights = [_kmeans_gen_weight(xp[f], centroids) for f in range(nfrag)]
@@ -401,27 +399,8 @@ def _kmeans_init_clusters(xp):
 
 
 @task(returns=1)
-def _kmeans_probality(xp, rss_n, centroids, l, frag):
-    """
-    px=l * d2(x,C)/ϕX(C)
-
-    where:
-     d2(x,C) is the distance to the closest center
-
-     ϕX(C) is the sum of all smallest euclidean distance from all points
-     from the set X to all points from  C
-
-     The algorithm is simply:
-
-        iterate in X to find all xi
-        for each xi compute pxi
-        generate an uniform number in [0,1], if is smaller than pxi select it to form C′
-        after you done all draws include selected points from C′ into C
-    :param xp:
-    :param rss:
-    :param centroids:
-    :return:
-    """
+def _kmeans_probability(xp, rss_n, centroids, l, frag):
+    """ Select the best candidates to be a centroid."""
     rss, n = rss_n
     n_rows = len(xp)
 
@@ -482,8 +461,7 @@ def _kmeans_gen_weight(xp, centroids):
             .argmin(axis=1)
 
         closest = Counter(closest)
-        # same = Counter(np.arange(len(centroids)))
-        closest = closest #- same
+        closest = closest
         return closest
     else:
         return Counter()

@@ -37,7 +37,8 @@ class GDRegressor(ModelDDF):
          the hypothesis after each iteration. Up to a point, higher values will
          cause the algorithm to converge on the optimal solution more quickly,
          however if the value is set too high then it will fail to converge at
-         all, yielding successively larger errors on each iteration.
+         all, yielding successively larger errors on each iteration;
+        :param tol: Tolerance stop criteria (default, 1e-3).
         """
         super(GDRegressor, self).__init__()
 
@@ -118,7 +119,7 @@ class GDRegressor(ModelDDF):
         return DDF(task_list=tmp.task_list, last_uuid=uuid_key)
 
 
-def _gradient_descent(data, features, label, alpha, iters, tol, nfrag):
+def _gradient_descent(data, features, label, alpha, max_iter, tol, nfrag):
     """Regression by using gradient Descent."""
     theta = np.random.uniform(size=3)
 
@@ -126,7 +127,7 @@ def _gradient_descent(data, features, label, alpha, iters, tol, nfrag):
 
     previous_loss = np.inf
 
-    for it in range(iters):
+    for it in range(max_iter):
         stage1 = [_lr_gb_first_stage(input_data[f], theta)
                   for f in range(nfrag)]
         grad = merge_reduce(_lr_gb_agg, stage1)
@@ -159,7 +160,7 @@ def _select_att(data, cols):
 
 @task(returns=1)
 def _lr_gb_first_stage(data, theta):
-    """Peform the partial gradient generation."""
+    """Perform the partial gradient generation."""
 
     features, label = data
 
@@ -171,8 +172,6 @@ def _lr_gb_first_stage(data, theta):
 
         if dim != len(theta):
             theta = np.random.uniform(size=dim)
-
-        # partial_error = np.dot(features, theta.T) - label
 
         partial_error = np.dot(features, theta) - label
 

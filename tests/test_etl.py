@@ -566,7 +566,7 @@ def select_expression():
 
 def sort():
     print("\n|-------- Sort --------|\n")
-    power_of2 = [4]#[2, 4, 8, 16, 32, ]
+    power_of2 = [4]  # [2, 4, 8, 16, 32, ]
     not_power = [1, 3, 5, 6, 7, 31, 63]
 
     for f in power_of2:
@@ -707,7 +707,7 @@ if __name__ == '__main__':
     # import_data()
     # intersect()
     # intersect_all()
-    # join()
+    join()
     # read_data()
     # map()
     # rename()
@@ -718,7 +718,7 @@ if __name__ == '__main__':
     # sample()
     # select()
     # select_expression()
-    sort()
+    # sort()
     # split()
     # subtract()
     # take()

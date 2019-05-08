@@ -70,12 +70,12 @@ class OrdinaryLeastSquares(ModelDDF):
 
         cols = [features, label]
 
-        calcs = [[] for _ in range(nfrag)]
+        partial_calculation = [[] for _ in range(nfrag)]
         for f in range(nfrag):
-            calcs[f] = _lr_computation_xs(df[f], cols)
+            partial_calculation[f] = _lr_computation_xs(df[f], cols)
 
-        calcs = merge_reduce(_lr_merge_calcs, calcs)
-        parameters = _lr_compute_line_2d(calcs)
+        calculation = merge_reduce(_lr_merge_info, partial_calculation)
+        parameters = _lr_compute_line_2d(calculation)
         parameters = compss_wait_on(parameters)
 
         self.model = [parameters]
@@ -129,7 +129,7 @@ class OrdinaryLeastSquares(ModelDDF):
 def _lr_computation_xs(data, cols):
     """Partial calculation."""
     feature, label = cols
-    data = data[[feature, label]].dropna()  # TODO: Add this
+    data = data[cols].dropna()
 
     x = data[feature].values
     y = data[label].values
@@ -148,21 +148,21 @@ def _lr_computation_xs(data, cols):
 
 
 @task(returns=1)
-def _lr_merge_calcs(calcs1, calcs2):
+def _lr_merge_info(info1, info2):
     """Merge calculation."""
-    calcs = []
-    for p1, p2 in zip(calcs1, calcs2):
+    info = []
+    for p1, p2 in zip(info1, info2):
         sum_t = p1[0] + p2[0]
         size_t = p1[1] + p2[1]
         square_t = p1[2] + p2[2]
-        calcs.append([sum_t, size_t, square_t])
-    return calcs
+        info.append([sum_t, size_t, square_t])
+    return info
 
 
 @task(returns=1)
-def _lr_compute_line_2d(calcs):
+def _lr_compute_line_2d(info):
     """Generate the regression."""
-    rx, ry, rxy = calcs
+    rx, ry, rxy = info
 
     sum_x, n, square_x = rx
     sum_y, _, square_y = ry

@@ -10,7 +10,6 @@ from ddf_library.functions.etl.sort import SortOperation
 
 from pycompss.api.task import task
 from pycompss.functions.reduce import merge_reduce
-# from pycompss.api.local import local # guppy module isnt available in python3
 from pycompss.api.api import compss_delete_object, compss_wait_on
 
 import numpy as np
@@ -44,7 +43,7 @@ def kolmogorov_smirnov_one_sample(data, settings):
     col = settings['col']
     mode = settings.get('mode', 'asymp')
 
-    if mode not in ['asymp', 'asymp']:
+    if mode not in ['approx', 'asymp']:
         raise Exception("Only supported `approx` or `asymp` mode.")
 
     if not isinstance(col, list):
@@ -70,7 +69,7 @@ def kolmogorov_smirnov_one_sample(data, settings):
     nfrag = len(sort_data)
 
     for f in range(nfrag):
-        sort_data[f] = _ks_theorical_dist(sort_data[f], info, f, settings)
+        sort_data[f] = _ks_theoretical_dist(sort_data[f], info, f, settings)
 
     info = merge_reduce(_ks_merge, sort_data)
     compss_delete_object(sort_data)
@@ -86,7 +85,7 @@ def _select(data, col):
 
 
 @task(returns=1)
-def _ks_theorical_dist(data, info, f, settings):
+def _ks_theoretical_dist(data, info, f, settings):
     col = settings['col']
     distribution = settings.get('distribution', 'norm')
     args = settings.get('args', ())
@@ -108,10 +107,11 @@ def _ks_theorical_dist(data, info, f, settings):
         del data
 
         cdf = getattr(distributions, distribution).cdf
-        cdf_vals = cdf(values, *args)
+        cdf_values = cdf(values, *args)
 
-        d_plus = (np.arange(n1+1.0, n2+1.0)/n - cdf_vals).max()
-        d_min = (cdf_vals - np.arange(n1, n2)/n).max()
+        x = np.arange(n1, n2)
+        d_min = (cdf_values - x / n).max()
+        d_plus = ((x + 1)/n - cdf_values).max()
 
         error = [d_plus, d_min]
 
@@ -146,4 +146,3 @@ def _ks_d_critical(info, mode):
     p_value = round(p_value, 10)
     ks_stat = round(ks_stat, 10)
     return ks_stat, p_value
-

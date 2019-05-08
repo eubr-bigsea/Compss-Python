@@ -57,7 +57,7 @@ class AggregationOperation(object):
         # 2º perform a hash partition
         info = merge_reduce(merge_schema, info)
 
-        from .repartition import hash_partition
+        from .hash_partitioner import hash_partition
         params = {'nfrag': nfrag,
                   'columns': settings['groupby'],
                   'info': [info]}

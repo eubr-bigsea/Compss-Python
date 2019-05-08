@@ -16,7 +16,7 @@ def load_shapefile():
     return ddf1
 
 
-def geo_within(shapefile):
+def geo_within(shapefile_ddf):
 
     data = pd.DataFrame([[-25.251240, -49.166195],
                          [-25.440731, -49.271526],
@@ -28,7 +28,7 @@ def geo_within(shapefile):
 
     ddf2 = DDF()\
         .parallelize(data, 4)\
-        .geo_within(shapefile, 'LATITUDE', 'LONGITUDE', polygon='points')
+        .geo_within(shapefile_ddf, 'LATITUDE', 'LONGITUDE', polygon='points')
 
     print("> Print results: \n")
     ddf2.show()
@@ -43,5 +43,5 @@ def geo_within(shapefile):
 
 if __name__ == '__main__':
     print("_____Geographic Operations_____")
-    shapefile = load_shapefile()
-    geo_within(shapefile)
+    geo_ddf = load_shapefile()
+    geo_within(geo_ddf)

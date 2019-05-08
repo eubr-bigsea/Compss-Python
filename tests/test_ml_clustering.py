@@ -6,7 +6,7 @@ import pandas as pd
 
 
 def base():
-    cols = ['x', 'y']
+    columns = ['x', 'y']
     n_samples = 1000
     from sklearn import datasets
     xy, labels = datasets.make_blobs(n_samples=n_samples)
@@ -14,7 +14,7 @@ def base():
     # df = pd.DataFrame([[1.0, 2.0], [1.0, 4.0], [1.0, 0], [4.0, 2.0],
     #                    [4.0, 4.0], [4.0, 0.0]], columns=cols)
 
-    df = pd.DataFrame(xy, columns=cols)
+    df = pd.DataFrame(xy, columns=columns)
     df['label'] = labels
 
     # creating DDF from a DataFrame
@@ -22,26 +22,25 @@ def base():
 
     # scaling features using MinMax Scaler
     from ddf_library.functions.ml.feature import MinMaxScaler
-    scaler = MinMaxScaler(input_col=cols).fit(ddf)
+    scaler = MinMaxScaler(input_col=columns).fit(ddf)
     ddf = scaler.transform(ddf)
 
-    return ddf, cols
+    return ddf, columns
 
 
-def kmeans(ddf, cols):
+def kmeans(ddf, columns):
 
     from ddf_library.functions.ml.clustering import Kmeans
-    kmeans = Kmeans(feature_col=cols, n_clusters=3,
-                    init_mode='k-means||').fit(ddf)
-    kmeans.save_model('/kmeans')
-    del kmeans
+    clu = Kmeans(feature_col=columns, n_clusters=3,
+                 init_mode='k-means||').fit(ddf)
+    clu.save_model('/kmeans')
+    del clu
 
     # to test save and load models
-    kmeans = Kmeans(feature_col=cols, n_clusters=3,
-                    init_mode='k-means||')\
+    clu = Kmeans(feature_col=cols, n_clusters=3, init_mode='k-means||')\
         .load_model('/kmeans')
-    print(kmeans.model)
-    kmeans.transform(ddf, pred_col='kmeans1').show(15)
+    print(clu.model)
+    clu.transform(ddf, pred_col='kmeans1').show(15)
 
     """
                features features_norm  kmeans1  kmeans2

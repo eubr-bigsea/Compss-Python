@@ -7,9 +7,8 @@ __email__ = "lucasmsp@gmail.com"
 from pycompss.api.task import task
 from pycompss.functions.reduce import merge_reduce
 from pycompss.api.api import compss_wait_on, compss_delete_object
-# from pycompss.api.local import *  # requires guppy
 
-from ddf_library.ddf import DDF, DDFSketch
+from ddf_library.ddf import DDF
 from ddf_library.ddf_model import ModelDDF
 from ddf_library.utils import generate_info
 
@@ -32,29 +31,25 @@ class PCA(ModelDDF):
     >>> ddf2 = pca.transform(ddf1)
     """
 
-    def __init__(self, input_col, output_col, n_components, remove=False):
+    def __init__(self, input_col, n_components, remove=False):
         """
-        :param input_col: Input feature column;
+        :param input_col: Input columns;
         :param n_components: Number of output components;
-        :param output_col: A list of output feature column or a suffix name.
+        :param remove: Remove input columns after execution (default, False).
         """
         super(PCA, self).__init__()
 
         if not isinstance(input_col, list):
             input_col = [input_col]
 
-        if not isinstance(output_col, list):
-            output_col = ['{}{}'.format(col, output_col) for col in input_col]
-
         self.settings = dict()
         self.settings['input_col'] = input_col
-        self.settings['output_col'] = output_col
         self.settings['n_components'] = n_components
         self.settings['remove'] = remove
 
         self.name = 'PCA'
         self.var_exp = self.cum_var_exp = \
-            self.eig_vals = self.eig_vecs = self.matrix = 0
+            self.eig_values = self.eig_vectors = self.matrix = 0
 
     def fit(self, data):
         """
@@ -79,7 +74,7 @@ class PCA(ModelDDF):
         compss_delete_object(merged_count)
         compss_delete_object(merged_cov)
 
-        self.var_exp, self.eig_vals, self.eig_vecs, self.matrix = info
+        self.var_exp, self.eig_values, self.eig_vectors, self.matrix = info
 
         self.cum_var_exp = np.cumsum(self.var_exp)
 
@@ -87,34 +82,41 @@ class PCA(ModelDDF):
         self.model['algorithm'] = self.name
         # cumulative explained variance
         self.model['cum_var_exp'] = self.cum_var_exp
-        self.model['eig_vals'] = self.eig_vals
-        self.model['eig_vecs'] = self.eig_vecs
+        self.model['eig_values'] = self.eig_values
+        self.model['eig_vectors'] = self.eig_vectors
         self.model['model'] = self.matrix
 
         return self
 
-    def fit_transform(self, data):
+    def fit_transform(self, data, output_col='_pca'):
         """
         Fit the model and transform.
 
         :param data: DDF
+        :param output_col: A list of output feature column or a suffix name.
         :return: DDF
         """
 
         self.fit(data)
-        ddf = self.transform(data)
+        ddf = self.transform(data, output_col)
 
         return ddf
 
-    def transform(self, data):
+    def transform(self, data, output_col='_pca'):
         """
         :param data: DDF
+        :param output_col: A list of output feature column or a suffix name.
         :return: DDF
         """
         df, nfrag, tmp = self._ddf_inital_setup(data)
 
         if len(self.model) == 0:
             raise Exception("Model is not fitted.")
+
+        if not isinstance(output_col, list):
+            output_col = ['{}{}'.format(col, output_col) for col in input_col]
+
+        self.settings['output_col'] = output_col
 
         model = self.model['model']
         features_col = self.settings['input_col']
@@ -190,20 +192,20 @@ def pca_eigen_decomposition(info, n_components):
     dim = len(cov_mat)
     n_components = min([n_components, dim])
     cov_mat = cov_mat / (total_size-1)
-    eig_vals, eig_vecs = np.linalg.eig(cov_mat)
-    eig_vals = np.abs(eig_vals)
+    eig_values, eig_vectors = np.linalg.eig(cov_mat)
+    eig_values = np.abs(eig_values)
 
-    total_values = sum(eig_vals)
-    var_exp = [i*100/total_values for i in eig_vals]
+    total_values = sum(eig_values)
+    var_exp = [i*100/total_values for i in eig_values]
 
-    # Sort the eigenvalue and vecs tuples from high to low
-    idxs = eig_vals.argsort()[::-1]
-    eig_vals = eig_vals[idxs]
-    eig_vecs = eig_vecs[idxs]
+    # Sort the eigenvalue and vectors tuples from high to low
+    idx = eig_values.argsort()[::-1]
+    eig_values = eig_values[idx]
+    eig_vectors = eig_vectors[idx]
 
-    matrix_w = eig_vecs[:, :n_components]
+    matrix_w = eig_vectors[:, :n_components]
 
-    return var_exp, eig_vals, eig_vecs, matrix_w
+    return var_exp, eig_values, eig_vectors, matrix_w
 
 
 @task(returns=2)
@@ -232,4 +234,3 @@ def _pca_transform(data, features, pred_col, matrix_w, frag, remove):
 
     info = generate_info(data, frag)
     return data, info
-

@@ -9,17 +9,15 @@ import numpy as np
 def binarizer():
     print("\n_____Testing Binarizer_____\n")
 
+    columns = ['x', 'y', 'z']
     df = pd.DataFrame([[1., -1., 2.], [2., 0., 0.], [0., 1., -1.]],
-                      columns=['x', 'y', 'z'])
+                      columns=columns)
     ddf = DDF().parallelize(df, 4)
 
-    from ddf_library.functions.ml.feature import VectorAssembler, Binarizer
-    assembler = VectorAssembler(input_col=["x", "y", 'z'],
-                                output_col="features")
-    ddf = assembler.transform(ddf)
+    from ddf_library.functions.ml.feature import Binarizer
 
-    res = Binarizer(input_col='features', threshold=0)\
-        .transform(ddf).to_df('features').tolist()
+    res = Binarizer(input_col=columns, threshold=0, remove=True)\
+        .transform(ddf, output_col=columns).to_df().values.tolist()
 
     sol = [[1., 0., 1.], [1., 0., 0.], [0., 1., 0.]]
     if not np.allclose(res, sol):
@@ -37,18 +35,11 @@ def maxabs_scaler():
     # Creating DDF from DataFrame
     ddf_maxabs = DDF().parallelize(df_maxabs, 4)
 
-    # Creating a column of features
-    from ddf_library.functions.ml.feature import VectorAssembler
-    assembler = VectorAssembler(input_col=["x", "y", 'z'],
-                                output_col="features")
-    ddf_maxabs = assembler.transform(ddf_maxabs)
-
     from ddf_library.functions.ml.feature import MaxAbsScaler
     ddf_maxabs = MaxAbsScaler(input_col=cols) \
         .fit_transform(ddf_maxabs)
 
     res = ddf_maxabs.to_df(cols).values.tolist()
-    print(res)
     sol = [[0.5, -1., 1], [1.,  0., 0.], [0., 1., -0.5]]
     if not np.allclose(res, sol):
         raise Exception(" Output different from expected.")
@@ -70,7 +61,7 @@ def minmax_scaler():
 
     res = ddf_minmax.to_df(cols).values.tolist()
     sol = [[0., 0.], [0.25, 0.25], [0.5,  0.5], [1., 1.]]
-    print(res)
+
     if not np.allclose(res, sol):
         raise Exception(" Output different from expected.")
     print("Ok")
@@ -89,14 +80,13 @@ def std_scaler():
     ddf_std = scaler.transform(ddf_std)
 
     res = ddf_std.to_df(cols).values.tolist()
-    print(res)
     sol = [[-1., -1.], [-1., -1.], [1., 1.], [1., 1.]]
     if not np.allclose(res, sol):
         raise Exception(" Output different from expected.")
     print("Ok")
 
 
-def pca():
+def pca_workflow():
 
     print("\n_____Testing PCA_____\n")
 
@@ -112,9 +102,9 @@ def pca():
     n_components = 2
     new_columns = ['col{}'.format(i) for i in range(n_components)]
     from ddf_library.functions.ml.feature import PCA
-    pca = PCA(input_col=columns, output_col=new_columns,
-              n_components=n_components)
-    res = pca.fit_transform(ddf_std).to_df(new_columns).values.tolist()[0:10]
+    pca = PCA(input_col=columns, n_components=n_components)
+    res = pca.fit_transform(ddf_std, output_col=new_columns)\
+             .to_df(new_columns).values.tolist()[0:10]
 
     sol = [[-2.26454173, -0.505703903],
            [-2.08642550,  0.655404729],
@@ -126,9 +116,11 @@ def pca():
            [-2.23384186, -0.247613932],
            [-2.34195768,  1.09514636],
            [-2.18867576,  0.448629048]]
-    sol_vals = [2.93035378,  0.92740362,  0.14834223,  0.02074601]
-    if not np.allclose(res, sol) and \
-            np.allclose(pca.model['eig_vals'], sol_vals):
+
+    sol_values = [2.93035378,  0.92740362,  0.14834223,  0.02074601]
+    cond1 = np.allclose(res, sol)
+    cond2 = np.allclose(pca.model['eig_values'], sol_values)
+    if not all([cond1, cond2]):
         raise Exception(" Output different from expected.")
     print("Ok")
 
@@ -136,17 +128,14 @@ def pca():
 def poly_expansion():
     print("\n_____Testing PolynomialExpansion_____\n")
 
-    df = pd.DataFrame([[0, 1], [2, 3], [4, 5]], columns=['x', 'y'])
+    columns = ["x", "y"]
+    df = pd.DataFrame([[0, 1], [2, 3], [4, 5]], columns=columns)
     ddf = DDF().parallelize(df, 4)
-
-    from ddf_library.functions.ml.feature import VectorAssembler
-    assembler = VectorAssembler(input_col=["x", "y"], output_col="features")
-    ddf = assembler.transform(ddf)
 
     from ddf_library.functions.ml.feature import PolynomialExpansion
 
-    res = PolynomialExpansion(input_col='features', degree=2)\
-        .transform(ddf).to_df('features').tolist()
+    res = PolynomialExpansion(input_col=columns, degree=2, remove=True)\
+        .transform(ddf).to_df().values.tolist()
 
     sol = [[1.0, 0.0, 1.0, 0.0, 0.0, 1.0],
            [1.0, 2.0, 3.0, 4.0, 6.0, 9.0],
@@ -159,14 +148,15 @@ def poly_expansion():
 def onehot_encoder():
     print("\n_____Testing OneHotEncoder_____\n")
 
+    columns = ['x', 'y']
     from ddf_library.functions.ml.feature import OneHotEncoder
     df = pd.DataFrame([['Male', 1], ['Female', 3],
-                       ['Female', 2]], columns=['x', 'y'])
+                       ['Female', 2]], columns=columns)
     ddf = DDF().parallelize(df, 4)
 
-    res = OneHotEncoder(input_col=['x', 'y'])\
-        .fit_transform(ddf)\
-        .to_df('features_onehot').tolist()
+    res = OneHotEncoder(input_col=columns, remove=True)\
+        .fit_transform(ddf, output_col='_1hot')\
+        .to_df().tolist()
 
     sol = [[0.0, 1.0, 1.0, 0.0, 0.0],
            [1.0, 0.0, 0.0, 0.0, 1.0],
@@ -180,10 +170,9 @@ if __name__ == '__main__':
     print("_____Testing Features operations_____")
 
     # binarizer()
-    pca()
+    # pca_workflow()
     # poly_expansion()
     # onehot_encoder()
     # maxabs_scaler()
     # minmax_scaler()
     # std_scaler()
-    #

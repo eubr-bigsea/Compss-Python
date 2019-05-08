@@ -7,7 +7,6 @@ __email__ = "lucasmsp@gmail.com"
 from pycompss.api.task import task
 from pycompss.functions.reduce import merge_reduce
 from pycompss.api.api import compss_wait_on
-# from pycompss.api.local import *  # requires guppy
 
 from ddf_library.ddf import DDF
 from ddf_library.ddf_model import ModelDDF
@@ -27,32 +26,46 @@ class Binarizer(object):
 
     :Example:
 
-    >>> ddf = Binarizer(input_col='features', threshold=5.0).transform(ddf)
+    >>> ddf = Binarizer(input_col=['feature'], threshold=5.0).transform(ddf)
     """
 
-    def __init__(self, input_col, output_col=None, threshold=0.0):
+    def __init__(self, input_col, threshold=0.0, remove=False):
         """
         :param input_col: List of columns;
-        :param output_col: Output column name.
         :param threshold: Feature values below or equal to this are
-         replaced by 0, above it by 1. Default = 0.0.
+         replaced by 0, above it by 1. Default = 0.0;
+        :param remove: Remove input columns after execution (default, False).
         """
-
-        if not output_col:
-            output_col = 'features'
+        if not isinstance(input_col, list):
+            input_col = [input_col]
 
         self.settings = dict()
-        self.settings['inputcol'] = input_col
-        self.settings['outputcol'] = output_col
+        self.settings['input_col'] = input_col
         self.settings['threshold'] = threshold
+        self.settings['remove'] = remove
+        self.output_cols = None
 
-    def transform(self, data):
+    def transform(self, data, output_col=None):
         """
         :param data: DDF
+        :param output_col: Output columns names.
         :return: DDF
         """
 
+        input_col = self.settings['input_col']
+
+        if output_col is None:
+            output_col = '_binarized'
+
+        if not isinstance(output_col, list):
+            output_col = ['{}{}'.format(col, output_col) for col in
+                          input_col]
+
+        self.settings['output_col'] = output_col
+        self.output_cols = output_col
+
         def task_binarizer(df, params):
+
             return _binarizer(df, params)
 
         uuid_key = data._ddf_add_task(task_name='binarizer',
@@ -67,20 +80,29 @@ class Binarizer(object):
 
 
 def _binarizer(df, settings):
-    output_col = settings['outputcol']
+
     frag = settings['id_frag']
+    input_col = settings['input_col']
+    output_col = settings['output_col']
+    threshold = settings['threshold']
+    remove_input = settings.get('remove', False)
 
-    if len(df) == 0:
-        df[output_col] = np.nan
+    values = df[input_col].values
+    to_remove = [c for c in output_col if c in df.columns]
+    if remove_input:
+        to_remove += input_col
+    df.drop(to_remove, axis=1, inplace=True)
 
-    else:
-        input_col = settings['inputcol']
-        threshold = settings['threshold']
+    if len(df) > 0:
 
-        values = np.array(df[input_col].tolist())
         from sklearn.preprocessing import Binarizer
         values = Binarizer(threshold=threshold).fit_transform(values)
-        df[output_col] = values.tolist()
+
+        df = pd.concat([df, pd.DataFrame(values, columns=output_col)], axis=1)
+
+    else:
+        for col in output_col:
+            df[col] = np.nan
 
     info = generate_info(df, frag)
     return df, info
@@ -96,27 +118,23 @@ class OneHotEncoder(ModelDDF):
     >>> ddf2 = enc.fit_transform(ddf1)
     """
 
-    def __init__(self, input_col, output_col=None):
+    def __init__(self, input_col, remove=False):
         """
         :param input_col: Input column name with the tokens;
-        :param output_col: Output column name;
+        :param remove: Remove input columns after execution (default, False).
         """
         super(OneHotEncoder, self).__init__()
 
         if not isinstance(input_col, list):
             input_col = [input_col]
 
-        if output_col is None:
-            output_col = 'features_onehot'
-        elif isinstance(output_col, list):
-            raise Exception("You must insert only one name to output.")
-
         self.settings = dict()
         self.settings['input_col'] = input_col
-        self.settings['output_col'] = output_col
+        self.settings['remove'] = remove
 
         self.model = {}
         self.name = 'OneHotEncoder'
+        self.output_cols = None
 
     def fit(self, data):
         """
@@ -133,44 +151,56 @@ class OneHotEncoder(ModelDDF):
             result_p[f] = _one_hot_encoder(df[f], self.settings)
 
         categories = merge_reduce(_one_hot_encoder_merge, result_p)
+        categories = compss_wait_on(categories)
 
-        self.model['categories'] = compss_wait_on(categories)
-        self.model['name'] = 'OneHotEncoder'
+        self.model['categories'] = categories
+        self.model['name'] = self.name
 
         return self
 
-    def fit_transform(self, data):
+    def fit_transform(self, data, output_col='_onehot'):
         """
         Fit the model and transform.
 
         :param data: DDF
+        :param output_col: Output suffix name. The pattern will be
+         `col + order + suffix`, suffix default is '_onehot';
         :return: DDF
         """
 
         self.fit(data)
-        ddf = self.transform(data)
+        ddf = self.transform(data, output_col)
 
         return ddf
 
-    def transform(self, data):
+    def transform(self, data, output_col='_onehot'):
         """
+        :type output_col: str
+
         :param data: DDF
+        :param output_col: Output suffix name. The pattern will be
+         `col + order + suffix`, suffix default is '_onehot';
         :return: DDF
         """
+
         if len(self.model) == 0:
             raise Exception("Model is not fitted.")
 
         df, nfrag, tmp = self._ddf_inital_setup(data)
 
         categories = self.model['categories']
+        dimension = sum([len(cat) for cat in categories])
+        output_col = ['col{}{}'.format(i, output_col) for i in range(dimension)]
+        self.settings['output_col'] = output_col
+        self.output_cols = output_col
 
         result = [[] for _ in range(nfrag)]
         info = [[] for _ in range(nfrag)]
         for f in range(nfrag):
             result[f], info[f] = _transform_one_hot(df[f], categories,
-                                                    self.settings, f)
+                                                    self.settings.copy(), f)
 
-        uuid_key = self._ddf_add_task(task_name='transform_one_hot_encoder',
+        uuid_key = self._ddf_add_task(task_name='one_hot_encoder',
                                       status='COMPLETED', lazy=False,
                                       function={0: result},
                                       parent=[tmp.last_uuid],
@@ -184,11 +214,12 @@ class OneHotEncoder(ModelDDF):
 def _one_hot_encoder(df, settings):
     from sklearn.preprocessing import OneHotEncoder
     input_col = settings['input_col']
-    X = df[input_col].values
+    values = df[input_col].values
+    del df
 
-    if len(X) > 0:
+    if len(values) > 0:
         enc = OneHotEncoder(handle_unknown='ignore')
-        enc.fit(X)
+        enc.fit(values)
         categories = enc.categories_
     else:
         categories = [np.array([]) for _ in range(len(input_col))]
@@ -212,15 +243,26 @@ def _transform_one_hot(df, categories, settings, frag):
     from sklearn.preprocessing import OneHotEncoder
     input_col = settings['input_col']
     output_col = settings['output_col']
+    remove_input = settings.get('remove', False)
 
-    if len(df) == 0:
-        df[output_col] = np.nan
-    else:
+    values = df[input_col].values
+    to_remove = [c for c in output_col if c in df.columns]
+    if remove_input:
+        to_remove += input_col
+    df.drop(to_remove, axis=1, inplace=True)
+
+    if len(df) > 0:
         enc = OneHotEncoder(handle_unknown='ignore', sparse=False, dtype=np.int)
         enc._legacy_mode = False
         enc.categories_ = categories
 
-        df[output_col] = enc.transform(df[input_col].values).tolist()
+        values = enc.transform(values).tolist()
+
+        df = pd.concat([df, pd.DataFrame(values, columns=output_col)], axis=1)
+
+    else:
+        for col in output_col:
+            df[col] = np.nan
 
     info = generate_info(df, frag)
     return df, info
@@ -229,42 +271,61 @@ def _transform_one_hot(df, categories, settings, frag):
 class PolynomialExpansion(object):
 
     """
-    Perform feature expansion in a polynomial space. As said in wikipedia of
-    Polynomial Expansion, “In mathematics, an expansion of a product of sums
-    expresses it as a sum of products by using the fact that multiplication
-    distributes over addition”.
+    Perform feature expansion in a polynomial space. In mathematics,
+    an expansion of a product of sums expresses it as a sum of products by
+    using the fact that multiplication distributes over addition.
 
     For example, if an input sample is two dimensional and of the form [a, b],
     the degree-2 polynomial features are [1, a, b, a^2, ab, b^2]
     """
 
-    def __init__(self, input_col, degree=2, output_col=None,
-                 interaction_only=False):
+    def __init__(self, input_col, degree=2, interaction_only=False,
+                 remove=False):
         """
        :param input_col: List of columns;
-       :param output_col: Output column name.
        :param degree: The degree of the polynomial features. Default = 2.
        :param interaction_only: If true, only interaction features are
         produced: features that are products of at most degree distinct input
         features. Default = False
+       :param remove: Remove input columns after execution (default, False).
+
+        :Example:
+
+        >>> dff = PolynomialExpansion(input_col=['x', 'y'],
+        >>>                           degree=2).transform(ddf)
        """
 
-        if not output_col:
-            output_col = 'features'
+        if not isinstance(input_col, list):
+            input_col = [input_col]
 
         self.settings = dict()
-        self.settings['inputcol'] = input_col
-        self.settings['outputcol'] = output_col
+        self.settings['input_col'] = input_col
         self.settings['degree'] = int(degree)
         self.settings['interaction_only'] = interaction_only
+        self.settings['remove'] = remove
+        self.output_cols = None
 
-    def transform(self, data):
+    def transform(self, data, output_col="_poly"):
         """
+        :type output_col: str
+
         :param data: DDF
+        :param output_col: Output suffix name following `col` +  order and
+         suffix. Suffix default is '_poly';
         :return: DDF
         """
 
+        if isinstance(output_col, list):
+            raise Exception("'output_col' must be a single suffix name")
+
+        output_col = _check_dimension(self.settings)
+
+        self.settings['output_col'] = output_col
+        self.output_cols = output_col
+
         def task_poly_expansion(df, params):
+            if output_col is not None:
+                params['output_col'] = output_col
             return _poly_expansion(df, params)
 
         uuid_key = data._ddf_add_task(task_name='poly_expansion',
@@ -278,24 +339,46 @@ class PolynomialExpansion(object):
         return DDF(task_list=data.task_list, last_uuid=uuid_key)
 
 
+def _check_dimension(params):
+    """Create a simple data to check the new dimension."""
+    input_col = params['input_col']
+    interaction_only = params['interaction_only']
+    degree = params['degree']
+
+    from sklearn.preprocessing import PolynomialFeatures
+    poly = PolynomialFeatures(degree=degree, interaction_only=interaction_only)
+    tmp = [[0 for _ in range(len(input_col))]]
+    dim = poly.fit_transform(tmp).shape[1]
+    output_col = params['output_col']
+    output_col = ['col{}{}'.format(i, output_col) for i in range(dim)]
+    return output_col
+
+
 def _poly_expansion(df, params):
-
-    output_col = params['outputcol']
+    input_col = params['input_col']
+    output_col = params['output_col']
     frag = params['id_frag']
+    remove_input = params.get('remove', False)
+    interaction_only = params['interaction_only']
+    degree = params['degree']
 
-    if len(df) == 0:
-        df[output_col] = np.nan
-    else:
-        input_col = params['inputcol']
-        interaction_only = params['interaction_only']
-        degree = params['degree']
+    values = df[input_col].values
+    to_remove = [c for c in output_col if c in df.columns]
+    if remove_input:
+        to_remove += input_col
+    df.drop(to_remove, axis=1, inplace=True)
 
+    if len(df) > 0:
         from sklearn.preprocessing import PolynomialFeatures
-        values = np.array(df[input_col].tolist())
-        values = PolynomialFeatures(degree=degree,
-                                    interaction_only=interaction_only)\
-            .fit_transform(values)
-        df[output_col] = values.tolist()
+        poly = PolynomialFeatures(degree=degree,
+                                  interaction_only=interaction_only)
+
+        values = poly.fit_transform(values)
+        df = pd.concat([df, pd.DataFrame(values, columns=output_col)], axis=1)
+
+    else:
+        for col in output_col:
+            df[col] = np.nan
 
     info = generate_info(df, frag)
     return df, info
@@ -454,7 +537,7 @@ class IndexToString(ModelDDF):
                                                   output_col,
                                                   self.model['model'], f)
 
-        uuid_key = self._ddf_add_task(task_name='transform_indextostring',
+        uuid_key = self._ddf_add_task(task_name='index_to_string',
                                       status='COMPLETED', lazy=False,
                                       function={0: result},
                                       parent=[tmp.last_uuid],
