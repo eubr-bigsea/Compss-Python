@@ -60,7 +60,7 @@ class PageRank(DDFSketch):
         :return: DDF with Vertex and Rank columns
         """
 
-        df, nfrag, tmp = self._ddf_inital_setup(data)
+        df, nfrag, tmp = self._ddf_initial_setup(data)
 
         inlink = self.settings['inlink_col']
         outlink = self.settings['outlink_col']
@@ -104,7 +104,7 @@ class PageRank(DDFSketch):
         result, info = _pagerank_split(merged_table, nfrag)
 
         uuid_key = self._ddf_add_task(task_name='task_transform_pagerank',
-                                      status='COMPLETED', lazy=False,
+                                      status='COMPLETED', lazy=self.OPT_OTHER,
                                       function={0: result},
                                       parent=[tmp.last_uuid],
                                       n_output=1, n_input=1, info=info)

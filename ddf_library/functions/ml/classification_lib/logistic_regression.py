@@ -72,7 +72,7 @@ class LogisticRegression(ModelDDF):
         :return: trained model
         """
 
-        df, nfrag, tmp = self._ddf_inital_setup(data)
+        df, nfrag, tmp = self._ddf_initial_setup(data)
 
         col_label = self.settings['label_col']
         col_feature = self.settings['feature_col']
@@ -116,7 +116,7 @@ class LogisticRegression(ModelDDF):
 
         self.settings['pred_col'] = pred_col
 
-        df, nfrag, tmp = self._ddf_inital_setup(data)
+        df, nfrag, tmp = self._ddf_initial_setup(data)
 
         result = [[] for _ in range(nfrag)]
         info = [[] for _ in range(nfrag)]
@@ -125,7 +125,7 @@ class LogisticRegression(ModelDDF):
                                                self.model[0], f)
 
         uuid_key = self._ddf_add_task(task_name='task_transform_logr',
-                                      status='COMPLETED', lazy=False,
+                                      status='COMPLETED', lazy=self.OPT_OTHER,
                                       function={0: result},
                                       parent=[tmp.last_uuid],
                                       n_output=1, n_input=1, info=info)
@@ -280,7 +280,7 @@ def _logr_predict(data, settings, theta, frag):
 
         xs = np.c_[np.ones(size), data[col_features].values]
         xs = np.dot(xs, theta)
-        data[pred_col] = np.rint(_logr_sigmoid(xs))
+        data[pred_col] = np.rint(_logr_sigmoid(xs), dtype=int)
     else:
         data[pred_col] = np.nan
 

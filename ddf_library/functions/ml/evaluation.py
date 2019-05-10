@@ -59,7 +59,7 @@ class BinaryClassificationMetrics(DDFSketch):
         """
         super(BinaryClassificationMetrics, self).__init__()
 
-        df, nfrag, tmp = self._ddf_inital_setup(ddf_var)
+        df, nfrag, tmp = self._ddf_initial_setup(ddf_var)
 
         stage1 = [cme_stage1(df[f], label_col, pred_col) for f in range(nfrag)]
         merged_stage1 = merge_reduce(merge_stage1, stage1)
@@ -129,7 +129,7 @@ class MultilabelMetrics(DDFSketch):
 
         super(MultilabelMetrics, self).__init__()
 
-        df, nfrag, tmp = self._ddf_inital_setup(ddf_var)
+        df, nfrag, tmp = self._ddf_initial_setup(ddf_var)
 
         stage1 = [cme_stage1(df[f], label_col, pred_col) for f in range(nfrag)]
         merged_stage1 = merge_reduce(merge_stage1, stage1)
@@ -304,7 +304,7 @@ class RegressionMetrics(DDFSketch):
 
         super(RegressionMetrics, self).__init__()
 
-        df, nfrag, tmp = self._ddf_inital_setup(data)
+        df, nfrag, tmp = self._ddf_initial_setup(data)
 
         cols = [label_col, pred_col, col_features]
         partial = [rme_stage1(df[f], cols) for f in range(nfrag)]

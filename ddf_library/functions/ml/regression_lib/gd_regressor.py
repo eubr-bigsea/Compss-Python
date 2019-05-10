@@ -60,7 +60,7 @@ class GDRegressor(ModelDDF):
         :return: trained model
         """
 
-        df, nfrag, tmp = self._ddf_inital_setup(data)
+        df, nfrag, tmp = self._ddf_initial_setup(data)
 
         features = self.settings['feature_col']
         label = self.settings['label_col']
@@ -102,7 +102,7 @@ class GDRegressor(ModelDDF):
         features = self.settings['feature_col']
         self.settings['pred_col'] = pred_col
 
-        df, nfrag, tmp = self._ddf_inital_setup(data)
+        df, nfrag, tmp = self._ddf_initial_setup(data)
 
         result = [[] for _ in range(nfrag)]
         info = [[] for _ in range(nfrag)]
@@ -111,7 +111,7 @@ class GDRegressor(ModelDDF):
                                           self.model[0], f)
 
         uuid_key = self._ddf_add_task(task_name='gd_regressor',
-                                      status='COMPLETED', lazy=False,
+                                      status='COMPLETED', lazy=self.OPT_OTHER,
                                       function={0: result},
                                       parent=[tmp.last_uuid],
                                       n_output=1, n_input=1, info=info)

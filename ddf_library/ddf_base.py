@@ -17,6 +17,9 @@ class DDFSketch(object):
     """
     Basic functions that are necessary when submit a new operation
     """
+    OPT_SERIAL = 'serial'
+    OPT_OTHER = 'other'
+    optimization_ops = [OPT_OTHER, OPT_SERIAL]
 
     def __init__(self):
 
@@ -61,7 +64,7 @@ class DDFSketch(object):
         COMPSsContext.tasks_map[state_uuid]['n_input'].append(idx)
 
     @staticmethod
-    def _ddf_inital_setup(data):
+    def _ddf_initial_setup(data):
         tmp = data.cache()
         n_input = COMPSsContext.tasks_map[tmp.last_uuid]['n_input'][0]
         if n_input == -1:
@@ -111,7 +114,7 @@ class DDFSketch(object):
         COMPSsContext.tasks_map[uuid_key] = {
             'name': task_name,
             'status': status,
-            'lazy': lazy,
+            'optimization': lazy,
             'function': function,
             'parent': parent,
             'output': n_output,

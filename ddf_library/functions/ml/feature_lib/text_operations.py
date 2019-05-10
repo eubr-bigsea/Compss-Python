@@ -30,11 +30,10 @@ class Tokenizer(object):
     >>> ddf2 = Tokenizer(input_col='features').transform(ddf1)
     """
 
-    def __init__(self, input_col, output_col=None, min_token_length=2,
+    def __init__(self, input_col, min_token_length=2,
                  to_lowercase=True):
         """
         :param input_col: Input column with sentences;
-        :param output_col: Output column (*'input_col'_tokenized* if None);
         :param min_token_length: Minimum tokens length (default is 2);
         :param to_lowercase: To convert words to lowercase (default is True).
         """
@@ -42,27 +41,28 @@ class Tokenizer(object):
         if isinstance(input_col, list):
             raise Exception('`input_col` must be a single column')
 
-        if not output_col:
-            output_col = "{}_tokenized".format(input_col)
-
         self.settings = dict()
-        self.settings['inputcol'] = input_col
-        self.settings['outputcol'] = output_col
+        self.settings['input_col'] = input_col
         self.settings['min_token_length'] = min_token_length
         self.settings['to_lowercase'] = to_lowercase
 
-    def transform(self, data):
+    def transform(self, data, output_col=None):
         """
 
         :param data: DDF
+        :param output_col: Output column (*'input_col'_tokenized* if None);
         :return: DDF
         """
+
+        if not output_col:
+            output_col = "{}_tokenized".format(self.settings['input_col'])
+        self.settings['output_col'] = output_col
 
         def task_tokenizer(df, params):
             return _tokenizer_(df, params)
 
         uuid_key = data._ddf_add_task(task_name='tokenizer',
-                                      status='WAIT', lazy=True,
+                                      status='WAIT', lazy=self.SERIAL,
                                       function=[task_tokenizer,
                                                 self.settings],
                                       parent=[data.last_uuid],
@@ -101,8 +101,8 @@ class RegexTokenizer(object):
             output_col = "{}_tokenized".format(input_col)
 
         self.settings = dict()
-        self.settings['inputcol'] = input_col
-        self.settings['outputcol'] = output_col
+        self.settings['input_col'] = input_col
+        self.settings['output_col'] = output_col
         self.settings['min_token_length'] = min_token_length
         self.settings['to_lowercase'] = to_lowercase
         self.settings['pattern'] = pattern
@@ -117,7 +117,7 @@ class RegexTokenizer(object):
             return _tokenizer_(df, params)
 
         uuid_key = data._ddf_add_task(task_name='tokenizer',
-                                      status='WAIT', lazy=True,
+                                      status='WAIT', lazy=self.SERIAL,
                                       function=[task_regex_tokenizer,
                                                 self.settings],
                                       parent=[data.last_uuid],
@@ -130,8 +130,8 @@ class RegexTokenizer(object):
 def _tokenizer_(data, settings):
     """Perform a partial tokenizer."""
 
-    input_col = settings['inputcol']
-    output_col = settings['outputcol']
+    input_col = settings['input_col']
+    output_col = settings['output_col']
     min_token_length = settings['min_token_length']
     to_lowercase = settings['to_lowercase']
     pattern = settings.get('pattern', r"(?u)\b\w\w+\b")
@@ -214,7 +214,7 @@ class RemoveStopWords(DDFSketch):
         """
 
         # It assumes that stopwords's dataframe can fit in memmory
-        df, nfrag, tmp = self._ddf_inital_setup(data)
+        df, nfrag, tmp = self._ddf_initial_setup(data)
 
         stopwords = [[] for _ in range(nfrag)]
         for f in range(nfrag):
@@ -231,7 +231,7 @@ class RemoveStopWords(DDFSketch):
         :return: DDF
         """
 
-        df, nfrag, tmp = self._ddf_inital_setup(data)
+        df, nfrag, tmp = self._ddf_initial_setup(data)
 
         result = [[] for _ in range(nfrag)]
         info = [[] for _ in range(nfrag)]
@@ -240,7 +240,7 @@ class RemoveStopWords(DDFSketch):
                                                    self.stopwords, f)
 
         uuid_key = self._ddf_add_task(task_name='task_transform_stopwords',
-                                      status='COMPLETED', lazy=False,
+                                      status='COMPLETED', lazy=self.OPT_OTHER,
                                       function={0: result},
                                       parent=[tmp.last_uuid],
                                       n_output=1, n_input=1, info=info)
@@ -329,8 +329,8 @@ class NGram(object):
             output_col = "{}_ngram".format(input_col)
 
         self.settings = dict()
-        self.settings['inputcol'] = input_col
-        self.settings['outputcol'] = output_col
+        self.settings['input_col'] = input_col
+        self.settings['output_col'] = output_col
         self.settings['n'] = n
 
     def transform(self, data):
@@ -343,7 +343,7 @@ class NGram(object):
             return _ngram(df, params)
 
         uuid_key = data._ddf_add_task(task_name='ngram',
-                                      status='WAIT', lazy=True,
+                                      status='WAIT', lazy=self.SERIAL,
                                       function=[task_ngram, self.settings],
                                       parent=[data.last_uuid],
                                       n_output=1, n_input=1)
@@ -354,8 +354,8 @@ class NGram(object):
 
 def _ngram(df, settings):
 
-    input_col = settings['inputcol']
-    output_col = settings['outputcol']
+    input_col = settings['input_col']
+    output_col = settings['output_col']
     frag = settings['id_frag']
 
     if len(df) > 0:

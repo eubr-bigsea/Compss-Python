@@ -18,7 +18,7 @@ import pandas as pd
 class WorkloadBalancer(object):
     """
     Redistribute the data in equal parts if it's unbalanced.
-    It is considered an unbalanced dataframe if the coefficient of 
+    It is considered an unbalanced DataFrame if the coefficient of
     variation (CV) between fragments is greater than 0.20.
 
     This method keeps the number of fragments. Use repartition if you want
@@ -60,8 +60,8 @@ class WorkloadBalancer(object):
 
     def transform(self, data):
         """
-        :param data: A list with nfrag pandas's dataframe;
-        :return: Returns a balanced list with nfrag pandas's dataframe.
+        :param data: A list with nfrag pandas's DataFrame;
+        :return: Returns a balanced list with nfrag pandas's DataFrame.
         """
 
         info = self.info
@@ -132,11 +132,6 @@ def _balancer_get_rows(result, data, head, size, f):
         result = portion
     else:
         result = pd.concat([result, portion], sort=False, ignore_index=True)
-
-        # TODO check the performance
-        # mynparray = df_f2.values
-        # mynparray = np.vstack((tmp, mynparray))
-        # df_f2 = pd.DataFrame(mynparray, columns=df_f2.columns)
 
     result.reset_index(drop=True, inplace=True)
     info = generate_info(result, f)

@@ -6,10 +6,11 @@ __email__ = "lucasmsp@gmail.com"
 
 
 from ddf_library.utils import generate_info
+
 from pycompss.api.task import task
 from pycompss.api.api import compss_wait_on, compss_delete_object
 from pycompss.functions.reduce import merge_reduce
-# from pycompss.api.local import local # requires guppy
+
 
 import numpy as np
 import pandas as pd
@@ -28,16 +29,14 @@ def cross_tab(data, settings):
     :return: A list of pandas's DataFrame;
     """
 
-    col1, col2 = settings['col1'], settings['col2']
-    cols = [col1, col2]
+    cols = [settings['col1'], settings['col2']]
     nfrag = len(data)
 
     partial = [_crosstab_partial(data[f], cols) for f in range(nfrag)]
-    crosstab = merge_reduce(_merge_counts, partial)
+    crosstab_df = merge_reduce(_merge_counts, partial)
     compss_delete_object(partial)
 
-    crosstab = compss_wait_on(crosstab)
-    data, info = _create_tab(crosstab, nfrag)
+    data, info = _create_tab(crosstab_df, nfrag)
 
     output = {'key_data': ['data'], 'key_info': ['info'],
               'data': data, 'info': info}
@@ -49,7 +48,6 @@ def _crosstab_partial(data, cols):
     col1, col2 = cols
     data = pd.crosstab(index=data[col1], columns=data[col2])
     data.columns = data.columns.values
-
     data.index = data.index.values
     return data
 
@@ -60,7 +58,7 @@ def _merge_counts(data1, data2):
     max_size_cols = 1e4
     max_len_rows = 1e6
 
-    data = data1.add(data2, fill_value=0).fillna(0).astype(int)
+    data = data1.add(data2, fill_value=0).astype(int)
     size_cols = data.shape[1]
     size_len = data.shape[0]
 
@@ -73,8 +71,8 @@ def _merge_counts(data1, data2):
     return data
 
 
-# @local
 def _create_tab(data, nfrag):
+    data = compss_wait_on(data)
     data.insert(0, 'key', data.index.values)
 
     data = np.array_split(data, nfrag)

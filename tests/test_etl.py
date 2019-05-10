@@ -252,24 +252,28 @@ def drop_na():
 
 def except_all():
     print("\n|-------- ExceptAll --------|\n")
+    cols = ['a', 'b']
     s1 = pd.DataFrame([("a", 1), ("a", 1), ("a", 1), ("a", 2), ("b",  3),
-                       ("c", 4)], columns=['col1', 'col2'])
+                       ("c", 4)], columns=cols)
     s2 = pd.DataFrame([("a", 1), ("b",  3), ('e', 4), ('e', 4), ('e', 4),
                        ('e', 6), ('e', 9), ('e', 10), ('e', 4), ('e', 4)],
-                      columns=['col1', 'col2'])
+                      columns=cols)
 
     ddf_1a = DDF().parallelize(s1, 2)
     ddf_1b = DDF().parallelize(s2, 4)
     ddf_2 = ddf_1a.except_all(ddf_1b)
     df1 = ddf_2.to_df()
     print(df1)
-    print("etl_test - exceptAll - OK")
+
     """
     ("a", 1),
     ("a", 1),
     ("a", 2),
     ("c", 4)
     """
+    res = pd.DataFrame([("a", 1), ("a", 1), ("a", 2), ("c",  4)], columns=cols)
+    assert_frame_equal(df1, res, check_index_type=False)
+    print("etl_test - exceptAll - OK")
 
 
 def explode():
@@ -360,29 +364,38 @@ def import_data():
 
 def intersect():
     print("\n|-------- Intersect --------|\n")
+    cols = ['col1', 'col2']
     s1 = pd.DataFrame([("a", 1), ("a", 1), ("a", 1), ("a", 2), ("b", 3),
-                       ("c", 4)], columns=['col1', 'col2'])
-    s2 = pd.DataFrame([('a', 1), ('a', 1), ('b', 3)], columns=['col1', 'col2'])
+                       ("c", 4)], columns=cols)
+    s2 = pd.DataFrame([('a', 1), ('a', 1), ('b', 3)], columns=cols)
 
     ddf_1a = DDF().parallelize(s1, 4)
     ddf_1b = DDF().parallelize(s2, 4)
     ddf_2 = ddf_1a.intersect(ddf_1b)
-    df1 = ddf_2.to_df()
-    print(df1)
+
+    df1 = ddf_2.to_df().sort_values(by=cols)
+    res = pd.DataFrame([['b', 3], ['a', 1]], columns=cols)
+    res.sort_values(by=cols, inplace=True)
+
+    assert_frame_equal(df1, res, check_index_type=False)
     print("etl_test - intersect - OK")
 
 
 def intersect_all():
     print("\n|-------- Intersect All--------|\n")
-    s1 = pd.DataFrame([("a", 1), ("a", 1), ("a", 1), ("a", 2), ("b", 3),
-                       ("c", 4)], columns=['col1', 'col2'])
-    s2 = pd.DataFrame([('a', 1), ('a', 1), ('b', 3)], columns=['col1', 'col2'])
+    cols = ['col1', 'col2']
+    s1 = pd.DataFrame([('a', 1), ('a', 1), ('b', 3), ('c', 4)], columns=cols)
+    s2 = pd.DataFrame([('a', 1), ('a', 1), ('b', 3)], columns=cols)
 
     ddf_1a = DDF().parallelize(s1, 4)
     ddf_1b = DDF().parallelize(s2, 4)
     ddf_2 = ddf_1a.intersect_all(ddf_1b)
-    df1 = ddf_2.to_df()
-    print(df1)
+
+    df1 = ddf_2.to_df().sort_values(by=cols)
+    res = pd.DataFrame([['b', 3], ['a', 1], ['a', 1]], columns=cols)
+    res.sort_values(by=cols, inplace=True)
+
+    assert_frame_equal(df1, res, check_index_type=False)
     print("etl_test - intersect all - OK")
 
 
@@ -603,15 +616,18 @@ def sort():
 
 def subtract():
     print("\n|-------- Subtract --------|\n")
+    cols = ['col1', 'col2']
     s1 = pd.DataFrame([("a", 1), ("a", 1), ("a", 1), ("a", 2), ("b",  3),
-                       ("c", 4)], columns=['col1', 'col2'])
-    s2 = pd.DataFrame([("a", 1), ("b",  3)], columns=['col1', 'col2'])
+                       ("c", 4)], columns=cols)
+    s2 = pd.DataFrame([("a", 1), ("b",  3)], columns=cols)
 
     ddf_1a = DDF().parallelize(s1, 4)
     ddf_1b = DDF().parallelize(s2, 4)
     ddf_2 = ddf_1a.subtract(ddf_1b)
     df1 = ddf_2.to_df()
     print(df1)
+    res = pd.DataFrame([("a", 2), ("c",  4)], columns=cols)
+    assert_frame_equal(df1, res, check_index_type=False)
     print("etl_test - subtract - OK")
 
 
@@ -696,7 +712,7 @@ if __name__ == '__main__':
     # balancer()
     # cast()
     # cross_join()
-    # # etl()
+    etl()
     # except_all()
     # explode()
     # filter()
@@ -707,7 +723,7 @@ if __name__ == '__main__':
     # import_data()
     # intersect()
     # intersect_all()
-    join()
+    # join()
     # read_data()
     # map()
     # rename()

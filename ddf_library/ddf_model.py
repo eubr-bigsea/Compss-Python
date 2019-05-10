@@ -84,7 +84,7 @@ def save_model_hdfs(model, path, namenode='localhost', port=9000,
     """
     Save a machine learning model as a binary file in a HDFS storage.
 
-    :param model: Model to be storaged in HDFS;
+    :param model: Model to be stored in HDFS;
     :param path: The path of the file from the '/' of the HDFS;
     :param namenode: The host of the Namenode HDFS; (default, 'localhost')
     :param port: NameNode port (default, 9000).

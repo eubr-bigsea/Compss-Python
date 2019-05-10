@@ -5,49 +5,46 @@ __author__ = "Lucas Miguel S Ponce"
 __email__ = "lucasmsp@gmail.com"
 
 from ddf_library.utils import generate_info
+
 from pycompss.api.task import task
+
 import pandas as pd
 import numpy as np
 
 
-def intersect(data1, data2, distinct=False):
+def intersect(data1, data2, settings):
     """
     Returns a new DataFrame containing rows in both frames.
 
     :param data1: A list with nfrag pandas's DataFrame;
     :param data2: Other list with nfrag pandas's DataFrame;
-    :param distinct:
+    :param settings: A dictionary with:
+        - distinct: True to be equivalent to INTERSECT, False to INTERSECT ALL;
     :return: Returns a new pandas DataFrame
 
     .. note:: Rows with NA elements will not be take in count.
     """
+    remove_duplicates = settings.get('distinct', True)
+    info1 = settings['info'][0]
+    info2 = settings['info'][1]
 
-    if distinct:
-        from .distinct import distinct
-        result = distinct(data1, [])
-        info = result['info']
-        result = result['data']
+    nfrag = len(data1)
+    from .hash_partitioner import hash_partition
 
-    else:
+    params_hash1 = {'columns': [], 'info': [info1], 'nfrag': nfrag}
+    out1 = hash_partition(data1, params_hash1)
+    data1 = out1['data']
 
-        if isinstance(data1[0], pd.DataFrame):
-            # it is necessary to perform a deepcopy if data is not a
-            # FutureObject
-            # to enable multiple branches executions
-            import copy
-            result = copy.deepcopy(data1)
-        else:
-            result = data1[:]
+    params_hash2 = {'columns': [], 'info': [info2], 'nfrag': nfrag}
+    out2 = hash_partition(data2, params_hash2)
+    data2 = out2['data']
 
-        info = [[] for _ in result]
+    info = [[] for _ in range(nfrag)]
+    result = info[:]
 
-    nfrag1 = len(data1)
-    nfrag2 = len(data2)
-
-    for f1 in range(nfrag1):
-        for f2 in range(nfrag2):
-            result[f1], info[f1] = _intersection(result[f1], data2[f2],
-                                                 f2, nfrag2, f1)
+    for f in range(nfrag):
+        result[f], info[f] = _intersection(data1[f], data2[f], f,
+                                           remove_duplicates)
 
     output = {'key_data': ['data'], 'key_info': ['info'],
               'data': result, 'info': info}
@@ -55,40 +52,22 @@ def intersect(data1, data2, distinct=False):
 
 
 @task(returns=2)
-def _intersection(df1, df2, index, nfrag, frag):
+def _intersection(df1, df2, frag, remove_duplicates):
     """Perform a partial intersection."""
 
     keys = df1.columns.tolist()
     keys2 = df2.columns.tolist()
 
+    df1 = df1.dropna(axis=0, how='any')
+
+    if remove_duplicates:
+        df1 = df1.drop_duplicates(subset=keys)
+
+    df2 = df2.dropna(axis=0, how='any').drop_duplicates(subset=keys2)
+
     if set(keys) == set(keys2) and len(df1) > 0:
-        indicator = []
-        if index > 0:
-            indicator = df1['_merge'].values
-            df1.drop(['_merge'], axis=1, inplace=True)
-        else:
-            # if is the first iteration, remove all rows with NA values.
-            df1 = df1.dropna(axis=0, how='any')
-
-        df2 = df2.dropna(axis=0, how='any')
-        df1 = pd.merge(df1, df2, how='left', on=keys,
-                       indicator=True, copy=False)
-
-        def combine_indicators(col1, col2):
-            """Combine indicators of _merge column."""
-            if ('b' in col1) or ('b' in col2):
-                return 'both'
-            else:
-                return 'left_only'
-
-        if index > 0:
-            df1['_merge'] = \
-                np.vectorize(combine_indicators)(col1=df1['_merge'],
-                                                 col2=indicator)
-
-    if index == (nfrag-1) and "_merge" in keys:
-        df1 = df1.loc[df1['_merge'] == 'both', keys]
-        df1.drop(['_merge'], axis=1, inplace=True)
+        df1 = pd.merge(df1, df2, how='inner', on=keys, copy=False)
+        df1 = df1.infer_objects()
 
     info = generate_info(df1, frag)
     return df1, info

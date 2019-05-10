@@ -29,15 +29,15 @@ def sample(data, params):
      part cannot be grouped with others tasks because this function needs
      the schema information. The second part could be grouped.
 
-    TODO: rebalance the list, group the second stage
+    TODO: re-balance the list, group the second stage
     """
     nfrag = len(data)
-    idxs, seed = _sample_preprocessing(params, nfrag)
+    idx_list, seed = _sample_preprocessing(params, nfrag)
 
     result = [[] for _ in range(nfrag)]
     info = [[] for _ in range(nfrag)]
     for f in range(nfrag):
-        result[f], info[f] = _get_samples(data[f], idxs, f, seed)
+        result[f], info[f] = _get_samples(data[f], idx_list, f, seed)
 
     output = {'key_data': ['data'], 'key_info': ['info'],
               'data': result, 'info': info}
@@ -53,16 +53,16 @@ def _sample_preprocessing(params, nfrag):
     op = 'int' if isinstance(value, int) else 'per'
 
     if sample_type == 'percent':
-        idxs = _define_bulks(info, None, seed, True, 'random', nfrag)
+        idx_list = _define_bulks(info, None, seed, True, 'random', nfrag)
 
     else:
         if op is 'per':
             if value > 1 or value < 0:
                 raise Exception('Percentage value must between 0 and 1.0.')
 
-        idxs = _define_bulks(info, value, seed, False, op, nfrag)
+        idx_list = _define_bulks(info, value, seed, False, op, nfrag)
 
-    return idxs, seed
+    return idx_list, seed
 
 
 @task(returns=1)
@@ -109,16 +109,8 @@ def _get_samples(data, indexes, frag, seed):
     n = len(data)
 
     if n > 0:
-        value = indexes[frag]
         data.reset_index(drop=True, inplace=True)
-        data = data.sample(n=value, replace=False, random_state=seed)
+        data = data.sample(n=indexes[frag], replace=False, random_state=seed)
 
     info = generate_info(data, frag)
     return data, info
-
-
-
-
-
-
-

@@ -72,7 +72,7 @@ class CountVectorizer(ModelDDF):
         min_tf = self.settings['min_tf']
         min_df = self.settings['min_df']
 
-        df, nfrag, tmp = self._ddf_inital_setup(data)
+        df, nfrag, tmp = self._ddf_initial_setup(data)
 
         result_p = [[] for _ in range(nfrag)]
         for f in range(nfrag):
@@ -117,7 +117,7 @@ class CountVectorizer(ModelDDF):
 
         vocabulary = self.model['vocabulary']
 
-        df, nfrag, tmp = self._ddf_inital_setup(data)
+        df, nfrag, tmp = self._ddf_initial_setup(data)
 
         result = [[] for _ in range(nfrag)]
         info = [[] for _ in range(nfrag)]
@@ -126,7 +126,7 @@ class CountVectorizer(ModelDDF):
                                                 self.settings, f)
 
         uuid_key = self._ddf_add_task(task_name='transform_count_vectorizer',
-                                      status='COMPLETED', lazy=False,
+                                      status='COMPLETED', lazy=self.OPT_OTHER,
                                       function={0: result},
                                       parent=[tmp.last_uuid],
                                       n_output=1, n_input=1, info=info)
@@ -318,7 +318,7 @@ class TfidfVectorizer(ModelDDF):
         min_tf = self.settings['min_tf']
         min_df = self.settings['min_df']
 
-        df, nfrag, tmp = self._ddf_inital_setup(data)
+        df, nfrag, tmp = self._ddf_initial_setup(data)
 
         # TODO: info instead to generate new tasks
         counts = [count_records(df[f]) for f in range(nfrag)]
@@ -367,7 +367,7 @@ class TfidfVectorizer(ModelDDF):
 
         vocabulary = self.model['vocabulary']
 
-        df, nfrag, tmp = self._ddf_inital_setup(data)
+        df, nfrag, tmp = self._ddf_initial_setup(data)
 
         result = [[] for _ in range(nfrag)]
         info = [[] for _ in range(nfrag)]
@@ -376,7 +376,7 @@ class TfidfVectorizer(ModelDDF):
                 construct_tf_idf(df[f], vocabulary, self.settings, f)
 
         uuid_key = self._ddf_add_task(task_name='task_transform_tfidf',
-                                      status='COMPLETED', lazy=False,
+                                      status='COMPLETED', lazy=self.OPT_OTHER,
                                       function={0: result},
                                       parent=[tmp.last_uuid],
                                       n_output=1, n_input=1, info=info)

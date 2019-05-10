@@ -1,0 +1,60 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+
+__author__ = "Lucas Miguel S Ponce"
+__email__ = "lucasmsp@gmail.com"
+
+from ddf_library.utils import generate_info
+from pycompss.api.task import task
+import pandas as pd
+
+
+def subtract(data1, data2, settings):
+    """
+    Returns a new set with containing rows in the first frame but not
+    in the second one. This is equivalent to EXCEPT DISTINCT in SQL.
+
+    :param data1: A list of pandas's DataFrame;
+    :param data2: The second list of pandas's DataFrame;
+    :param settings: A dictionary with:
+    :return: A list of pandas's DataFrame.
+    """
+
+    info1, info2 = settings['info']
+    nfrag = len(data1)
+
+    from .distinct import distinct
+    params = {'columns': [], 'info': [info1]}
+    out1 = distinct(data1, params)
+    data1, info = out1['data'], out1['info']
+
+    from .hash_partitioner import hash_partition
+    params_hash2 = {'columns': [], 'info': [info2], 'nfrag': nfrag}
+    out2 = hash_partition(data2, params_hash2)
+    data2 = out2['data']
+
+    info = [[] for _ in range(nfrag)]
+    result = info[:]
+
+    for f in range(nfrag):
+        result[f], info[f] = _difference(data1[f], data2[f], f)
+
+    output = {'key_data': ['data'], 'key_info': ['info'],
+              'data': result, 'info': info}
+    return output
+
+
+@task(returns=2)
+def _difference(df1, df2, frag):
+    """Perform a Difference partial operation."""
+
+    if len(df1) > 0:
+        if len(df2) > 0:
+            names = df1.columns.tolist()
+            df1 = pd.merge(df1, df2, indicator=True, how='left', on=names)
+            df1 = df1.loc[df1['_merge'] == 'left_only', names]
+
+            df1 = df1.infer_objects()
+
+    info = generate_info(df1, frag)
+    return df1, info

@@ -13,6 +13,7 @@ from ddf_library.utils import concatenate_pandas, create_auxiliary_column, \
 
 import pandas as pd
 import numpy as np
+import importlib
 
 
 def range_partition(data, settings):
@@ -55,27 +56,32 @@ def range_partition(data, settings):
         bounds, nfrag_target = range_bounds(data, nfrag, sizes, cols,
                                             ascending, nfrag_target)
 
-        print("[INFO] - Number of partitions update to: ", nfrag_target)
-
-        splitted = [[0 for _ in range(nfrag_target)] for _ in range(nfrag)]
-
         import ddf_library.config
         ddf_library.config.x = nfrag_target
-        import ddf_library.functions.etl.repartition as repartition
+
+        print("[INFO] - Number of partitions update to: ", nfrag_target)
+
+        splits = [[0 for _ in range(nfrag_target)] for _ in range(nfrag)]
+
+        import ddf_library.functions.etl.repartition
+        importlib.reload(ddf_library.functions.etl.repartition)
 
         for f in range(nfrag):
-            splitted[f] = repartition.split_by_boundary(data[f], cols,
-                                                        ascending, bounds,
-                                                        info, nfrag_target)
+            splits[f] = ddf_library.functions.etl.repartition\
+                .split_by_boundary(data[f], cols, ascending, bounds,
+                                   info, nfrag_target)
 
         result = [[] for _ in range(nfrag_target)]
         info = [{} for _ in range(nfrag_target)]
+
+        n_concat = 10 if nfrag > 10 else nfrag
         for f in range(nfrag_target):
-            tmp = [splitted[t][f] for t in range(nfrag)]
-            result[f] = repartition.merge_n_reduce(concat_10_pandas, tmp, 10)
+            tmp = [splits[t][f] for t in range(nfrag)]
+            result[f] = ddf_library.functions.etl.repartition\
+                .merge_n_reduce(concat_n_pandas, tmp, n_concat)
             info[f] = _get_schema(result[f], f)
 
-        compss_delete_object(splitted)
+        compss_delete_object(splits)
 
     else:
         result = data
@@ -96,12 +102,12 @@ def range_bounds(data, nfrag, sizes, cols, ascending, nfrag_target):
     ratio = total_sample_size / n_rows
     sample_size = [int(np.ceil(ratio * s)) for s in sizes]
 
-    sample_idxs = [_sample_keys(data[f], cols, sample_size[f])
-                   for f in range(nfrag)]
-    sample_idxs = compss_wait_on(sample_idxs)
-    sample_idxs = concatenate_pandas(sample_idxs)
+    sample_idx = [_sample_keys(data[f], cols,
+                               sample_size[f]) for f in range(nfrag)]
+    sample_idx = compss_wait_on(sample_idx)
+    sample_idx = concatenate_pandas(sample_idx)
 
-    bounds = _determine_bounds(sample_idxs, cols, ascending, nfrag_target)
+    bounds = _determine_bounds(sample_idx, cols, ascending, nfrag_target)
     nfrag_target = len(bounds) + 1
 
     return bounds, nfrag_target
@@ -148,9 +154,10 @@ def _determine_bounds(sample, cols, ascending, nfrag_target):
 
 @constraint(ComputingUnits="2")  # approach to have more memory
 @task(returns=1)
-def concat_10_pandas(*args):
+def concat_n_pandas(*args):
     dfs = [df for df in args if isinstance(df, pd.DataFrame)]
     dfs = pd.concat(dfs, ignore_index=True, sort=False)
     del args
+    dfs = dfs.infer_objects()
 
     return dfs

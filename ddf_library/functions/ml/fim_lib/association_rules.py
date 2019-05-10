@@ -65,7 +65,7 @@ class AssociationRules(DDFSketch):
         :return: DDF with 'Pre-Rule', 'Post-Rule' and 'confidence' columns
         """
 
-        df, nfrag, tmp = self._ddf_inital_setup(data)
+        df, nfrag, tmp = self._ddf_initial_setup(data)
 
         col_item = self.settings['col_item']
         col_freq = self.settings['col_freq']
@@ -86,7 +86,7 @@ class AssociationRules(DDFSketch):
         #                                     count_total, max_rules, f)
 
         uuid_key = self._ddf_add_task(task_name='task_associative_rules',
-                                      status='COMPLETED', lazy=False,
+                                      status='COMPLETED', lazy=self.OPT_OTHER,
                                       function={0: result},
                                       parent=[tmp.last_uuid],
                                       n_output=1, n_input=1, info=info)

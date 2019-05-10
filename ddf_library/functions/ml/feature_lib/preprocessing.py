@@ -69,7 +69,7 @@ class Binarizer(object):
             return _binarizer(df, params)
 
         uuid_key = data._ddf_add_task(task_name='binarizer',
-                                      status='WAIT', lazy=True,
+                                      status='WAIT', lazy=self.SERIAL,
                                       function=[task_binarizer,
                                                 self.settings],
                                       parent=[data.last_uuid],
@@ -144,7 +144,7 @@ class OneHotEncoder(ModelDDF):
         :return: a trained model
         """
 
-        df, nfrag, tmp = self._ddf_inital_setup(data)
+        df, nfrag, tmp = self._ddf_initial_setup(data)
 
         result_p = [[] for _ in range(nfrag)]
         for f in range(nfrag):
@@ -186,7 +186,7 @@ class OneHotEncoder(ModelDDF):
         if len(self.model) == 0:
             raise Exception("Model is not fitted.")
 
-        df, nfrag, tmp = self._ddf_inital_setup(data)
+        df, nfrag, tmp = self._ddf_initial_setup(data)
 
         categories = self.model['categories']
         dimension = sum([len(cat) for cat in categories])
@@ -201,7 +201,7 @@ class OneHotEncoder(ModelDDF):
                                                     self.settings.copy(), f)
 
         uuid_key = self._ddf_add_task(task_name='one_hot_encoder',
-                                      status='COMPLETED', lazy=False,
+                                      status='COMPLETED', lazy=self.OPT_OTHER,
                                       function={0: result},
                                       parent=[tmp.last_uuid],
                                       n_output=1, n_input=1, info=info)
@@ -329,7 +329,7 @@ class PolynomialExpansion(object):
             return _poly_expansion(df, params)
 
         uuid_key = data._ddf_add_task(task_name='poly_expansion',
-                                      status='WAIT', lazy=True,
+                                      status='WAIT', lazy=self.SERIAL,
                                       function=[task_poly_expansion,
                                                 self.settings],
                                       parent=[data.last_uuid],
@@ -393,19 +393,14 @@ class StringIndexer(ModelDDF):
     >>> ddf2 = model.transform(ddf1)
     """
 
-    def __init__(self, input_col, output_col=None):
+    def __init__(self, input_col):
         """
         :param input_col: Input string column;
-        :param output_col:  Output indexes column.
         """
         super(StringIndexer, self).__init__()
 
-        if not output_col:
-            output_col = "{}_indexed".format(input_col)
-
         self.settings = dict()
         self.settings['input_col'] = input_col
-        self.settings['output_col'] = output_col
 
         self.model = {}
         self.name = 'StringIndexer'
@@ -419,7 +414,7 @@ class StringIndexer(ModelDDF):
 
         in_col = self.settings['input_col']
 
-        df, nfrag, tmp = self._ddf_inital_setup(data)
+        df, nfrag, tmp = self._ddf_initial_setup(data)
 
         mapper = [get_indexes(df[f], in_col) for f in range(nfrag)]
         mapper = merge_reduce(merge_mapper, mapper)
@@ -427,40 +422,44 @@ class StringIndexer(ModelDDF):
         self.model['model'] = compss_wait_on(mapper)
         return self
 
-    def fit_transform(self, data):
+    def fit_transform(self, data, output_col=None):
         """
         Fit the model and transform.
         :param data: DDF
+        :param output_col:  Output indexes column.
         :return: DDF
         """
 
         self.fit(data)
-        ddf = self.transform(data)
+        ddf = self.transform(data, output_col)
 
         return ddf
 
-    def transform(self, data):
+    def transform(self, data, output_col=None):
         """
         :param data: DDF
+        :param output_col:  Output indexes column.
         :return: DDF
         """
 
         if len(self.model) == 0:
             raise Exception("Model is not fitted.")
 
-        in_col = self.settings['input_col']
-        out_col = self.settings['output_col']
+        input_col = self.settings['input_col']
+        if output_col is None:
+            output_col = "{}_indexed".format(input_col)
 
-        df, nfrag, tmp = self._ddf_inital_setup(data)
+        cols = [input_col, output_col]
+        df, nfrag, tmp = self._ddf_initial_setup(data)
 
         result = [[] for _ in range(nfrag)]
         info = [[] for _ in range(nfrag)]
         for f in range(nfrag):
-            result[f], info[f] = _string_to_indexer(df[f], in_col, out_col,
+            result[f], info[f] = _string_to_indexer(df[f], cols,
                                                     self.model['model'], f)
 
         uuid_key = self._ddf_add_task(task_name='transform_string_indexer',
-                                      status='COMPLETED', lazy=False,
+                                      status='COMPLETED', lazy=self.OPT_OTHER,
                                       function={0: result},
                                       parent=[tmp.last_uuid],
                                       n_output=1, n_input=1, info=info)
@@ -472,21 +471,24 @@ class StringIndexer(ModelDDF):
 @task(returns=1)
 def get_indexes(data, in_col):
     """Create partial model to convert string to index."""
-    return data[in_col].dropna().unique()
+    data = data[in_col].dropna().unique().tolist()
+    return data
 
 
 @task(returns=1)
 def merge_mapper(data1, data2):
     """Merge partial models into one."""
-    data1 = np.concatenate((data1, data2), axis=0)
-    return np.unique(data1)
+    data1 += data2
+    del data2
+    data1 = np.unique(data1).tolist()
+    return data1
 
 
 @task(returns=2)
-def _string_to_indexer(data, in_col, out_col, mapper, frag):
+def _string_to_indexer(data, cols, mapper, frag):
     """Convert string to index based in the model."""
+    in_col, out_col = cols
     news = [i for i in range(len(mapper))]
-    mapper = mapper.tolist()
     data[out_col] = data[in_col].replace(to_replace=mapper, value=news)
 
     info = generate_info(data, frag)
@@ -528,7 +530,7 @@ class IndexToString(ModelDDF):
         input_col = self.settings['input_col']
         output_col = self.settings['output_col']
 
-        df, nfrag, tmp = self._ddf_inital_setup(data)
+        df, nfrag, tmp = self._ddf_initial_setup(data)
 
         result = [[] for _ in range(nfrag)]
         info = [[] for _ in range(nfrag)]
@@ -538,7 +540,7 @@ class IndexToString(ModelDDF):
                                                   self.model['model'], f)
 
         uuid_key = self._ddf_add_task(task_name='index_to_string',
-                                      status='COMPLETED', lazy=False,
+                                      status='COMPLETED', lazy=self.OPT_OTHER,
                                       function={0: result},
                                       parent=[tmp.last_uuid],
                                       n_output=1, n_input=1, info=info)

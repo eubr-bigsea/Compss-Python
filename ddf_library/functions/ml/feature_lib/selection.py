@@ -8,7 +8,7 @@ from pycompss.api.task import task
 from pycompss.functions.reduce import merge_reduce
 from pycompss.api.api import compss_wait_on
 
-from ddf_library.ddf import DDF, DDFSketch
+from ddf_library.ddf import DDF
 from ddf_library.utils import generate_info
 
 import numpy as np
@@ -42,8 +42,8 @@ class VectorAssembler(object):
             output_col = 'features'
 
         self.settings = dict()
-        self.settings['inputcol'] = input_col
-        self.settings['outputcol'] = output_col
+        self.settings['input_col'] = input_col
+        self.settings['output_col'] = output_col
         self.settings['remove'] = remove
 
     def transform(self, data):
@@ -56,7 +56,7 @@ class VectorAssembler(object):
             return _feature_assemble_(df, params)
 
         uuid_key = data._ddf_add_task(task_name='vector_assembler',
-                                      status='WAIT', lazy=True,
+                                      status='WAIT', lazy=self.OPT_SERIAL,
                                       function=[task_vector_assembler,
                                                 self.settings],
                                       parent=[data.last_uuid],
@@ -68,14 +68,14 @@ class VectorAssembler(object):
 
 def _feature_assemble_(df, settings):
     """Perform a partial feature assembler."""
-    cols = settings['inputcol']
-    name = settings['outputcol']
+    cols = settings['input_col']
+    name = settings['output_col']
     frag = settings['id_frag']
     remove = settings['remove']
 
     cols = [col for col in cols if col in df.columns]
     if len(cols) == 0:
-        raise Exception("These columns don't belong to this dataset.")
+        raise Exception("These columns don't belong to this data set.")
 
     if len(df) == 0:
         new_column = np.nan
@@ -83,7 +83,7 @@ def _feature_assemble_(df, settings):
 
         # get the first row to see the type format of each column
         rows = df[cols].iloc[0].values.tolist()
-        is_list, not_list = checkfields(rows, cols)
+        is_list, not_list = check_fields(rows, cols)
 
         if len(is_list) == 0:
             new_column = df[cols].values.tolist()
@@ -102,7 +102,7 @@ def _feature_assemble_(df, settings):
     return df, info
 
 
-def checkfields(rows, cols):
+def check_fields(rows, cols):
     """Check which fields are a list or a primitive type."""
     is_list = []
     not_list = []
@@ -118,7 +118,7 @@ def checkfields(rows, cols):
 class VectorSlicer(object):
     """
     Vector Slicer class takes a feature vector and outputs a new feature
-    vector with a subarray of the original features.
+    vector with a sub-array of the original features.
 
     The output vector will order features with the selected indices first
     (in the order given), followed by the selected names (in the order given).
@@ -138,8 +138,8 @@ class VectorSlicer(object):
             output_col = input_col
 
         self.settings = dict()
-        self.settings['inputcol'] = input_col
-        self.settings['outputcol'] = output_col
+        self.settings['input_col'] = input_col
+        self.settings['output_col'] = output_col
 
         if indices is None:
             raise Exception('At least one feature must be selected.')
@@ -156,7 +156,7 @@ class VectorSlicer(object):
             return _vector_slicer(df, params)
 
         uuid_key = data._ddf_add_task(task_name='vector_slicer',
-                                      status='WAIT', lazy=True,
+                                      status='WAIT', lazy=self.OPT_SERIAL,
                                       function=[task_vector_slicer,
                                                 self.settings],
                                       parent=[data.last_uuid],
@@ -168,7 +168,7 @@ class VectorSlicer(object):
 
 def _vector_slicer(df, settings):
 
-    output_col = settings['outputcol']
+    output_col = settings['output_col']
     frag = settings['id_frag']
 
     if len(df) == 0:
@@ -176,7 +176,7 @@ def _vector_slicer(df, settings):
 
     else:
 
-        input_col = settings['inputcol']
+        input_col = settings['input_col']
         idx = settings['indices']
 
         values = np.array(df[input_col].tolist())[:, idx]

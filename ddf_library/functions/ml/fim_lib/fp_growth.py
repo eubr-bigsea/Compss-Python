@@ -70,7 +70,7 @@ class FPGrowth(DDFSketch):
         col = self.settings.get('column', [])
         min_support = self.settings.get('min_support', 0.5)
 
-        df, nfrag, tmp = self._ddf_inital_setup(data)
+        df, nfrag, tmp = self._ddf_initial_setup(data)
 
         info = [step2_mapper(df_p, col, min_support, nfrag) for df_p in df]
         g_list = merge_reduce(step2_reduce, info)
@@ -109,7 +109,7 @@ class FPGrowth(DDFSketch):
                 raise Exception("Model is not fitted.")
 
             uuid_key = self._ddf_add_task(task_name='task_fpgrowth',
-                                          status='COMPLETED', lazy=False,
+                                          status='COMPLETED', lazy=self.OPT_OTHER,
                                           function={0: self.model['data']},
                                           parent=[self.model['last_uuid']],
                                           n_output=1, n_input=1,

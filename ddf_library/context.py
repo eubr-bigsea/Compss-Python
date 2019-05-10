@@ -7,15 +7,13 @@ __email__ = "lucasmsp@gmail.com"
 
 """
 DDF is a Library for PyCOMPSs.
-
-
 """
+
+from ddf_library.utils import merge_info
 
 from pycompss.api.task import task
 from pycompss.api.api import compss_wait_on
 from pycompss.runtime.binding import Future
-
-from ddf_library.utils import merge_info
 
 from collections import OrderedDict, deque
 import copy
@@ -31,6 +29,10 @@ class COMPSsContext(object):
     adj_tasks = dict()
     schemas_map = dict()
     tasks_map = OrderedDict()
+
+    OPT_SERIAL = 'serial'
+    OPT_OTHER = 'other'
+    optimization_ops = [OPT_OTHER, OPT_SERIAL]
     """
     task_map: a dictionary to stores all following information about a task:
 
@@ -39,8 +41,8 @@ class COMPSsContext(object):
      - parent: a list with its parents uuid;
      - output: number of output;
      - input: number of input;
-     - lazy: Currently, only True or False. True if this task could be 
-       grouped with others in a COMPSs task;
+     - optimization: Currently, only 'serial' or 'other'. 'serial if this task
+       could be grouped with others in a COMPSs task;
      - function: 
        - if status is WAIT: a list with the function and its parameters;
        - if status is COMPLETED: a dictionary with the results. The keys of 
@@ -96,23 +98,23 @@ class COMPSsContext(object):
                             self.adj_tasks[p] = []
                         self.adj_tasks[p].append(t)
 
-        GRAY, BLACK = 0, 1
+        gray, black = 0, 1
 
         def topological(graph):
             order, enter, state = deque(), set(graph), {}
 
             def dfs(node):
-                state[node] = GRAY
+                state[node] = gray
                 for k in graph.get(node, ()):
                     sk = state.get(k, None)
-                    if sk == GRAY:
+                    if sk == gray:
                         raise ValueError("cycle")
-                    if sk == BLACK:
+                    if sk == black:
                         continue
                     enter.discard(k)
                     dfs(k)
                 order.appendleft(node)
-                state[node] = BLACK
+                state[node] = black
 
             while enter:
                 dfs(enter.pop())
@@ -133,7 +135,7 @@ class COMPSsContext(object):
         import gc
         # mapping all tasks that produce a final result
         action_tasks = []
-        if wanted is not -1:
+        if wanted != -1:
             action_tasks.append(wanted)
 
         for t in self.tasks_map:
@@ -162,8 +164,8 @@ class COMPSsContext(object):
     def get_task_name(self, uuid_task):
         return self.tasks_map[uuid_task]['name']
 
-    def get_task_lazyness(self, uuid_task):
-        return self.tasks_map[uuid_task].get('lazy', False)
+    def get_task_opt_type(self, uuid_task):
+        return self.tasks_map[uuid_task].get('optimization', self.OPT_OTHER)
 
     def get_task_function(self, uuid_task, id_in=None):
         if id_in is not None:
@@ -191,7 +193,7 @@ class COMPSsContext(object):
     def set_auxiliary_variables(self, variables, current_task):
         id_var = self.get_var_by_task(variables, current_task)
         if len(id_var) == 0:
-            raise Exception("\nVariable was deleted")
+            raise Exception("Variable is already deleted")
 
         id_var = id_var[0]
         tasks_list = variables[id_var].task_list
@@ -284,14 +286,14 @@ class COMPSsContext(object):
                     break
 
                 # non lazy tasks that need to be executed separated
-                elif not self.get_task_lazyness(child_task):
+                elif self.get_task_opt_type(child_task) == self.OPT_OTHER:
                     self.run_non_lazy_tasks(child_task, id_parents,
                                             n_input, inputs)
 
                 # lazy tasks that could be executed in group
-                elif self.get_task_lazyness(child_task):
-                    self.run_serial_lazy_tasks(i_task, child_task, tasks_list,
-                                               selected_tasks, inputs)
+                elif self.get_task_opt_type(child_task) == self.OPT_SERIAL:
+                    self.run_serial_tasks(i_task, child_task, tasks_list,
+                                          selected_tasks, inputs)
 
     def run_sync(self, child_task, id_parents, n_input, inputs):
         """
@@ -303,9 +305,7 @@ class COMPSsContext(object):
             print("RUNNING sync ({}) - condition 2.".format(child_task))
 
         # sync tasks always will have only one parent
-        id_p = id_parents[0]
-        id_in = n_input[0]
-        result = inputs[0]
+        id_p, id_in, result = id_parents[0], n_input[0], inputs[0]
 
         self.set_task_function(child_task, self.get_task_function(id_p))
         self.schemas_map[child_task] = self.schemas_map[id_p]
@@ -333,8 +333,8 @@ class COMPSsContext(object):
 
         self.save_non_lazy_states(output_dict, child_task)
 
-    def run_serial_lazy_tasks(self, i_task, child_task, tasks_list,
-                              selected_tasks, inputs):
+    def run_serial_tasks(self, i_task, child_task, tasks_list, selected_tasks,
+                         inputs):
         """
         The current operation can be grouped with other operations. This method
         check if the next operations share this behavior. If it does, group
@@ -348,7 +348,7 @@ class COMPSsContext(object):
 
         for id_j, task_opt in enumerate(tasks_list[i_task:]):
             if DEBUG:
-                print('Checking lazziness: {} -> {}'.format(
+                print('Checking optimization type: {} -> {}'.format(
                         task_opt[:8], self.tasks_map[task_opt]['name']))
 
             group_uuids.add(task_opt)
@@ -361,8 +361,9 @@ class COMPSsContext(object):
                         selected_tasks.count(next_task):
                     break
 
-                if not all([self.get_task_lazyness(task_opt),
-                            self.get_task_lazyness(next_task)]):
+                if not all([self.get_task_opt_type(task_opt) == self.OPT_SERIAL,
+                            self.get_task_opt_type(next_task) == self.OPT_SERIAL
+                            ]):
                     break
 
         if DEBUG:
@@ -410,8 +411,8 @@ class COMPSsContext(object):
             self.set_task_status(o, 'COMPLETED')
 
             if DEBUG:
-                print("{} ({}) is COMPLETED - condition 4." \
-                    .format(self.tasks_map[o]['name'], o[:8]))
+                print("{} ({}) is COMPLETED - condition 4."
+                      .format(self.tasks_map[o]['name'], o[:8]))
 
     @staticmethod
     def _execute_task(env, input_data):

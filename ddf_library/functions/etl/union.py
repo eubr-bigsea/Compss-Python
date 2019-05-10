@@ -14,13 +14,12 @@ def union(data1, data2, settings):
     """
     Function which do a union between two pandas DataFrame.
 
-    :param data1: A list with nfrag pandas's dataframe;
-    :param data2: Other list with nfrag pandas's dataframe;
-    :param by_name: True to concatenate by column name (Default);
-    :param nfrag: New number of partitions (optional, the default
-     is the same as data1);
-    :return: Returns a list with nfrag pandas's dataframe.
-
+    :param data1: A list with nfrag pandas's DataFrame;
+    :param data2: Other list with nfrag pandas's DataFrame;
+    :param settings: A dictionary with:
+     - by_name: True to concatenate by column name (Default);
+     - nfrag: New partition number (optional, the default is the same as data1);
+    :return: Returns a list with nfrag pandas's DataFrame.
     """
 
     nfrag1 = len(data1)
@@ -51,7 +50,7 @@ def union(data1, data2, settings):
     else:
         diff = set(cols1).difference(set(cols2))
         if len(diff) > 0:
-            # in this case, we need to create columns in each dataset
+            # in this case, we need to create columns in each data set
 
             for col in diff:
                 if col not in cols1:
@@ -107,28 +106,3 @@ def _update_cols(data, news_cols):
                 data[col] = np.nan
 
     return data
-
-# @task(returns=2)
-# def _union(df1, df2, by_name, frag):
-#     """Perform a partil union."""
-#
-#     if len(df1) == 0:
-#         result = df2
-#     elif len(df2) == 0:
-#         result = df1
-#     else:
-#         if not by_name:
-#             o = df2.columns.tolist()
-#             n = df1.columns.tolist()
-#             diff = len(n) - len(o)
-#             if diff < 0:
-#                 n = n + o[diff:]
-#             elif diff > 0:
-#                 n = n[:diff+1]
-#             df2.columns = n
-#
-#         result = pd.concat([df1, df2], ignore_index=True, sort=False)
-#
-#     info = generate_info(result, frag)
-#     return result, info
-

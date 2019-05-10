@@ -59,7 +59,7 @@ class MinMaxScaler(ModelDDF):
         :return: trained model
         """
 
-        df, nfrag, tmp = self._ddf_inital_setup(data)
+        df, nfrag, tmp = self._ddf_initial_setup(data)
 
         columns = self.settings['input_col']
         # generate a list of the min and the max element to each subset.
@@ -107,7 +107,7 @@ class MinMaxScaler(ModelDDF):
         if len(self.model) == 0:
             raise Exception("Model is not fitted.")
 
-        df, nfrag, tmp = self._ddf_inital_setup(data)
+        df, nfrag, tmp = self._ddf_initial_setup(data)
 
         result = [[] for _ in range(nfrag)]
         info = [[] for _ in range(nfrag)]
@@ -116,7 +116,7 @@ class MinMaxScaler(ModelDDF):
                                                 self.model[0], f)
 
         uuid_key = self._ddf_add_task(task_name='task_transform_minmax_scaler',
-                                      status='COMPLETED', lazy=False,
+                                      status='COMPLETED', lazy=self.OPT_OTHER,
                                       function={0: result},
                                       parent=[tmp.last_uuid],
                                       n_output=1, n_input=1, info=info)
@@ -157,7 +157,7 @@ def _minmax_scaler(data, settings, info, frag):
     features = settings['input_col']
     alias = settings.get('output_col', [])
     min_r, max_r = settings.get('feature_range', (0, 1))
-    remove_input = params.get('remove', False)
+    remove_input = settings.get('remove', False)
 
     if len(alias) != len(features):
         alias = features
@@ -231,7 +231,7 @@ class MaxAbsScaler(ModelDDF):
         self.settings['input_col'] = input_col
         self.settings['remove'] = remove
 
-        self.model = []
+        self.model = {}
         self.name = 'MaxAbsScaler'
 
     def fit(self, data):
@@ -242,7 +242,7 @@ class MaxAbsScaler(ModelDDF):
         :return: trained model
         """
 
-        df, nfrag, tmp = self._ddf_inital_setup(data)
+        df, nfrag, tmp = self._ddf_initial_setup(data)
 
         columns = self.settings['input_col']
         # generate a list of the min and the max element to each subset.
@@ -290,7 +290,7 @@ class MaxAbsScaler(ModelDDF):
         if len(self.model) == 0:
             raise Exception("Model is not fitted.")
 
-        df, nfrag, tmp = self._ddf_inital_setup(data)
+        df, nfrag, tmp = self._ddf_initial_setup(data)
 
         result = [[] for _ in range(nfrag)]
         info = [[] for _ in range(nfrag)]
@@ -300,7 +300,7 @@ class MaxAbsScaler(ModelDDF):
                                                 self.settings, f)
 
         uuid_key = self._ddf_add_task(task_name='task_transform_maxabs_scaler',
-                                      status='COMPLETED', lazy=False,
+                                      status='COMPLETED', lazy=self.OPT_OTHER,
                                       function={0: result},
                                       parent=[tmp.last_uuid],
                                       n_output=1, n_input=1, info=info)
@@ -314,7 +314,7 @@ def _maxabs_scaler(data, minmax, settings, frag):
     """Normalize by range mode."""
     features = settings['input_col']
     alias = settings.get('output_col', [])
-    remove_input = params.get('remove', False)
+    remove_input = settings.get('remove', False)
 
     if len(alias) != len(features):
         alias = features
@@ -403,7 +403,7 @@ class StandardScaler(ModelDDF):
         :return: trained model
         """
 
-        df, nfrag, tmp = self._ddf_inital_setup(data)
+        df, nfrag, tmp = self._ddf_initial_setup(data)
 
         features = self.settings['input_col']
 
@@ -466,7 +466,7 @@ class StandardScaler(ModelDDF):
         if len(self.model) == 0:
             raise Exception("Model is not fitted.")
 
-        df, nfrag, tmp = self._ddf_inital_setup(data)
+        df, nfrag, tmp = self._ddf_initial_setup(data)
 
         mean, sse = self.model[0]
         result = [[] for _ in range(nfrag)]
@@ -476,7 +476,7 @@ class StandardScaler(ModelDDF):
                                                   mean, sse, f)
 
         uuid_key = self._ddf_add_task(task_name='transform_standard_scaler',
-                                      status='COMPLETED', lazy=False,
+                                      status='COMPLETED', lazy=self.OPT_OTHER,
                                       function={0: result},
                                       parent=[tmp.last_uuid],
                                       n_output=1, n_input=1, info=info)
@@ -529,7 +529,7 @@ def _standard_scaler(data, settings, mean, sse, frag):
     alias = settings['output_col']
     with_mean = settings['with_mean']
     with_std = settings['with_std']
-    remove_input = params.get('remove', False)
+    remove_input = settings.get('remove', False)
 
     if len(alias) != len(features):
         alias = features

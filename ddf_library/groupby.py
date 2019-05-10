@@ -240,6 +240,4 @@ class GroupedDDF(DDF):
         self.parameters['operation'] = exprs
         self.parameters['aliases'] = aliases
 
-        COMPSsContext.tasks_map[self.last_uuid]['function'][1] = \
-            self.parameters
-
+        COMPSsContext.tasks_map[self.last_uuid]['function'][1] = self.parameters

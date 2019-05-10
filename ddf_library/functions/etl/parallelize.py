@@ -124,7 +124,6 @@ def _check_schema(info):
 
 def _human_bytes(size):
     """Return the given bytes as a human friendly KB, MB, GB, or TB string"""
-    # 2**10 = 1024
     power = 2**10
     n = 0
     power_of_n = {0: 'B', 1: 'KB', 2: 'MB', 3: 'GB', 4: 'TB'}
@@ -134,6 +133,3 @@ def _human_bytes(size):
 
     value = "{:.2f} {}".format(size, power_of_n[n])
     return value
-
-
-

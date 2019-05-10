@@ -10,7 +10,7 @@ def use_case1():
     In this problem statement, we will find the number of people who died
     or survived along with their gender and age.
     """
-    df = pd.read_csv('tests/titanic.csv', sep='\t')
+    df = pd.read_csv('./titanic.csv', sep='\t')
 
     ddf1 = DDF().parallelize(df, num_of_parts=4)\
         .select(['Sex', 'Age', 'Survived'])\
@@ -30,10 +30,13 @@ def use_case1():
         .join(ddf_men, key1=['Survived'], key2=['Survived'], mode='inner')\
         .join(ddf_kids, key1=['Survived'], key2=['Survived'], mode='inner')
 
-    print ddf_final.show()
+    ddf_final.show()
 
 
 def use_case2():
+    from ddf_library.functions.ml.feature import StringIndexer, StandardScaler
+    from ddf_library.functions.ml.classification import LogisticRegression
+    from ddf_library.functions.ml.evaluation import BinaryClassificationMetrics
     """
     In this challenge, we are asked to predict whether a passenger
     on the titanic would have been survived or not.
@@ -41,7 +44,7 @@ def use_case2():
     Based in: https://towardsdatascience.com/predicting-
      the-survival-of-titanic-passengers-30870ccc7e8
     """
-    df = pd.read_csv('tests/titanic.csv', sep='\t')
+    df = pd.read_csv('./titanic.csv', sep='\t')
 
     titles = {"Mr": 1, "Miss": 2, "Mrs": 3, "Master": 4, "Rare": 5}
 
@@ -106,84 +109,78 @@ def use_case2():
         .map(age_categorizer, 'Age')\
         .map(fare_categorizer, 'Fare')
 
-    from ddf_library.functions.ml.feature import StringIndexer
-    ddf1 = StringIndexer(input_col='Embarked',
-                         output_col='Embarked').fit_transform(ddf1)
+    ddf1 = StringIndexer(input_col='Embarked')\
+        .fit_transform(ddf1, output_col='Embarked')
 
     """
-    After that, we put together all columns (except Survived, which will be 
+    After that, we put together all columns (except Survived, which will be
     the label) in a feature vector and remove these old column.
-    
-    We normalize the features using Standardscaler and them, and divide data 
+
+    We normalize the features using Standard scaler and them, and divide data
     into one part with 70% and 30%.
     """
 
-    # assembling a group of attributes as features and removing them after
-    from ddf_library.functions.ml.feature import VectorAssembler
-    assembler = VectorAssembler(input_col=features, output_col="features")
-    ddf1 = assembler.transform(ddf1).drop(features)
-
     # scaling using StandardScaler
-    from ddf_library.functions.ml.feature import StandardScaler
-    ddf1 = StandardScaler(input_col='features', output_col='features')\
-        .fit_transform(ddf1)
+    ddf1 = StandardScaler(input_col=features)\
+        .fit_transform(ddf1, output_col=features)
 
     # 70% to train the model and 30% to test
     ddf_train, ddf_test = ddf1.split(0.7)
 
-    print "Number of rows to fit the model:", ddf_train.count()
-    print "Number of rows to test the model:", ddf_test.count()
+    print("Number of rows to fit the model:", ddf_train.count_rows())
+    print("Number of rows to test the model:", ddf_test.count_rows())
 
     """
+    Number of rows to fit the model: 88
+    Number of rows to test the model: 37
+    
     70% of data is used in the classifier (LogisticRegression) training stage.
     The others 30% is used to test the fitted model.
     """
 
-    from ddf_library.functions.ml.classification import LogisticRegression
-    logr = LogisticRegression(feature_col='features', label_col='Survived',
-                              max_iters=10, pred_col='out_logr').fit(ddf_train)
+    logr = LogisticRegression(feature_col=features, label_col='Survived',
+                              max_iter=10).fit(ddf_train)
 
-    ddf_test = logr.transform(ddf_test).select(['Survived', 'out_logr'])
+    ddf_test = logr.transform(ddf_test, pred_col='out_logr')\
+        .select(['Survived', 'out_logr'])
 
     """
     This model can be evaluated by some binary metrics
     """
 
-    from ddf_library.functions.ml.evaluation import BinaryClassificationMetrics
-
     metrics_bin = BinaryClassificationMetrics(label_col='Survived',
-                                              true_label=1.0,
+                                              true_label=1,
                                               pred_col='out_logr',
-                                              data=ddf_test)
+                                              ddf_var=ddf_test)
 
-    print ddf_train.show(10)
-    print ddf_test.show(10)
+    ddf_train.show(10)
+    ddf_test.show(10)
 
-    print "Number of rows to fit the model:", ddf_train.count()
-    print "Number of rows to test the model:", ddf_test.count()
+    print("Number of rows to fit the model:", ddf_train.count_rows())
+    print("Number of rows to test the model:", ddf_test.count_rows())
 
-    print "Metrics:\n", metrics_bin.get_metrics()
-    print "\nConfusion Matrix:\n", metrics_bin.confusion_matrix
+    print("Metrics:\n", metrics_bin.get_metrics())
+    print("\nConfusion Matrix:\n", metrics_bin.confusion_matrix)
 
     """
-    Number of rows to fit the model: 87
-    Number of rows to test the model: 38
-    
+    Number of rows to fit the model: 88
+    Number of rows to test the model: 37
+
     Metrics:
                Metric     Value
     0        Accuracy  0.850575
     1       Precision  0.653846
     2          Recall  0.809524
     3  F-measure (F1)  0.723404
-    
+
     Confusion Matrix:
-         0.0  1.0
-    0.0   57    4
-    1.0    9   17
+         0    1
+    0   18    6
+    1   4     9
     """
 
 
 if __name__ == '__main__':
-    print "_____Titanic's use case_____"
-    use_case1()
-    #use_case2()
+    print("_____Titanic's use case_____")
+    # use_case1()
+    # use_case2()

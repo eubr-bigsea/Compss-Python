@@ -13,23 +13,22 @@ from ddf_library.utils import concatenate_pandas, generate_info, \
     create_auxiliary_column
 from .parallelize import _generate_distribution2
 from .balancer import _balancer
+import ddf_library.config as config
 
 import numpy as np
 import pandas as pd
 import zlib
 import time
 
-n_partitions = 10
-
 
 def repartition(data, settings):
     """
 
-    :param data: a list of pandas dataframes;
+    :param data: a list of pandas DataFrames;
     :param settings: A dictionary with:
         - 'shape': A list with the number of rows in each fragment.
         - 'nfrag': The new number of fragments.
-    :return: A list of pandas dataframes;
+    :return: A list of pandas DataFrames;
 
     .. note: 'shape' has prevalence over 'nfrag'
 
@@ -61,9 +60,6 @@ def repartition(data, settings):
     return output
 
 
-import ddf_library.config as config
-
-
 @task(returns=config.x)
 def split_by_hash(df, cols, info, nfrag):
     splits = [pd.DataFrame(columns=info['cols'], dtype=info['dtypes'])
@@ -73,11 +69,11 @@ def split_by_hash(df, cols, info, nfrag):
     if len(df) > 0:
 
         keys = df[cols].astype(str).values.sum(axis=1).flatten()
-        vhashcode = np.vectorize(hashcode)
-        idxs = vhashcode(keys) % nfrag
+        v_hashcode = np.vectorize(hashcode)
+        indexes = v_hashcode(keys) % nfrag
 
         for f in range(nfrag):
-            idx = np.argwhere(idxs == f).flatten()
+            idx = np.argwhere(indexes == f).flatten()
             if len(idx) > 0:
                 splits[f] = df.iloc[idx]
 
@@ -91,44 +87,48 @@ def hashcode(x):
 @constraint(ComputingUnits="2")  # approach to have more available memory
 @task(returns=config.x)
 def split_by_boundary(data, cols, ascending, bounds, info, nfrag):
-
     splits = [pd.DataFrame(columns=info['cols'], dtype=info['dtypes'])
               for _ in range(nfrag)]
-    aux_col = create_auxiliary_column(info['cols'])
 
-    # creation of keys DataFrame with all bounds
-    bounds = pd.DataFrame(bounds, columns=cols)
-    bounds[aux_col] = -1
-    keys = data[cols]
-    keys[aux_col] = data.index
-    keys = pd.concat([keys, bounds], sort=False)
-    del bounds
+    if len(data) > 0:
+        aux_col = create_auxiliary_column(info['cols'])
+        data.reset_index(drop=True, inplace=True)
 
-    t1 = time.time()
-    # sort only the DataFrame with columns. It consumes more space,
-    # but is faster
-    keys.sort_values(by=cols, ascending=ascending, inplace=True)
-    keys.reset_index(drop=True, inplace=True)
-    t2 = time.time()
-    print("sort in split_by_boundary: ", t2-t1)
+        # creation of keys DataFrame with all bounds
+        bounds = pd.DataFrame(bounds, columns=cols)
+        bounds[aux_col] = -1
+        keys = data[cols].copy()
+        keys[aux_col] = keys.index
+        keys = pd.concat([keys, bounds], sort=False)
+        del bounds
 
-    idxs_bounds = keys.index[keys[aux_col] == -1]
-    aux_col_idx = keys.columns.get_loc(aux_col)
+        t1 = time.time()
+        # sort only the DataFrame with columns. It consumes more space,
+        # but is faster
+        keys.sort_values(by=cols, ascending=ascending, inplace=True)
+        keys = keys[[aux_col]]
+        keys.reset_index(drop=True, inplace=True)
+        t2 = time.time()
+        print("sort in split_by_boundary: ", t2-t1)
 
-    for s, idx in enumerate(idxs_bounds):
+        idx_bounds = keys.index[keys[aux_col] == -1]
+        aux_col_idx = keys.columns.get_loc(aux_col)
 
-        if s == 0:
-            list_idx = keys.iloc[0:idx, aux_col_idx]
+        for s, idx in enumerate(idx_bounds):
+
+            if s == 0:
+                list_idx = keys.iloc[0:idx, aux_col_idx].values
+            else:
+                idx0 = idx_bounds[s-1]
+                list_idx = keys.iloc[idx0 + 1:idx, aux_col_idx].values
+
+            # list_idx = np.sort(list_idx)
             splits[s] = data.iloc[list_idx]
 
-        else:
-            idx0 = idxs_bounds[s-1]
-            list_idx = keys.iloc[idx0 + 1:idx, aux_col_idx]
-            splits[s] = data.iloc[list_idx]
-
-        if (s+1) == len(idxs_bounds):
-            list_idx = keys.iloc[idx + 1:, aux_col_idx]
-            splits[s+1] = data.iloc[list_idx]
+            if (s+1) == len(idx_bounds):
+                list_idx = keys.iloc[idx + 1:, aux_col_idx].values
+                # list_idx = np.sort(list_idx)
+                splits[s+1] = data.iloc[list_idx]
 
     return splits
 
@@ -148,12 +148,12 @@ def merge_n_reduce(f, data, n):
     from collections import deque
     q = deque(range(len(data)))
     new_data = data[:]
-    lenq = len(q)
-    while lenq:
+    len_q = len(q)
+    while len_q:
         x = q.popleft()
-        lenq = len(q)
-        if lenq:
-            min_d = min([lenq, n-1])
+        len_q = len(q)
+        if len_q:
+            min_d = min([len_q, n-1])
             xs = [q.popleft() for _ in range(min_d)]
             xs = [new_data[i] for i in xs] + [0] * (n - min_d - 1)
 

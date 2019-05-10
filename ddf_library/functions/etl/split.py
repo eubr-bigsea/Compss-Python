@@ -9,7 +9,7 @@ import math
 
 def random_split(data, settings):
     """
-    Randomly splits a DataFrame into two distintics DataFrames.
+    Randomly splits a DataFrame into two distinct DataFrames.
 
     :param data: A list with nfrag pandas's DataFrame;
     :param settings: A dictionary that contains:
@@ -23,17 +23,15 @@ def random_split(data, settings):
      distribution; and the second we split the data. The first part cannot be
      grouped with others stages because we need information about the
      size in each partition. The second part cannot be grouped as well because
-     generates two differents outputs data.
+     generates two outputs data.
     """
     nfrag = len(data)
 
-    idxs = _preprocessing(settings, nfrag)
+    idx = _preprocessing(settings, nfrag)
     out1 = [[] for _ in range(nfrag)]
-    out2 = [[] for _ in range(nfrag)]
-    info1 = [[] for _ in range(nfrag)]
-    info2 = [[] for _ in range(nfrag)]
+    out2, info1, info2 = out1[:], out1[:], out1[:]
 
-    for i, fraction in enumerate(idxs):
+    for i, fraction in enumerate(idx):
         out1[i], info1[i], out2[i], info2[i] = _split_get(data[i], fraction, i)
 
     output = {'key_data': ['data1', 'data2'],
@@ -51,13 +49,13 @@ def _preprocessing(settings, nfrag):
     if percentage < 0 or percentage > 1:
         raise Exception("Please inform a valid percentage [0, 1].")
 
-    idxs = _split_allocate(n_list, percentage, nfrag)
+    idx_list = _split_allocate(n_list, percentage, nfrag)
 
-    return idxs
+    return idx_list
 
 
 def _split_allocate(n_list, fraction, nfrag):
-    """Define a list of indexes to be splitted."""
+    """Define a list of indexes to be divided."""
 
     n_rows = sum(n_list)
 
@@ -95,4 +93,3 @@ def _split_get(data, value, frag):
     info2 = generate_info(split2, frag)
 
     return data, info1, split2, info2
-

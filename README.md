@@ -88,7 +88,7 @@ ddf1 = DDF().parallelize(df, num_of_parts=4)\
 ddf_women = ddf1.filter('(Sex == "female") and (Age >= 18)')\
             .group_by(['Survived']).count(['Survived'], alias=['Women'])
 
-print ddf_women.show()
+ddf_women.show()
 ```
 
 The image shows the DAG created by COMPSs during the execution. The operations `select(), dropna(), replace() and filter()` 
@@ -130,8 +130,7 @@ ddf_final = ddf_women\
     .join(ddf_men, key1=['Survived'], key2=['Survived'], mode='inner')\
     .join(ddf_kids, key1=['Survived'], key2=['Survived'], mode='inner')
 
-print ddf_final.show()
-
+ddf_final.show()
 ```
 
 This code will produce following result:
@@ -157,13 +156,15 @@ you need to install [hdfspycompss](https://github.com/eubr-bigsea/compss-hdfs/tr
 dependencies will be installed automatically from PyPI or can be manually installed by using the command `$ pip install -r requirements.txt` 
 
 ```
-Pyqtree == 0.24
-matplotlib == 1.5.1
-networkx == 1.11
-numpy == 1.16.0
-pandas == 0.23.4
-pyshp == 1.2.11
-python_dateutil == 2.6.1
+pandas>=0.23.4
+scikit-learn>=0.20.3
+numpy>=1.16.0
+scipy>=1.2.1
+Pyqtree>=0.24
+matplotlib>=1.5.1
+networkx>=1.11
+pyshp>=1.2.11
+nltk>=3.4
 ```
 
 

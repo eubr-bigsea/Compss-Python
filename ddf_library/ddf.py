@@ -49,20 +49,11 @@ class DDF(DDFSketch):
             self.task_list.append(last_uuid)
 
         else:
-            # last_uuid = str(uuid.uuid4())
-            last_uuid = self._ddf_add_task('init', 'COMPLETED', False,
+            last_uuid = self._ddf_add_task('init', 'COMPLETED', self.OPT_OTHER,
                                            None, [], None, 0, info=None)
 
             self.task_list = list()
             self.task_list.append(last_uuid)
-
-            # COMPSsContext.tasks_map[last_uuid] = \
-            #     {'name': 'init',
-            #      'lazy': False,
-            #      'input': 0,
-            #      'parent': [],
-            #      'status': 'COMPLETED'
-            #      }
 
         self.last_uuid = last_uuid
 
@@ -117,7 +108,7 @@ class DDF(DDFSketch):
             COMPSsContext.tasks_map[new_state_uuid] = \
                 {'name': 'load_text',
                  'status': 'COMPLETED',
-                 'lazy': False,
+                 'optimization': self.OPT_OTHER,
                  'function': {0: result},
                  'output': 1,
                  'input': 0,
@@ -135,7 +126,7 @@ class DDF(DDFSketch):
             COMPSsContext.tasks_map[new_state_uuid] = \
                 {'name': 'load_text',
                  'status': 'WAIT',
-                 'lazy': True,
+                 'optimization': self.OPT_SERIAL,
                  'function': [data_reader.read_hdfs_serial, {}],
                  'output': 1,
                  'input': 0,
@@ -167,7 +158,7 @@ class DDF(DDFSketch):
         COMPSsContext.tasks_map[new_state_uuid] = \
             {'name': 'parallelize',
              'status': 'COMPLETED',
-             'lazy': False,
+             'optimization': self.OPT_OTHER,
              'function': {0: result},
              'output': 1, 'input': 0,
              'parent': [self.last_uuid]
@@ -216,7 +207,7 @@ class DDF(DDFSketch):
         COMPSsContext.tasks_map[new_state_uuid] = \
             {'name': 'load_shapefile',
              'status': 'COMPLETED',
-             'lazy': False,
+             'optimization': self.OPT_OTHER,
              'function': {0: result},
              'output': 1, 'input': 0,
              'parent': [self.last_uuid]
@@ -251,7 +242,7 @@ class DDF(DDFSketch):
         COMPSsContext.tasks_map[new_state_uuid] = \
             {'name': 'import_data',
              'status': 'COMPLETED',
-             'lazy': False,
+             'optimization': self.OPT_OTHER,
              'function': {0: result},
              'output': 1, 'input': 0,
              'parent': [tmp.last_uuid]
@@ -292,7 +283,7 @@ class DDF(DDFSketch):
         COMPSsContext.tasks_map[new_state_uuid] = \
             {'name': 'sync',
              'status': 'WAIT',
-             'lazy': False,
+             'optimization': self.OPT_OTHER,
              'parent': [self.last_uuid],
              'function': [[]]
              }
@@ -335,7 +326,7 @@ class DDF(DDFSketch):
         COMPSsContext.tasks_map[new_state_uuid] = \
             {'name': 'balancer',
              'status': 'WAIT',
-             'lazy': False,
+             'optimization': self.OPT_OTHER,
              'function': [task_balancer, settings],
              'parent': [self.last_uuid],
              'output': 1,
@@ -404,7 +395,7 @@ class DDF(DDFSketch):
         COMPSsContext.tasks_map[new_state_uuid] = \
             {'name': 'cast',
              'status': 'WAIT',
-             'lazy': True,
+             'optimization': self.OPT_SERIAL,
              'function': [task_cast, settings],
              'parent': [self.last_uuid],
              'output': 1,
@@ -445,7 +436,7 @@ class DDF(DDFSketch):
         COMPSsContext.tasks_map[new_state_uuid] = \
             {'name': 'add_column',
              'status': 'WAIT',
-             'lazy': False,
+             'optimization': self.OPT_OTHER,
              'function': [task_add_column, settings],
              'parent': [self.last_uuid, data2.last_uuid],
              'output': 1,
@@ -482,7 +473,7 @@ class DDF(DDFSketch):
         COMPSsContext.tasks_map[new_state_uuid] = \
             {'name': 'groupby',
              'status': 'WAIT',
-             'lazy': False,
+             'optimization': self.OPT_OTHER,
              'function': [task_aggregation, settings],
              'parent': [self.last_uuid],
              'output': 1,
@@ -514,9 +505,9 @@ class DDF(DDFSketch):
 
         from .functions.etl.clean_missing import FillNa
 
-        lazy = False
+        lazy = self.OPT_OTHER
         if mode is 'VALUE':
-            lazy = True
+            lazy = self.OPT_SERIAL
 
             if not value:
                 raise Exception("It is necessary a value "
@@ -536,7 +527,7 @@ class DDF(DDFSketch):
         COMPSsContext.tasks_map[new_state_uuid] = \
             {'name': 'fill_na',
              'status': 'WAIT',
-             'lazy': lazy,
+             'optimization': lazy,
              'function': [task_clean_missing, {}],
              'parent': [self.last_uuid],
              'output': 1,
@@ -567,7 +558,7 @@ class DDF(DDFSketch):
         if not isinstance(col2, str):
             raise ValueError("col2 should be a string.")
 
-        df, nfrag, tmp = self._ddf_inital_setup(self)
+        df, nfrag, tmp = self._ddf_initial_setup(self)
 
         from ddf_library.functions.statistics.correlation import correlation
 
@@ -591,7 +582,7 @@ class DDF(DDFSketch):
         if not isinstance(col2, str):
             raise ValueError("col2 should be a string.")
 
-        df, nfrag, tmp = self._ddf_inital_setup(self)
+        df, nfrag, tmp = self._ddf_initial_setup(self)
 
         from ddf_library.functions.statistics.covariance import covariance
 
@@ -620,7 +611,7 @@ class DDF(DDFSketch):
         COMPSsContext.tasks_map[new_state_uuid] = \
             {'name': 'cross_join',
              'status': 'WAIT',
-             'lazy': False,
+             'optimization': self.OPT_OTHER,
              'function': [task_cross_join, {}],
              'parent': [self.last_uuid, data2.last_uuid],
              'output': 1,
@@ -659,7 +650,7 @@ class DDF(DDFSketch):
         COMPSsContext.tasks_map[new_state_uuid] = \
             {'name': 'cross_tab',
              'status': 'WAIT',
-             'lazy': False,
+             'optimization': self.OPT_OTHER,
              'function': [task_cross_tab, settings],
              'parent': [self.last_uuid],
              'output': 1,
@@ -685,7 +676,7 @@ class DDF(DDFSketch):
         >>> ddf1.describe(['col_1'])
         """
 
-        df, nfrag, tmp = self._ddf_inital_setup(self)
+        df, nfrag, tmp = self._ddf_initial_setup(self)
 
         from ddf_library.functions.statistics.describe import describe
 
@@ -717,7 +708,7 @@ class DDF(DDFSketch):
         from ddf_library.functions.statistics.freq_items import freq_items
         settings = {'col': col, 'support': support}
 
-        df, nfrag, tmp = self._ddf_inital_setup(self)
+        df, nfrag, tmp = self._ddf_initial_setup(self)
 
         result = freq_items(df, settings)
 
@@ -737,20 +728,23 @@ class DDF(DDFSketch):
 
         >>> ddf1.subtract(ddf2)
         """
-        from .functions.etl.difference import subtract
+        from .functions.etl.subtract import subtract
 
-        def task_difference(df, _):
-            return subtract(df[0], df[1])
+        settings = {}
+
+        def task_difference(df, params):
+            return subtract(df[0], df[1], params)
 
         new_state_uuid = self._generate_uuid()
         COMPSsContext.tasks_map[new_state_uuid] = \
             {'name': 'subtract',
              'status': 'WAIT',
-             'lazy': False,
-             'function': [task_difference, {}],
+             'optimization': self.OPT_OTHER,
+             'function': [task_difference, settings],
              'parent': [self.last_uuid, data2.last_uuid],
              'output': 1,
-             'input': 2
+             'input': 2,
+             'info': True
              }
 
         self._set_n_input(new_state_uuid, self.settings['input'])
@@ -773,20 +767,23 @@ class DDF(DDFSketch):
 
         >>> ddf1.except_all(ddf2)
         """
-        from .functions.etl.difference import except_all
+        from .functions.etl.except_all import except_all
 
-        def task_except_all(df, _):
-            return except_all(df[0], df[1])
+        settings = {}
+
+        def task_except_all(df, params):
+            return except_all(df[0], df[1], params)
 
         new_state_uuid = self._generate_uuid()
         COMPSsContext.tasks_map[new_state_uuid] = \
-            {'name': 'subtract',
+            {'name': 'except_all',
              'status': 'WAIT',
-             'lazy': False,
-             'function': [task_except_all, {}],
+             'optimization': self.OPT_OTHER,
+             'function': [task_except_all, settings],
              'parent': [self.last_uuid, data2.last_uuid],
              'output': 1,
-             'input': 2
+             'input': 2,
+             'info': True
              }
 
         self._set_n_input(new_state_uuid, self.settings['input'])
@@ -809,6 +806,8 @@ class DDF(DDFSketch):
         """
         from .functions.etl.distinct import distinct
 
+        settings = {'columns': cols}
+
         def task_distinct(df, params):
             return distinct(df, params)
 
@@ -816,11 +815,12 @@ class DDF(DDFSketch):
         COMPSsContext.tasks_map[new_state_uuid] = \
             {'name': 'distinct',
              'status': 'WAIT',
-             'lazy': False,
-             'function': [task_distinct, cols],
+             'optimization': self.OPT_OTHER,
+             'function': [task_distinct, settings],
              'parent': [self.last_uuid],
              'output': 1,
-             'input': 1
+             'input': 1,
+             'info': True
              }
 
         self._set_n_input(new_state_uuid, self.settings['input'])
@@ -851,7 +851,7 @@ class DDF(DDFSketch):
         COMPSsContext.tasks_map[new_state_uuid] = \
             {'name': 'drop',
              'status': 'WAIT',
-             'lazy': True,
+             'optimization': self.OPT_SERIAL,
              'function': [task_drop, settings],
              'parent': [self.last_uuid],
              'output': 1,
@@ -860,6 +860,16 @@ class DDF(DDFSketch):
 
         self._set_n_input(new_state_uuid, self.settings['input'])
         return DDF(task_list=self.task_list, last_uuid=new_state_uuid)
+
+    def drop_duplicates(self, cols):
+        """
+        Alias for distinct.
+
+        :Example:
+
+        >>> ddf1.drop_duplicates('col_1')
+        """
+        return self.distinct(cols)
 
     def dropna(self, subset=None, mode='REMOVE_ROW', how='any', thresh=None):
         """
@@ -884,14 +894,14 @@ class DDF(DDFSketch):
         from .functions.etl.clean_missing import DropNaN
 
         if mode is 'REMOVE_ROW':
-            lazy = True
+            lazy = self.OPT_SERIAL
 
             def task_dropna(df, _):
                 return DropNaN(subset, how=how, thresh=thresh, mode=mode)\
                     .drop_rows(df)
 
         else:
-            lazy = False
+            lazy = self.OPT_OTHER
 
             def task_dropna(df, _):
                 return DropNaN(subset, how=how, thresh=thresh, mode=mode)\
@@ -901,7 +911,7 @@ class DDF(DDFSketch):
         COMPSsContext.tasks_map[new_state_uuid] = \
             {'name': 'dropna',
              'status': 'WAIT',
-             'lazy': lazy,
+             'optimization': lazy,
              'function': [task_dropna, {}],
              'parent': [self.last_uuid],
              'output': 1,
@@ -935,7 +945,7 @@ class DDF(DDFSketch):
         COMPSsContext.tasks_map[new_state_uuid] = \
             {'name': 'explode',
              'status': 'WAIT',
-             'lazy': True,
+             'optimization': self.OPT_SERIAL,
              'function': [task_explode, settings],
              'parent': [self.last_uuid],
              'output': 1,
@@ -973,7 +983,7 @@ class DDF(DDFSketch):
         COMPSsContext.tasks_map[new_state_uuid] = \
             {'name': 'filter',
              'status': 'WAIT',
-             'lazy': True,
+             'optimization': self.OPT_SERIAL,
              'function': [task_filter, settings],
              'parent': [self.last_uuid],
              'output': 1,
@@ -1022,7 +1032,7 @@ class DDF(DDFSketch):
         COMPSsContext.tasks_map[new_state_uuid] = \
             {'name': 'geo_within',
              'status': 'WAIT',
-             'lazy': False,
+             'optimization': self.OPT_OTHER,
              'function': [task_geo_within, settings],
              'parent': [self.last_uuid, shp_object.last_uuid],
              'output': 1,
@@ -1036,7 +1046,17 @@ class DDF(DDFSketch):
 
     def hash_partition(self, columns, nfrag=None):
         """
+        Hash partitioning is a partitioning technique where data
+        is stored separately in different fragments by a hash function.
 
+        Is it a Lazy function: No
+
+        :param columns: Columns to be used as key in a hash function;
+        :param nfrag: Number of fragments (default, keep the input nfrag).
+
+        :Example:
+
+        >>> ddf2 = ddf1.hash_partition(columns=['col1', col2])
         """
 
         from .functions.etl.hash_partitioner import hash_partition
@@ -1056,7 +1076,7 @@ class DDF(DDFSketch):
         COMPSsContext.tasks_map[new_state_uuid] = \
             {'name': 'hash_partition',
              'status': 'WAIT',
-             'lazy': False,
+             'optimization': self.OPT_OTHER,
              'function': [task_hash_partition, settings],
              'parent': [self.last_uuid],
              'output': 1,
@@ -1084,18 +1104,21 @@ class DDF(DDFSketch):
 
         from .functions.etl.intersect import intersect
 
-        def task_intersect(df, _):
-            return intersect(df[0], df[1], distinct=True)
+        settings = {'distinct': True}
+
+        def task_intersect(df, params):
+            return intersect(df[0], df[1], params)
 
         new_state_uuid = self._generate_uuid()
         COMPSsContext.tasks_map[new_state_uuid] = \
             {'name': 'intersect',
              'status': 'WAIT',
-             'lazy': False,
-             'function': [task_intersect, {}],
+             'optimization': self.OPT_OTHER,
+             'function': [task_intersect, settings],
              'parent': [self.last_uuid, data2.last_uuid],
              'output': 1,
-             'input': 2
+             'input': 2,
+             'info': True,
              }
 
         self._set_n_input(new_state_uuid, self.settings['input'])
@@ -1120,18 +1143,21 @@ class DDF(DDFSketch):
 
         from .functions.etl.intersect import intersect
 
-        def task_intersect(df, _):
-            return intersect(df[0], df[1], distinct=False)
+        settings = {'distinct': False}
+
+        def task_intersect(df, params):
+            return intersect(df[0], df[1], params)
 
         new_state_uuid = self._generate_uuid()
         COMPSsContext.tasks_map[new_state_uuid] = \
             {'name': 'intersect',
              'status': 'WAIT',
-             'lazy': False,
-             'function': [task_intersect, {}],
+             'optimization': self.OPT_OTHER,
+             'function': [task_intersect, settings],
              'parent': [self.last_uuid, data2.last_uuid],
              'output': 1,
-             'input': 2
+             'input': 2,
+             'info': True,
              }
 
         self._set_n_input(new_state_uuid, self.settings['input'])
@@ -1187,7 +1213,7 @@ class DDF(DDFSketch):
         COMPSsContext.tasks_map[new_state_uuid] = \
             {'name': 'join',
              'status': 'WAIT',
-             'lazy': False,
+             'optimization': self.OPT_OTHER,
              'function': [task_join, settings],
              'parent': [self.last_uuid, data2.last_uuid],
              'output': 1,
@@ -1242,7 +1268,7 @@ class DDF(DDFSketch):
         if args is not None:
             settings['args'] = args
 
-        df, nfrag, tmp = self._ddf_inital_setup(self)
+        df, nfrag, tmp = self._ddf_initial_setup(self)
 
         result = kolmogorov_smirnov_one_sample(df, settings)
 
@@ -1275,7 +1301,7 @@ class DDF(DDFSketch):
         COMPSsContext.tasks_map[new_state_uuid] = \
             {'name': 'map',
              'status': 'WAIT',
-             'lazy': True,
+             'optimization': self.OPT_SERIAL,
              'function': [task_map, settings],
              'parent': [self.last_uuid],
              'output': 1,
@@ -1286,7 +1312,19 @@ class DDF(DDFSketch):
 
     def range_partition(self, columns, ascending=None, nfrag=None):
         """
+        Range partitioning is a partitioning technique where ranges of data
+        is stored separately in different fragments.
 
+        Is it a Lazy function: No
+
+        :param columns: Columns to be used as key;
+        :param ascending: Order of each key (True to ascending order);
+        :param nfrag: Number of fragments (default, keep the input nfrag).
+
+        :Example:
+
+        >>> ddf2 = ddf1.range_partition(columns=['col1', col2],
+        >>>                             ascending=[True, False])
         """
 
         from .functions.etl.range_partitioner import range_partition
@@ -1312,7 +1350,7 @@ class DDF(DDFSketch):
         COMPSsContext.tasks_map[new_state_uuid] = \
             {'name': 'range_partition',
              'status': 'WAIT',
-             'lazy': False,
+             'optimization': self.OPT_OTHER,
              'function': [task_range_partition, settings],
              'parent': [self.last_uuid],
              'output': 1,
@@ -1342,7 +1380,7 @@ class DDF(DDFSketch):
         COMPSsContext.tasks_map[new_state_uuid] = \
             {'name': 'repartition',
              'status': 'WAIT',
-             'lazy': False,
+             'optimization': self.OPT_OTHER,
              'function': [task_repartition, settings],
              'parent': [self.last_uuid],
              'output': 1,
@@ -1384,7 +1422,7 @@ class DDF(DDFSketch):
         COMPSsContext.tasks_map[new_state_uuid] = \
             {'name': 'replace',
              'status': 'WAIT',
-             'lazy': True,
+             'optimization': self.OPT_SERIAL,
              'function': [task_replace, settings],
              'parent': [self.last_uuid],
              'output': 1, 'input': 1}
@@ -1430,7 +1468,7 @@ class DDF(DDFSketch):
         COMPSsContext.tasks_map[new_state_uuid] = \
             {'name': 'sample',
              'status': 'WAIT',
-             'lazy': False,
+             'optimization': self.OPT_OTHER,
              'function': [task_sample, settings],
              'parent': [self.last_uuid],
              'output': 1,
@@ -1474,7 +1512,7 @@ class DDF(DDFSketch):
         COMPSsContext.tasks_map[new_state_uuid] = \
             {'name': 'save',
              'status': 'WAIT',
-             'lazy': True,
+             'optimization': self.OPT_SERIAL,
              'function': [task_save, settings],
              'parent': [self.last_uuid],
              'output': 1,
@@ -1516,7 +1554,7 @@ class DDF(DDFSketch):
         COMPSsContext.tasks_map[new_state_uuid] = \
             {'name': 'select',
              'status': 'WAIT',
-             'lazy': True,
+             'optimization': self.OPT_SERIAL,
              'function': [task_select, settings],
              'parent': [self.last_uuid],
              'output': 1,
@@ -1588,7 +1626,7 @@ class DDF(DDFSketch):
         COMPSsContext.tasks_map[new_state_uuid] = \
             {'name': 'select_exprs',
              'status': 'WAIT',
-             'lazy': True,
+             'optimization': self.OPT_SERIAL,
              'function': [task_select_exprs, settings],
              'parent': [self.last_uuid],
              'output': 1,
@@ -1651,7 +1689,7 @@ class DDF(DDFSketch):
         COMPSsContext.tasks_map[new_state_uuid] = \
             {'name': 'sort',
              'status': 'WAIT',
-             'lazy': False,
+             'optimization': self.OPT_OTHER,
              'function': [task_sort, settings],
              'parent': [self.last_uuid],
              'output': 1,
@@ -1688,7 +1726,7 @@ class DDF(DDFSketch):
         COMPSsContext.tasks_map[new_state_uuid] = \
             {'name': 'split',
              'status': 'WAIT',
-             'lazy': False,
+             'optimization': self.OPT_OTHER,
              'function': [task_split, settings],
              'parent': [self.last_uuid],
              'output': 2,
@@ -1726,7 +1764,7 @@ class DDF(DDFSketch):
         COMPSsContext.tasks_map[new_state_uuid] = \
             {'name': 'take',
              'status': 'WAIT',
-             'lazy': False,
+             'optimization': self.OPT_OTHER,
              'function': [task_take, settings],
              'parent': [self.last_uuid],
              'output': 1,
@@ -1742,12 +1780,12 @@ class DDF(DDFSketch):
         Returns the DDF contents as a pandas's DataFrame.
 
         :param columns: Optional, list of new column names (string);
-        :param split:
+        :param split: True to keep data in partitions (default, False);
         :return: Pandas's DataFrame
 
         :Example:
 
-        >>> df = ddf1.toDF(['col_1', 'col_2'])
+        >>> df = ddf1.to_df(['col_1', 'col_2'])
         """
         last_last_uuid = self.task_list[-2]
         self._check_cache()
@@ -1759,6 +1797,9 @@ class DDF(DDFSketch):
 
         if len(self.task_list) > 2:
             COMPSsContext.tasks_map[last_last_uuid]['function'][n_input] = res
+
+        if isinstance(columns, str):
+            columns = [columns]
 
         if split:
             if columns:
@@ -1800,7 +1841,7 @@ class DDF(DDFSketch):
         COMPSsContext.tasks_map[new_state_uuid] = \
             {'name': 'union',
              'status': 'WAIT',
-             'lazy': False,
+             'optimization': self.OPT_OTHER,
              'function': [task_union, settings],
              'parent': [self.last_uuid,  data2.last_uuid],
              'output': 1,
@@ -1839,7 +1880,7 @@ class DDF(DDFSketch):
         COMPSsContext.tasks_map[new_state_uuid] = \
             {'name': 'union',
              'status': 'WAIT',
-             'lazy': False,
+             'optimization': self.OPT_OTHER,
              'function': [task_union, settings],
              'parent': [self.last_uuid,  data2.last_uuid],
              'output': 1,
@@ -1882,7 +1923,7 @@ class DDF(DDFSketch):
         COMPSsContext.tasks_map[new_state_uuid] = \
             {'name': 'rename',
              'status': 'WAIT',
-             'lazy': True,
+             'optimization': self.OPT_SERIAL,
              'function': [task_rename, settings],
              'parent': [self.last_uuid],
              'output': 1,

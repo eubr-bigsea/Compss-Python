@@ -57,7 +57,7 @@ class PCA(ModelDDF):
         :return: trained model
         """
 
-        df, nfrag, tmp = self._ddf_inital_setup(data)
+        df, nfrag, tmp = self._ddf_initial_setup(data)
 
         n_components = self.settings.get('n_components')
         cols = self.settings.get('input_col')
@@ -108,7 +108,7 @@ class PCA(ModelDDF):
         :param output_col: A list of output feature column or a suffix name.
         :return: DDF
         """
-        df, nfrag, tmp = self._ddf_inital_setup(data)
+        df, nfrag, tmp = self._ddf_initial_setup(data)
 
         if len(self.model) == 0:
             raise Exception("Model is not fitted.")
@@ -130,7 +130,7 @@ class PCA(ModelDDF):
                                                 pred_col, model, f, remove)
 
         uuid_key = self._ddf_add_task(task_name='transform_pca',
-                                      status='COMPLETED', lazy=False,
+                                      status='COMPLETED', lazy=self.OPT_OTHER,
                                       function={0: result},
                                       parent=[tmp.last_uuid],
                                       n_output=1, n_input=1, info=info)

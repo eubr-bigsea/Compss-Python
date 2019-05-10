@@ -76,7 +76,7 @@ class Kmeans(ModelDDF):
         :return: trained model
         """
 
-        df, nfrag, tmp = self._ddf_inital_setup(data)
+        df, nfrag, tmp = self._ddf_initial_setup(data)
 
         k = int(self.settings['k'])
         max_iterations = int(self.settings.get('max_iter', 100))
@@ -144,7 +144,7 @@ class Kmeans(ModelDDF):
         if len(self.model) == 0:
             raise Exception("Model is not fitted.")
 
-        df, nfrag, tmp = self._ddf_inital_setup(data)
+        df, nfrag, tmp = self._ddf_initial_setup(data)
 
         features_col = self.settings['feature_col']
         self.settings['pred_col'] = pred_col
@@ -156,7 +156,7 @@ class Kmeans(ModelDDF):
                                                  self.model, pred_col, f)
 
         uuid_key = self._ddf_add_task(task_name='task_transform_kmeans',
-                                      status='COMPLETED', lazy=False,
+                                      status='COMPLETED', lazy=self.OPT_OTHER,
                                       function={0: result},
                                       parent=[tmp.last_uuid],
                                       n_output=1, n_input=1, info=info)

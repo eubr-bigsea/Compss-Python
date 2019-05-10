@@ -79,7 +79,7 @@ class SVM(ModelDDF):
         coef_threshold = float(self.settings.get('coef_threshold', 0.001))
         coef_max_iter = int(self.settings.get('max_iter', 100))
 
-        df, nfrag, tmp = self._ddf_inital_setup(data)
+        df, nfrag, tmp = self._ddf_initial_setup(data)
 
         col_label = self.settings['label_col']
         col_feature = self.settings['feature_col']
@@ -142,7 +142,7 @@ class SVM(ModelDDF):
 
         cols = [self.settings['feature_col'], self.settings['pred_col']]
 
-        df, nfrag, tmp = self._ddf_inital_setup(data)
+        df, nfrag, tmp = self._ddf_initial_setup(data)
 
         result = [[] for _ in range(nfrag)]
         info = [[] for _ in range(nfrag)]
@@ -150,7 +150,7 @@ class SVM(ModelDDF):
             result[f], info[f] = _predict_partial(df[f], self.model[0], cols, f)
 
         uuid_key = self._ddf_add_task(task_name='task_transform_svm',
-                                      status='COMPLETED', lazy=False,
+                                      status='COMPLETED', lazy=self.OPT_OTHER,
                                       function={0: result},
                                       parent=[tmp.last_uuid],
                                       n_output=1, n_input=1, info=info)
