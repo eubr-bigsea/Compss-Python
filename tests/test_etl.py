@@ -70,7 +70,7 @@ def etl():
         .replace({15: 42}, subset=['rings'])
 
     df = data4.to_df()[0:5]
-    print("etl_test_3:",df)
+    print("etl_test_3:", df)
 
     print("""
     ----------------------------------------------------------------------------
@@ -99,7 +99,7 @@ def etl():
     df = data6.to_df()
     print("etl_test_5a len({}): {}".format(len(df), df[0:5]))
 
-    data7 = data6.sample(10).sort(['rings'], [True])
+    data7 = data6.sample(7).sort(['rings'], [True])
     data8 = data6.join(data7, ['rings'], ['rings'])
 
     df = data8.to_df()
@@ -109,8 +109,8 @@ def etl():
     ----------------------------------------------------------------------------
         etl_test_6: Avaliar capacidade de gerar resultado sem salvar varivel
     """)
-    df = data1.distinct(['rings']).show()
-    df2 = data1.cache().show()
+    df = data1.distinct(['rings']).to_df()
+    df2 = data1.cache().to_df()
     print("etl_test_6a:", df)
     print("etl_test_6b:", df2)
     print('Must be equals')
@@ -121,10 +121,10 @@ def etl():
     """)
 
     v = data1.select(['rings']).count_rows()
-    df = data1.select(['rings']).take(7).show()
+    len_df = data1.select(['rings']).take(7).count_rows()
 
     print("etl_test_7a:", v)
-    print("etl_test_7b:", len(df))
+    print("etl_test_7b:", len_df)
 
 
 def add_columns():
@@ -292,7 +292,7 @@ def explode():
     print("etl_test - explode - OK")
 
 
-def filter():
+def filter_operation():
     print("\n|-------- Filter --------|\n")
     data = pd.DataFrame([[i, i + 5] for i in range(10)], columns=['a', 'b'])
 
@@ -340,7 +340,7 @@ def hash_partition():
     data['b'] = data['b'].astype(str)
 
     ddf_1 = DDF().parallelize(data, 12).hash_partition(columns=['a', 'b'],
-                                                      nfrag=6)
+                                                       nfrag=6)
     f = ddf_1.num_of_partitions()
     c = ddf_1.count_rows(total=False)
     print(ddf_1.count_rows(total=False))
@@ -457,7 +457,9 @@ def map():
     data = pd.DataFrame([[i, i + 5, 0] for i in range(10)],
                         columns=['a', 'b', 'c'])
 
-    f = lambda col: 7 if col['a'] > 5 else col['a']
+    def f(col):
+        return 7 if col['a'] > 5 else col['a']
+
     ddf_1 = DDF().parallelize(data, 4).map(f, 'a')
     df1 = ddf_1.to_df()
     res_tra = pd.DataFrame([[0, 5, 0], [1, 6, 0], [2, 7, 0], [3, 8, 0],
@@ -467,13 +469,59 @@ def map():
     print("etl_test - map - OK")
 
 
-def read_data():
-    print("\n|-------- Read Data --------|\n")
-    dtypes = {'la1el': np.dtype('O'), 'x': np.float64, 'y': np.float64}
-    ddf_1 = DDF().load_text('/test-read_data.csv', header=True, storage='hdfs',
-                            sep=',', dtype=dtypes).select(['x', 'y'])
+def read_data_single_fs():
+    print("\n|-------- Read Data from a single file on FS --------|\n")
+    dtypes = {'sepal_length': np.float64, 'sepal_width': np.float64,
+              'petal_length': np.float64, 'petal_width': np.float64,
+              'class': np.dtype('O')}
+    ddf_1 = DDF().load_text('./iris-dataset.csv', header=True, storage='fs',
+                            sep=',', dtype=dtypes, distributed=False)\
+        .select(['class', 'sepal_length'])
 
     print(ddf_1.schema())
+    print("Number of partitions: ", ddf_1.num_of_partitions())
+    print("Number of rows: ", ddf_1.count_rows())
+
+
+def read_data_multi_fs():
+    print("\n|-------- Read Data from files in a folder on FS --------|\n")
+    dtypes = {'sepal_length': np.float64, 'sepal_width': np.float64,
+              'petal_length': np.float64, 'petal_width': np.float64,
+              'class': np.dtype('O')}
+    ddf_1 = DDF().load_text('~/iris_dataset_folder/', header=True, storage='fs',
+                            sep=',', dtype=dtypes, distributed=True)\
+        .select(['class', 'sepal_width'])
+
+    print(ddf_1.schema())
+    print("Number of partitions: ", ddf_1.num_of_partitions())
+    print("Number of rows: ", ddf_1.count_rows())
+
+
+def read_data_single_hdfs():
+    print("\n|-------- Read Data From a single file on HDFS --------|\n")
+    dtypes = {'la1el': np.dtype('O'), 'x': np.float64, 'y': np.float64}
+    ddf_1 = DDF().load_text('/test-read_data.csv', header=True, storage='hdfs',
+                            sep=',', dtype=dtypes,
+                            distributed=False).select(['x', 'y'])
+
+    print(ddf_1.schema())
+    print("Number of partitions: ", ddf_1.num_of_partitions())
+    print("Number of rows: ", ddf_1.count_rows())
+
+
+def read_data_multi_hdfs():
+    print("\n|-------- Read Data from files in a folder on HDFS --------|\n")
+    dtypes = {'sepal_length': np.float64, 'sepal_width': np.float64,
+              'petal_length': np.float64, 'petal_width': np.float64,
+              'class': np.dtype('O')}
+    ddf_1 = DDF().load_text('/iris_dataset_folder/', header=True,
+                            storage='hdfs', sep=',', dtype=dtypes,
+                            distributed=True)\
+        .select(['class', 'sepal_width', 'sepal_length'])
+
+    print(ddf_1.schema())
+    print("Number of partitions: ", ddf_1.num_of_partitions())
+    print("Number of rows: ", ddf_1.count_rows())
 
 
 def rename():
@@ -547,6 +595,13 @@ def sample():
     print("etl_test - sample - OK")
 
 
+def save_data_hdfs():
+    print("\n|-------- Save Data --------|\n")
+    data = pd.DataFrame([[i, i + 5] for i in range(1000)], columns=['a', 'b'])
+
+    ddf_1 = DDF().parallelize(data, 4).save('/test_save_data')
+
+
 def select():
     print("\n|-------- Select --------|\n")
     data = pd.DataFrame([[i, i + 5, 0] for i in range(10)],
@@ -585,11 +640,14 @@ def sort():
     for f in power_of2:
         print("# fragments: ", f)
         n1 = np.random.randint(0, 10000, f)
-        # data = pd.DataFrame({'a': np.random.randint(1, 1000, n1)})
-        # ddf_1 = DDF().parallelize(data, f)
 
-        data, info = generate_data(n1, dim=2, max_size=1000)
-        ddf_1 = DDF().import_data(data, info)
+        n1 = sum(n1)
+        data = pd.DataFrame({'col0': np.random.randint(1, 1000, n1),
+                             'col1': np.random.randint(1, 1000, n1)})
+        ddf_1 = DDF().parallelize(data, f)
+
+        # data, info = generate_data(n1, dim=2, max_size=1000)
+        # ddf_1 = DDF().import_data(data, info)
 
         size_b = ddf_1.count_rows(total=False)
         print("size before {}: {}".format(sum(size_b), size_b))
@@ -604,14 +662,17 @@ def sort():
         size_a = ddf_2.count_rows(total=False)
         print("size after {}: {}".format(sum(size_a), size_a))
         df = ddf_2.to_df()
-        print(df)
         a = df['col0'].values
 
         is_sorted = lambda a: np.all(a[:-1] <= a[1:])
-        val = (is_sorted(a) and sum(n1) == len(a))
+        cond1 = is_sorted(a)
+        cond2 = n1 == len(a)
+        val = (cond1 and cond2)
         if not val:
             print("error with nfrag=", f)
             print(a)
+            print(cond1)
+            print(cond2)
 
 
 def subtract():
@@ -712,10 +773,10 @@ if __name__ == '__main__':
     # balancer()
     # cast()
     # cross_join()
-    etl()
+    # etl()
     # except_all()
     # explode()
-    # filter()
+    # filter_operation()
     # fill_na()  #TODO change dtypes
     # distinct()
     # drop()
@@ -724,7 +785,10 @@ if __name__ == '__main__':
     # intersect()
     # intersect_all()
     # join()
-    # read_data()
+    # read_data_single_fs()
+    # read_data_multi_fs()
+    # read_data_single_hdfs()
+    # read_data_multi_hdfs()
     # map()
     # rename()
     # repartition()
@@ -732,6 +796,7 @@ if __name__ == '__main__':
     # range_partition()
     # replace()
     # sample()
+    save_data_hdfs()
     # select()
     # select_expression()
     # sort()

@@ -52,13 +52,13 @@ def hash_partition(data, settings):
             splits[f] = ddf_library.functions.etl.repartition\
                 .split_by_hash(data[f], cols, info, nfrag_target)
 
-        n_concat = 10 if nfrag > 10 else nfrag
+        # n_concat = nfrag // 2 if nfrag > 10 else nfrag
         result = [[] for _ in range(nfrag_target)]
         info = [{} for _ in range(nfrag_target)]
         for f in range(nfrag_target):
             tmp = [splits[t][f] for t in range(nfrag)]
             result[f] = ddf_library.functions.etl.repartition\
-                .merge_n_reduce(concat_n_pandas, tmp, n_concat)
+                .merge_n_reduce(concat_n_pandas, tmp, nfrag)
             info[f] = _get_schema(result[f], f)
 
         compss_delete_object(splits)

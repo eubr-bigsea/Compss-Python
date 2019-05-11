@@ -68,7 +68,8 @@ def split_by_hash(df, cols, info, nfrag):
     df.reset_index(drop=True, inplace=True)
     if len(df) > 0:
 
-        keys = df[cols].astype(str).values.sum(axis=1).flatten()
+        keys = df[cols].astype(str).values.sum(axis=1).ravel()
+        keys.flags.writeable = False
         v_hashcode = np.vectorize(hashcode)
         indexes = v_hashcode(keys) % nfrag
 
@@ -81,7 +82,7 @@ def split_by_hash(df, cols, info, nfrag):
 
 
 def hashcode(x):
-    return int(zlib.crc32(x.encode()) & 0xffffffff)
+    return int(zlib.adler32(x.encode()) & 0xffffffff)
 
 
 @constraint(ComputingUnits="2")  # approach to have more available memory

@@ -35,7 +35,7 @@ def sample(data, params):
     idx_list, seed = _sample_preprocessing(params, nfrag)
 
     result = [[] for _ in range(nfrag)]
-    info = [[] for _ in range(nfrag)]
+    info = result[:]
     for f in range(nfrag):
         result[f], info[f] = _get_samples(data[f], idx_list, f, seed)
 

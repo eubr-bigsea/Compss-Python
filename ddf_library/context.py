@@ -12,6 +12,7 @@ DDF is a Library for PyCOMPSs.
 from ddf_library.utils import merge_info
 
 from pycompss.api.task import task
+from pycompss.api.parameter import FILE_IN
 from pycompss.api.api import compss_wait_on
 from pycompss.runtime.binding import Future
 
@@ -370,7 +371,10 @@ class COMPSsContext(object):
             print("Stages (optimized): {}".format(group_uuids))
             print("opt_functions", group_func)
 
-        result, info = self._execute_lazy(group_func, inputs)
+        file_serial_function = any(['file_in' in self.get_task_name(taskid)
+                                    for taskid in group_uuids])
+        result, info = self._execute_serial_tasks(group_func, inputs,
+                                                  file_serial_function)
         self.save_lazy_states(result, info, group_uuids)
 
     def save_non_lazy_states(self, output_dict, child_task):
@@ -433,7 +437,7 @@ class COMPSsContext(object):
         return output
 
     @staticmethod
-    def _execute_lazy(opt, data):
+    def _execute_serial_tasks(opt, data, type_function):
 
         """
         Used to execute a group of lazy tasks. This method submit
@@ -442,6 +446,8 @@ class COMPSsContext(object):
         :param opt: sequence of functions and parameters to be executed in
             each fragment
         :param data: input data
+        :param type_function: if False, use task_bundle otherwise
+         task_bundle_file
         :return:
         """
 
@@ -453,8 +459,13 @@ class COMPSsContext(object):
                 tmp = data[k]
 
         result, info = [[] for _ in tmp], [[] for _ in tmp]
-        for f, df in enumerate(tmp):
-            result[f], info[f] = task_bundle(df, opt, f)
+
+        if type_function:
+            for f, df in enumerate(tmp):
+                result[f], info[f] = task_bundle_file(df, opt, f)
+        else:
+            for f, df in enumerate(tmp):
+                result[f], info[f] = task_bundle(df, opt, f)
 
         return result, info
 
@@ -472,4 +483,14 @@ def task_bundle(data, stage, id_frag):
     return data, info
 
 
+@task(returns=2, filename=FILE_IN)
+def task_bundle_file(data, stage, id_frag):
+    info = []
+    for f, current_task in enumerate(stage):
+        function, settings = current_task
+        if isinstance(settings, dict):
+            # Used only in save
+            settings['id_frag'] = id_frag
+        data, info = function(data, settings)
 
+    return data, info

@@ -61,10 +61,10 @@ class DDF(DDFSketch):
         return "DDF object."
 
     def load_text(self, filename, num_of_parts=4, header=True,
-                  sep=',', storage='hdfs', host='localhost', port=9000,
-                  distributed=False, dtype='str'):
+                  sep=',', dtype=None, na_values=None, storage='hdfs',
+                  host='localhost', port=9000, distributed=False):
         """
-        Create a DDF from a commom file system or from HDFS.
+        Create a DDF from a common file system or from HDFS.
 
         :param filename: Input file name;
         :param num_of_parts: number of partitions (default, 4);
@@ -74,8 +74,11 @@ class DDF(DDFSketch):
          ‘Int64’} Use str or object together with suitable na_values settings
          to preserve and not interpret dtype;
         :param sep: separator delimiter (default, ',');
+        :param na_values: A list with the all nan characters. Default list:
+         ['', '#N/A', '#N/A N/A', '#NA', '-1.#IND', '-1.#QNAN', '-NaN',
+         '-nan', '1.#IND', '1.#QNAN', 'N/A', 'NA', 'NULL', 'NaN', 'nan']
         :param storage: *'hdfs'* to use HDFS as storage or *'fs'* to use the
-         common file sytem;
+         common file system;
         :param distributed: if the absolute path represents a unique file or
          a folder with multiple files;
         :param host: Namenode host if storage is `hdfs` (default, 'localhost');
@@ -98,36 +101,60 @@ class DDF(DDFSketch):
                                  format='csv', storage=storage,
                                  distributed=distributed,
                                  dtype=dtype, separator=sep, header=header,
-                                 na_values='', host=host, port=port)
+                                 na_values=na_values, host=host, port=port)
 
         if storage is 'fs':
 
-            result, info = data_reader.transform()
+            if distributed:
+                blocks = data_reader.get_blocks()
+                COMPSsContext.tasks_map[self.last_uuid]['function'] = \
+                    {0: blocks}
 
-            new_state_uuid = self._generate_uuid()
-            COMPSsContext.tasks_map[new_state_uuid] = \
-                {'name': 'load_text',
-                 'status': 'COMPLETED',
-                 'optimization': self.OPT_OTHER,
-                 'function': {0: result},
-                 'output': 1,
-                 'input': 0,
-                 'parent': [self.last_uuid]
-                 }
+                def reader(block, params):
+                    return data_reader.transform_fs_distributed(block, params)
 
-            COMPSsContext.schemas_map[new_state_uuid] = {0: info}
+                new_state_uuid = self._generate_uuid()
+                COMPSsContext.tasks_map[new_state_uuid] = \
+                    {'name': 'load_text-file_in',
+                     'status': 'WAIT',
+                     'optimization': self.OPT_SERIAL,
+                     'function': [reader, {}],
+                     'output': 1,
+                     'input': 0,
+                     'parent': [self.last_uuid]
+                     }
+
+            else:
+
+                result, info = data_reader.transform_fs_single()
+
+                new_state_uuid = self._generate_uuid()
+                COMPSsContext.tasks_map[new_state_uuid] = \
+                    {'name': 'load_text',
+                     'status': 'COMPLETED',
+                     'optimization': self.OPT_OTHER,
+                     'function': {0: result},
+                     'output': 1,
+                     'input': 0,
+                     'parent': [self.last_uuid]
+                     }
+
+                COMPSsContext.schemas_map[new_state_uuid] = {0: info}
         else:
             blocks = data_reader.get_blocks()
 
             COMPSsContext.tasks_map[self.last_uuid]['function'] = \
                 {0: blocks}
 
+            def reader(block, params):
+                return data_reader.transform_hdfs(block, params)
+
             new_state_uuid = self._generate_uuid()
             COMPSsContext.tasks_map[new_state_uuid] = \
                 {'name': 'load_text',
                  'status': 'WAIT',
                  'optimization': self.OPT_SERIAL,
-                 'function': [data_reader.read_hdfs_serial, {}],
+                 'function': [reader, {}],
                  'output': 1,
                  'input': 0,
                  'parent': [self.last_uuid]

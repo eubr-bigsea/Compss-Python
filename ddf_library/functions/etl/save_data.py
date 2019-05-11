@@ -4,9 +4,11 @@
 __author__ = "Lucas Miguel S Ponce"
 __email__ = "lucasmsp@gmail.com"
 
-import pandas as pd
+
 from pycompss.api.task import task
 from pycompss.api.parameter import FILE_OUT
+
+import pandas as pd
 
 
 class SaveOperation(object):
@@ -216,13 +218,3 @@ def _save_json_fs_(filename, data):
     """
     data.to_json(filename, orient='records')
     return None
-
-
-# def save_pickle_fs(outfile, data):
-#     """Save an array to a serializable Pickle file format
-#
-#     :param outfile: the /path/file.npy
-#     :param data: the data to save
-#     """
-#     with open(outfile, 'wb') as handle:
-#         pickle.dump(data, handle, protocol=pickle.HIGHEST_PROTOCOL)
