@@ -595,11 +595,26 @@ def sample():
     print("etl_test - sample - OK")
 
 
-def save_data_hdfs():
-    print("\n|-------- Save Data --------|\n")
+def save_data_fs():
+    print("\n|-------- Save Data in FS--------|\n")
     data = pd.DataFrame([[i, i + 5] for i in range(1000)], columns=['a', 'b'])
 
-    ddf_1 = DDF().parallelize(data, 4).save('/test_save_data')
+    ddf_1 = DDF().parallelize(data, 4)\
+        .save('~/test_save_data', storage='fs').to_df('a')
+    if len(ddf_1) != n:
+        raise Exception("Error in save_data_fs")
+    print("etl_test - Save Data - OK")
+
+
+def save_data_hdfs():
+    print("\n|-------- Save Data in HDFS--------|\n")
+    n = 10000
+    data = pd.DataFrame([[i, i + 5] for i in range(n)], columns=['a', 'b'])
+
+    ddf_1 = DDF().parallelize(data, 4).save('/test_save_data').to_df('a')
+    if len(ddf_1) != n:
+        raise Exception("Error in save_data_hdfs")
+    print("etl_test - Save Data - OK")
 
 
 def select():
@@ -796,6 +811,7 @@ if __name__ == '__main__':
     # range_partition()
     # replace()
     # sample()
+    # Disave_data_fs()
     save_data_hdfs()
     # select()
     # select_expression()

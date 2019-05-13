@@ -31,9 +31,12 @@ class COMPSsContext(object):
     schemas_map = dict()
     tasks_map = OrderedDict()
 
-    OPT_SERIAL = 'serial'
-    OPT_OTHER = 'other'
-    optimization_ops = [OPT_OTHER, OPT_SERIAL]
+    OPT_SERIAL = 'serial'  # it can be grouped with others operations
+    OPT_OTHER = 'other'  # it can not be performed any kind of task optimization
+    OPT_LAST = 'last'  # it contains two or more stages,
+    # but only the last stage can be grouped
+
+    optimization_ops = [OPT_OTHER, OPT_SERIAL, OPT_LAST]
     """
     task_map: a dictionary to stores all following information about a task:
 
@@ -292,7 +295,8 @@ class COMPSsContext(object):
                                             n_input, inputs)
 
                 # lazy tasks that could be executed in group
-                elif self.get_task_opt_type(child_task) == self.OPT_SERIAL:
+                elif self.get_task_opt_type(child_task) in [self.OPT_SERIAL,
+                                                            self.OPT_LAST]:
                     self.run_serial_tasks(i_task, child_task, tasks_list,
                                           selected_tasks, inputs)
 
@@ -472,11 +476,10 @@ class COMPSsContext(object):
 
 @task(returns=2)
 def task_bundle(data, stage, id_frag):
-    info = []
+    info = None
     for f, current_task in enumerate(stage):
         function, settings = current_task
         if isinstance(settings, dict):
-            # Used only in save
             settings['id_frag'] = id_frag
         data, info = function(data, settings)
 
@@ -485,11 +488,10 @@ def task_bundle(data, stage, id_frag):
 
 @task(returns=2, filename=FILE_IN)
 def task_bundle_file(data, stage, id_frag):
-    info = []
+    info = None
     for f, current_task in enumerate(stage):
         function, settings = current_task
         if isinstance(settings, dict):
-            # Used only in save
             settings['id_frag'] = id_frag
         data, info = function(data, settings)
 

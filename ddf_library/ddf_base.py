@@ -17,9 +17,12 @@ class DDFSketch(object):
     """
     Basic functions that are necessary when submit a new operation
     """
-    OPT_SERIAL = 'serial'
-    OPT_OTHER = 'other'
-    optimization_ops = [OPT_OTHER, OPT_SERIAL]
+    OPT_SERIAL = 'serial'  # it can be grouped with others operations
+    OPT_OTHER = 'other'  # it can not be performed any kind of task optimization
+    OPT_LAST = 'last'  # it contains two or more stages,
+    # but only the last stage can be grouped
+
+    optimization_ops = [OPT_OTHER, OPT_SERIAL, OPT_LAST]
 
     def __init__(self):
 

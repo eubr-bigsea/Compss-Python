@@ -463,7 +463,7 @@ class DDF(DDFSketch):
         COMPSsContext.tasks_map[new_state_uuid] = \
             {'name': 'add_column',
              'status': 'WAIT',
-             'optimization': self.OPT_OTHER,
+             'optimization': self.OPT_LAST,
              'function': [task_add_column, settings],
              'parent': [self.last_uuid, data2.last_uuid],
              'output': 1,
@@ -1506,7 +1506,7 @@ class DDF(DDFSketch):
         self._set_n_input(new_state_uuid, self.settings['input'])
         return DDF(task_list=self.task_list, last_uuid=new_state_uuid)
 
-    def save(self, filename, filetype='csv', storage='hdfs',
+    def save(self, filename, format='csv', storage='hdfs',
              header=True, mode='overwrite'):
         """
         Save the data in the storage.
@@ -1514,26 +1514,26 @@ class DDF(DDFSketch):
         Is it a Lazy function: Yes
 
         :param filename: output name;
-        :param filetype: format file, CSV or JSON;
-        :param storage: 'fs' to commom file system or 'hdfs' to use HDFS;
+        :param format: format file, CSV or JSON;
+        :param storage: 'fs' to common file system or 'hdfs' to use HDFS;
         :param header: save with the columns header;
-        :param mode: 'overwrite' if file exists, 'ignore' or 'error'
-        :return:
+        :param mode: 'overwrite' (default) if file exists, 'ignore' or 'error'.
+         Only used when storage is 'hdfs'.
+        :return: Return the same input data to perform others operations;
         """
 
         from ddf_library.functions.etl.save_data import SaveOperation
 
-        settings = dict()
-        settings['filename'] = filename
-        settings['format'] = filetype
-        settings['storage'] = storage
-        settings['header'] = header
-        settings['mode'] = mode
+        settings = {'filename': filename,
+                    'format': format,
+                    'storage': storage,
+                    'header': header,
+                    'mode': mode}
 
-        settings = SaveOperation().preprocessing(settings, len(self.partitions))
+        SaveOperation().preprocessing(settings)
 
         def task_save(df, params):
-            return SaveOperation().transform_serial(df, params)
+            return SaveOperation().transform(df, params)
 
         new_state_uuid = self._generate_uuid()
         COMPSsContext.tasks_map[new_state_uuid] = \
