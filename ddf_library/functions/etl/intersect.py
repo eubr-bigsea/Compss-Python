@@ -5,6 +5,7 @@ __author__ = "Lucas Miguel S Ponce"
 __email__ = "lucasmsp@gmail.com"
 
 from ddf_library.utils import generate_info
+from .hash_partitioner import hash_partition
 
 from pycompss.api.task import task
 
@@ -12,7 +13,7 @@ import pandas as pd
 import numpy as np
 
 
-def intersect(data1, data2, settings):
+def intersect_stage_1(data1, data2, settings):
     """
     Returns a new DataFrame containing rows in both frames.
 
@@ -24,36 +25,27 @@ def intersect(data1, data2, settings):
 
     .. note:: Rows with NA elements will not be take in count.
     """
-    remove_duplicates = settings.get('distinct', True)
-    info1 = settings['info'][0]
-    info2 = settings['info'][1]
 
+    info1, info2 = settings['info']
     nfrag = len(data1)
-    from .hash_partitioner import hash_partition
 
     params_hash1 = {'columns': [], 'info': [info1], 'nfrag': nfrag}
-    out1 = hash_partition(data1, params_hash1)
-    data1 = out1['data']
-
     params_hash2 = {'columns': [], 'info': [info2], 'nfrag': nfrag}
+
+    out1 = hash_partition(data1, params_hash1)
     out2 = hash_partition(data2, params_hash2)
+
+    data1 = out1['data']
     data2 = out2['data']
 
-    info = [[] for _ in range(nfrag)]
-    result = info[:]
-
-    for f in range(nfrag):
-        result[f], info[f] = _intersection(data1[f], data2[f], f,
-                                           remove_duplicates)
-
-    output = {'key_data': ['data'], 'key_info': ['info'],
-              'data': result, 'info': info}
-    return output
+    return data1, data2, settings
 
 
-@task(returns=2)
-def _intersection(df1, df2, frag, remove_duplicates):
+def intersect_stage_2(df1, df2, settings):
     """Perform a partial intersection."""
+
+    remove_duplicates = settings.get('distinct', True)
+    frag = settings['id_frag']
 
     keys = df1.columns.tolist()
     keys2 = df2.columns.tolist()

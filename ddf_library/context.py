@@ -222,7 +222,7 @@ class COMPSsContext(object):
         # get the operation to be executed
         operation = self.get_task_function(child_task)
 
-        # some operations need a prior information
+        # some operations need a schema information
         if self.tasks_map[child_task].get('info', False):
             operation[1]['info'] = []
             for p, i in zip(id_parents, n_input):
@@ -289,16 +289,18 @@ class COMPSsContext(object):
                     self.run_sync(child_task, id_parents, n_input, inputs)
                     break
 
-                # non lazy tasks that need to be executed separated
                 elif self.get_task_opt_type(child_task) == self.OPT_OTHER:
-                    self.run_non_lazy_tasks(child_task, id_parents,
-                                            n_input, inputs)
+                    self.run_opt_others_tasks(child_task, id_parents,
+                                              n_input, inputs)
 
-                # lazy tasks that could be executed in group
-                elif self.get_task_opt_type(child_task) in [self.OPT_SERIAL,
-                                                            self.OPT_LAST]:
-                    self.run_serial_tasks(i_task, child_task, tasks_list,
-                                          selected_tasks, inputs)
+                elif self.get_task_opt_type(child_task) == self.OPT_SERIAL:
+                    self.run_opt_serial_tasks(i_task, child_task, tasks_list,
+                                              selected_tasks, inputs)
+
+                elif self.get_task_opt_type(child_task) == self.OPT_LAST:
+                    self.run_opt_last_tasks(i_task, child_task, tasks_list,
+                                            selected_tasks, inputs, id_parents,
+                                            n_input)
 
     def run_sync(self, child_task, id_parents, n_input, inputs):
         """
@@ -321,7 +323,7 @@ class COMPSsContext(object):
         self.set_task_status(child_task, 'COMPLETED')
         self.set_task_status(id_p, 'COMPLETED')
 
-    def run_non_lazy_tasks(self, child_task, id_parents, n_input, inputs):
+    def run_opt_others_tasks(self, child_task, id_parents, n_input, inputs):
         """
         The current operation can not be grouped with other operations, so,
         it must be executed separated.
@@ -336,10 +338,10 @@ class COMPSsContext(object):
         # execute this operation that returns a dictionary
         output_dict = self._execute_task(operation, inputs)
 
-        self.save_non_lazy_states(output_dict, child_task)
+        self.save_opt_others_tasks(output_dict, child_task)
 
-    def run_serial_tasks(self, i_task, child_task, tasks_list, selected_tasks,
-                         inputs):
+    def run_opt_serial_tasks(self, i_task, child_task, tasks_list,
+                             selected_tasks, inputs):
         """
         The current operation can be grouped with other operations. This method
         check if the next operations share this behavior. If it does, group
@@ -381,7 +383,52 @@ class COMPSsContext(object):
                                                   file_serial_function)
         self.save_lazy_states(result, info, group_uuids)
 
-    def save_non_lazy_states(self, output_dict, child_task):
+    def run_opt_last_tasks(self, i_task, child_task, tasks_list,
+                           selected_tasks, inputs, id_parents, n_input):
+        """
+        The current operation can be grouped with other operations. This method
+        check if the next operations share this behavior. If it does, group
+        them to execute together, otherwise, execute it as a single task.
+        """
+        group_uuids, group_func = set(), list()
+
+        if DEBUG:
+            print("RUNNING {} ({}) - condition 5.".format(
+                    self.tasks_map[child_task]['name'], child_task))
+
+        group_uuids.add(tasks_list[i_task])
+        operation = self.set_operation(child_task, id_parents, n_input)
+        group_func.append(operation)
+
+        i_task += 1
+        for id_j, task_opt in enumerate(tasks_list[i_task:]):
+            if DEBUG:
+                print('Checking optimization type: {} -> {}'.format(
+                        task_opt[:8], self.tasks_map[task_opt]['name']))
+
+            group_uuids.add(task_opt)
+            group_func.append(self.get_task_function(task_opt))
+
+            if (i_task + id_j + 1) < len(tasks_list):
+                next_task = tasks_list[i_task + id_j + 1]
+
+                if selected_tasks.count(task_opt) != \
+                        selected_tasks.count(next_task):
+                    break
+
+                if not all([self.get_task_opt_type(task_opt) == self.OPT_SERIAL,
+                            self.get_task_opt_type(next_task) == self.OPT_SERIAL
+                            ]):
+                    break
+
+        if DEBUG:
+            print("Stages (optimized): {}".format(group_uuids))
+            print("opt_functions", group_func)
+
+        result, info = self._execute_opt_last_tasks(group_func, inputs, n_input)
+        self.save_lazy_states(result, info, group_uuids)
+
+    def save_opt_others_tasks(self, output_dict, child_task):
         # Results in non lazy tasks are in dictionary format
 
         keys_data = output_dict['key_data']
@@ -391,8 +438,7 @@ class COMPSsContext(object):
         # convert the output and schema to the right format {0: ... 1: ....}
         out_data, out_info = dict(), dict()
         for f, key in enumerate(keys_data):
-            out_data[f] = output_dict[key]
-            out_info[f] = info[f]
+            out_data[f], out_info[f] = output_dict[key], info[f]
 
         # save results in task_map and schemas_map
         self.schemas_map[child_task] = out_info
@@ -407,12 +453,10 @@ class COMPSsContext(object):
             n_outputs = self.tasks_map[o]['output']
 
             if n_outputs == 1:
-                out_data[0] = result
-                out_info[0] = info
+                out_data[0], out_info[0] = result, info
             else:
                 for f in range(n_outputs):
-                    out_data[f] = result[f]
-                    out_info[f] = info[f]
+                    out_data[f], out_info[f] = result[f], info[f]
 
             self.set_task_function(o, out_data)
             self.schemas_map[o] = out_info
@@ -432,6 +476,7 @@ class COMPSsContext(object):
         """
 
         function, settings = env
+        # convert dictionary in list
         if len(input_data) > 1:
             partitions = [input_data[k] for k in input_data]
         else:
@@ -441,7 +486,39 @@ class COMPSsContext(object):
         return output
 
     @staticmethod
-    def _execute_serial_tasks(opt, data, type_function):
+    def _execute_serial_tasks(opt, input_data, type_function):
+
+        """
+        Used to execute a group of lazy tasks. This method submit
+        multiple 'context.task_bundle', one for each data fragment.
+
+        :param opt: sequence of functions and parameters to be executed in
+            each fragment
+        :param input_data: input data
+        :param type_function: if False, use task_bundle otherwise
+         task_bundle_file
+        :return:
+        """
+
+        if len(data) > 1:
+            tmp = [input_data[k] for k in input_data]
+        else:
+            tmp = input_data[0]
+
+        result = [[] for _ in range(nfrag)]
+        info = result[:]
+
+        if type_function:
+            function = task_bundle_file
+        else:
+            function = task_bundle
+
+        for f, df in enumerate(tmp):
+            result[f], info[f] = function(df, opt, f)
+
+        return result, info
+
+    def _execute_opt_last_tasks(self, opt, data, n_input):
 
         """
         Used to execute a group of lazy tasks. This method submit
@@ -450,49 +527,55 @@ class COMPSsContext(object):
         :param opt: sequence of functions and parameters to be executed in
             each fragment
         :param data: input data
-        :param type_function: if False, use task_bundle otherwise
-         task_bundle_file
         :return:
         """
 
-        tmp = None
-        if len(data) > 1:
-            tmp = [data[k] for k in data]
+        fist_task, opt = opt[0], opt[1:]
+        tmp1 = None
+        if n_input == 1:
+            tmp, settings = self._execute_task(fist_task, data)
         else:
-            for k in data:
-                tmp = data[k]
+            tmp, tmp1, settings = self._execute_task(fist_task, data)
+        nfrag = len(tmp)
 
-        result, info = [[] for _ in tmp], [[] for _ in tmp]
+        opt[0][1] = settings
 
-        if type_function:
-            for f, df in enumerate(tmp):
-                result[f], info[f] = task_bundle_file(df, opt, f)
-        else:
+        result = [[] for _ in range(nfrag)]
+        info = result[:]
+
+        if n_input == 1:
             for f, df in enumerate(tmp):
                 result[f], info[f] = task_bundle(df, opt, f)
+        else:
+            for f in range(nfrag):
+                result[f], info[f] = task_bundle2(tmp[f], tmp1[f], opt, f)
 
         return result, info
 
 
 @task(returns=2)
 def task_bundle(data, stage, id_frag):
-    info = None
-    for f, current_task in enumerate(stage):
-        function, settings = current_task
-        if isinstance(settings, dict):
-            settings['id_frag'] = id_frag
-        data, info = function(data, settings)
-
-    return data, info
+    return _bundle(data, stage, id_frag)
 
 
 @task(returns=2, filename=FILE_IN)
 def task_bundle_file(data, stage, id_frag):
+    return _bundle(data, stage, id_frag)
+
+
+@task(returns=2)
+def task_bundle2(data1, data2, stage, id_frag):
+    data = [data1, data2]
+    return _bundle(data, stage, id_frag)
+
+
+def _bundle(data, stage, id_frag):
     info = None
     for f, current_task in enumerate(stage):
         function, settings = current_task
         if isinstance(settings, dict):
             settings['id_frag'] = id_frag
+        print ('bundle:', data)
         data, info = function(data, settings)
 
     return data, info

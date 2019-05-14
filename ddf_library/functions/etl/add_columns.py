@@ -29,9 +29,9 @@ class AddColumnsOperation(object):
         """
 
         suffixes = settings.get('suffixes', ['_l', '_r'])
-        nfrag1, nfrag2 = len(df1), len(df2)
         info1, info2 = settings['info'][0], settings['info'][1]
         len1, len2 = info1['size'], info2['size']
+        nfrag1, nfrag2 = len(df1), len(df2)
 
         swap_cols = sum(len1) < sum(len2)
 
@@ -55,6 +55,8 @@ class AddColumnsOperation(object):
         output = {'key_data': ['data'], 'key_info': ['info'],
                   'data': result, 'info': info}
 
+        # output = {'df1': df1, 'df2': df2, 'suffixes': suffixes}
+
         return output
 
 
@@ -72,4 +74,3 @@ def _add_columns(df1, df2, suffixes, frag):
     df1.reset_index(drop=True, inplace=True)
     info = generate_info(df1, frag)
     return df1, info
-

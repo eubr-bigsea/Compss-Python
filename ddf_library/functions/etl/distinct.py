@@ -9,7 +9,7 @@ from pycompss.api.task import task
 import pandas as pd
 
 
-def distinct(data, settings):
+def distinct_stage_1(data, settings):
     """
     Returns a new DataFrame containing the distinct rows in this DataFrame.
 
@@ -19,6 +19,7 @@ def distinct(data, settings):
      (if no field is chosen, all fields are used).
     :return: Returns a list with nfrag pandas's DataFrame.
     """
+
     nfrag = len(data)
     cols = settings['columns']
     info1 = settings['info'][0]
@@ -29,20 +30,14 @@ def distinct(data, settings):
     output1 = hash_partition(data, hash_params)
     out_hash = output1['data']
 
-    result = [[] for _ in range(nfrag)]
-    info = result[:]
-
-    for f in range(nfrag):
-        result[f], info[f] = _drop_duplicates(out_hash[f], cols, f)
-
-    output = {'key_data': ['data'], 'key_info': ['info'],
-              'data': result, 'info': info}
-    return output
+    return out_hash, settings
 
 
-@task(returns=2)
-def _drop_duplicates(data, cols, frag):
+def distinct_stage_2(data, settings):
     """Remove duplicate rows."""
+
+    cols = settings['columns']
+    frag = settings['id_frag']
 
     all_cols = data.columns
     if len(cols) == 0:
@@ -52,3 +47,8 @@ def _drop_duplicates(data, cols, frag):
     info = generate_info(data, frag)
 
     return data, info
+
+
+@task(returns=2)
+def task_distinct_stage_2(data, settings):
+    return distinct_stage_2(data, settings)

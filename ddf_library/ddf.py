@@ -463,7 +463,7 @@ class DDF(DDFSketch):
         COMPSsContext.tasks_map[new_state_uuid] = \
             {'name': 'add_column',
              'status': 'WAIT',
-             'optimization': self.OPT_LAST,
+             'optimization': self.OPT_OTHER,
              'function': [task_add_column, settings],
              'parent': [self.last_uuid, data2.last_uuid],
              'output': 1,
@@ -831,27 +831,45 @@ class DDF(DDFSketch):
 
         >>> ddf1.distinct('col_1')
         """
-        from .functions.etl.distinct import distinct
+        from .functions.etl.distinct import distinct_stage_1, distinct_stage_2
 
         settings = {'columns': cols}
 
-        def task_distinct(df, params):
-            return distinct(df, params)
+        def task_distinct_stage_1(df, params):
+            return distinct_stage_1(df, params)
 
         new_state_uuid = self._generate_uuid()
         COMPSsContext.tasks_map[new_state_uuid] = \
-            {'name': 'distinct',
+            {'name': 'distinct_stage_1',
              'status': 'WAIT',
-             'optimization': self.OPT_OTHER,
-             'function': [task_distinct, settings],
+             'optimization': self.OPT_LAST,
+             'function': [task_distinct_stage_1, settings],
              'parent': [self.last_uuid],
              'output': 1,
              'input': 1,
              'info': True
              }
 
+        last_uuid = new_state_uuid
+        task_list = self.task_list.copy()
+        task_list.append(last_uuid)
+
+        def task_distinct_stage_2(df, params):
+            return distinct_stage_2(df, params)
+
+        new_state_uuid = self._generate_uuid()
+        COMPSsContext.tasks_map[new_state_uuid] = \
+            {'name': 'distinct_stage_2',
+             'status': 'WAIT',
+             'optimization': self.OPT_SERIAL,
+             'function': [task_distinct_stage_2, None],
+             'parent': [last_uuid],
+             'output': 1,
+             'input': 1
+             }
+
         self._set_n_input(new_state_uuid, self.settings['input'])
-        return DDF(task_list=self.task_list, last_uuid=new_state_uuid)
+        return DDF(task_list=task_list, last_uuid=new_state_uuid)
 
     def drop(self, columns):
         """
@@ -1129,19 +1147,23 @@ class DDF(DDFSketch):
         >>> ddf2.intersect(ddf1)
         """
 
-        from .functions.etl.intersect import intersect
+        from .functions.etl.intersect import intersect_stage_1, \
+            intersect_stage_2
 
         settings = {'distinct': True}
 
-        def task_intersect(df, params):
-            return intersect(df[0], df[1], params)
+        def task_intersect_stage_1(df, params):
+            return intersect_stage_1(df[0], df[1], params)
+
+        def task_intersect_stage_2(df, params):
+            return intersect_stage_2(df[0], df[1], params)
 
         new_state_uuid = self._generate_uuid()
         COMPSsContext.tasks_map[new_state_uuid] = \
-            {'name': 'intersect',
+            {'name': 'task_intersect_stage_1',
              'status': 'WAIT',
-             'optimization': self.OPT_OTHER,
-             'function': [task_intersect, settings],
+             'optimization': self.OPT_LAST,
+             'function': [task_intersect_stage_1, settings],
              'parent': [self.last_uuid, data2.last_uuid],
              'output': 1,
              'input': 2,
@@ -1150,8 +1172,25 @@ class DDF(DDFSketch):
 
         self._set_n_input(new_state_uuid, self.settings['input'])
         self._set_n_input(new_state_uuid, data2.settings['input'])
-        new_list = self._merge_tasks_list(self.task_list + data2.task_list)
-        return DDF(task_list=new_list, last_uuid=new_state_uuid)
+
+        last_uuid = new_state_uuid
+        task_list = self.task_list + data2.task_list
+        task_list = self._merge_tasks_list(task_list)
+        task_list.append(last_uuid)
+
+        new_state_uuid = self._generate_uuid()
+        COMPSsContext.tasks_map[new_state_uuid] = \
+            {'name': 'task_intersect_stage_2',
+             'status': 'WAIT',
+             'optimization': self.OPT_SERIAL,
+             'function': [task_intersect_stage_2, None],
+             'parent': [last_uuid],
+             'output': 1,
+             'input': 1
+             }
+
+        self._set_n_input(new_state_uuid, self.settings['input'])
+        return DDF(task_list=task_list, last_uuid=new_state_uuid)
 
     def intersect_all(self, data2):
         """
@@ -1475,7 +1514,7 @@ class DDF(DDFSketch):
         >>> ddf1.sample()  # a random sample
         """
 
-        from .functions.etl.sample import sample
+        from .functions.etl.sample import sample_stage_1, sample_stage_2
         settings = dict()
         settings['seed'] = seed
 
@@ -1488,23 +1527,41 @@ class DDF(DDFSketch):
             """Sample a random amount of records"""
             settings['type'] = 'percent'
 
-        def task_sample(df, params):
-            return sample(df, params)
+        def task_sample_stage_1(df, params):
+            return sample_stage_1(df, params)
+
+        def task_sample_stage_2(df, params):
+            return sample_stage_2(df, params)
 
         new_state_uuid = self._generate_uuid()
         COMPSsContext.tasks_map[new_state_uuid] = \
-            {'name': 'sample',
+            {'name': 'task_sample_stage_1',
              'status': 'WAIT',
-             'optimization': self.OPT_OTHER,
-             'function': [task_sample, settings],
+             'optimization': self.OPT_LAST,
+             'function': [task_sample_stage_1, settings],
              'parent': [self.last_uuid],
              'output': 1,
              'input': 1,
              'info': True
              }
 
+        last_uuid = new_state_uuid
+        task_list = self.task_list.copy()
+        task_list.append(last_uuid)
+
+        new_state_uuid = self._generate_uuid()
+        COMPSsContext.tasks_map[new_state_uuid] = \
+            {'name': 'task_sample_stage_2',
+             'status': 'WAIT',
+             'optimization': self.OPT_SERIAL,
+             'function': [task_sample_stage_2, None],
+             'parent': [last_uuid],
+             'output': 1,
+             'input': 1
+             }
+
         self._set_n_input(new_state_uuid, self.settings['input'])
-        return DDF(task_list=self.task_list, last_uuid=new_state_uuid)
+        return DDF(task_list=task_list, last_uuid=new_state_uuid)
 
     def save(self, filename, format='csv', storage='hdfs',
              header=True, mode='overwrite'):

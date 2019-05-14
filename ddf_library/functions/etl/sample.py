@@ -10,7 +10,7 @@ import numpy as np
 import math
 
 
-def sample(data, params):
+def sample_stage_1(data, params):
     """
     Returns a sampled subset of the input panda's DataFrame.
 
@@ -32,20 +32,7 @@ def sample(data, params):
     TODO: re-balance the list, group the second stage
     """
     nfrag = len(data)
-    idx_list, seed = _sample_preprocessing(params, nfrag)
 
-    result = [[] for _ in range(nfrag)]
-    info = result[:]
-    for f in range(nfrag):
-        result[f], info[f] = _get_samples(data[f], idx_list, f, seed)
-
-    output = {'key_data': ['data'], 'key_info': ['info'],
-              'data': result, 'info': info}
-    return output
-
-
-def _sample_preprocessing(params, nfrag):
-    """Check the settings."""
     sample_type = params.get("type", 'percent')
     seed = params.get('seed', None)
     info = params['info'][0]
@@ -62,10 +49,12 @@ def _sample_preprocessing(params, nfrag):
 
         idx_list = _define_bulks(info, value, seed, False, op, nfrag)
 
-    return idx_list, seed
+    params['idx_list'] = idx_list
+    params['seed'] = seed
+
+    return data, params
 
 
-@task(returns=1)
 def _define_bulks(info, value, seed, random, int_per, nfrag):
     """Define the N random indexes to be sampled."""
 
@@ -102,15 +91,22 @@ def _define_bulks(info, value, seed, random, int_per, nfrag):
     return sizes
 
 
-@task(returns=2)
-def _get_samples(data, indexes, frag, seed):
+def sample_stage_2(data, params):
     """Perform a partial sampling."""
 
+    frag = params['id_frag']
+    seed = params['seed']
+    indexes = params['idx_list'][frag]
     n = len(data)
 
     if n > 0:
         data.reset_index(drop=True, inplace=True)
-        data = data.sample(n=indexes[frag], replace=False, random_state=seed)
+        data = data.sample(n=indexes, replace=False, random_state=seed)
 
     info = generate_info(data, frag)
     return data, info
+
+
+@task(returns=2)
+def task_sample_stage_2(data, params):
+    return sample_stage_2(data, params)
