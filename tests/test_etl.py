@@ -149,16 +149,28 @@ def add_columns():
 
 def aggregation():
     print("\n|-------- Aggregation --------|\n")
-    data3 = pd.DataFrame([[i, i + 5, 'hello'] for i in range(5, 15)],
+    n = 10
+    data3 = pd.DataFrame([[i, i + 5, 'hello'] for i in range(n)],
                          columns=['a', 'b', 'c'])
 
     express = {'a': ['count'], 'b': ['first', 'last']}
     ddf_1 = DDF().parallelize(data3, 4).group_by(['c']).agg(express)
-    ddf_1.show()
+    df = ddf_1.to_df()
+    cond1 = len(df) == 1
+    cond2 = all([f == n for f in df['count(a)'].values])
+    if not (cond1 and cond2):
+        print(df)
+        raise Exception('Error in aggregation')
 
     ddf_1 = DDF().parallelize(data3, 4).group_by(['a', 'c']).count('*')
-    ddf_1.show()
-    print("etl_test - aggregation - OK", end=' ')
+    df = ddf_1.to_df()
+    cond1 = len(df) == n
+    cond2 = all([f == 1 for f in df['count(*)'].values])
+    if not (cond1 and cond2):
+        print(df)
+        raise Exception('Error in aggregation')
+
+    print("etl_test - aggregation - OK")
 
 
 def balancer():
@@ -784,7 +796,7 @@ if __name__ == '__main__':
     print("_____ETL_____")
 
     # add_columns()
-    # aggregation()
+    aggregation()
     # balancer()
     # cast()
     # cross_join()
@@ -811,8 +823,8 @@ if __name__ == '__main__':
     # range_partition()
     # replace()
     # sample()
-    # Disave_data_fs()
-    save_data_hdfs()
+    # save_data_fs()
+    # save_data_hdfs()
     # select()
     # select_expression()
     # sort()

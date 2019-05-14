@@ -22,18 +22,15 @@ def union(data1, data2, settings):
     :return: Returns a list with nfrag pandas's DataFrame.
     """
 
-    nfrag1 = len(data1)
-    nfrag2 = len(data2)
+    nfrag1, nfrag2 = len(data1), len(data2)
 
     by_name = settings.get('by_name', True)
     nfrag = settings.get('nfrag', nfrag1)
 
-    info1 = settings['info'][0]
-    info2 = settings['info'][1]
+    info1, info2 = settings['info']
 
     # first, define the new column names if exists
-    cols1 = info1['cols']
-    cols2 = info2['cols']
+    cols1, cols2 = info1['cols'], info2['cols']
     news_cols1, news_cols2 = [], []
 
     if not by_name:

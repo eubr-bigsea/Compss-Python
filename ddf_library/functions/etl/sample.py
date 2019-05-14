@@ -10,7 +10,7 @@ import numpy as np
 import math
 
 
-def sample_stage_1(data, params):
+def sample(data, params):
     """
     Returns a sampled subset of the input panda's DataFrame.
 
@@ -31,6 +31,25 @@ def sample_stage_1(data, params):
 
     TODO: re-balance the list, group the second stage
     """
+
+    data, params = sample_stage_1(data, params)
+
+    nfrag = len(data)
+
+    result = [[] for _ in range(nfrag)]
+    info = result[:]
+
+    for f in range(nfrag):
+        params['id_frag'] = f
+        result[f], info[f] = sample_stage_2(data[f], params)
+
+    output = {'key_data': ['data'], 'key_info': ['info'],
+              'data': result, 'info': info}
+    return output
+
+
+def sample_stage_1(data, params):
+
     nfrag = len(data)
 
     sample_type = params.get("type", 'percent')

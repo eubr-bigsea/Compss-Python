@@ -500,10 +500,12 @@ class COMPSsContext(object):
         :return:
         """
 
-        if len(data) > 1:
+        if len(input_data) > 1:
             tmp = [input_data[k] for k in input_data]
         else:
             tmp = input_data[0]
+
+        nfrag = len(tmp)
 
         result = [[] for _ in range(nfrag)]
         info = result[:]
@@ -532,7 +534,7 @@ class COMPSsContext(object):
 
         fist_task, opt = opt[0], opt[1:]
         tmp1 = None
-        if n_input == 1:
+        if len(n_input) == 1:
             tmp, settings = self._execute_task(fist_task, data)
         else:
             tmp, tmp1, settings = self._execute_task(fist_task, data)
@@ -543,7 +545,7 @@ class COMPSsContext(object):
         result = [[] for _ in range(nfrag)]
         info = result[:]
 
-        if n_input == 1:
+        if len(n_input) == 1:
             for f, df in enumerate(tmp):
                 result[f], info[f] = task_bundle(df, opt, f)
         else:
@@ -575,7 +577,6 @@ def _bundle(data, stage, id_frag):
         function, settings = current_task
         if isinstance(settings, dict):
             settings['id_frag'] = id_frag
-        print ('bundle:', data)
         data, info = function(data, settings)
 
     return data, info

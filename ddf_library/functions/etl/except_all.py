@@ -21,7 +21,22 @@ def except_all(data1, data2, settings):
      - 'info':
     :return: A list of pandas's DataFrame.
     """
+    data1, data2, _ = except_all_stage_1(data1, data2, settings)
 
+    nfrag = len(data1)
+    info = [[] for _ in range(nfrag)]
+    result = info[:]
+
+    for f in range(nfrag):
+        settings['id_frag'] = f
+        result[f], info[f] = except_all_stage_2(data1[f], data2[f], settings)
+
+    output = {'key_data': ['data'], 'key_info': ['info'],
+              'data': result, 'info': info}
+    return output
+
+
+def except_all_stage_1(data1, data2, settings):
     info1, info2 = settings['info']
     nfrag = len(data1)
 
@@ -34,20 +49,12 @@ def except_all(data1, data2, settings):
     out2 = hash_partition(data2, params_hash2)
     data2 = out2['data']
 
-    info = [[] for _ in range(nfrag)]
-    result = info[:]
-
-    for f in range(nfrag):
-        result[f], info[f] = _except(data1[f], data2[f], f)
-
-    output = {'key_data': ['data'], 'key_info': ['info'],
-              'data': result, 'info': info}
-    return output
+    return data1, data2, settings
 
 
-@task(returns=2)
-def _except(df1, df2, frag):
+def except_all_stage_2(df1, df2, settings):
     """Perform a Difference partial operation keeping duplicated rows."""
+    frag = settings['id_frag']
 
     name1, name2 = list(df1.columns), list(df2.columns)
     if len(df1) > 0 and len(df2) > 0:
@@ -74,3 +81,8 @@ def _except(df1, df2, frag):
 
     info = generate_info(df1, frag)
     return df1, info
+
+
+@task(returns=2)
+def task_except_all_stage_2(data1, data2, settings):
+    return except_all_stage_2(data1, data2, settings)

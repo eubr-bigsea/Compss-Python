@@ -12,70 +12,77 @@ from pycompss.api.api import compss_wait_on, compss_delete_object
 import pandas as pd
 
 
-class AggregationOperation(object):
-    """Computes aggregates and returns the result as a DataFrame."""
+def aggregation(data, settings):
 
-    @staticmethod
-    def transform(data, settings):
-        """AggregationOperation.
+    """
+    Computes aggregates and returns the result as a DataFrame
 
-        :param data: A list with nfrag pandas's DataFrame;
-        :param settings: A dictionary that contains:
-            - groupby: A list with the columns names to aggregates;
-            - aliases: A dictionary with the aliases of all aggregated columns;
-            - operation: A dictionary with the functions to be applied in
-                         the aggregation:
-                'mean': Computes average values for each numeric columns
-                 for each group;
-                'count': Counts the number of records for each group;
-                'first': Returns the first element of group;
-                'last': Returns the last element of group;
-                'max': Computes the max value for each numeric columns;
-                'min': Computes the min value for each numeric column;
-                'sum': Computes the sum for each numeric columns for each group;
-                'list': Returns a list of objects with duplicates;
-                'set': Returns a set of objects with duplicate elements
-                 eliminated.
-        :return: Returns a list of pandas's DataFrame.
+    :param data: A list with nfrag pandas's DataFrame;
+    :param settings: A dictionary that contains:
+        - groupby: A list with the columns names to aggregates;
+        - aliases: A dictionary with the aliases of all aggregated columns;
+        - operation: A dictionary with the functions to be applied in
+                     the aggregation:
+            'mean': Computes average values for each numeric columns
+             for each group;
+            'count': Counts the number of records for each group;
+            'first': Returns the first element of group;
+            'last': Returns the last element of group;
+            'max': Computes the max value for each numeric columns;
+            'min': Computes the min value for each numeric column;
+            'sum': Computes the sum for each numeric columns for each group;
+            'list': Returns a list of objects with duplicates;
+            'set': Returns a set of objects with duplicate elements
+             eliminated.
+    :return: Returns a list of pandas's DataFrame.
 
-        example:
-            settings['groupby']   = ["col1"]
-            settings['operation'] = {'col2':['sum'],'col3':['first','last']}
-            settings['aliases']   = {'col2':["Sum_col2"],
-                                     'col3':['col_First','col_Last']}
+    example:
+        settings['groupby']   = ["col1"]
+        settings['operation'] = {'col2':['sum'],'col3':['first','last']}
+        settings['aliases']   = {'col2':["Sum_col2"],
+                                 'col3':['col_First','col_Last']}
 
-        """
+    """
 
-        nfrag = len(data)
+    data, _ = aggregation_stage_1(data, settings)
+    nfrag = len(data)
 
-        # 1º perform a local aggregation in each partition
-        partial_agg = [[] for _ in range(nfrag)]
-        info = [[] for _ in range(nfrag)]
-        for f in range(nfrag):
-            partial_agg[f], info[f] = _aggregate(data[f], settings, f)
+    # 3º perform a global aggregation
+    result = [[] for _ in range(nfrag)]
+    info = result[:]
 
-        # 2º perform a hash partition
-        info = merge_reduce(merge_schema, info)
+    for f in range(nfrag):
+        settings['id_frag'] = f
+        result[f], info[f] = task_aggregation_stage_2(data[f], settings)
 
-        from .hash_partitioner import hash_partition
-        params = {'nfrag': nfrag,
-                  'columns': settings['groupby'],
-                  'info': [info]}
+    compss_delete_object(data)
+    output = {'key_data': ['data'], 'key_info': ['info'],
+              'data': result, 'info': info}
+    return output
 
-        repartition = hash_partition(partial_agg, params)['data']
-        nfrag = len(repartition)
 
-        # 3º perform a global aggregation
-        info = [[] for _ in range(nfrag)]
-        result = [[] for _ in range(nfrag)]
-        for f in range(nfrag):
-            result[f], info[f] = _merge_aggregation(repartition[f], settings, f)
+def aggregation_stage_1(data, settings):
+    nfrag = len(data)
 
-        compss_delete_object(partial_agg)
-        compss_delete_object(repartition)
-        output = {'key_data': ['data'], 'key_info': ['info'],
-                  'data': result, 'info': info}
-        return output
+    # 1º perform a local aggregation in each partition
+    partial_agg = [[] for _ in range(nfrag)]
+    info = [[] for _ in range(nfrag)]
+    for f in range(nfrag):
+        partial_agg[f], info[f] = _aggregate(data[f], settings, f)
+
+    # 2º perform a hash partition
+    info = merge_reduce(merge_schema, info)
+    info = compss_wait_on(info)
+
+    from .hash_partitioner import hash_partition
+    params = {'nfrag': nfrag,
+              'columns': settings['groupby'],
+              'info': [info]}
+
+    data = hash_partition(partial_agg, params)['data']
+    compss_delete_object(partial_agg)
+
+    return data, settings
 
 
 @task(returns=2)
@@ -121,8 +128,7 @@ def _aggregate(data, params, f):
     return data, info
 
 
-@task(returns=2)
-def _merge_aggregation(data1, params, f1):
+def aggregation_stage_2(data1, params):
     """Combining the aggregation with other fragment.
 
     if a key is present in both fragments, it will remain
@@ -131,6 +137,7 @@ def _merge_aggregation(data1, params, f1):
     columns = params['groupby']
     target = params['aliases']
     operation = params['operation']
+    frag = params['id_frag']
 
     if len(data1) > 0:
 
@@ -143,7 +150,7 @@ def _merge_aggregation(data1, params, f1):
                               if c not in columns]
         data1 = data1[sequence]
 
-    info = generate_info(data1, f1)
+    info = generate_info(data1, frag)
     return data1, info
 
 
@@ -195,3 +202,8 @@ def _replace_name_by_functions(operation, target):
         for i in range(len(values)):
             new_operations[values[i]] = operation[k][i]
     return new_operations
+
+
+@task(returns=2)
+def task_aggregation_stage_2(data, params):
+    return aggregation_stage_2(data, params)

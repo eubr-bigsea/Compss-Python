@@ -30,6 +30,7 @@ class GroupedDDF(DDF):
     def __init__(self, ddf_var):
         self.last_uuid = ddf_var.last_uuid
         self.ddf_var = ddf_var
+        self.last2 = ddf_var.task_list[-2]
         self.parameters = COMPSsContext().get_task_function(self.last_uuid)[1]
 
         super(GroupedDDF, self).__init__(task_list=ddf_var.task_list,
@@ -61,6 +62,7 @@ class GroupedDDF(DDF):
         self.parameters['aliases'] = alias
         COMPSsContext.tasks_map[self.last_uuid]['function'][1] = \
             self.parameters
+        COMPSsContext.tasks_map[self.last2]['function'][1] = self.parameters
 
         return self.ddf_var
 
@@ -241,3 +243,4 @@ class GroupedDDF(DDF):
         self.parameters['aliases'] = aliases
 
         COMPSsContext.tasks_map[self.last_uuid]['function'][1] = self.parameters
+        COMPSsContext.tasks_map[self.last2]['function'][1] = self.parameters

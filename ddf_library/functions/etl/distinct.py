@@ -9,7 +9,7 @@ from pycompss.api.task import task
 import pandas as pd
 
 
-def distinct_stage_1(data, settings):
+def distinct(data, settings):
     """
     Returns a new DataFrame containing the distinct rows in this DataFrame.
 
@@ -19,6 +19,23 @@ def distinct_stage_1(data, settings):
      (if no field is chosen, all fields are used).
     :return: Returns a list with nfrag pandas's DataFrame.
     """
+
+    out_hash, _ = distinct_stage_1(data, settings)
+
+    nfrag = len(out_hash)
+    result = [[] for _ in range(nfrag)]
+    info = result[:]
+
+    for f in range(nfrag):
+        settings['id_frag'] = f
+        result[f], info[f] = task_distinct_stage_2(out_hash[f], settings)
+
+    output = {'key_data': ['data'], 'key_info': ['info'],
+              'data': result, 'info': info}
+    return output
+
+
+def distinct_stage_1(data, settings):
 
     nfrag = len(data)
     cols = settings['columns']
