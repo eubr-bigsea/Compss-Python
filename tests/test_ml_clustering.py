@@ -42,16 +42,6 @@ def kmeans(ddf, columns):
     print(clu.model)
     clu.transform(ddf, pred_col='kmeans1').show(15)
 
-    """
-               features features_norm  kmeans1  kmeans2
-        0  [1.0, 2.0]    [0.0, 0.5]      0.0      0.0
-        1  [1.0, 4.0]    [0.0, 1.0]      0.0      0.0
-        2  [1.0, 0.0]    [0.0, 0.0]      0.0      0.0
-        3  [4.0, 2.0]    [1.0, 0.5]      1.0      1.0
-        4  [4.0, 4.0]    [1.0, 1.0]      1.0      1.0
-        5  [4.0, 0.0]    [1.0, 0.0]      1.0      1.0  
-    """
-
 
 if __name__ == '__main__':
     print("_____Testing Machine Learning Clustering_____")

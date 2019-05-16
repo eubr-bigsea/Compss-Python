@@ -20,6 +20,10 @@ class ModelDDF(DDFSketch):
         self.model = {}
         self.name = ''
 
+    def check_fitted_model(self):
+        if self.model.get('algorithm', '42') != self.name:
+            raise Exception("Model is not fitted by {}".format(self.name))
+
     def save_model(self, filepath, storage='hdfs', overwrite=True,
                    namenode='localhost', port=9000):
         """

@@ -15,7 +15,8 @@ def etl():
     url = ('https://archive.ics.uci.edu/ml/'
            'machine-learning-databases/abalone/abalone.data')
     cols = ['sex', 'length', 'diam', 'height', 'weight', 'rings']
-    data = pd.read_csv(url, usecols=[0, 1, 2, 3, 4, 8], names=cols)[:20]
+    n_dataset = 20
+    data = pd.read_csv(url, usecols=[0, 1, 2, 3, 4, 8], names=cols)[:n_dataset]
 
     f1 = lambda col: -42 if col['height'] > 0.090 else col['height']
     data1 = DDF().parallelize(data, 4)\
@@ -24,29 +25,32 @@ def etl():
     data2 = data1.map(lambda col: "."+col['sex'], 'sex')\
                  .cache()
 
-    print("""
-    ----------------------------------------------------------------------------
-        etl_test_1: Multiple caches
-        """)
+    print ('-' * 50)
+    print("etl_test_1: Multiple caches")
 
     df = data1.cache().to_df()
-    print("etl_test_1a:", df[:5])
-    print("Values on height_nan column: [-42, 0.09, -42, -42, 0.08]")
+    cond = df['height_nan'].values.tolist()[:5] == [-42, 0.09, -42, -42, 0.08]
+    if not cond:
+        raise Exception('Error in etl_test_1a')
+    print ('etl_test_1a - ok')
 
     df = data2.cache().to_df()
-    print("etl_test_1b:", df[:5])
-    print("Values on sex column: [.M, .M, .F, .M, .I]")
+    cond = df['sex'].values.tolist()[:5] == ['.M', '.M', '.F', '.M', '.I']
+    if not cond:
+        raise Exception('Error in etl_test_1b')
+    print('etl_test_1b - ok')
 
-    df = data1.cache().to_df()
-    print("etl_test_1c:", df[:5])
-    print("Equals to etl_test_1a")
+    df = data1.to_df()
+    cond = df['sex'].values.tolist()[:5] == ['M', 'M', 'F', 'M', 'I']
+    if not cond:
+        print(df)
+        raise Exception('Error in etl_test_1c')
+    print('etl_test_1c - ok')
 
-    print("""
-    ----------------------------------------------------------------------------
-        etl_test_2: Branching:
-        data2 e data3 são filhos de data1
-        nesse caso: nenhum dos transforms das listas podem ser otimizadas
-    """)
+    print('etl_test_1 - OK')
+    print('-' * 50)
+    print("etl_test_2: Branching: data2 and data3 are data1's children. ",
+          "Note: is this case, those transformations can not be grouped")
 
     data3 = data1.drop(['length', 'diam']).cache()
 
@@ -54,77 +58,99 @@ def etl():
     df2 = data2.to_df()
     df3 = data3.to_df()
 
-    print("etl_test_2a:", df1[0:5])
-    print("Values on sex column: [M, M, F, M, I]")
-    print("etl_test_2b:", df2[0:5])
-    print("Values on sex column: [.M, .M, .F, .M, .I]")
-    print("etl_test_2c:", df3[0:5])
-    print("Values on sex column: [M, M, F, M, I]")
+    cond = df1['sex'].values.tolist()[:5] == ['M', 'M', 'F', 'M', 'I']
+    if not cond:
+        raise Exception('Error in etl_test_2a')
+    print('etl_test_2a - ok')
 
-    print("""
-    ----------------------------------------------------------------------------
-          etl_test_3: Avaliar a capacidade de agrupar multiplas lazy tasks
-          Nesse caso, drop, drop e replace vao ser agrupadas
-    """)
+    cond = df2['sex'].values.tolist()[:5] == ['.M', '.M', '.F', '.M', '.I']
+    if not cond:
+        raise Exception('Error in etl_test_2b')
+    print('etl_test_2b - ok')
+
+    cond = df3['sex'].values.tolist()[:5] == ['M', 'M', 'F', 'M', 'I']
+    if not cond:
+        raise Exception('Error in etl_test_2c')
+    print('etl_test_2c - ok')
+
+    print('etl_test_2 - OK')
+    print('-' * 50)
+    print("etl_test_3: The operations 'drop', 'drop', and 'replace' "
+          "must be grouped in a single task")
     data4 = data2.drop(['length']).drop(['diam'])\
         .replace({15: 42}, subset=['rings'])
 
     df = data4.to_df()[0:5]
-    print("etl_test_3:", df)
+    cond1 = df['rings'].values.tolist()[:5] == [42, 7, 9, 10, 7]
+    cond2 = df.columns.tolist() == ['sex', 'height', 'weight', 'rings',
+                                    'height_nan']
+    if not (cond1 and cond2):
+        print(df)
+        raise Exception('Error in etl_test_3')
 
-    print("""
-    ----------------------------------------------------------------------------
-          etl_test_4: Avaliar a capacidade de produção de dois resultados
-    """)
+    print('etl_test_3 - OK')
+    print('-' * 50)
+    print("etl_test_4: Check if split (and others operations that returns "
+          "more than one output) is working")
 
-    data5a, data5b = data4.split(0.5)
+    n_total = data4.count_rows()
+    data5a, data5b = data4.split(0.40)
+    n1 = data5a.count_rows()
+    n2 = data5b.count_rows()
 
-    df = data5b.to_df()
-    print("etl_test_4a:", df[:5])
+    if n1 + n2 != n_total:
+        print('data4:', n_total)
+        print('data5a:', n1)
+        print('data5b:', n2)
+        raise Exception('Error in etl_test_4')
 
-    df = data5a.to_df()
-    print("etl_test_4b:", df[:5])
-    print("4a and 4b must be differents")
-
-    print("""
-    ----------------------------------------------------------------------------
-        etl_test_5: Avaliar capacidade de esperar uma segunda entrada
-    """)
+    print('etl_test_4 - OK')
+    print('-' * 50)
+    print("etl_test_5: Check if operations with multiple inputs are working")
 
     data6 = data5b.join(data5a, ['rings'], ['rings'])\
         .filter('(rings > 8)')\
-        .select(['sex_l', 'height_l', 'weight_l', 'rings'])\
-
+        .select(['sex_l', 'height_l', 'weight_l', 'rings'])
 
     df = data6.to_df()
-    print("etl_test_5a len({}): {}".format(len(df), df[0:5]))
+    cond = df.columns.tolist() == ['sex_l', 'height_l', 'weight_l', 'rings']
+    if not cond:
+        print(df)
+        raise Exception('Error in etl_test_5a')
 
+    print('etl_test_5a - OK')
     data7 = data6.sample(7).sort(['rings'], [True])
     data8 = data6.join(data7, ['rings'], ['rings'])
 
     df = data8.to_df()
-    print("etl_test_5b len({}): {}".format(len(df), df[0:5]))
-    print('etl_test_5c:\n', data8.schema())
-    print("""
-    ----------------------------------------------------------------------------
-        etl_test_6: Avaliar capacidade de gerar resultado sem salvar varivel
-    """)
-    df = data1.distinct(['rings']).to_df()
-    df2 = data1.cache().to_df()
-    print("etl_test_6a:", df)
-    print("etl_test_6b:", df2)
-    print('Must be equals')
+    v1 = sum(df[['height_l_l', 'weight_l_l']].values.flatten())
+    v2 = sum(df[['height_l_r', 'weight_l_r']].values.flatten())
+    cond1 = np.isclose(v1, v2, rtol=0.1)
 
-    print("""
-    ----------------------------------------------------------------------------
-        etl_test_7: Avaliar capacidade 'count' and 'take'
-    """)
-
+    cols = data8.schema()['columns'].values.tolist()
+    res = ['sex_l_l', 'height_l_l', 'weight_l_l', 'rings',
+           'sex_l_r', 'height_l_r', 'weight_l_r']
+    cond2 = cols == res
+    if not (cond1 and cond2):
+        raise Exception('Error in etl_test_5b')
+    print('etl_test_5b - OK')
+    print('-' * 50)
+    print("etl_test_76: Check if 'count_rows' and 'take' are working.")
+    n = 7
     v = data1.select(['rings']).count_rows()
-    len_df = data1.select(['rings']).take(7).count_rows()
+    len_df = data1.select(['rings']).take(n).count_rows()
 
-    print("etl_test_7a:", v)
-    print("etl_test_7b:", len_df)
+    cond = v != n_dataset
+    if cond:
+        print(v)
+        raise Exception('Error in etl_test_6a')
+
+    cond = len_df != n
+    if cond:
+        print(len_df)
+        raise Exception('Error in etl_test_6b')
+    print("etl_test_7b - OK")
+    print('-' * 50)
 
 
 def add_columns():
@@ -733,7 +759,7 @@ def split():
     data = pd.DataFrame([[i, i+5, 0] for i in range(size)],
                         columns=['a', 'b', 'c'])
 
-    ddf_1a, ddf_1b = DDF().parallelize(data, 4).split(0.5)
+    ddf_1a, ddf_1b = DDF().parallelize(data, 4).split(0.25)
     df1 = ddf_1a.to_df()
     df2 = ddf_1b.to_df()
 
@@ -808,7 +834,7 @@ if __name__ == '__main__':
     # balancer()
     # cast()
     # cross_join()
-    # etl()
+    etl()
     # except_all()
     # explode()
     # filter_operation()
@@ -835,7 +861,7 @@ if __name__ == '__main__':
     # save_data_hdfs()
     # select()
     # select_expression()
-    show()
+    # show()
     # sort()
     # split()
     # subtract()

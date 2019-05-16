@@ -40,6 +40,7 @@ def maxabs_scaler():
         .fit_transform(ddf_maxabs)
 
     res = ddf_maxabs.to_df(cols).values.tolist()
+
     sol = [[0.5, -1., 1], [1.,  0., 0.], [0., 1., -0.5]]
     if not np.allclose(res, sol):
         raise Exception(" Output different from expected.")
@@ -156,7 +157,7 @@ def onehot_encoder():
 
     res = OneHotEncoder(input_col=columns, remove=True)\
         .fit_transform(ddf, output_col='_1hot')\
-        .to_df().tolist()
+        .to_df().values.tolist()
 
     sol = [[0.0, 1.0, 1.0, 0.0, 0.0],
            [1.0, 0.0, 0.0, 0.0, 1.0],

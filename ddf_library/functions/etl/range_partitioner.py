@@ -45,7 +45,7 @@ def range_partition(data, settings):
     if not isinstance(ascending, list):
         ascending = [ascending] * len(cols)
 
-    if nfrag_target < 1:
+    if nfrag_target < 0:
         raise Exception('You must have at least one partition.')
 
     # The actual number of partitions created by the RangePartitioner might
@@ -59,7 +59,7 @@ def range_partition(data, settings):
         import ddf_library.config
         ddf_library.config.x = nfrag_target
 
-        print("[INFO] - Number of partitions update to: ", nfrag_target)
+        print("[INFO] - Number of partitions updated to: ", nfrag_target)
 
         splits = [[0 for _ in range(nfrag_target)] for _ in range(nfrag)]
 
@@ -74,9 +74,11 @@ def range_partition(data, settings):
         result = [[] for _ in range(nfrag_target)]
         info = [{} for _ in range(nfrag_target)]
 
-        # n_concat = nfrag // 2 if nfrag > 10 else nfrag
         for f in range(nfrag_target):
-            tmp = [splits[t][f] for t in range(nfrag)]
+            if nfrag_target == 1:
+                tmp = splits
+            else:
+                tmp = [splits[t][f] for t in range(nfrag)]
             result[f] = ddf_library.functions.etl.repartition\
                 .merge_n_reduce(concat_n_pandas, tmp, nfrag)
             info[f] = _get_schema(result[f], f)

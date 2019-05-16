@@ -123,15 +123,11 @@ class LogisticRegression(ModelDDF):
             return _logr_predict(df, params)
 
         uuid_key = self._ddf_add_task(task_name='task_transform_logr',
-                                      status='WAIT',
                                       opt=self.OPT_SERIAL,
                                       function=[task_transform_logr,
                                                 settings],
-                                      parent=[data.last_uuid],
-                                      n_output=1,
-                                      n_input=1)
+                                      parent=[data.last_uuid])
 
-        self._set_n_input(uuid_key, data.settings['input'])
         return DDF(task_list=task_list, last_uuid=uuid_key)
 
 

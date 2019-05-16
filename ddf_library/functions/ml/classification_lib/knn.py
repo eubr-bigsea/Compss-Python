@@ -100,27 +100,23 @@ class KNearestNeighbors(ModelDDF):
         if len(self.model) == 0:
             raise Exception("Model is not fitted.")
 
-        self.settings['model'] = self.model[0]
-        self.settings['pred_col'] = pred_col
-
+        task_list = data.task_list
+        settings = self.settings.copy()
+        settings['pred_col'] = pred_col
+        settings['model'] = self.model[0].copy()
         if feature_col is not None:
-            self.settings['feature_col'] = feature_col
+            settings['feature_col'] = feature_col
 
-        df, nfrag, tmp = self._ddf_initial_setup(data)
+        def task_transform_knn(df, params):
+            return _knn_classify_block(df, params)
 
-        result = [[] for _ in range(nfrag)]
-        info = [[] for _ in range(nfrag)]
-        for f in range(nfrag):
-            result[f], info[f] = _knn_classify_block_(df[f], self.settings, f)
+        uuid_key = self._ddf_add_task(task_name='task_transform_nb',
+                                      opt=self.OPT_SERIAL,
+                                      function=[task_transform_knn,
+                                                settings],
+                                      parent=[data.last_uuid])
 
-        uuid_key = self._ddf_add_task(task_name='task_transform_knn',
-                                      status='COMPLETED', opt=self.OPT_OTHER,
-                                      function={0: result},
-                                      parent=[tmp.last_uuid],
-                                      n_output=1, n_input=1, info=info)
-
-        self._set_n_input(uuid_key, 0)
-        return DDF(task_list=tmp.task_list, last_uuid=uuid_key)
+        return DDF(task_list=task_list, last_uuid=uuid_key)
 
 
 @task(returns=1)
@@ -153,12 +149,12 @@ def merge_lists(list1, list2):
     return [l1, f1, i, nfrag, k]
 
 
-@task(returns=2)
-def _knn_classify_block_(data, settings, frag):
+def _knn_classify_block(data, settings):
     """Perform a partial classification."""
     col_features = settings['feature_col']
     pred_col = settings.get('pred_col', "prediction_kNN")
     model = settings['model'][0]
+    frag = settings['id_frag']
 
     if pred_col in data.columns:
         data.drop([pred_col], axis=1, inplace=True)

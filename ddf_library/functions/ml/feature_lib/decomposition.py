@@ -108,36 +108,28 @@ class PCA(ModelDDF):
         :param output_col: A list of output feature column or a suffix name.
         :return: DDF
         """
-        df, nfrag, tmp = self._ddf_initial_setup(data)
 
-        if len(self.model) == 0:
-            raise Exception("Model is not fitted.")
+        self.check_fitted_model()
+
+        task_list = data.task_list
+        settings = self.settings.copy()
+        settings['model'] = self.model['model'].copy()
 
         if not isinstance(output_col, list):
-            output_col = ['{}{}'.format(col, output_col) for col in input_col]
+            output_col = ['{}{}'.format(col, output_col)
+                          for col in settings['input_col']]
 
-        self.settings['output_col'] = output_col
+        settings['output_col'] = output_col
 
-        model = self.model['model']
-        features_col = self.settings['input_col']
-        pred_col = self.settings['output_col']
-        remove = self.settings['remove']
-
-        result = [[] for _ in range(nfrag)]
-        info = [[] for _ in range(nfrag)]
-        for f in range(nfrag):
-            result[f], info[f] = _pca_transform(df[f], features_col,
-                                                pred_col, model, f, remove)
+        def transform_pca(df, params):
+            return _pca_transform(df, params)
 
         uuid_key = self._ddf_add_task(task_name='transform_pca',
-                                      status='COMPLETED', opt=self.OPT_OTHER,
-                                      function={0: result},
-                                      parent=[tmp.last_uuid],
-                                      n_output=1, n_input=1, info=info)
+                                      opt=self.OPT_SERIAL,
+                                      function=[transform_pca, settings],
+                                      parent=[data.last_uuid])
 
-        # a ml.transform will always have cache() before
-        self._set_n_input(uuid_key, 0)
-        return DDF(task_list=tmp.task_list, last_uuid=uuid_key)
+        return DDF(task_list=task_list, last_uuid=uuid_key)
 
 
 @task(returns=1)
@@ -184,7 +176,6 @@ def pca_cov_merger(info1, info2):
     return [np.add(cov1, cov2), total_size]
 
 
-# @local
 def pca_eigen_decomposition(info, n_components):
     """Generate an eigen decomposition."""
     info = compss_wait_on(info)
@@ -208,9 +199,14 @@ def pca_eigen_decomposition(info, n_components):
     return var_exp, eig_values, eig_vectors, matrix_w
 
 
-@task(returns=2)
-def _pca_transform(data, features, pred_col, matrix_w, frag, remove):
+def _pca_transform(data, settings):
     """Reduce the dimensionality based in the created model."""
+    features = settings['input_col']
+    pred_col = settings['output_col']
+    matrix_w = settings['model']
+    frag = settings['id_frag']
+    remove = settings['remove']
+
     n_components = min([len(pred_col), len(matrix_w)])
     pred_col = pred_col[0: n_components]
 

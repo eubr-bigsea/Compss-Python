@@ -53,6 +53,9 @@ def knn_classifier(ddf_train, ddf_test):
         .fit(ddf_train)
     knn.save_model('/knn')
     out_data = knn.transform(ddf_test, pred_col='prediction')
+    out_data.show()
+    print("ddf_train:", ddf_train.count_rows())
+    print("ddf_test:", ddf_test.count_rows())
 
     return out_data
 
@@ -141,10 +144,10 @@ if __name__ == '__main__':
     print("_____Testing Machine Learning Classifiers_____")
 
     ddf1, ddf2 = base()
-    ddf_pred = gaussian_classifier(ddf1, ddf2)
-    # ddf_pred = knn_classifier(ddf1, ddf2)
-    ddf_pred = logistic_regression_classifier(ddf1, ddf2)
-    ddf_pred = svm_classifier(ddf1, ddf2)
+    # ddf_pred = gaussian_classifier(ddf1, ddf2)
+    ddf_pred = knn_classifier(ddf1, ddf2)
+    # ddf_pred = logistic_regression_classifier(ddf1, ddf2)
+    # ddf_pred = svm_classifier(ddf1, ddf2)
     # ddf_pred.show()
     # binary_evaluator(ddf_pred, 'prediction')
     # ml_classifiers_part2(ddf_pred)

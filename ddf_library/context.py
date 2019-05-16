@@ -171,16 +171,11 @@ class COMPSsContext(object):
     def get_task_opt_type(self, uuid_task):
         return self.tasks_map[uuid_task].get('optimization', self.OPT_OTHER)
 
-    def get_task_function(self, uuid_task, id_in=None):
-        if id_in is not None:
-            return self.tasks_map[uuid_task].get('function', [0])[id_in]
+    def get_task_function(self, uuid_task):
         return self.tasks_map[uuid_task]['function']
 
-    def set_task_function(self, uuid_task, data, id_in=None):
-        if id_in is not None:
-            self.tasks_map[uuid_task]['function'][id_in] = data
-        else:
-            self.tasks_map[uuid_task]['function'] = data
+    def set_task_function(self, uuid_task, data):
+        self.tasks_map[uuid_task]['function'] = data
 
     def get_task_status(self, uuid_task):
         return self.tasks_map[uuid_task]['status']
@@ -191,8 +186,11 @@ class COMPSsContext(object):
     def get_task_parents(self, uuid_task):
         return self.tasks_map[uuid_task]['parent']
 
-    def get_task_ninput(self, uuid_task):
-        return self.tasks_map[uuid_task].get('n_input', [0])
+    def get_n_input(self, uuid_task):
+        return self.tasks_map[uuid_task]['input']
+
+    def get_task_sibling(self, uuid_task):
+        return self.tasks_map[uuid_task].get('sibling', [uuid_task])
 
     def set_auxiliary_variables(self, variables, current_task):
         id_var = self.get_var_by_task(variables, current_task)
@@ -206,34 +204,26 @@ class COMPSsContext(object):
 
         return id_var, tasks_list
 
-    def set_input(self, id_parents, n_input):
-
-        inputs = {}
-        for d, (id_p, id_in) in enumerate(zip(id_parents, n_input)):
-            inputs[d] = self.get_task_function(id_p, id_in)
-
-        return inputs
-
     def is_ready_to_run(self, id_parents):
         return all([self.get_task_status(p) == 'COMPLETED' for p in id_parents])
 
-    def set_operation(self, child_task, id_parents, n_input):
+    def set_operation(self, child_task, id_parents):
 
         # get the operation to be executed
-        operation = self.get_task_function(child_task)
+        task_and_operation = self.get_task_function(child_task)
 
         # some operations need a schema information
         if self.tasks_map[child_task].get('info', False):
-            operation[1]['info'] = []
-            for p, i in zip(id_parents, n_input):
-                sc = self.schemas_map[p][i]
+            task_and_operation[1]['info'] = []
+            for p in id_parents:
+                sc = self.schemas_map[p]
                 if isinstance(sc, list):
                     sc = merge_info(sc)
                     sc = compss_wait_on(sc)
-                    self.schemas_map[p][i] = sc
-                operation[1]['info'].append(sc)
+                    self.schemas_map[p] = sc
+                task_and_operation[1]['info'].append(sc)
 
-        return operation
+        return task_and_operation
 
     def run_workflow(self, wanted=-1):
         """
@@ -269,29 +259,26 @@ class COMPSsContext(object):
                     continue
 
                 id_parents = self.get_task_parents(child_task)
-                n_input = self.get_task_ninput(child_task)
 
                 if DEBUG:
                     print(" - task {} ({})".format(
                             self.get_task_name(child_task), child_task[:8]))
-                    print("id_parents: {} and n_input: {}".format(
-                            id_parents, n_input))
+                    print("id_parents: {}".format(id_parents))
 
                 # when has parents: wait all parents tasks be completed
                 if not self.is_ready_to_run(id_parents):
                     break
 
                 # get input data from parents
-                inputs = self.set_input(id_parents, n_input)
+                inputs = [self.get_task_function(id_p) for id_p in id_parents]
 
                 # end this path
                 if self.get_task_name(child_task) == 'sync':
-                    self.run_sync(child_task, id_parents, n_input, inputs)
+                    self.run_sync(child_task, id_parents, inputs)
                     break
 
                 elif self.get_task_opt_type(child_task) == self.OPT_OTHER:
-                    self.run_opt_others_tasks(child_task, id_parents,
-                                              n_input, inputs)
+                    self.run_opt_others_tasks(child_task, id_parents, inputs)
 
                 elif self.get_task_opt_type(child_task) == self.OPT_SERIAL:
                     self.run_opt_serial_tasks(i_task, child_task, tasks_list,
@@ -299,31 +286,26 @@ class COMPSsContext(object):
 
                 elif self.get_task_opt_type(child_task) == self.OPT_LAST:
                     self.run_opt_last_tasks(i_task, child_task, tasks_list,
-                                            selected_tasks, inputs, id_parents,
-                                            n_input)
+                                            selected_tasks, inputs, id_parents)
 
-    def run_sync(self, child_task, id_parents, n_input, inputs):
+    def run_sync(self, child_task, id_parents, inputs):
         """
         Execute the sync task, in this context, it means that all COMPSs tasks
-        until this current sync will be executed. This do not
-        represent a COMPSs synchronization.
+        until this current sync will be executed.
+        This do not represent a COMPSs synchronization.
         """
         if DEBUG:
             print("RUNNING sync ({}) - condition 2.".format(child_task))
 
         # sync tasks always will have only one parent
-        id_p, id_in, result = id_parents[0], n_input[0], inputs[0]
+        id_p, result = id_parents[0], inputs[0]
 
-        self.set_task_function(child_task, self.get_task_function(id_p))
+        self.set_task_function(child_task, result)
         self.schemas_map[child_task] = self.schemas_map[id_p]
 
-        self.set_task_function(id_p, result, id_in)
-        self.set_task_function(child_task, result, id_in)
-
         self.set_task_status(child_task, 'COMPLETED')
-        self.set_task_status(id_p, 'COMPLETED')
 
-    def run_opt_others_tasks(self, child_task, id_parents, n_input, inputs):
+    def run_opt_others_tasks(self, child_task, id_parents, inputs):
         """
         The current operation can not be grouped with other operations, so,
         it must be executed separated.
@@ -333,7 +315,7 @@ class COMPSsContext(object):
             print("RUNNING {} ({}) - condition 3.".format(
                     self.tasks_map[child_task]['name'], child_task))
 
-        operation = self.set_operation(child_task, id_parents, n_input)
+        operation = self.set_operation(child_task, id_parents)
 
         # execute this operation that returns a dictionary
         output_dict = self._execute_task(operation, inputs)
@@ -384,7 +366,7 @@ class COMPSsContext(object):
         self.save_lazy_states(result, info, group_uuids)
 
     def run_opt_last_tasks(self, i_task, child_task, tasks_list,
-                           selected_tasks, inputs, id_parents, n_input):
+                           selected_tasks, inputs, id_parents):
         """
         The current operation can be grouped with other operations. This method
         check if the next operations share this behavior. If it does, group
@@ -396,8 +378,9 @@ class COMPSsContext(object):
             print("RUNNING {} ({}) - condition 5.".format(
                     self.tasks_map[child_task]['name'], child_task))
 
-        group_uuids.add(tasks_list[i_task])
-        operation = self.set_operation(child_task, id_parents, n_input)
+        n_input = self.get_n_input(child_task)
+        group_uuids.add(child_task)
+        operation = self.set_operation(child_task, id_parents)
         group_func.append(operation)
 
         i_task += 1
@@ -429,37 +412,25 @@ class COMPSsContext(object):
         self.save_lazy_states(result, info, group_uuids)
 
     def save_opt_others_tasks(self, output_dict, child_task):
-        # Results in non lazy tasks are in dictionary format
+        # Results in non 'optimization-other' tasks are in dictionary format
 
-        keys_data = output_dict['key_data']
-        keys_info = output_dict['key_info']
-        info = [output_dict[f] for f in keys_info]
+        keys_r, keys_i = output_dict['key_data'], output_dict['key_info']
 
-        # convert the output and schema to the right format {0: ... 1: ....}
-        out_data, out_info = dict(), dict()
-        for f, key in enumerate(keys_data):
-            out_data[f], out_info[f] = output_dict[key], info[f]
+        siblings = self.get_task_sibling(child_task)
 
-        # save results in task_map and schemas_map
-        self.schemas_map[child_task] = out_info
-        self.set_task_function(child_task, out_data)
-        self.set_task_status(child_task, 'COMPLETED')
+        for f, (id_t, key_r, key_i) in enumerate(zip(siblings, keys_r, keys_i)):
+            result, info = output_dict[key_r], output_dict[key_i]
+
+            # save results in task_map and schemas_map
+            self.schemas_map[id_t] = info
+            self.set_task_function(id_t, result)
+            self.set_task_status(id_t, 'COMPLETED')
 
     def save_lazy_states(self, result, info, opt_uuids):
-        out_data, out_info = dict(), dict()
+
         for o in opt_uuids:
-
-            # output format: {0: ... 1: ....}
-            n_outputs = self.tasks_map[o]['output']
-
-            if n_outputs == 1:
-                out_data[0], out_info[0] = result, info
-            else:
-                for f in range(n_outputs):
-                    out_data[f], out_info[f] = result[f], info[f]
-
-            self.set_task_function(o, out_data)
-            self.schemas_map[o] = out_info
+            self.set_task_function(o, result)
+            self.schemas_map[o] = info
             self.set_task_status(o, 'COMPLETED')
 
             if DEBUG:
@@ -476,13 +447,11 @@ class COMPSsContext(object):
         """
 
         function, settings = env
-        # convert dictionary in list
-        if len(input_data) > 1:
-            partitions = [input_data[k] for k in input_data]
-        else:
-            partitions = input_data[0]
 
-        output = function(partitions, settings)
+        if len(input_data) == 1:
+            input_data = input_data[0]
+
+        output = function(input_data, settings)
         return output
 
     @staticmethod
@@ -500,12 +469,10 @@ class COMPSsContext(object):
         :return:
         """
 
-        if len(input_data) > 1:
-            tmp = [input_data[k] for k in input_data]
-        else:
-            tmp = input_data[0]
+        if len(input_data) == 1:
+            input_data = input_data[0]
 
-        nfrag = len(tmp)
+        nfrag = len(input_data)
 
         result = [[] for _ in range(nfrag)]
         info = result[:]
@@ -515,7 +482,7 @@ class COMPSsContext(object):
         else:
             function = task_bundle
 
-        for f, df in enumerate(tmp):
+        for f, df in enumerate(input_data):
             result[f], info[f] = function(df, opt, f)
 
         return result, info
@@ -534,7 +501,7 @@ class COMPSsContext(object):
 
         fist_task, opt = opt[0], opt[1:]
         tmp1 = None
-        if len(n_input) == 1:
+        if n_input == 1:
             tmp, settings = self._execute_task(fist_task, data)
         else:
             tmp, tmp1, settings = self._execute_task(fist_task, data)
@@ -545,7 +512,7 @@ class COMPSsContext(object):
         result = [[] for _ in range(nfrag)]
         info = result[:]
 
-        if len(n_input) == 1:
+        if n_input == 1:
             for f, df in enumerate(tmp):
                 result[f], info[f] = task_bundle(df, opt, f)
         else:

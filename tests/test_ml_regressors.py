@@ -38,7 +38,7 @@ def simple_regression():
 
     # ddf_pred.show()
 
-    sol_ddf = ddf_pred.to_df('pred_LinearReg')
+    sol_ddf = ddf_pred.to_df('pred_LinearReg').values
     if not np.allclose(sol, sol_ddf):
         raise Exception("Wrong solution.")
     else:
@@ -66,7 +66,7 @@ def sgb_regression():
     ddf_train, ddf_test = ddf.split(0.7)
 
     from ddf_library.functions.ml.regression import GDRegressor
-    model = GDRegressor(cols, 'y', max_iter=100, alpha=1).fit(ddf_train)
+    model = GDRegressor(cols, 'y', max_iter=15, alpha=1).fit(ddf_train)
     pred_ddf = model.transform(ddf_test)
 
     pred_ddf.show()
@@ -145,5 +145,5 @@ if __name__ == '__main__':
     print("_____Testing Regressors_____")
     # pred_ddf, cols = simple_regression()
     pred_ddf, cols = sgb_regression()
-    regressor_evaluator(pred_ddf, cols)
+    # regressor_evaluator(pred_ddf, cols)
     # evaluator_metrics()

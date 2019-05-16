@@ -16,7 +16,7 @@ import numpy as np
 import pandas as pd
 
 
-class Binarizer(object):
+class Binarizer(ModelDDF):
     """
     Binarize data (set feature values to 0 or 1) according to a threshold
 
@@ -36,6 +36,9 @@ class Binarizer(object):
          replaced by 0, above it by 1. Default = 0.0;
         :param remove: Remove input columns after execution (default, False).
         """
+
+        super(Binarizer, self).__init__()
+
         if not isinstance(input_col, list):
             input_col = [input_col]
 
@@ -65,17 +68,14 @@ class Binarizer(object):
         self.output_cols = output_col
 
         def task_binarizer(df, params):
-
             return _binarizer(df, params)
 
         uuid_key = data._ddf_add_task(task_name='binarizer',
-                                      status='WAIT', opt=self.SERIAL,
+                                      opt=self.OPT_SERIAL,
                                       function=[task_binarizer,
                                                 self.settings],
-                                      parent=[data.last_uuid],
-                                      n_output=1, n_input=1)
+                                      parent=[data.last_uuid])
 
-        data._set_n_input(uuid_key, data.settings['input'])
         return DDF(task_list=data.task_list, last_uuid=uuid_key)
 
 
@@ -153,8 +153,8 @@ class OneHotEncoder(ModelDDF):
         categories = merge_reduce(_one_hot_encoder_merge, result_p)
         categories = compss_wait_on(categories)
 
-        self.model['categories'] = categories
-        self.model['name'] = self.name
+        self.model['model'] = categories
+        self.model['algorithm'] = self.name
 
         return self
 
@@ -183,31 +183,26 @@ class OneHotEncoder(ModelDDF):
         :return: DDF
         """
 
-        if len(self.model) == 0:
-            raise Exception("Model is not fitted.")
+        self.check_fitted_model()
 
-        df, nfrag, tmp = self._ddf_initial_setup(data)
+        task_list = data.task_list
+        settings = self.settings.copy()
+        settings['model'] = self.model['model'].copy()
 
-        categories = self.model['categories']
-        dimension = sum([len(cat) for cat in categories])
+        dimension = sum([len(cat) for cat in settings['model']])
         output_col = ['col{}{}'.format(i, output_col) for i in range(dimension)]
-        self.settings['output_col'] = output_col
-        self.output_cols = output_col
+        settings['output_col'] = output_col
 
-        result = [[] for _ in range(nfrag)]
-        info = [[] for _ in range(nfrag)]
-        for f in range(nfrag):
-            result[f], info[f] = _transform_one_hot(df[f], categories,
-                                                    self.settings.copy(), f)
+        def task_transform_one_hot(df, params):
+            return _transform_one_hot(df, params)
 
-        uuid_key = self._ddf_add_task(task_name='one_hot_encoder',
-                                      status='COMPLETED', opt=self.OPT_OTHER,
-                                      function={0: result},
-                                      parent=[tmp.last_uuid],
-                                      n_output=1, n_input=1, info=info)
+        uuid_key = self._ddf_add_task(task_name='task_transform_one_hot',
+                                      opt=self.OPT_SERIAL,
+                                      function=[task_transform_one_hot,
+                                                settings],
+                                      parent=[data.last_uuid])
 
-        self._set_n_input(uuid_key, 0)
-        return DDF(task_list=tmp.task_list, last_uuid=uuid_key)
+        return DDF(task_list=task_list, last_uuid=uuid_key)
 
 
 @task(returns=1)
@@ -238,9 +233,10 @@ def _one_hot_encoder_merge(x1, x2):
     return x
 
 
-@task(returns=2)
-def _transform_one_hot(df, categories, settings, frag):
+def _transform_one_hot(df, settings):
     from sklearn.preprocessing import OneHotEncoder
+    categories = settings['model']
+    frag = settings['id_frag']
     input_col = settings['input_col']
     output_col = settings['output_col']
     remove_input = settings.get('remove', False)
@@ -268,7 +264,7 @@ def _transform_one_hot(df, categories, settings, frag):
     return df, info
 
 
-class PolynomialExpansion(object):
+class PolynomialExpansion(ModelDDF):
 
     """
     Perform feature expansion in a polynomial space. In mathematics,
@@ -294,6 +290,7 @@ class PolynomialExpansion(object):
         >>> dff = PolynomialExpansion(input_col=['x', 'y'],
         >>>                           degree=2).transform(ddf)
        """
+        super(PolynomialExpansion, self).__init__()
 
         if not isinstance(input_col, list):
             input_col = [input_col]
@@ -310,7 +307,7 @@ class PolynomialExpansion(object):
         :type output_col: str
 
         :param data: DDF
-        :param output_col: Output suffix name following `col` +  order and
+        :param output_col: Output suffix name following `col` plus order and
          suffix. Suffix default is '_poly';
         :return: DDF
         """
@@ -318,30 +315,28 @@ class PolynomialExpansion(object):
         if isinstance(output_col, list):
             raise Exception("'output_col' must be a single suffix name")
 
-        output_col = _check_dimension(self.settings)
-
-        self.settings['output_col'] = output_col
-        self.output_cols = output_col
+        settings = self.settings.copy()
+        settings['output_col'] = output_col
+        settings = _check_dimension(settings)
 
         def task_poly_expansion(df, params):
-            if output_col is not None:
-                params['output_col'] = output_col
             return _poly_expansion(df, params)
 
         uuid_key = data._ddf_add_task(task_name='poly_expansion',
-                                      status='WAIT', opt=self.SERIAL,
+                                      status='WAIT', opt=self.OPT_SERIAL,
                                       function=[task_poly_expansion,
-                                                self.settings],
+                                                settings],
                                       parent=[data.last_uuid],
                                       n_output=1, n_input=1)
 
-        data._set_n_input(uuid_key, data.settings['input'])
         return DDF(task_list=data.task_list, last_uuid=uuid_key)
 
 
 def _check_dimension(params):
     """Create a simple data to check the new dimension."""
     input_col = params['input_col']
+    output_col = params['output_col']
+
     interaction_only = params['interaction_only']
     degree = params['degree']
 
@@ -349,9 +344,9 @@ def _check_dimension(params):
     poly = PolynomialFeatures(degree=degree, interaction_only=interaction_only)
     tmp = [[0 for _ in range(len(input_col))]]
     dim = poly.fit_transform(tmp).shape[1]
-    output_col = params['output_col']
-    output_col = ['col{}{}'.format(i, output_col) for i in range(dim)]
-    return output_col
+
+    params['output_col'] = ['col{}{}'.format(i, output_col) for i in range(dim)]
+    return params
 
 
 def _poly_expansion(df, params):

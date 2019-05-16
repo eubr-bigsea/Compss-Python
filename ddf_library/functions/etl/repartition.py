@@ -131,6 +131,9 @@ def split_by_boundary(data, cols, ascending, bounds, info, nfrag):
                 # list_idx = np.sort(list_idx)
                 splits[s+1] = data.iloc[list_idx]
 
+    if nfrag == 1:
+        splits = splits[0]
+
     return splits
 
 

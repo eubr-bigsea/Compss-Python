@@ -53,38 +53,23 @@ class DDFSketch(object):
         return new_state_uuid
 
     @staticmethod
-    def _set_n_input(state_uuid, idx):
-        """
-        Method to inform the index of the input data
-
-        :param state_uuid: id of the current task
-        :param idx: idx of input data
-        :return:
-        """
-
-        if 'n_input' not in COMPSsContext.tasks_map[state_uuid]:
-            COMPSsContext.tasks_map[state_uuid]['n_input'] = []
-        COMPSsContext.tasks_map[state_uuid]['n_input'].append(idx)
-
-    @staticmethod
     def _ddf_initial_setup(data):
         tmp = data.cache()
-        n_input = COMPSsContext.tasks_map[tmp.last_uuid]['n_input'][0]
-        df = COMPSsContext.tasks_map[tmp.last_uuid]['function'][n_input]
+        data.task_list, data.last_uuid = tmp.task_list, tmp.last_uuid
+        df = COMPSsContext.tasks_map[data.last_uuid]['function']
         nfrag = len(df)
-        return df, nfrag, tmp
+        return df, nfrag, data
 
     def _get_info(self):
 
         self._check_cache()
-        n_input = self.settings['input']
-        info = COMPSsContext.schemas_map[self.last_uuid][n_input]
+        info = COMPSsContext.schemas_map[self.last_uuid]
         if isinstance(info, list):
             if not isinstance(info[0], list):
                 info = merge_reduce(merge_schema, info)
         info = compss_wait_on(info)
 
-        COMPSsContext.schemas_map[self.last_uuid][n_input] = info
+        COMPSsContext.schemas_map[self.last_uuid] = info
         return info
 
     def _check_cache(self):
@@ -97,9 +82,8 @@ class DDFSketch(object):
 
         for _ in range(2):
             if COMPSsContext.tasks_map[self.last_uuid]['status'] == 'COMPLETED':
-                n_input = COMPSsContext.tasks_map[self.last_uuid]['n_input'][0]
                 self.partitions = \
-                    COMPSsContext.tasks_map[self.last_uuid]['function'][n_input]
+                    COMPSsContext.tasks_map[self.last_uuid]['function']
                 cached = True
                 break
             else:
@@ -108,8 +92,8 @@ class DDFSketch(object):
         if not cached:
             raise Exception("ERROR - _check_cache - not cached")
 
-    def _ddf_add_task(self, task_name, status, opt, function,
-                      parent, n_output, n_input, info=None):
+    def _ddf_add_task(self, task_name, opt, function,
+                      parent, n_output=1, n_input=1, status='WAIT', info=None):
 
         uuid_key = self._generate_uuid()
         COMPSsContext.tasks_map[uuid_key] = {
@@ -123,7 +107,7 @@ class DDFSketch(object):
         }
 
         if info:
-            COMPSsContext.schemas_map[uuid_key] = {0: info}
+            COMPSsContext.schemas_map[uuid_key] = info
         return uuid_key
 
     def _run_compss_context(self, wanted=None):

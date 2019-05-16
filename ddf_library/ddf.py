@@ -14,6 +14,7 @@ Public classes:
 """
 
 from pycompss.api.api import compss_wait_on
+from pycompss.runtime.binding import Future
 
 from ddf_library.ddf_base import DDFSketch
 from ddf_library.context import COMPSsContext
@@ -21,7 +22,6 @@ from ddf_library.utils import generate_info, concatenate_pandas
 
 import pandas as pd
 import numpy as np
-import copy
 
 
 __all__ = ['DDF', 'generate_info']
@@ -39,24 +39,25 @@ class DDF(DDFSketch):
 
         # list of uuid of operations that describes the current flow
         task_list = kwargs.get('task_list', None)
-
         # parent uuid operation
         last_uuid = kwargs.get('last_uuid', 'init')
-
-        # configuration of current operation, where: 'input' means the input
-        # number in case where the parent has more than one output data
-        self.settings = kwargs.get('settings', {'input': 0})
 
         self.partitions = list()
 
         if last_uuid != 'init':
 
-            self.task_list = copy.deepcopy(task_list)
+            self.task_list = task_list.copy()
             self.task_list.append(last_uuid)
 
         else:
-            last_uuid = self._ddf_add_task('init', 'COMPLETED', self.OPT_OTHER,
-                                           None, [], None, 0, info=None)
+            last_uuid = self._ddf_add_task(task_name='init',
+                                           opt=self.OPT_OTHER,
+                                           function=None,
+                                           parent=[],
+                                           n_output=None,
+                                           n_input=0,
+                                           status='COMPLETED',
+                                           info=None)
 
             self.task_list = list()
             self.task_list.append(last_uuid)
@@ -113,8 +114,7 @@ class DDF(DDFSketch):
 
             if distributed:
                 blocks = data_reader.get_blocks()
-                COMPSsContext.tasks_map[self.last_uuid]['function'] = \
-                    {0: blocks}
+                COMPSsContext.tasks_map[self.last_uuid]['function'] = blocks
 
                 def reader(block, params):
                     return data_reader.transform_fs_distributed(block, params)
@@ -139,18 +139,17 @@ class DDF(DDFSketch):
                     {'name': 'load_text',
                      'status': 'COMPLETED',
                      'optimization': self.OPT_OTHER,
-                     'function': {0: result},
+                     'function': result,
                      'output': 1,
                      'input': 0,
                      'parent': [self.last_uuid]
                      }
 
-                COMPSsContext.schemas_map[new_state_uuid] = {0: info}
+                COMPSsContext.schemas_map[new_state_uuid] = info
         else:
             blocks = data_reader.get_blocks()
 
-            COMPSsContext.tasks_map[self.last_uuid]['function'] = \
-                {0: blocks}
+            COMPSsContext.tasks_map[self.last_uuid]['function'] = blocks
 
             def reader(block, params):
                 return data_reader.transform_hdfs(block, params)
@@ -166,7 +165,6 @@ class DDF(DDFSketch):
                  'parent': [self.last_uuid]
                  }
 
-        self._set_n_input(new_state_uuid, self.settings['input'])
         return DDF(task_list=self.task_list, last_uuid=new_state_uuid)
 
     def parallelize(self, df, num_of_parts=4):
@@ -187,17 +185,16 @@ class DDF(DDFSketch):
         result, info = parallelize(df, num_of_parts)
 
         new_state_uuid = self._generate_uuid()
-        COMPSsContext.schemas_map[new_state_uuid] = {0: info}
+        COMPSsContext.schemas_map[new_state_uuid] = info
         COMPSsContext.tasks_map[new_state_uuid] = \
             {'name': 'parallelize',
              'status': 'COMPLETED',
              'optimization': self.OPT_OTHER,
-             'function': {0: result},
+             'function': result,
              'output': 1, 'input': 0,
              'parent': [self.last_uuid]
              }
 
-        self._set_n_input(new_state_uuid, self.settings['input'])
         return DDF(task_list=self.task_list, last_uuid=new_state_uuid)
 
     def load_shapefile(self, shp_path, dbf_path, polygon='points',
@@ -236,17 +233,16 @@ class DDF(DDFSketch):
         result, info = read_shapefile(settings, num_of_parts)
 
         new_state_uuid = self._generate_uuid()
-        COMPSsContext.schemas_map[new_state_uuid] = {0: info}
+        COMPSsContext.schemas_map[new_state_uuid] = info
         COMPSsContext.tasks_map[new_state_uuid] = \
             {'name': 'load_shapefile',
              'status': 'COMPLETED',
              'optimization': self.OPT_OTHER,
-             'function': {0: result},
+             'function': result,
              'output': 1, 'input': 0,
              'parent': [self.last_uuid]
              }
 
-        self._set_n_input(new_state_uuid, self.settings['input'])
         return DDF(task_list=self.task_list, last_uuid=new_state_uuid)
 
     def import_data(self, df_list, info=None):
@@ -269,19 +265,18 @@ class DDF(DDFSketch):
         result, info = import_to_ddf(df_list, info)
 
         new_state_uuid = self._generate_uuid()
-        COMPSsContext.schemas_map[new_state_uuid] = {0: info}
+        COMPSsContext.schemas_map[new_state_uuid] = info
 
         tmp = DDF()
         COMPSsContext.tasks_map[new_state_uuid] = \
             {'name': 'import_data',
              'status': 'COMPLETED',
              'optimization': self.OPT_OTHER,
-             'function': {0: result},
+             'function': result,
              'output': 1, 'input': 0,
              'parent': [tmp.last_uuid]
              }
 
-        tmp._set_n_input(new_state_uuid, 0)
         return DDF(task_list=tmp.task_list, last_uuid=new_state_uuid)
 
     def _collect(self):
@@ -292,7 +287,7 @@ class DDF(DDFSketch):
 
         if COMPSsContext.tasks_map[self.last_uuid]['status'] == 'COMPLETED':
             self.partitions = \
-                COMPSsContext.tasks_map[self.last_uuid]['function'][0]
+                COMPSsContext.tasks_map[self.last_uuid]['function']
 
         self.partitions = compss_wait_on(self.partitions)
 
@@ -307,25 +302,17 @@ class DDF(DDFSketch):
         >>> ddf1.cache()
         """
 
-        # TODO: no momento, é necessario para lidar com split
-        # if COMPSsContext.tasks_map[self.last_uuid]['status'] == 'COMPLETED':
-        #     print 'cache skipped'
-        #     return self
-
         new_state_uuid = self._generate_uuid()
         COMPSsContext.tasks_map[new_state_uuid] = \
             {'name': 'sync',
              'status': 'WAIT',
              'optimization': self.OPT_OTHER,
              'parent': [self.last_uuid],
-             'function': [[]]
+             'function': None
              }
 
-        self._set_n_input(new_state_uuid, self.settings['input'])
-
         res = DDF(task_list=self.task_list,
-                  last_uuid=new_state_uuid,
-                  settings=self.settings)._run_compss_context(new_state_uuid)
+                  last_uuid=new_state_uuid)._run_compss_context(new_state_uuid)
 
         return res
 
@@ -367,7 +354,6 @@ class DDF(DDFSketch):
              'info': True
              }
 
-        self._set_n_input(new_state_uuid, self.settings['input'])
         return DDF(task_list=self.task_list, last_uuid=new_state_uuid)
 
     def count_rows(self, total=True):
@@ -435,8 +421,6 @@ class DDF(DDFSketch):
              'input': 1
              }
 
-        self._set_n_input(new_state_uuid, self.settings['input'])
-
         return DDF(task_list=self.task_list, last_uuid=new_state_uuid)
 
     def add_column(self, data2, suffixes=None):
@@ -477,8 +461,6 @@ class DDF(DDFSketch):
              'info': True
              }
 
-        self._set_n_input(new_state_uuid, self.settings['input'])
-        self._set_n_input(new_state_uuid, data2.settings['input'])
         new_list = self._merge_tasks_list(self.task_list + data2.task_list)
         return DDF(task_list=new_list, last_uuid=new_state_uuid)
 
@@ -532,7 +514,6 @@ class DDF(DDFSketch):
              'input': 1
              }
 
-        self._set_n_input(new_state_uuid, self.settings['input'])
         tmp = DDF(task_list=task_list, last_uuid=new_state_uuid)
 
         return GroupedDDF(tmp)
@@ -578,7 +559,7 @@ class DDF(DDFSketch):
                  'output': 1,
                  'input': 1
                  }
-            self._set_n_input(new_state_uuid, self.settings['input'])
+
             return DDF(task_list=self.task_list, last_uuid=new_state_uuid)
 
         else:
@@ -618,7 +599,6 @@ class DDF(DDFSketch):
                  'input': 1
                  }
 
-            self._set_n_input(new_state_uuid, self.settings['input'])
             return DDF(task_list=task_list, last_uuid=new_state_uuid)
 
     def columns(self):
@@ -703,8 +683,6 @@ class DDF(DDFSketch):
              'input': 2
              }
 
-        self._set_n_input(new_state_uuid, self.settings['input'])
-        self._set_n_input(new_state_uuid, data2.settings['input'])
         new_list = self._merge_tasks_list(self.task_list + data2.task_list)
         return DDF(task_list=new_list, last_uuid=new_state_uuid)
 
@@ -742,7 +720,6 @@ class DDF(DDFSketch):
              'input': 1
              }
 
-        self._set_n_input(new_state_uuid, self.settings['input'])
         return DDF(task_list=self.task_list, last_uuid=new_state_uuid)
 
     def describe(self, columns=None):
@@ -835,9 +812,6 @@ class DDF(DDFSketch):
              'info': True,
              }
 
-        self._set_n_input(new_state_uuid, self.settings['input'])
-        self._set_n_input(new_state_uuid, data2.settings['input'])
-
         last_uuid = new_state_uuid
         task_list = self.task_list + data2.task_list
         task_list = self._merge_tasks_list(task_list)
@@ -854,7 +828,6 @@ class DDF(DDFSketch):
              'input': 1
              }
 
-        self._set_n_input(new_state_uuid, self.settings['input'])
         return DDF(task_list=task_list, last_uuid=new_state_uuid)
 
     def except_all(self, data2):
@@ -895,9 +868,6 @@ class DDF(DDFSketch):
              'info': True,
              }
 
-        self._set_n_input(new_state_uuid, self.settings['input'])
-        self._set_n_input(new_state_uuid, data2.settings['input'])
-
         last_uuid = new_state_uuid
         task_list = self.task_list + data2.task_list
         task_list = self._merge_tasks_list(task_list)
@@ -914,7 +884,6 @@ class DDF(DDFSketch):
              'input': 1
              }
 
-        self._set_n_input(new_state_uuid, self.settings['input'])
         return DDF(task_list=task_list, last_uuid=new_state_uuid)
 
     def distinct(self, cols):
@@ -967,7 +936,6 @@ class DDF(DDFSketch):
              'input': 1
              }
 
-        self._set_n_input(new_state_uuid, self.settings['input'])
         return DDF(task_list=task_list, last_uuid=new_state_uuid)
 
     def drop(self, columns):
@@ -1002,7 +970,6 @@ class DDF(DDFSketch):
              'input': 1
              }
 
-        self._set_n_input(new_state_uuid, self.settings['input'])
         return DDF(task_list=self.task_list, last_uuid=new_state_uuid)
 
     def drop_duplicates(self, cols):
@@ -1054,7 +1021,7 @@ class DDF(DDFSketch):
                  'output': 1,
                  'input': 1
                  }
-            self._set_n_input(new_state_uuid, self.settings['input'])
+
             return DDF(task_list=self.task_list, last_uuid=new_state_uuid)
 
         else:
@@ -1094,7 +1061,6 @@ class DDF(DDFSketch):
                  'input': 1
                  }
 
-            self._set_n_input(new_state_uuid, self.settings['input'])
             return DDF(task_list=task_list, last_uuid=new_state_uuid)
 
     def explode(self, column):
@@ -1129,7 +1095,6 @@ class DDF(DDFSketch):
              'input': 1
              }
 
-        self._set_n_input(new_state_uuid, self.settings['input'])
         return DDF(task_list=self.task_list, last_uuid=new_state_uuid)
 
     def filter(self, expr):
@@ -1167,7 +1132,6 @@ class DDF(DDFSketch):
              'input': 1
              }
 
-        self._set_n_input(new_state_uuid, self.settings['input'])
         return DDF(task_list=self.task_list, last_uuid=new_state_uuid)
 
     def geo_within(self, shp_object, lat_col, lon_col, polygon,
@@ -1218,9 +1182,6 @@ class DDF(DDFSketch):
              'info': True,
              }
 
-        self._set_n_input(new_state_uuid, self.settings['input'])
-        self._set_n_input(new_state_uuid, shp_object.settings['input'])
-
         last_uuid = new_state_uuid
         task_list = self.task_list + shp_object.task_list
         task_list = self._merge_tasks_list(task_list)
@@ -1237,7 +1198,6 @@ class DDF(DDFSketch):
              'input': 1
              }
 
-        self._set_n_input(new_state_uuid, self.settings['input'])
         return DDF(task_list=task_list, last_uuid=new_state_uuid)
 
     def hash_partition(self, columns, nfrag=None):
@@ -1280,7 +1240,6 @@ class DDF(DDFSketch):
              'info': True
              }
 
-        self._set_n_input(new_state_uuid, self.settings['input'])
         return DDF(task_list=self.task_list, last_uuid=new_state_uuid)
 
     def intersect(self, data2):
@@ -1321,9 +1280,6 @@ class DDF(DDFSketch):
              'info': True,
              }
 
-        self._set_n_input(new_state_uuid, self.settings['input'])
-        self._set_n_input(new_state_uuid, data2.settings['input'])
-
         last_uuid = new_state_uuid
         task_list = self.task_list + data2.task_list
         task_list = self._merge_tasks_list(task_list)
@@ -1340,7 +1296,6 @@ class DDF(DDFSketch):
              'input': 1
              }
 
-        self._set_n_input(new_state_uuid, self.settings['input'])
         return DDF(task_list=task_list, last_uuid=new_state_uuid)
 
     def intersect_all(self, data2):
@@ -1381,9 +1336,6 @@ class DDF(DDFSketch):
              'info': True,
              }
 
-        self._set_n_input(new_state_uuid, self.settings['input'])
-        self._set_n_input(new_state_uuid, data2.settings['input'])
-
         last_uuid = new_state_uuid
         task_list = self.task_list + data2.task_list
         task_list = self._merge_tasks_list(task_list)
@@ -1400,7 +1352,6 @@ class DDF(DDFSketch):
              'input': 1
              }
 
-        self._set_n_input(new_state_uuid, self.settings['input'])
         return DDF(task_list=task_list, last_uuid=new_state_uuid)
 
     def join(self, data2, key1=None, key2=None, mode='inner',
@@ -1462,9 +1413,6 @@ class DDF(DDFSketch):
              'info': True,
              }
 
-        self._set_n_input(new_state_uuid, self.settings['input'])
-        self._set_n_input(new_state_uuid, data2.settings['input'])
-
         last_uuid = new_state_uuid
         task_list = self.task_list + data2.task_list
         task_list = self._merge_tasks_list(task_list)
@@ -1481,7 +1429,6 @@ class DDF(DDFSketch):
              'input': 1
              }
 
-        self._set_n_input(new_state_uuid, self.settings['input'])
         return DDF(task_list=task_list, last_uuid=new_state_uuid)
 
     def kolmogorov_smirnov_one_sample(self, col, distribution='norm',
@@ -1566,7 +1513,6 @@ class DDF(DDFSketch):
              'output': 1,
              'input': 1}
 
-        self._set_n_input(new_state_uuid, self.settings['input'])
         return DDF(task_list=self.task_list, last_uuid=new_state_uuid)
 
     def range_partition(self, columns, ascending=None, nfrag=None):
@@ -1617,7 +1563,6 @@ class DDF(DDFSketch):
              'info': True
              }
 
-        self._set_n_input(new_state_uuid, self.settings['input'])
         return DDF(task_list=self.task_list, last_uuid=new_state_uuid)
 
     def repartition(self, nfrag=-1, distribution=None):
@@ -1647,7 +1592,6 @@ class DDF(DDFSketch):
              'info': True
              }
 
-        self._set_n_input(new_state_uuid, self.settings['input'])
         return DDF(task_list=self.task_list, last_uuid=new_state_uuid)
 
     def replace(self, replaces, subset=None):
@@ -1686,7 +1630,6 @@ class DDF(DDFSketch):
              'parent': [self.last_uuid],
              'output': 1, 'input': 1}
 
-        self._set_n_input(new_state_uuid, self.settings['input'])
         return DDF(task_list=self.task_list, last_uuid=new_state_uuid)
 
     def sample(self, value=None, seed=None):
@@ -1753,7 +1696,6 @@ class DDF(DDFSketch):
              'input': 1
              }
 
-        self._set_n_input(new_state_uuid, self.settings['input'])
         return DDF(task_list=task_list, last_uuid=new_state_uuid)
 
     def save(self, filename, format='csv', storage='hdfs',
@@ -1796,7 +1738,6 @@ class DDF(DDFSketch):
              'input': 1
              }
 
-        self._set_n_input(new_state_uuid, self.settings['input'])
         return DDF(task_list=self.task_list, last_uuid=new_state_uuid)
 
     def schema(self):
@@ -1838,7 +1779,6 @@ class DDF(DDFSketch):
              'input': 1
              }
 
-        self._set_n_input(new_state_uuid, self.settings['input'])
         return DDF(task_list=self.task_list, last_uuid=new_state_uuid)
 
     def select_expression(self, *exprs):
@@ -1910,7 +1850,6 @@ class DDF(DDFSketch):
              'input': 1
              }
 
-        self._set_n_input(new_state_uuid, self.settings['input'])
         return DDF(task_list=self.task_list, last_uuid=new_state_uuid)
 
     def show(self, n=20):
@@ -1991,7 +1930,6 @@ class DDF(DDFSketch):
              'input': 1
              }
 
-        self._set_n_input(new_state_uuid, self.settings['input'])
         return DDF(task_list=task_list, last_uuid=new_state_uuid)
 
     def split(self, percentage=0.5, seed=None):
@@ -2016,23 +1954,37 @@ class DDF(DDFSketch):
         def task_split(df, params):
             return random_split(df, params)
 
-        new_state_uuid = self._generate_uuid()
-        COMPSsContext.tasks_map[new_state_uuid] = \
-            {'name': 'split',
+        split_out1_uuid = self._generate_uuid()
+        split_out2_uuid = self._generate_uuid()
+
+        COMPSsContext.tasks_map[split_out1_uuid] = \
+            {'name': 'split-out1',
              'status': 'WAIT',
              'optimization': self.OPT_OTHER,
              'function': [task_split, settings],
              'parent': [self.last_uuid],
              'output': 2,
              'input': 1,
-             'info': True
+             'info': True,
+             'sibling': [split_out1_uuid, split_out2_uuid]
              }
 
-        self._set_n_input(new_state_uuid, self.settings['input'])
-        return DDF(task_list=self.task_list,
-                   last_uuid=new_state_uuid, settings={'input': 0}).cache(), \
-            DDF(task_list=self.task_list, last_uuid=new_state_uuid,
-                settings={'input': 1}).cache()
+        out1 = DDF(task_list=self.task_list, last_uuid=split_out1_uuid)
+
+        COMPSsContext.tasks_map[split_out2_uuid] = \
+            {'name': 'split-out2',
+             'status': 'WAIT',
+             'optimization': self.OPT_OTHER,
+             'function': [task_split, settings],
+             'parent': [self.last_uuid],
+             'output': 2,
+             'input': 1,
+             'info': True,
+             'sibling': [split_out1_uuid, split_out2_uuid]
+             }
+
+        out2 = DDF(task_list=self.task_list, last_uuid=split_out2_uuid)
+        return out1, out2
 
     def take(self, num):
         """
@@ -2084,7 +2036,6 @@ class DDF(DDFSketch):
              'input': 1
              }
 
-        self._set_n_input(new_state_uuid, self.settings['input'])
         return DDF(task_list=task_list, last_uuid=new_state_uuid)
 
     def to_df(self, columns=None, split=False):
@@ -2099,19 +2050,24 @@ class DDF(DDFSketch):
 
         >>> df = ddf1.to_df(['col_1', 'col_2'])
         """
-        last_last_uuid = self.task_list[-2]
+
         self._check_cache()
 
-        res = compss_wait_on(self.partitions)
-        n_input = self.settings['input']
+        if isinstance(self.partitions[0], Future):
+            res = compss_wait_on(self.partitions)
 
-        COMPSsContext.tasks_map[self.last_uuid]['function'][n_input] = res
+            # the last operation will be the 'cache' operation,
+            # and the second last will be current stage itself
 
-        if len(self.task_list) > 2:
-            COMPSsContext.tasks_map[last_last_uuid]['function'][n_input] = res
+            last_last_uuid = self.task_list[-2]
+            COMPSsContext.tasks_map[self.last_uuid]['function'] = res
+            if len(self.task_list) > 2:
+                COMPSsContext.tasks_map[last_last_uuid]['function'] = res
+        else:
+            res = self.partitions
 
-        if isinstance(columns, str):
-            columns = [columns]
+        # if isinstance(columns, str):
+        #     columns = [columns]
 
         if split:
             if columns:
@@ -2161,8 +2117,6 @@ class DDF(DDFSketch):
              'info': True
              }
 
-        self._set_n_input(new_state_uuid, self.settings['input'])
-        self._set_n_input(new_state_uuid, data2.settings['input'])
         new_list = self._merge_tasks_list(self.task_list + data2.task_list)
         return DDF(task_list=new_list, last_uuid=new_state_uuid)
 
@@ -2200,8 +2154,6 @@ class DDF(DDFSketch):
              'info': True
              }
 
-        self._set_n_input(new_state_uuid, self.settings['input'])
-        self._set_n_input(new_state_uuid, data2.settings['input'])
         new_list = self._merge_tasks_list(self.task_list + data2.task_list)
         return DDF(task_list=new_list, last_uuid=new_state_uuid)
 
@@ -2241,7 +2193,5 @@ class DDF(DDFSketch):
              'output': 1,
              'input': 1
              }
-
-        self._set_n_input(new_state_uuid, self.settings['input'])
 
         return DDF(task_list=self.task_list, last_uuid=new_state_uuid)

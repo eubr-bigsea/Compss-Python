@@ -49,7 +49,7 @@ class GDRegressor(ModelDDF):
         self.settings['alpha'] = alpha
         self.settings['tolerance'] = tol
 
-        self.model = []
+        self.model = {}
         self.name = 'GDRegressor'
 
     def fit(self, data):
@@ -72,7 +72,8 @@ class GDRegressor(ModelDDF):
                                        alpha, max_iter, tol, nfrag)
 
         parameters = compss_wait_on(parameters)
-        self.model = [parameters]
+        self.model['model'] = parameters
+        self.model['algorithm'] = self.name
         return self
 
     def fit_transform(self, data, pred_col='pred_LinearReg'):
@@ -96,27 +97,22 @@ class GDRegressor(ModelDDF):
         :return: DDF
         """
 
-        if len(self.model) == 0:
-            raise Exception("Model is not fitted.")
+        self.check_fitted_model()
 
-        features = self.settings['feature_col']
-        self.settings['pred_col'] = pred_col
+        task_list = data.task_list
+        settings = self.settings.copy()
+        settings['pred_col'] = pred_col
+        settings['model'] = self.model['model'].copy()
 
-        df, nfrag, tmp = self._ddf_initial_setup(data)
+        def task_gd_regressor(df, params):
+            return _predict(df, params)
 
-        result = [[] for _ in range(nfrag)]
-        info = [[] for _ in range(nfrag)]
-        for f in range(nfrag):
-            result[f], info[f] = _predict(df[f], features, pred_col,
-                                          self.model[0], f)
+        uuid_key = self._ddf_add_task(task_name='task_gd_regressor',
+                                      opt=self.OPT_SERIAL,
+                                      function=[task_gd_regressor, settings],
+                                      parent=[data.last_uuid])
 
-        uuid_key = self._ddf_add_task(task_name='gd_regressor',
-                                      status='COMPLETED', opt=self.OPT_OTHER,
-                                      function={0: result},
-                                      parent=[tmp.last_uuid],
-                                      n_output=1, n_input=1, info=info)
-        self._set_n_input(uuid_key, 0)
-        return DDF(task_list=tmp.task_list, last_uuid=uuid_key)
+        return DDF(task_list=task_list, last_uuid=uuid_key)
 
 
 def _gradient_descent(data, features, label, alpha, max_iter, tol, nfrag):
@@ -204,7 +200,6 @@ def _lr_gb_agg(error1, error2):
     return [sum_grad, size, dim, theta, sse]
 
 
-# @local
 def _lr_gb_theta_computation(info, alpha):
     """Generate new theta."""
     info = compss_wait_on(info)
@@ -217,14 +212,14 @@ def _lr_gb_theta_computation(info, alpha):
     return theta, loss
 
 
-@task(returns=2)
-def _predict(data, x, y, model, frag):
-    return _predict_(data, x, y, model, frag)
-
-
-def _predict_(data, features, pred_col, model, frag):
+def _predict(data, settings):
     """Predict the values."""
     n_rows = len(data)
+    frag = settings['id_frag']
+    model = settings['model']
+    pred_col = settings['pred_col']
+    features = settings['feature_col']
+
     if len(data) > 0:
 
         xs = np.c_[np.ones(n_rows), data[features].values]
