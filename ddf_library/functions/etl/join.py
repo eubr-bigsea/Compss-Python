@@ -40,7 +40,8 @@ def join(data1, data2, settings):
 
     for f in range(nfrag):
         settings['id_frag'] = f
-        result[f], info[f] = task_join_stage_2(data1[f], data2[f], settings)
+        result[f], info[f] = task_join_stage_2(data1[f], data2[f],
+                                               settings.copy())
 
     output = {'key_data': ['data'], 'key_info': ['info'],
               'data': result, 'info': info}

@@ -28,7 +28,7 @@ def distinct(data, settings):
 
     for f in range(nfrag):
         settings['id_frag'] = f
-        result[f], info[f] = task_distinct_stage_2(out_hash[f], settings)
+        result[f], info[f] = task_distinct_stage_2(out_hash[f], settings.copy())
 
     output = {'key_data': ['data'], 'key_info': ['info'],
               'data': result, 'info': info}

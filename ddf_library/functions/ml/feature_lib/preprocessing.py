@@ -69,7 +69,7 @@ class Binarizer(object):
             return _binarizer(df, params)
 
         uuid_key = data._ddf_add_task(task_name='binarizer',
-                                      status='WAIT', lazy=self.SERIAL,
+                                      status='WAIT', opt=self.SERIAL,
                                       function=[task_binarizer,
                                                 self.settings],
                                       parent=[data.last_uuid],
@@ -201,7 +201,7 @@ class OneHotEncoder(ModelDDF):
                                                     self.settings.copy(), f)
 
         uuid_key = self._ddf_add_task(task_name='one_hot_encoder',
-                                      status='COMPLETED', lazy=self.OPT_OTHER,
+                                      status='COMPLETED', opt=self.OPT_OTHER,
                                       function={0: result},
                                       parent=[tmp.last_uuid],
                                       n_output=1, n_input=1, info=info)
@@ -329,7 +329,7 @@ class PolynomialExpansion(object):
             return _poly_expansion(df, params)
 
         uuid_key = data._ddf_add_task(task_name='poly_expansion',
-                                      status='WAIT', lazy=self.SERIAL,
+                                      status='WAIT', opt=self.SERIAL,
                                       function=[task_poly_expansion,
                                                 self.settings],
                                       parent=[data.last_uuid],
@@ -459,7 +459,7 @@ class StringIndexer(ModelDDF):
                                                     self.model['model'], f)
 
         uuid_key = self._ddf_add_task(task_name='transform_string_indexer',
-                                      status='COMPLETED', lazy=self.OPT_OTHER,
+                                      status='COMPLETED', opt=self.OPT_OTHER,
                                       function={0: result},
                                       parent=[tmp.last_uuid],
                                       n_output=1, n_input=1, info=info)
@@ -540,7 +540,7 @@ class IndexToString(ModelDDF):
                                                   self.model['model'], f)
 
         uuid_key = self._ddf_add_task(task_name='index_to_string',
-                                      status='COMPLETED', lazy=self.OPT_OTHER,
+                                      status='COMPLETED', opt=self.OPT_OTHER,
                                       function={0: result},
                                       parent=[tmp.last_uuid],
                                       n_output=1, n_input=1, info=info)

@@ -41,7 +41,7 @@ def sample(data, params):
 
     for f in range(nfrag):
         params['id_frag'] = f
-        result[f], info[f] = sample_stage_2(data[f], params)
+        result[f], info[f] = sample_stage_2(data[f], params.copy())
 
     output = {'key_data': ['data'], 'key_info': ['info'],
               'data': result, 'info': info}

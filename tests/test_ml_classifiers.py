@@ -27,7 +27,7 @@ def base():
     ddf = StandardScaler(input_col=cols).fit_transform(ddf)
 
     # splitting 50% to use as training set and 50% as test
-    train, test = ddf.split(0.50)
+    train, test = ddf.split(0.75)
 
     return train, test
 
@@ -37,8 +37,11 @@ def gaussian_classifier(ddf_train, ddf_test):
     from ddf_library.functions.ml.classification import GaussianNB
     nb = GaussianNB(feature_col=cols, label_col='class')\
         .fit(ddf_train)
-    nb.save_model('/gaussian_nb')  # save this fitted model in HDFS
+    # nb.save_model('/gaussian_nb')  # save this fitted model in HDFS
     out_data = nb.transform(ddf_test, pred_col='prediction')
+    out_data.show()
+    print("ddf_train:", ddf_train.count_rows())
+    print("ddf_test:", ddf_test.count_rows())
     return out_data
 
 
@@ -64,6 +67,9 @@ def logistic_regression_classifier(ddf_train, ddf_test):
     logr.save_model('/logistic_regression')
 
     out_data = logr.transform(ddf_test, pred_col='prediction')
+    out_data.show()
+    print("ddf_train:", ddf_train.count_rows())
+    print("ddf_test:", ddf_test.count_rows())
 
     return out_data
 
@@ -75,6 +81,9 @@ def svm_classifier(ddf_train, ddf_test):
               coef_lambda=1, coef_lr=0.01).fit(ddf_train)
     svm.save_model('/svm')
     out_data = svm.transform(ddf_test, pred_col='prediction')
+    out_data.show()
+    print("ddf_train:", ddf_train.count_rows())
+    print("ddf_test:", ddf_test.count_rows())
 
     return out_data
 
@@ -134,8 +143,8 @@ if __name__ == '__main__':
     ddf1, ddf2 = base()
     ddf_pred = gaussian_classifier(ddf1, ddf2)
     # ddf_pred = knn_classifier(ddf1, ddf2)
-    # ddf_pred = logistic_regression_classifier(ddf1, ddf2)
-    # ddf_pred = svm_classifier(ddf1, ddf2)
+    ddf_pred = logistic_regression_classifier(ddf1, ddf2)
+    ddf_pred = svm_classifier(ddf1, ddf2)
     # ddf_pred.show()
-    binary_evaluator(ddf_pred, 'prediction')
+    # binary_evaluator(ddf_pred, 'prediction')
     # ml_classifiers_part2(ddf_pred)

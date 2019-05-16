@@ -138,25 +138,25 @@ class SVM(ModelDDF):
         if len(self.model) == 0:
             raise Exception("Model is not fitted.")
 
-        self.settings['pred_col'] = pred_col
+        task_list = data.task_list
+        settings = self.settings.copy()
+        settings['pred_col'] = pred_col
+        settings['model'] = self.model[0].copy()
 
-        cols = [self.settings['feature_col'], self.settings['pred_col']]
-
-        df, nfrag, tmp = self._ddf_initial_setup(data)
-
-        result = [[] for _ in range(nfrag)]
-        info = [[] for _ in range(nfrag)]
-        for f in range(nfrag):
-            result[f], info[f] = _predict_partial(df[f], self.model[0], cols, f)
+        def task_transform_svm(df, params):
+            return _svm_predict(df, params)
 
         uuid_key = self._ddf_add_task(task_name='task_transform_svm',
-                                      status='COMPLETED', lazy=self.OPT_OTHER,
-                                      function={0: result},
-                                      parent=[tmp.last_uuid],
-                                      n_output=1, n_input=1, info=info)
+                                      status='WAIT',
+                                      opt=self.OPT_SERIAL,
+                                      function=[task_transform_svm,
+                                                settings],
+                                      parent=[data.last_uuid],
+                                      n_output=1,
+                                      n_input=1)
 
-        self._set_n_input(uuid_key, 0)
-        return DDF(task_list=tmp.task_list, last_uuid=uuid_key)
+        self._set_n_input(uuid_key, data.settings['input'])
+        return DDF(task_list=task_list, last_uuid=uuid_key)
 
 
 def _update_weight(coef_lr, cost_grad, w, coef_lambda):
@@ -234,10 +234,13 @@ def _accumulate_cost_grad(cost_grad_p1, cost_grad_p2):
     return [cost_p1, grad_p1]
 
 
-@task(returns=2)
-def _predict_partial(data, w, cols, frag):
+def _svm_predict(data, settings):
     """Predict all records in a fragments."""
-    features, pred_col = cols
+
+    pred_col = settings['pred_col']
+    features = settings['feature_col']
+    frag = settings['id_frag']
+    w = settings['model']
 
     # TODO: add different classes
 

@@ -62,7 +62,7 @@ class Tokenizer(object):
             return _tokenizer_(df, params)
 
         uuid_key = data._ddf_add_task(task_name='tokenizer',
-                                      status='WAIT', lazy=self.SERIAL,
+                                      status='WAIT', opt=self.SERIAL,
                                       function=[task_tokenizer,
                                                 self.settings],
                                       parent=[data.last_uuid],
@@ -117,7 +117,7 @@ class RegexTokenizer(object):
             return _tokenizer_(df, params)
 
         uuid_key = data._ddf_add_task(task_name='tokenizer',
-                                      status='WAIT', lazy=self.SERIAL,
+                                      status='WAIT', opt=self.SERIAL,
                                       function=[task_regex_tokenizer,
                                                 self.settings],
                                       parent=[data.last_uuid],
@@ -240,7 +240,7 @@ class RemoveStopWords(DDFSketch):
                                                    self.stopwords, f)
 
         uuid_key = self._ddf_add_task(task_name='task_transform_stopwords',
-                                      status='COMPLETED', lazy=self.OPT_OTHER,
+                                      status='COMPLETED', opt=self.OPT_OTHER,
                                       function={0: result},
                                       parent=[tmp.last_uuid],
                                       n_output=1, n_input=1, info=info)
@@ -343,7 +343,7 @@ class NGram(object):
             return _ngram(df, params)
 
         uuid_key = data._ddf_add_task(task_name='ngram',
-                                      status='WAIT', lazy=self.SERIAL,
+                                      status='WAIT', opt=self.SERIAL,
                                       function=[task_ngram, self.settings],
                                       parent=[data.last_uuid],
                                       n_output=1, n_input=1)

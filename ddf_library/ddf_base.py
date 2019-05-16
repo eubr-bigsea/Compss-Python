@@ -70,8 +70,6 @@ class DDFSketch(object):
     def _ddf_initial_setup(data):
         tmp = data.cache()
         n_input = COMPSsContext.tasks_map[tmp.last_uuid]['n_input'][0]
-        if n_input == -1:
-            n_input = 0
         df = COMPSsContext.tasks_map[tmp.last_uuid]['function'][n_input]
         nfrag = len(df)
         return df, nfrag, tmp
@@ -108,16 +106,16 @@ class DDFSketch(object):
                 self.cache()
 
         if not cached:
-            raise Exception("ERROR - toPandas - not cached")
+            raise Exception("ERROR - _check_cache - not cached")
 
-    def _ddf_add_task(self, task_name, status, lazy, function,
+    def _ddf_add_task(self, task_name, status, opt, function,
                       parent, n_output, n_input, info=None):
 
         uuid_key = self._generate_uuid()
         COMPSsContext.tasks_map[uuid_key] = {
             'name': task_name,
             'status': status,
-            'optimization': lazy,
+            'optimization': opt,
             'function': function,
             'parent': parent,
             'output': n_output,

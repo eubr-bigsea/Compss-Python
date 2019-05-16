@@ -117,7 +117,7 @@ class OrdinaryLeastSquares(ModelDDF):
                                           self.model[0], f)
 
         uuid_key = self._ddf_add_task(task_name='transform_ols',
-                                      status='COMPLETED', lazy=self.OPT_OTHER,
+                                      status='COMPLETED', opt=self.OPT_OTHER,
                                       function={0: result},
                                       parent=[tmp.last_uuid],
                                       n_output=1, n_input=1, info=info)

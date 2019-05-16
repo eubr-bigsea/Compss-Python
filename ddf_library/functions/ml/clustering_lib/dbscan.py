@@ -120,7 +120,7 @@ class DBSCAN(object):
             result[f] = _update_clusters(partial[f], components, grids[f])
 
         uuid_key = self._ddf_add_task(task_name='task_transform_dbscan',
-                                      status='COMPLETED', lazy=False,
+                                      status='COMPLETED', lazy=self.OPT_OTHER,
                                       function={0: result},
                                       parent=[data.last_uuid],
                                       n_output=1, n_input=1)

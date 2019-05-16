@@ -659,6 +659,14 @@ def select_expression():
     print("etl_test - select exprs - OK")
 
 
+def show():
+    print("\n|-------- Show --------|\n")
+    data = pd.DataFrame([[i, -i + 5, 1] for i in range(100)],
+                        columns=['a', 'b', 'c'])
+
+    DDF().parallelize(data, 4).show(10)
+
+
 def sort():
     print("\n|-------- Sort --------|\n")
     power_of2 = [4]  # [2, 4, 8, 16, 32, ]
@@ -738,7 +746,7 @@ def split():
 
 def take():
     print("\n|-------- Take --------|\n")
-    data = pd.DataFrame([[i, i + 5] for i in range(10)], columns=['a', 'b'])
+    data = pd.DataFrame([[i, i + 5] for i in range(100)], columns=['a', 'b'])
     ddf_1 = DDF().parallelize(data, 4).take(3)
 
     df1 = ddf_1.to_df()
@@ -796,7 +804,7 @@ if __name__ == '__main__':
     print("_____ETL_____")
 
     # add_columns()
-    aggregation()
+    # aggregation()
     # balancer()
     # cast()
     # cross_join()
@@ -827,6 +835,7 @@ if __name__ == '__main__':
     # save_data_hdfs()
     # select()
     # select_expression()
+    show()
     # sort()
     # split()
     # subtract()

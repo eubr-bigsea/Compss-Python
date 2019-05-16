@@ -53,7 +53,7 @@ def aggregation(data, settings):
 
     for f in range(nfrag):
         settings['id_frag'] = f
-        result[f], info[f] = task_aggregation_stage_2(data[f], settings)
+        result[f], info[f] = task_aggregation_stage_2(data[f], settings.copy())
 
     compss_delete_object(data)
     output = {'key_data': ['data'], 'key_info': ['info'],

@@ -37,8 +37,14 @@ class DDF(DDFSketch):
     def __init__(self, **kwargs):
         super(DDF, self).__init__()
 
+        # list of uuid of operations that describes the current flow
         task_list = kwargs.get('task_list', None)
+
+        # parent uuid operation
         last_uuid = kwargs.get('last_uuid', 'init')
+
+        # configuration of current operation, where: 'input' means the input
+        # number in case where the parent has more than one output data
         self.settings = kwargs.get('settings', {'input': 0})
 
         self.partitions = list()
@@ -317,11 +323,11 @@ class DDF(DDFSketch):
 
         self._set_n_input(new_state_uuid, self.settings['input'])
 
-        tmp = DDF(task_list=self.task_list,
+        res = DDF(task_list=self.task_list,
                   last_uuid=new_state_uuid,
                   settings=self.settings)._run_compss_context(new_state_uuid)
 
-        return tmp
+        return res
 
     def num_of_partitions(self):
         """
@@ -1172,7 +1178,7 @@ class DDF(DDFSketch):
         Is it a Lazy function: No
 
         :param shp_object: The DDF with the shapefile information;
-        :param lat_col: Column which represents the Latitute field in the data;
+        :param lat_col: Column which represents the Latitude field in the data;
         :param lon_col: Column which represents the Longitude field in the data;
         :param polygon: Field in shp_object where is store the
             coordinates of each sector;
@@ -1186,34 +1192,53 @@ class DDF(DDFSketch):
         >>> ddf2.geo_within(ddf1, 'LATITUDE', 'LONGITUDE', 'points')
         """
 
-        from .functions.geo import GeoWithinOperation
+        from .functions.geo import GeoWithin
 
-        settings = dict()
-        settings['lat_col'] = lat_col
-        settings['lon_col'] = lon_col
+        settings = {'lat_col': lat_col, 'lon_col': lon_col,
+                    'polygon': polygon, 'alias': suffix}
+
         if attributes is not None:
             settings['attributes'] = attributes
-        settings['polygon'] = polygon
-        settings['alias'] = suffix
 
-        def task_geo_within(df, params):
-            return GeoWithinOperation().transform(df[0], df[1], params)
+        def task_geo_within_stage_1(df, params):
+            return GeoWithin().geo_within_stage_1(df[0], df[1], params)
+
+        def task_geo_within_stage_2(df, params):
+            return GeoWithin().geo_within_stage_2(df[0], df[1], params)
 
         new_state_uuid = self._generate_uuid()
         COMPSsContext.tasks_map[new_state_uuid] = \
-            {'name': 'geo_within',
+            {'name': 'task_geo_within_stage_1',
              'status': 'WAIT',
-             'optimization': self.OPT_OTHER,
-             'function': [task_geo_within, settings],
+             'optimization': self.OPT_LAST,
+             'function': [task_geo_within_stage_1, settings],
              'parent': [self.last_uuid, shp_object.last_uuid],
              'output': 1,
-             'input': 2
+             'input': 2,
+             'info': True,
              }
 
         self._set_n_input(new_state_uuid, self.settings['input'])
         self._set_n_input(new_state_uuid, shp_object.settings['input'])
-        new_list = self._merge_tasks_list(self.task_list + shp_object.task_list)
-        return DDF(task_list=new_list, last_uuid=new_state_uuid)
+
+        last_uuid = new_state_uuid
+        task_list = self.task_list + shp_object.task_list
+        task_list = self._merge_tasks_list(task_list)
+        task_list.append(last_uuid)
+
+        new_state_uuid = self._generate_uuid()
+        COMPSsContext.tasks_map[new_state_uuid] = \
+            {'name': 'task_geo_within_stage_2',
+             'status': 'WAIT',
+             'optimization': self.OPT_SERIAL,
+             'function': [task_geo_within_stage_2, None],
+             'parent': [last_uuid],
+             'output': 1,
+             'input': 1
+             }
+
+        self._set_n_input(new_state_uuid, self.settings['input'])
+        return DDF(task_list=task_list, last_uuid=new_state_uuid)
 
     def hash_partition(self, columns, nfrag=None):
         """
@@ -1908,7 +1933,6 @@ class DDF(DDFSketch):
         res = take(self.partitions, {'value': n,
                                      'info': [{'size': n_rows_frags}]})
         res = compss_wait_on(res['data'])
-
         df = concatenate_pandas(res)
 
         print(df)
@@ -2184,7 +2208,7 @@ class DDF(DDFSketch):
     def rename(self, old_column, new_column):
         """
         Returns a new DDF by renaming an existing column. This is a no-op if
-        schema doesn’t contain the given column name.
+        schema does not contain the given column name.
 
         Is it a Lazy function: Yes
 

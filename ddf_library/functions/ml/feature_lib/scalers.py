@@ -116,7 +116,7 @@ class MinMaxScaler(ModelDDF):
                                                 self.model[0], f)
 
         uuid_key = self._ddf_add_task(task_name='task_transform_minmax_scaler',
-                                      status='COMPLETED', lazy=self.OPT_OTHER,
+                                      status='COMPLETED', opt=self.OPT_OTHER,
                                       function={0: result},
                                       parent=[tmp.last_uuid],
                                       n_output=1, n_input=1, info=info)
@@ -300,7 +300,7 @@ class MaxAbsScaler(ModelDDF):
                                                 self.settings, f)
 
         uuid_key = self._ddf_add_task(task_name='task_transform_maxabs_scaler',
-                                      status='COMPLETED', lazy=self.OPT_OTHER,
+                                      status='COMPLETED', opt=self.OPT_OTHER,
                                       function={0: result},
                                       parent=[tmp.last_uuid],
                                       n_output=1, n_input=1, info=info)
@@ -476,7 +476,7 @@ class StandardScaler(ModelDDF):
                                                   mean, sse, f)
 
         uuid_key = self._ddf_add_task(task_name='transform_standard_scaler',
-                                      status='COMPLETED', lazy=self.OPT_OTHER,
+                                      status='COMPLETED', opt=self.OPT_OTHER,
                                       function={0: result},
                                       parent=[tmp.last_uuid],
                                       n_output=1, n_input=1, info=info)

@@ -114,24 +114,25 @@ class LogisticRegression(ModelDDF):
         if len(self.model) == 0:
             raise Exception("Model is not fitted.")
 
-        self.settings['pred_col'] = pred_col
+        task_list = data.task_list
+        settings = self.settings.copy()
+        settings['pred_col'] = pred_col
+        settings['model'] = self.model[0].copy()
 
-        df, nfrag, tmp = self._ddf_initial_setup(data)
-
-        result = [[] for _ in range(nfrag)]
-        info = [[] for _ in range(nfrag)]
-        for f in range(nfrag):
-            result[f], info[f] = _logr_predict(df[f], self.settings,
-                                               self.model[0], f)
+        def task_transform_logr(df, params):
+            return _logr_predict(df, params)
 
         uuid_key = self._ddf_add_task(task_name='task_transform_logr',
-                                      status='COMPLETED', lazy=self.OPT_OTHER,
-                                      function={0: result},
-                                      parent=[tmp.last_uuid],
-                                      n_output=1, n_input=1, info=info)
+                                      status='WAIT',
+                                      opt=self.OPT_SERIAL,
+                                      function=[task_transform_logr,
+                                                settings],
+                                      parent=[data.last_uuid],
+                                      n_output=1,
+                                      n_input=1)
 
-        self._set_n_input(uuid_key, 0)
-        return DDF(task_list=tmp.task_list, last_uuid=uuid_key)
+        self._set_n_input(uuid_key, data.settings['input'])
+        return DDF(task_list=task_list, last_uuid=uuid_key)
 
 
 def _logr_sigmoid(scores):
@@ -248,7 +249,6 @@ def _logr_agg_sga(info1, info2):
     return [gradient, size, dim, theta]
 
 
-# @local
 def _logr_calc_theta(info, coef_lr, it, regularization, threshold):
     info = compss_wait_on(info)
     gradient = info[0]
@@ -266,11 +266,12 @@ def _logr_calc_theta(info, coef_lr, it, regularization, threshold):
     return [theta, converged]
 
 
-@task(returns=2)
-def _logr_predict(data, settings, theta, frag):
+def _logr_predict(data, settings):
 
+    frag = settings['id_frag']
     col_features = settings['feature_col']
     pred_col = settings['pred_col']
+    theta = settings['model']
     size = len(data)
 
     if pred_col in data.columns:
@@ -280,7 +281,7 @@ def _logr_predict(data, settings, theta, frag):
 
         xs = np.c_[np.ones(size), data[col_features].values]
         xs = np.dot(xs, theta)
-        data[pred_col] = np.rint(_logr_sigmoid(xs), dtype=int)
+        data[pred_col] = np.rint(_logr_sigmoid(xs)).astype(int)
     else:
         data[pred_col] = np.nan
 

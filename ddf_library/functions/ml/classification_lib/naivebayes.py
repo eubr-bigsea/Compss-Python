@@ -116,27 +116,28 @@ class GaussianNB(ModelDDF):
         :return: DDF
         """
 
-        self.settings['pred_col'] = pred_col
-
         if len(self.model) == 0:
             raise Exception("Model is not fitted.")
 
-        df, nfrag, tmp = self._ddf_initial_setup(data)
+        task_list = data.task_list
+        settings = self.settings.copy()
+        settings['pred_col'] = pred_col
+        settings['model'] = self.model['model'].copy()
 
-        result = [[] for _ in range(nfrag)]
-        info = [[] for _ in range(nfrag)]
-        for f in range(nfrag):
-            result[f], info[f] = _nb_predict(df[f], self.model['model'],
-                                             self.settings, f)
+        def task_transform_nb(df, params):
+            return _nb_predict(df, params)
 
         uuid_key = self._ddf_add_task(task_name='task_transform_nb',
-                                      status='COMPLETED', lazy=self.OPT_OTHER,
-                                      function={0: result},
-                                      parent=[tmp.last_uuid],
-                                      n_output=1, n_input=1, info=info)
+                                      status='WAIT',
+                                      opt=self.OPT_SERIAL,
+                                      function=[task_transform_nb,
+                                                settings],
+                                      parent=[data.last_uuid],
+                                      n_output=1,
+                                      n_input=1)
 
-        self._set_n_input(uuid_key, 0)
-        return DDF(task_list=tmp.task_list, last_uuid=uuid_key)
+        self._set_n_input(uuid_key, data.settings['input'])
+        return DDF(task_list=task_list, last_uuid=uuid_key)
 
 
 @task(returns=2)
@@ -209,10 +210,11 @@ def _nb_calc_std(summaries):
     return new_summaries
 
 
-@task(returns=2)
-def _nb_predict(data, summaries, settings, frag):
+def _nb_predict(data, settings):
     """Predict all records in a fragment."""
 
+    frag = settings['id_frag']
+    summaries = settings['model']
     features_col = settings['feature_col']
     predicted_label = settings['pred_col']
 

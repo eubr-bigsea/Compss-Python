@@ -86,7 +86,7 @@ class AssociationRules(DDFSketch):
         #                                     count_total, max_rules, f)
 
         uuid_key = self._ddf_add_task(task_name='task_associative_rules',
-                                      status='COMPLETED', lazy=self.OPT_OTHER,
+                                      status='COMPLETED', opt=self.OPT_OTHER,
                                       function={0: result},
                                       parent=[tmp.last_uuid],
                                       n_output=1, n_input=1, info=info)

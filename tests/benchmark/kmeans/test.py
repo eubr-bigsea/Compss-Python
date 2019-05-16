@@ -57,13 +57,13 @@ if __name__ == "__main__":
     t3 = time.time()
     print("Time to split data - t3-t2:", t3 - t2)
 
-    sv = Kmeans(feature_col=cols, max_iters=20, n_clusters=2,
+    sv = Kmeans(feature_col=cols, max_iter=20, n_clusters=2,
                 init_mode='random', epsilon=0.01).fit(ddf_train)
     compss_barrier()
     t4 = time.time()
 
     print("Time to fit Kmeans - t4-t3:", t4 - t3)
-    ddf1 = sv.transform(ddf1).cache()
+    ddf1 = sv.transform(ddf1, pred_col='prediction')
     compss_barrier()
     t5 = time.time()
     print("Time to transform Kmeans - t5-t4:", t5 - t4)

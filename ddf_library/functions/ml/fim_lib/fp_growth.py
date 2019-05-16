@@ -109,7 +109,7 @@ class FPGrowth(DDFSketch):
                 raise Exception("Model is not fitted.")
 
             uuid_key = self._ddf_add_task(task_name='task_fpgrowth',
-                                          status='COMPLETED', lazy=self.OPT_OTHER,
+                                          status='COMPLETED', opt=self.OPT_OTHER,
                                           function={0: self.model['data']},
                                           parent=[self.model['last_uuid']],
                                           n_output=1, n_input=1,

@@ -104,7 +104,7 @@ class PageRank(DDFSketch):
         result, info = _pagerank_split(merged_table, nfrag)
 
         uuid_key = self._ddf_add_task(task_name='task_transform_pagerank',
-                                      status='COMPLETED', lazy=self.OPT_OTHER,
+                                      status='COMPLETED', opt=self.OPT_OTHER,
                                       function={0: result},
                                       parent=[tmp.last_uuid],
                                       n_output=1, n_input=1, info=info)

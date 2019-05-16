@@ -60,7 +60,7 @@ if __name__ == "__main__":
     print("Time to split data - t3-t2:", t3 - t2)
 
     sv = SVM(feature_col=cols, label_col=col_label,
-             max_iters=20, coef_lr=0.01).fit(ddf_train)
+             max_iter=20, coef_lr=0.01).fit(ddf_train)
     compss_barrier()
     t4 = time.time()
 

@@ -56,7 +56,7 @@ class VectorAssembler(object):
             return _feature_assemble_(df, params)
 
         uuid_key = data._ddf_add_task(task_name='vector_assembler',
-                                      status='WAIT', lazy=self.OPT_SERIAL,
+                                      status='WAIT', opt=self.OPT_SERIAL,
                                       function=[task_vector_assembler,
                                                 self.settings],
                                       parent=[data.last_uuid],
@@ -156,7 +156,7 @@ class VectorSlicer(object):
             return _vector_slicer(df, params)
 
         uuid_key = data._ddf_add_task(task_name='vector_slicer',
-                                      status='WAIT', lazy=self.OPT_SERIAL,
+                                      status='WAIT', opt=self.OPT_SERIAL,
                                       function=[task_vector_slicer,
                                                 self.settings],
                                       parent=[data.last_uuid],

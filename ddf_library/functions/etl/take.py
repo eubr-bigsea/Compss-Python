@@ -37,7 +37,7 @@ def take(data, settings):
 
     for f in range(nfrag):
         settings['id_frag'] = f
-        result[f], info[f] = task_take_stage_2(data[f], settings)
+        result[f], info[f] = task_take_stage_2(data[f], settings.copy())
 
     output = {'key_data': ['data'], 'key_info': ['info'],
               'data': result, 'info': info}
@@ -47,7 +47,6 @@ def take(data, settings):
 def take_stage_1(data, settings):
 
     info, value = settings['info'][0], settings['value']
-
     settings['idx'] = _take_define_sample(info, value)
 
     return data, settings
@@ -82,11 +81,9 @@ def take_stage_2(data, settings):
     del settings
 
     data.reset_index(drop=True, inplace=True)
-    result = data.iloc[:indexes]
-
-    del data
-    info = generate_info(result, frag)
-    return result, info
+    data = data.iloc[:indexes]
+    info = generate_info(data, frag)
+    return data, info
 
 
 @task(returns=2)

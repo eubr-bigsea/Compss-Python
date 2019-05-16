@@ -126,7 +126,7 @@ class CountVectorizer(ModelDDF):
                                                 self.settings, f)
 
         uuid_key = self._ddf_add_task(task_name='transform_count_vectorizer',
-                                      status='COMPLETED', lazy=self.OPT_OTHER,
+                                      status='COMPLETED', opt=self.OPT_OTHER,
                                       function={0: result},
                                       parent=[tmp.last_uuid],
                                       n_output=1, n_input=1, info=info)
@@ -376,7 +376,7 @@ class TfidfVectorizer(ModelDDF):
                 construct_tf_idf(df[f], vocabulary, self.settings, f)
 
         uuid_key = self._ddf_add_task(task_name='task_transform_tfidf',
-                                      status='COMPLETED', lazy=self.OPT_OTHER,
+                                      status='COMPLETED', opt=self.OPT_OTHER,
                                       function={0: result},
                                       parent=[tmp.last_uuid],
                                       n_output=1, n_input=1, info=info)
