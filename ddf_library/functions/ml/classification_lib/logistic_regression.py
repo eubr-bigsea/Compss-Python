@@ -13,11 +13,10 @@ from pycompss.functions.reduce import merge_reduce
 from pycompss.api.api import compss_wait_on, compss_delete_object
 
 import numpy as np
-import pandas as pd
 
 
 class LogisticRegression(ModelDDF):
-
+    # noinspection PyUnresolvedReferences
     """
     Logistic regression is named for the function used at the core
     of the method, the logistic function. It is the go-to method for

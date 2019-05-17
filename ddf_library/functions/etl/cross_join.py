@@ -9,7 +9,7 @@ from pycompss.api.task import task
 import pandas as pd
 
 
-def crossjoin(data1, data2):
+def cross_join(data1, data2):
     """
     Returns the cartesian product with another DataFrame.
 
@@ -24,7 +24,7 @@ def crossjoin(data1, data2):
 
     for f, df1 in enumerate(data1):
         for df2 in data2:
-            result[f], info[f] = _crossjoin(result[f], df1, df2, f)
+            result[f], info[f] = _cross_join(result[f], df1, df2, f)
 
     output = {'key_data': ['data'], 'key_info': ['info'],
               'data': result, 'info': info}
@@ -32,7 +32,7 @@ def crossjoin(data1, data2):
 
 
 @task(returns=2)
-def _crossjoin(result, df1, df2, frag):
+def _cross_join(result, df1, df2, frag):
 
     key = create_auxiliary_column(df1.columns.tolist() + df2.columns.tolist())
 

@@ -10,7 +10,6 @@ from .hash_partitioner import hash_partition
 from pycompss.api.task import task
 
 import pandas as pd
-import numpy as np
 
 
 def intersect(data1, data2, settings):

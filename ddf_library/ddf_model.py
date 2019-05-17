@@ -10,7 +10,7 @@ from .ddf_base import DDFSketch
 
 class ModelDDF(DDFSketch):
     """
-
+    Class base of model DDF algorithms
     """
 
     def __init__(self):
@@ -26,6 +26,7 @@ class ModelDDF(DDFSketch):
 
     def save_model(self, filepath, storage='hdfs', overwrite=True,
                    namenode='localhost', port=9000):
+        # noinspection PyUnresolvedReferences
         """
         Save a machine learning model as a binary file in a storage.
 
@@ -54,6 +55,7 @@ class ModelDDF(DDFSketch):
 
     def load_model(self, filepath, storage='hdfs', namenode='localhost',
                    port=9000):
+        # noinspection PyUnresolvedReferences
         """
         Load a machine learning model from a binary file in a storage.
 

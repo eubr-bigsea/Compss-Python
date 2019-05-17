@@ -14,7 +14,6 @@ from ddf_library.utils import merge_info
 from pycompss.api.task import task
 from pycompss.api.parameter import FILE_IN
 from pycompss.api.api import compss_wait_on
-from pycompss.runtime.binding import Future
 
 from collections import OrderedDict, deque
 import copy
@@ -86,12 +85,14 @@ class COMPSsContext(object):
             print("{} --> {}".format(k[:8], self.tasks_map[k]))
         print("\n")
 
-    def create_adj_tasks(self, specials=[]):
+    def create_adj_tasks(self, specials=None):
         """
         Create a Adjacency task list
         Parent --> sons
         :return:
         """
+        if specials is None:
+            specials = []
 
         for t in self.tasks_map:
             parents = self.tasks_map[t]['parent']
@@ -109,8 +110,8 @@ class COMPSsContext(object):
 
             def dfs(node):
                 state[node] = gray
-                for k in graph.get(node, ()):
-                    sk = state.get(k, None)
+                for no in graph.get(node, ()):
+                    sk = state.get(no, None)
                     if sk == gray:
                         raise ValueError("cycle")
                     if sk == black:
@@ -359,8 +360,8 @@ class COMPSsContext(object):
             print("Stages (optimized): {}".format(group_uuids))
             print("opt_functions", group_func)
 
-        file_serial_function = any(['file_in' in self.get_task_name(taskid)
-                                    for taskid in group_uuids])
+        file_serial_function = any(['file_in' in self.get_task_name(uid)
+                                    for uid in group_uuids])
         result, info = self._execute_serial_tasks(group_func, inputs,
                                                   file_serial_function)
         self.save_lazy_states(result, info, group_uuids)
@@ -442,7 +443,8 @@ class COMPSsContext(object):
         """
         Used to execute all non-lazy functions.
 
-        :param f: a list that contains the current task and its parameters.
+        :param env: a list that contains the current task and its parameters.
+        :param input_data: A list of DataFrame as input data
         :return:
         """
 
@@ -463,7 +465,7 @@ class COMPSsContext(object):
 
         :param opt: sequence of functions and parameters to be executed in
             each fragment
-        :param input_data: input data
+        :param input_data: A list of DataFrame as input data
         :param type_function: if False, use task_bundle otherwise
          task_bundle_file
         :return:

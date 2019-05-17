@@ -37,6 +37,7 @@ class GroupedDDF(DDF):
                                          last_uuid=self.last_uuid)
 
     def agg(self, exprs, alias=None):
+        # noinspection PyUnresolvedReferences
         """
         Compute aggregates and returns the result as a DDF.
 
@@ -67,6 +68,7 @@ class GroupedDDF(DDF):
         return self.ddf_var
 
     def avg(self, cols, alias=None):
+        # noinspection PyUnresolvedReferences
         """
         Computes average values for each numeric columns for each group.
 
@@ -81,6 +83,7 @@ class GroupedDDF(DDF):
         return self
 
     def count(self, cols, alias=None):
+        # noinspection PyUnresolvedReferences
         """
         Counts the number of records for each group.
 
@@ -95,6 +98,7 @@ class GroupedDDF(DDF):
         return self
 
     def first(self, cols, alias=None):
+        # noinspection PyUnresolvedReferences
         """
         Returns the first element of group.
 
@@ -109,6 +113,7 @@ class GroupedDDF(DDF):
         return self
 
     def last(self, cols, alias=None):
+        # noinspection PyUnresolvedReferences
         """
         Returns the last element of group.
 
@@ -123,6 +128,7 @@ class GroupedDDF(DDF):
         return self
 
     def list(self, cols, alias=None):
+        # noinspection PyUnresolvedReferences
         """
         Returns a list of objects with duplicates;
 
@@ -137,6 +143,7 @@ class GroupedDDF(DDF):
         return self
 
     def max(self, cols, alias=None):
+        # noinspection PyUnresolvedReferences
         """
         Computes the max value for each numeric columns for each group.
 
@@ -151,6 +158,7 @@ class GroupedDDF(DDF):
         return self
 
     def mean(self, cols, alias=None):
+        # noinspection PyUnresolvedReferences
         """
         Alias for avg. Computes average values for each numeric columns for
         each group.
@@ -166,6 +174,7 @@ class GroupedDDF(DDF):
         return self
 
     def min(self, cols, alias=None):
+        # noinspection PyUnresolvedReferences
         """
         Computes the min value for each numeric column for each group.
 
@@ -180,6 +189,7 @@ class GroupedDDF(DDF):
         return self
 
     def set(self, cols, alias=None):
+        # noinspection PyUnresolvedReferences
         """
         Returns a set of objects with duplicate elements.
 
@@ -194,6 +204,7 @@ class GroupedDDF(DDF):
         return self
 
     def sum(self, cols, alias=None):
+        # noinspection PyUnresolvedReferences
         """
         Computes the sum for each numeric columns for each group.
 

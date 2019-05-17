@@ -9,11 +9,10 @@ from ddf_library.utils import generate_info, merge_schema, merge_reduce
 from pycompss.api.task import task
 from pycompss.api.api import compss_wait_on, compss_delete_object
 
-import pandas as pd
+import functools
 
 
 def aggregation(data, settings):
-
     """
     Computes aggregates and returns the result as a DataFrame
 
@@ -170,7 +169,7 @@ def _collect_set(x):
 
 def _merge_set(series):
     """Merge set list."""
-    return reduce(lambda x, y: list(set(x + y)), series.tolist())
+    return functools.reduce(lambda x, y: list(set(x + y)), series.tolist())
 
 
 def _replace_functions_name(operation):

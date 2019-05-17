@@ -26,14 +26,13 @@ class CountVectorizer(ModelDDF):
 
     :Example:
 
-    >>> cv = CountVectorizer(input_col='col_1', output_col='col_2').fit(ddf1)
-    >>> ddf2 = cv.transform(ddf1)
+    >>> cv = CountVectorizer().fit(ddf1, input_col='col_1')
+    >>> ddf2 = cv.transform(ddf1, output_col='col_2')
     """
 
-    def __init__(self, input_col, vocab_size=200, min_tf=1.0,
-                 min_df=1, binary=True):
+    def __init__(self, vocab_size=200, min_tf=1.0, min_df=1, binary=True):
         """
-        :param input_col: Input column name with the tokens;
+
         :param vocab_size: Maximum size of the vocabulary. (default, 200)
         :param min_tf: Specifies the minimum number of different documents a
          term must appear in to be included in the vocabulary. If this is an
@@ -47,11 +46,7 @@ class CountVectorizer(ModelDDF):
         """
         super(CountVectorizer, self).__init__()
 
-        if isinstance(input_col, list):
-            raise Exception('"input_col" must be a single column.')
-
         self.settings = dict()
-        self.settings['input_col'] = input_col
         self.settings['vocab_size'] = vocab_size
         self.settings['min_tf'] = min_tf
         self.settings['min_df'] = min_df
@@ -60,17 +55,22 @@ class CountVectorizer(ModelDDF):
         self.name = 'CountVectorizer'
         self.model = dict()
 
-    def fit(self, data):
+    def fit(self, data, input_col):
         """
         Fit the model.
 
         :param data: DDF
+        :param input_col: Input column name with the tokens;
         :return: a trained model
         """
+
+        if isinstance(input_col, list):
+            raise Exception('"input_col" must be a single column.')
 
         vocab_size = self.settings['vocab_size']
         min_tf = self.settings['min_tf']
         min_df = self.settings['min_df']
+        self.settings['input_col'] = input_col
 
         df, nfrag, tmp = self._ddf_initial_setup(data)
 
@@ -89,16 +89,17 @@ class CountVectorizer(ModelDDF):
 
         return self
 
-    def fit_transform(self, data, output_col=None):
+    def fit_transform(self, data, input_col, output_col=None):
         """
         Fit the model and transform.
 
         :param data: DDF
+        :param input_col: Input column name with the tokens;
         :param output_col: Output field (default, add suffix '_vectorized');
         :return: DDF
         """
 
-        self.fit(data)
+        self.fit(data, input_col)
         ddf = self.transform(data, output_col)
 
         return ddf
@@ -109,30 +110,23 @@ class CountVectorizer(ModelDDF):
         :param output_col: Output field (default, add suffix '_vectorized');
         :return: DDF
         """
-        if len(self.model) == 0:
-            raise Exception("Model is not fitted.")
 
+        self.check_fitted_model()
+
+        settings = self.settings.copy()
+        settings['model'] = self.model['vocabulary'].copy()
         if output_col is not None:
-            self.settings['output_col'] = output_col
+            settings['output_col'] = output_col
 
-        vocabulary = self.model['vocabulary']
+        def task_transform_bow(df, params):
+            return _transform_bow(df, params)
 
-        df, nfrag, tmp = self._ddf_initial_setup(data)
+        uuid_key = self._ddf_add_task(task_name='task_transform_bow',
+                                      opt=self.OPT_SERIAL,
+                                      parent=[data.last_uuid],
+                                      function=[task_transform_bow, settings])
 
-        result = [[] for _ in range(nfrag)]
-        info = [[] for _ in range(nfrag)]
-        for f in range(nfrag):
-            result[f], info[f] = _transform_bow(df[f], vocabulary,
-                                                self.settings, f)
-
-        uuid_key = self._ddf_add_task(task_name='transform_count_vectorizer',
-                                      status='COMPLETED', opt=self.OPT_OTHER,
-                                      function={0: result},
-                                      parent=[tmp.last_uuid],
-                                      n_output=1, n_input=1, info=info)
-
-        self._set_n_input(uuid_key, 0)
-        return DDF(task_list=tmp.task_list, last_uuid=uuid_key)
+        return DDF(task_list=data.task_list, last_uuid=uuid_key)
 
 
 @task(returns=dict)
@@ -176,7 +170,6 @@ def merge_lists(list1, list2):
     return list1
 
 
-# @local
 def create_vocabulary(word_dic, n_rows=-1):
     """Create a partial mode."""
     word_dic = compss_wait_on(word_dic)
@@ -217,9 +210,9 @@ def filter_words(vocabulary, params):
     return vocabulary
 
 
-@task(returns=2)
-def _transform_bow(data, vocabulary, params, frag):
-
+def _transform_bow(data, params):
+    frag = params['id_frag']
+    vocabulary = params['model']
     vocabulary_ = {k: v for v, k in enumerate(vocabulary['Word'].values)}
     n_cols = len(vocabulary_)
     column = params['input_col']
@@ -235,6 +228,7 @@ def _transform_bow(data, vocabulary, params, frag):
         return doc
 
     from sklearn.feature_extraction.text import CountVectorizer
+    # noinspection PyTypeChecker
     vectorizer = CountVectorizer(analyzer='word',
                                  tokenizer=dummy_fun,
                                  preprocessor=dummy_fun,
@@ -242,18 +236,6 @@ def _transform_bow(data, vocabulary, params, frag):
                                  binary=params['binary'])
     vectorizer.vocabulary_ = vocabulary_
     vector = vectorizer.transform(data[column].tolist())
-
-    # vector = np.zeros((len(data), len(vocabulary)), dtype=np.int)
-    # if len(data) > 0:
-    #     for i, lines in enumerate(data[column].tolist()):
-    #         for e, w in enumerate(vocabulary):
-    #             if binary:
-    #                 if w in lines:
-    #                     vector[i][e] = 1
-    #                 else:
-    #                     vector[i][e] = 0
-    #             else:
-    #                 vector[i][e] = (lines == w).sum()
 
     cols = [col for col in output_col if col in data.columns]
     if len(cols) > 0:
@@ -279,9 +261,8 @@ class TfidfVectorizer(ModelDDF):
     >>> ddf2 = tfidf.transform(ddf1)
     """
 
-    def __init__(self, input_col, vocab_size=200, min_tf=1.0, min_df=1):
+    def __init__(self, vocab_size=200, min_tf=1.0, min_df=1):
         """
-        :param input_col: Input column name with the tokens;
         :param vocab_size: Maximum size of the vocabulary. (default, 200)
         :param min_tf: Specifies the minimum number of different documents a
          term must appear in to be included in the vocabulary. If this is an
@@ -294,11 +275,7 @@ class TfidfVectorizer(ModelDDF):
         """
         super(TfidfVectorizer, self).__init__()
 
-        if isinstance(input_col, list):
-            raise Exception('"input_col" must be a single column.')
-
         self.settings = dict()
-        self.settings['input_col'] = input_col
         self.settings['vocab_size'] = vocab_size
         self.settings['min_tf'] = min_tf
         self.settings['min_df'] = min_df
@@ -306,14 +283,19 @@ class TfidfVectorizer(ModelDDF):
         self.model = dict()
         self.name = 'TfidfVectorizer'
 
-    def fit(self, data):
+    def fit(self, data, input_col):
         """
         Fit the model.
 
         :param data: DDF
+        :param input_col: Input column name with the tokens;
         :return: trained model
         """
 
+        if isinstance(input_col, list):
+            raise Exception('"input_col" must be a single column.')
+
+        self.settings['input_col'] = input_col
         vocab_size = self.settings['vocab_size']
         min_tf = self.settings['min_tf']
         min_df = self.settings['min_df']
@@ -338,16 +320,17 @@ class TfidfVectorizer(ModelDDF):
 
         return self
 
-    def fit_transform(self, data, output_col=None):
+    def fit_transform(self, data, input_col, output_col=None):
         """
         Fit the model and transform.
 
         :param data: DDF
+        :param input_col: Input column name with the tokens;
         :param output_col: Output field (default, add suffix '_vectorized');
         :return: DDF
         """
 
-        self.fit(data)
+        self.fit(data, input_col)
         ddf = self.transform(data, output_col)
 
         return ddf
@@ -359,30 +342,23 @@ class TfidfVectorizer(ModelDDF):
         :return: DDF
         """
 
-        if len(self.model) == 0:
-            raise Exception("Model is not fitted.")
+        self.check_fitted_model()
 
+        settings = self.settings.copy()
+        settings['model'] = self.model['vocabulary'].copy()
         if output_col is not None:
-            self.settings['output_col'] = output_col
+            settings['output_col'] = output_col
 
-        vocabulary = self.model['vocabulary']
+        def task_transform_tf_if(df, params):
+            return construct_tf_idf(df, params)
 
-        df, nfrag, tmp = self._ddf_initial_setup(data)
+        uuid_key = self._ddf_add_task(task_name='task_transform_tf_if',
+                                      opt=self.OPT_SERIAL,
+                                      parent=[data.last_uuid],
+                                      function=[task_transform_tf_if, settings])
 
-        result = [[] for _ in range(nfrag)]
-        info = [[] for _ in range(nfrag)]
-        for f in range(nfrag):
-            result[f], info[f] = \
-                construct_tf_idf(df[f], vocabulary, self.settings, f)
+        return DDF(task_list=data.task_list, last_uuid=uuid_key)
 
-        uuid_key = self._ddf_add_task(task_name='task_transform_tfidf',
-                                      status='COMPLETED', opt=self.OPT_OTHER,
-                                      function={0: result},
-                                      parent=[tmp.last_uuid],
-                                      n_output=1, n_input=1, info=info)
-
-        self._set_n_input(uuid_key, 0)
-        return DDF(task_list=tmp.task_list, last_uuid=uuid_key)
 
 
 @task(returns=1)
@@ -397,8 +373,7 @@ def mergeCount(data1, data2):
     return data1 + data2
 
 
-@task(returns=2)
-def construct_tf_idf(data, vocabulary, params, frag):
+def construct_tf_idf(data, params):
     """Construct the tf-idf feature.
 
     TF(t)  = (Number of times term t appears in a document)
@@ -408,6 +383,8 @@ def construct_tf_idf(data, vocabulary, params, frag):
     Source: http://www.tfidf.com/
     """
 
+    frag = params['id_frag']
+    vocabulary = params['model']
     vocabulary_ = {k: v for v, k in enumerate(vocabulary['Word'].values)}
     n_cols = len(vocabulary_)
     column = params['input_col']

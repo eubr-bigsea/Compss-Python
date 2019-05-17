@@ -4,13 +4,9 @@
 __author__ = "Lucas Miguel S Ponce"
 __email__ = "lucasmsp@gmail.com"
 
-from ddf_library.utils import generate_info, merge_info
+from ddf_library.utils import generate_info
 
 from pycompss.api.task import task
-
-import pandas as pd
-import numpy as np
-import time
 
 
 def sort(data, settings):

@@ -11,4 +11,3 @@ from .classification_lib.logistic_regression import LogisticRegression
 from .classification_lib.svm import SVM
 
 __all__ = ['GaussianNB', 'KNearestNeighbors', 'LogisticRegression', 'SVM']
-

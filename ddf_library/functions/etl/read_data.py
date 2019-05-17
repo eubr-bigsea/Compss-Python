@@ -1,10 +1,8 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-from ddf_library.utils import generate_info, merge_info
+from ddf_library.utils import generate_info
 from .parallelize import parallelize
-
-from pycompss.api.task import task
 
 import pandas as pd
 

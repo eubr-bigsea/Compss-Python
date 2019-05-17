@@ -6,7 +6,6 @@ __author__ = "Lucas Miguel S Ponce"
 __email__ = "lucasmsp@gmail.com"
 
 from ddf_library.utils import generate_info
-from pycompss.api.task import task
 import pandas as pd
 
 
@@ -55,7 +54,7 @@ def with_column_cast(data, settings):
     cols = data.columns
     for col in attributes:
         if col not in cols:
-            raise Exception("The column `{}` dont exists!.".format(col))
+            raise Exception("The column `{}` don't exists!.".format(col))
 
     # first, change the data types.
     for att, dtype in zip(attributes, new_data_type):

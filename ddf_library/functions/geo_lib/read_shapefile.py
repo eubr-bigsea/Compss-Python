@@ -7,11 +7,8 @@ __email__ = "lucasmsp@gmail.com"
 
 from ddf_library.utils import generate_info
 
-from pycompss.api.task import task
-from pycompss.functions.reduce import merge_reduce
-
 import shapefile
-from io import BytesIO, StringIO
+from io import BytesIO
 import pandas as pd
 import numpy as np
 

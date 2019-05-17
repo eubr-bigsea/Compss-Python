@@ -12,7 +12,6 @@ from pycompss.api.api import compss_wait_on, compss_delete_object
 
 import pandas as pd
 import numpy as np
-import copy
 
 
 def drop_nan_rows(data, settings):
@@ -48,11 +47,12 @@ def fill_by_value(data, settings):
 
 def drop_nan_columns(data, settings):
     """
-
-    :param subset:  optional list of column names to consider.
-    :param thresh: int, default None If specified, drop rows that have less
-        than thresh non-null values. This overwrites the how parameter.
-    :param how: ‘any’ or ‘all’. If ‘any’, drop a row if it contains any
+    :param data: A list with pandas's DataFrame.
+    :param settings: A dictionary with:
+     * subset:  optional list of column names to consider.
+     * thresh: int, default None If specified, drop rows that have less
+       than thresh non-null values. This overwrites the how parameter.
+     * how: ‘any’ or ‘all’. If ‘any’, drop a row if it contains any
      nulls. If ‘all’, drop a row only if all its values are null.
     :return: Returns a list with pandas's DataFrame.
     """
@@ -82,11 +82,12 @@ def drop_nan_columns_stage_2(data, settings):
 
 def fill_nan(data, settings):
     """
-
-    :param subset:  optional list of column names to consider.
-    :param thresh: int, default None If specified, drop rows that have less
-        than thresh non-null values. This overwrites the how parameter.
-    :param how: ‘any’ or ‘all’. If ‘any’, drop a row if it contains any
+    :param data: A list with pandas's DataFrame.
+    :param settings: A dictionary with:
+       * subset:  optional list of column names to consider.
+       * thresh: int, default None If specified, drop rows that have less
+     than thresh non-null values. This overwrites the how parameter.
+       * how: ‘any’ or ‘all’. If ‘any’, drop a row if it contains any
      nulls. If ‘all’, drop a row only if all its values are null.
     :return: Returns a list with pandas's DataFrame.
     """
@@ -123,6 +124,7 @@ def clean_missing_preprocessing(data, settings):
         settings = compss_wait_on(settings)
 
     else:
+        # noinspection SpellCheckingInspection
         """
         Based on : 
         FUJIWARA, Akihiro; INOUE, Michiko; MASUZAWA, Toshimitsu. Parallel 
@@ -290,7 +292,6 @@ def _median_stage3_merge(info1, info2):
     return info1
 
 
-# @local
 def _median_define(info):
     for att in info:
 

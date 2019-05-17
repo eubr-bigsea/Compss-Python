@@ -12,13 +12,11 @@ from pycompss.api.task import task
 from pycompss.functions.reduce import merge_reduce
 from pycompss.api.api import compss_wait_on
 
-import math
 import numpy as np
-import pandas as pd
 
 
 class KNearestNeighbors(ModelDDF):
-
+    # noinspection PyUnresolvedReferences
     """K-Nearest Neighbor is a algorithm used that can be used for both
     classification and regression predictive problems. In a classification, the
     algorithm computes from a simple majority vote of the K nearest neighbors

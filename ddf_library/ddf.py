@@ -18,13 +18,12 @@ from pycompss.runtime.binding import Future
 
 from ddf_library.ddf_base import DDFSketch
 from ddf_library.context import COMPSsContext
-from ddf_library.utils import generate_info, concatenate_pandas
+from ddf_library.utils import concatenate_pandas
 
 import pandas as pd
-import numpy as np
 
 
-__all__ = ['DDF', 'generate_info']
+__all__ = ['DDF']
 
 
 class DDF(DDFSketch):
@@ -205,8 +204,8 @@ class DDF(DDFSketch):
         :param shp_path: Path to the shapefile (.shp)
         :param dbf_path: Path to the shapefile (.dbf)
         :param polygon: Alias to the new column to store the
-                polygon coordenates (default, 'points');
-        :param attributes: List of attributes to keep in the dataframe,
+                polygon coordinates (default, 'points');
+        :param attributes: List of attributes to keep in the DataFrame,
                 empty to use all fields;
         :param num_of_parts: The number of fragments;
         :return: DDF
@@ -215,8 +214,8 @@ class DDF(DDFSketch):
 
         :Example:
 
-        >>> ddf1 = DDF().load_shapefile(shp_path='/41CURITI.shp',
-        >>>                             dbf_path='/41CURITI.dbf')
+        >>> ddf1 = DDF().load_shapefile(shp_path='/shapefile.shp',
+        >>>                             dbf_path='/shapefile.dbf')
         """
 
         if attributes is None:
@@ -246,6 +245,7 @@ class DDF(DDFSketch):
         return DDF(task_list=self.task_list, last_uuid=new_state_uuid)
 
     def import_data(self, df_list, info=None):
+        # noinspection PyUnresolvedReferences
         """
         Import a previous Pandas DataFrame list in DDF abstraction.
         Replace old data if DDF is not empty.
@@ -279,19 +279,8 @@ class DDF(DDFSketch):
 
         return DDF(task_list=tmp.task_list, last_uuid=new_state_uuid)
 
-    def _collect(self):
-        """
-        #TODO Check it
-        :return:
-        """
-
-        if COMPSsContext.tasks_map[self.last_uuid]['status'] == 'COMPLETED':
-            self.partitions = \
-                COMPSsContext.tasks_map[self.last_uuid]['function']
-
-        self.partitions = compss_wait_on(self.partitions)
-
     def cache(self):
+        # noinspection PyUnresolvedReferences
         """
         Compute all tasks until the current state
 
@@ -317,6 +306,7 @@ class DDF(DDFSketch):
         return res
 
     def num_of_partitions(self):
+        # noinspection PyUnresolvedReferences
         """
         Returns the number of data partitions (Task parallelism).
 
@@ -339,8 +329,8 @@ class DDF(DDFSketch):
         from .functions.etl.balancer import WorkloadBalancer
         settings = {'forced': forced}
 
-        def task_balancer(df, settings):
-            return WorkloadBalancer(settings).transform(df)
+        def task_balancer(df, params):
+            return WorkloadBalancer(params).transform(df)
 
         new_state_uuid = self._generate_uuid()
         COMPSsContext.tasks_map[new_state_uuid] = \
@@ -357,6 +347,7 @@ class DDF(DDFSketch):
         return DDF(task_list=self.task_list, last_uuid=new_state_uuid)
 
     def count_rows(self, total=True):
+        # noinspection PyUnresolvedReferences
         """
         Return a number of rows in this DDF.
 
@@ -424,6 +415,7 @@ class DDF(DDFSketch):
         return DDF(task_list=self.task_list, last_uuid=new_state_uuid)
 
     def add_column(self, data2, suffixes=None):
+        # noinspection PyUnresolvedReferences
         """
         Merge two DDF, column-wise.
 
@@ -465,6 +457,7 @@ class DDF(DDFSketch):
         return DDF(task_list=new_list, last_uuid=new_state_uuid)
 
     def group_by(self, group_by):
+        # noinspection PyUnresolvedReferences
         """
         Computes aggregates and returns the result as a DDF.
 
@@ -519,6 +512,7 @@ class DDF(DDFSketch):
         return GroupedDDF(tmp)
 
     def fillna(self, subset=None, mode='VALUE', value=None):
+        # noinspection PyUnresolvedReferences
         """
         Replace missing rows or columns by mean, median, value or mode.
 
@@ -657,6 +651,7 @@ class DDF(DDFSketch):
         return result
 
     def cross_join(self, data2):
+        # noinspection PyUnresolvedReferences
         """
         Returns the cartesian product with another DDF.
 
@@ -667,10 +662,10 @@ class DDF(DDFSketch):
 
         >>> ddf1.cross_join(ddf2)
         """
-        from .functions.etl.cross_join import crossjoin
+        from .functions.etl.cross_join import cross_join
 
         def task_cross_join(df, _):
-            return crossjoin(df[0], df[1])
+            return cross_join(df[0], df[1])
 
         new_state_uuid = self._generate_uuid()
         COMPSsContext.tasks_map[new_state_uuid] = \
@@ -687,6 +682,7 @@ class DDF(DDFSketch):
         return DDF(task_list=new_list, last_uuid=new_state_uuid)
 
     def cross_tab(self, col1, col2):
+        # noinspection PyUnresolvedReferences
         """
         Computes a pair-wise frequency table of the given columns. Also known as
         a contingency table.  The number of distinct values for each column
@@ -723,6 +719,7 @@ class DDF(DDFSketch):
         return DDF(task_list=self.task_list, last_uuid=new_state_uuid)
 
     def describe(self, columns=None):
+        # noinspection PyUnresolvedReferences
         """
         Computes basic statistics for numeric and string columns. This include
         count, mean, number of NaN, stddev, min, and max.
@@ -750,6 +747,7 @@ class DDF(DDFSketch):
         return result
 
     def freq_items(self, col, support=0.01):
+        # noinspection PyUnresolvedReferences
         """
         Finding frequent items for columns, possibly with false positives.
         Using the frequent element count algorithm described in
@@ -777,6 +775,7 @@ class DDF(DDFSketch):
         return result
 
     def subtract(self, data2):
+        # noinspection PyUnresolvedReferences
         """
         Returns a new DDF with containing rows in the first frame but not
         in the second one. This is equivalent to EXCEPT in SQL.
@@ -831,6 +830,7 @@ class DDF(DDFSketch):
         return DDF(task_list=task_list, last_uuid=new_state_uuid)
 
     def except_all(self, data2):
+        # noinspection PyUnresolvedReferences
         """
         Returns a new DDF with containing rows in the first frame but not
         in the second one while preserving duplicates. This is equivalent to
@@ -887,6 +887,7 @@ class DDF(DDFSketch):
         return DDF(task_list=task_list, last_uuid=new_state_uuid)
 
     def distinct(self, cols):
+        # noinspection PyUnresolvedReferences
         """
         Returns a new DDF containing the distinct rows in this DDF.
 
@@ -939,6 +940,7 @@ class DDF(DDFSketch):
         return DDF(task_list=task_list, last_uuid=new_state_uuid)
 
     def drop(self, columns):
+        # noinspection PyUnresolvedReferences
         """
         Remove some columns from DDF.
 
@@ -973,6 +975,7 @@ class DDF(DDFSketch):
         return DDF(task_list=self.task_list, last_uuid=new_state_uuid)
 
     def drop_duplicates(self, cols):
+        # noinspection PyUnresolvedReferences
         """
         Alias for distinct.
 
@@ -983,6 +986,7 @@ class DDF(DDFSketch):
         return self.distinct(cols)
 
     def dropna(self, subset=None, mode='REMOVE_ROW', how='any', thresh=None):
+        # noinspection PyUnresolvedReferences
         """
         Cleans missing rows or columns fields.
 
@@ -1064,6 +1068,7 @@ class DDF(DDFSketch):
             return DDF(task_list=task_list, last_uuid=new_state_uuid)
 
     def explode(self, column):
+        # noinspection PyUnresolvedReferences
         """
         Returns a new row for each element in the given array.
 
@@ -1098,6 +1103,7 @@ class DDF(DDFSketch):
         return DDF(task_list=self.task_list, last_uuid=new_state_uuid)
 
     def filter(self, expr):
+        # noinspection PyUnresolvedReferences
         """
         Filters rows using the given condition.
 
@@ -1136,6 +1142,7 @@ class DDF(DDFSketch):
 
     def geo_within(self, shp_object, lat_col, lon_col, polygon,
                    attributes=None, suffix='_shp'):
+        # noinspection PyUnresolvedReferences
         """
         Returns the sectors that the each point belongs.
 
@@ -1201,6 +1208,7 @@ class DDF(DDFSketch):
         return DDF(task_list=task_list, last_uuid=new_state_uuid)
 
     def hash_partition(self, columns, nfrag=None):
+        # noinspection PyUnresolvedReferences
         """
         Hash partitioning is a partitioning technique where data
         is stored separately in different fragments by a hash function.
@@ -1243,6 +1251,7 @@ class DDF(DDFSketch):
         return DDF(task_list=self.task_list, last_uuid=new_state_uuid)
 
     def intersect(self, data2):
+        # noinspection PyUnresolvedReferences
         """
         Returns a new DDF containing rows in both DDF. This is equivalent to
         INTERSECT in SQL.
@@ -1299,6 +1308,7 @@ class DDF(DDFSketch):
         return DDF(task_list=task_list, last_uuid=new_state_uuid)
 
     def intersect_all(self, data2):
+        # noinspection PyUnresolvedReferences
         """
         Returns a new DDF containing rows in both DDF while preserving
         duplicates. This is equivalent to INTERSECT ALL in SQL.
@@ -1356,6 +1366,7 @@ class DDF(DDFSketch):
 
     def join(self, data2, key1=None, key2=None, mode='inner',
              suffixes=None, keep_keys=False, case=True):
+        # noinspection PyUnresolvedReferences
         """
         Joins two DDF using the given join expression.
 
@@ -1433,6 +1444,7 @@ class DDF(DDFSketch):
 
     def kolmogorov_smirnov_one_sample(self, col, distribution='norm',
                                       mode='asymp', args=None):
+        # noinspection PyUnresolvedReferences
         """
         Perform the Kolmogorov-Smirnov test for goodness of fit. This
         implementation of Kolmogorov–Smirnov test is a two-sided test
@@ -1453,9 +1465,9 @@ class DDF(DDFSketch):
          reference/stats.html#module-scipy.stats>`__ to see all supported
          distributions.
 
-        .. note:: The KS statistic is the absolute max distance (supremum)
-         between the CDFs of the two samples. The closer this number is to
-         0 the more likely it is that the two samples were drawn from the
+        .. note:: The KS statistic is the absolute max distance between
+         the CDFs of the two samples. The closer this number is to 0 the
+         more likely it is that the two samples were drawn from the
          same distribution.
 
          The p-value returned by the KS test has the same interpretation
@@ -1481,6 +1493,7 @@ class DDF(DDFSketch):
         return result
 
     def map(self, f, alias):
+        # noinspection PyUnresolvedReferences
         """
         Apply a function to each row of this DDF.
 
@@ -1516,6 +1529,7 @@ class DDF(DDFSketch):
         return DDF(task_list=self.task_list, last_uuid=new_state_uuid)
 
     def range_partition(self, columns, ascending=None, nfrag=None):
+        # noinspection PyUnresolvedReferences
         """
         Range partitioning is a partitioning technique where ranges of data
         is stored separately in different fragments.
@@ -1566,6 +1580,7 @@ class DDF(DDFSketch):
         return DDF(task_list=self.task_list, last_uuid=new_state_uuid)
 
     def repartition(self, nfrag=-1, distribution=None):
+        # noinspection PyUnresolvedReferences
         """
 
         """
@@ -1595,6 +1610,7 @@ class DDF(DDFSketch):
         return DDF(task_list=self.task_list, last_uuid=new_state_uuid)
 
     def replace(self, replaces, subset=None):
+        # noinspection PyUnresolvedReferences
         """
         Replace one or more values to new ones.
 
@@ -1633,6 +1649,7 @@ class DDF(DDFSketch):
         return DDF(task_list=self.task_list, last_uuid=new_state_uuid)
 
     def sample(self, value=None, seed=None):
+        # noinspection PyUnresolvedReferences
         """
         Returns a sampled subset.
 
@@ -1700,6 +1717,7 @@ class DDF(DDFSketch):
 
     def save(self, filename, format='csv', storage='hdfs',
              header=True, mode='overwrite'):
+        # noinspection PyUnresolvedReferences
         """
         Save the data in the storage.
 
@@ -1741,6 +1759,11 @@ class DDF(DDFSketch):
         return DDF(task_list=self.task_list, last_uuid=new_state_uuid)
 
     def schema(self):
+        # noinspection PyUnresolvedReferences
+        """
+
+        :return:
+        """
 
         info = self._get_info()
         tmp = pd.DataFrame.from_dict({'columns': info['cols'],
@@ -1748,6 +1771,7 @@ class DDF(DDFSketch):
         return tmp
 
     def select(self, columns):
+        # noinspection PyUnresolvedReferences
         """
         Projects a set of expressions and returns a new DDF.
 
@@ -1782,6 +1806,7 @@ class DDF(DDFSketch):
         return DDF(task_list=self.task_list, last_uuid=new_state_uuid)
 
     def select_expression(self, *exprs):
+        # noinspection PyUnresolvedReferences
         """
         Projects a set of SQL expressions and returns a new DataFrame.
         This is a variant of select() that accepts SQL expressions.
@@ -1800,9 +1825,7 @@ class DDF(DDFSketch):
         * Boolean operations, e.g., df < df2 and df3 < df4 or not df_bool
         * list and tuple literals, e.g., [1, 2] or (1, 2)
         * Subscript expressions, e.g., df[0]
-        * Math functions: sin, cos, exp, log, expm1, log1p, sqrt, sinh, cosh,
-         tanh, arcsin, arccos, arctan, arccosh, arcsinh, arctanh, abs, arctan2
-         and log10.
+        * Math functions: sin, cos, exp, log, abs, log10, ...
         * This Python syntax is not allowed:
 
          * Expressions
@@ -1853,6 +1876,7 @@ class DDF(DDFSketch):
         return DDF(task_list=self.task_list, last_uuid=new_state_uuid)
 
     def show(self, n=20):
+        # noinspection PyUnresolvedReferences
         """
         Print the DDF contents in a concatenated pandas's DataFrame.
 
@@ -1878,6 +1902,7 @@ class DDF(DDFSketch):
         return self
 
     def sort(self, cols,  ascending=None):
+        # noinspection PyUnresolvedReferences
         """
         Returns a sorted DDF by the specified column(s).
 
@@ -1933,6 +1958,7 @@ class DDF(DDFSketch):
         return DDF(task_list=task_list, last_uuid=new_state_uuid)
 
     def split(self, percentage=0.5, seed=None):
+        # noinspection PyUnresolvedReferences
         """
         Randomly splits a DDF into two DDF.
 
@@ -1987,6 +2013,7 @@ class DDF(DDFSketch):
         return out1, out2
 
     def take(self, num):
+        # noinspection PyUnresolvedReferences
         """
         Returns the first num rows.
 
@@ -2039,10 +2066,11 @@ class DDF(DDFSketch):
         return DDF(task_list=task_list, last_uuid=new_state_uuid)
 
     def to_df(self, columns=None, split=False):
+        # noinspection PyUnresolvedReferences
         """
         Returns the DDF contents as a pandas's DataFrame.
 
-        :param columns: Optional, list of new column names (string);
+        :param columns: Optional, A column name or list of column names;
         :param split: True to keep data in partitions (default, False);
         :return: Pandas's DataFrame
 
@@ -2066,9 +2094,6 @@ class DDF(DDFSketch):
         else:
             res = self.partitions
 
-        # if isinstance(columns, str):
-        #     columns = [columns]
-
         if split:
             if columns:
                 df = [d[columns] for d in res]
@@ -2083,6 +2108,7 @@ class DDF(DDFSketch):
         return df
 
     def union(self, data2):
+        # noinspection PyUnresolvedReferences
         """
         Combine this data set with some other DDF. Also as standard in SQL,
         this function resolves columns by position (not by name). The old names
@@ -2121,6 +2147,7 @@ class DDF(DDFSketch):
         return DDF(task_list=new_list, last_uuid=new_state_uuid)
 
     def union_by_name(self, data2):
+        # noinspection PyUnresolvedReferences
         """
         Combine this data set with some other DDF. This function resolves
          columns by name (not by position).
@@ -2158,6 +2185,7 @@ class DDF(DDFSketch):
         return DDF(task_list=new_list, last_uuid=new_state_uuid)
 
     def rename(self, old_column, new_column):
+        # noinspection PyUnresolvedReferences
         """
         Returns a new DDF by renaming an existing column. This is a no-op if
         schema does not contain the given column name.

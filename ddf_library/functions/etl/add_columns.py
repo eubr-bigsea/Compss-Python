@@ -4,13 +4,11 @@
 __author__ = "Lucas Miguel S Ponce"
 __email__ = "lucasmsp@gmail.com"
 
-from pycompss.functions.reduce import merge_reduce
 from pycompss.api.task import task
 
 from ddf_library.utils import generate_info
 from ddf_library.functions.etl.repartition import repartition
 
-import numpy as np
 import pandas as pd
 
 

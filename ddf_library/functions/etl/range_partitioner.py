@@ -8,8 +8,7 @@ from pycompss.api.task import task
 from pycompss.api.constraint import constraint
 from pycompss.api.api import compss_wait_on, compss_delete_object
 
-from ddf_library.utils import concatenate_pandas, create_auxiliary_column, \
-    _get_schema
+from ddf_library.utils import concatenate_pandas, _get_schema
 
 import pandas as pd
 import numpy as np

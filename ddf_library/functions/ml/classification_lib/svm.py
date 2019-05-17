@@ -12,12 +12,11 @@ from pycompss.api.task import task
 from pycompss.functions.reduce import merge_reduce
 from pycompss.api.api import compss_wait_on
 
-import math
 import numpy as np
-import pandas as pd
 
 
 class SVM(ModelDDF):
+    # noinspection PyUnresolvedReferences
     """
     Support vector machines (SVM) is a supervised learning model used for
     binary classification. Given a set of training examples, each marked as

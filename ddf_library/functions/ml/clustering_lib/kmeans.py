@@ -13,11 +13,11 @@ from pycompss.api.api import compss_wait_on
 from pycompss.functions.reduce import merge_reduce
 
 import numpy as np
-import pandas as pd
 from sklearn.metrics.pairwise import euclidean_distances
 
 
 class Kmeans(ModelDDF):
+    # noinspection PyUnresolvedReferences
     """
     K-means clustering is a type of unsupervised learning, which is used when
     you have unlabeled data (i.e., data without defined categories or groups).

@@ -11,4 +11,3 @@ from .fim_lib.fp_growth import FPGrowth
 
 
 __all__ = ['AssociationRules', 'FPGrowth']
-

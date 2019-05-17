@@ -7,10 +7,8 @@ __email__ = "lucasmsp@gmail.com"
 from ddf_library.utils import generate_info, create_auxiliary_column
 
 from pycompss.api.task import task
-from pycompss.functions.reduce import merge_reduce
 
 import pandas as pd
-import numpy as np
 
 
 def join(data1, data2, settings):

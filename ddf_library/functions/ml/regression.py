@@ -9,5 +9,3 @@ from .regression_lib.ols_regressor import OrdinaryLeastSquares
 from .regression_lib.gd_regressor import GDRegressor
 
 __all__ = ['OrdinaryLeastSquares', 'GDRegressor']
-
-

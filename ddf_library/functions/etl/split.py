@@ -3,7 +3,6 @@
 
 from ddf_library.utils import generate_info
 from pycompss.api.task import task
-import numpy as np
 import math
 
 

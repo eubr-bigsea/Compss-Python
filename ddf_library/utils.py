@@ -134,6 +134,3 @@ def create_auxiliary_column(columns):
         col = _gen_uuid()[0:8]
         condition = col in columns
     return col
-
-
-

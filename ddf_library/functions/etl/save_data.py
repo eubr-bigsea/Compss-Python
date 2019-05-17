@@ -6,11 +6,6 @@ __email__ = "lucasmsp@gmail.com"
 
 from ddf_library.utils import generate_info
 
-from pycompss.api.task import task
-from pycompss.api.parameter import FILE_OUT
-
-import pandas as pd
-
 
 class SaveOperation(object):
     """Save DataFrame as json or csv format in HDFS or common file system."""
@@ -134,4 +129,3 @@ def _save_json_fs_(filename, data):
     :param data: The pandas DataFrame which you want to save.
     """
     data.to_json(filename, orient='records')
-

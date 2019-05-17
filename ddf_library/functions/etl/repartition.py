@@ -5,12 +5,10 @@ __author__ = "Lucas Miguel S Ponce"
 __email__ = "lucasmsp@gmail.com"
 
 from pycompss.api.task import task
-from pycompss.functions.reduce import merge_reduce
-from pycompss.api.api import compss_wait_on, compss_delete_object
+
 from pycompss.api.constraint import constraint
 
-from ddf_library.utils import concatenate_pandas, generate_info, \
-    create_auxiliary_column
+from ddf_library.utils import create_auxiliary_column
 from .parallelize import _generate_distribution2
 from .balancer import _balancer
 import ddf_library.config as config

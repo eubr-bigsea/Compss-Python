@@ -7,10 +7,5 @@ __email__ = "lucasmsp@gmail.com"
 
 
 from .clustering_lib.kmeans import Kmeans
-# from .clustering_lib.dbscan import DBSCAN  # need to update to new interface
 
 __all__ = ['Kmeans']
-
-
-
-

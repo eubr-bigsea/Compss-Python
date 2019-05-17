@@ -20,7 +20,8 @@ import pyqtree
 class GeoWithin(object):
     """Returns the sectors that the each point belongs."""
 
-    def geo_within(self, data, shp_object, settings):
+    @staticmethod
+    def geo_within_stage_1(data, shp_object, settings):
         """
         :param data: A list of pandas DataFrame;
         :param shp_object: The DataFrame created by the function ReadShapeFile;
@@ -37,25 +38,6 @@ class GeoWithin(object):
                 (default, 'sector_position');
         :return: Returns a list of pandas DataFrame.
         """
-
-        _, shp_object, settings = self.geo_within_stage_1(data,
-                                                          shp_object, settings)
-        nfrag = len(data)
-
-        info = [[] for _ in range(nfrag)]
-        result = info[:]
-
-        for f in range(nfrag):
-            settings['id_frag'] = f
-            result[f], info[f] = task_geo_within_stage_2(data[f], shp_object,
-                                                         settings.copy())
-
-        output = {'key_data': ['data'], 'key_info': ['info'],
-                  'data': result, 'info': info}
-        return output
-
-    @staticmethod
-    def geo_within_stage_1(data, shp_object, settings):
 
         if not all(['lat_col' in settings,
                     'lon_col' in settings]):
@@ -179,8 +161,3 @@ def _merge_shapefile(shape1, shape2):
     shape1 = pd.concat([shape1, shape2], sort=False, ignore_index=True)
     shape1.reset_index(drop=True, inplace=True)
     return shape1
-
-
-@task(returns=2)
-def task_geo_within_stage_2(data_input, shp_object, settings):
-    return geo_within_stage_2(data_input, shp_object, settings)

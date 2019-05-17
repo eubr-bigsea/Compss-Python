@@ -5,7 +5,6 @@ __author__ = "Lucas Miguel S Ponce"
 __email__ = "lucasmsp@gmail.com"
 
 from ddf_library.utils import generate_info
-import numpy as np
 
 
 def replace_value(data, settings):

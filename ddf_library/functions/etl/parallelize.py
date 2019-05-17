@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-from pycompss.api.task import task
 from pycompss.functions.reduce import merge_reduce
 from pycompss.api.api import compss_wait_on, compss_delete_object
 from ddf_library.utils import merge_schema, _get_schema

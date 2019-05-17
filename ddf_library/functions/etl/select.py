@@ -40,7 +40,7 @@ def select_exprs(data, settings):
     :param data: pandas's DataFrame;
     :param settings:
      - 'exprs': SQL expressions. The column names are keywords;
-    :return: A pandas's DataFrame with only the columns choosed.
+    :return: A pandas's DataFrame with only the selected columns.
 
     .. note: These operations are supported by select_exprs:
 

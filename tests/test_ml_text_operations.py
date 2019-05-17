@@ -12,48 +12,44 @@ def tokenizer():
     data1 = DDF() \
         .load_text('/text_data.txt', num_of_parts=4, header=False, sep='\n')
 
-    tokenized = Tokenizer(input_col='col_0').transform(data1)
+    tokens = Tokenizer().transform(data1, input_col='col_0')
 
-    return tokenized
+    # tokens.show()
+
+    return tokens
 
 
-def remove_stopwords(ddf1):
+def remove_stopwords(ddf_input):
 
     from ddf_library.functions.ml.feature import RemoveStopWords
 
     df = pd.DataFrame.from_dict({'col': ['and', 'conan', 'What', 'rare']})
-    stopswords = DDF().parallelize(df, num_of_parts=2)
+    stopwords = DDF().parallelize(df, num_of_parts=2)
 
-    remover = RemoveStopWords(input_col='col_0_tokenized',
-                              output_col='col_1',
-                              stops_words_list=['rock', 'destined'])
+    remover = RemoveStopWords(stops_words_list=['rock', 'destined', 'the'])
 
-    result = remover.stopwords_from_ddf(stopswords, 'col').transform(ddf1)
+    result = remover\
+        .stopwords_from_ddf(stopwords, input_col='col')\
+        .transform(ddf_input, input_col='col_0_tokens', output_col='col_1')
+
+    # result.show()
 
     return result
 
 
-def ngram(ddf1):
+def ngram(ddf_input):
 
     from ddf_library.functions.ml.feature import NGram
 
-    result = NGram(input_col='col_1', output_col='col_1', n=2).transform(ddf1)
+    result = NGram(n=2).transform(ddf_input, input_col='col_1',
+                                  output_col='col_1')
+
+    # result.show()
 
     return result
 
 
-def vectorize(ddf1):
-    from ddf_library.functions.ml.feature import CountVectorizer, \
-        TfidfVectorizer
-
-    counter = CountVectorizer(input_col='col_1',
-                              output_col='col_2', min_tf=0).fit(result)
-    counter.save_model('/count_vectorizer')
-    result1 = counter.transform(result)
-    result1.show()
-
-
-def CountVectorizer():
+def count_vectorizer():
 
     from ddf_library.functions.ml.feature import CountVectorizer, Tokenizer
     corpus = [
@@ -66,20 +62,20 @@ def CountVectorizer():
 
     test_data = DDF().parallelize(df, num_of_parts=2)
 
-    tokenized = Tokenizer(input_col='col_0',
-                          min_token_length=1).transform(test_data)
+    dff_tokens = Tokenizer(min_token_length=1).transform(test_data,
+                                                         input_col='col_0')
 
-    tokenized.show()
+    dff_tokens.show()
 
-    counter = CountVectorizer(input_col='col_0_tokenized').fit(tokenized)
+    counter = CountVectorizer().fit(dff_tokens, input_col='col_0_tokens')
 
     counter.save_model('/tfidf_vectorizer')
-    result = counter.transform(tokenized, output_col='vec_')
+    result = counter.transform(dff_tokens, output_col='vec_')
     result.show()
     pass
 
 
-def TfidfVectorizer():
+def tf_idf_vectorizer():
 
     from ddf_library.functions.ml.feature import TfidfVectorizer, Tokenizer
     corpus = [
@@ -92,15 +88,14 @@ def TfidfVectorizer():
 
     test_data = DDF().parallelize(df, num_of_parts=2)
 
-    tokenized = Tokenizer(input_col='col_0',
-                          min_token_length=1).transform(test_data)
+    dff_tokens = Tokenizer(min_token_length=1).transform(test_data,
+                                                         input_col='col_0')
 
-    counter = TfidfVectorizer(input_col='col_0_tokenized')\
-        .fit(tokenized)
+    counter = TfidfVectorizer().fit(dff_tokens, input_col='col_0_tokens')
 
     print (counter.model['vocabulary'])
     counter.save_model('/tfidf_vectorizer')
-    result = counter.transform(tokenized,  output_col='col_2')
+    result = counter.transform(dff_tokens,  output_col='col_2')
     result.show()
     pass
 
@@ -129,6 +124,6 @@ if __name__ == '__main__':
     # ddf1 = tokenizer()
     # ddf2 = remove_stopwords(ddf1)
     # ddf3 = ngram(ddf2)
-    # TfidfVectorizer()
-    # CountVectorizer()
-    categorization()
+    # tf_idf_vectorizer()
+    # count_vectorizer()
+    # categorization()

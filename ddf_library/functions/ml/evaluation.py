@@ -4,12 +4,11 @@
 __author__ = "Lucas Miguel S Ponce"
 __email__ = "lucasmsp@gmail.com"
 
-from ddf_library.ddf import DDFSketch
+from ddf_library.ddf_base import DDFSketch
 
 from pycompss.api.task import task
 from pycompss.functions.reduce import merge_reduce
 from pycompss.api.api import compss_delete_object, compss_wait_on
-# from pycompss.api.local import local  # it needs guppy
 
 import numpy as np
 import pandas as pd
@@ -22,6 +21,7 @@ __all__ = ['BinaryClassificationMetrics', 'MultilabelMetrics',
 
 
 class BinaryClassificationMetrics(DDFSketch):
+    # noinspection PyUnresolvedReferences
     """
     Evaluator for binary classification.
 
@@ -53,8 +53,8 @@ class BinaryClassificationMetrics(DDFSketch):
     def __init__(self, label_col, pred_col, ddf_var, true_label=1):
         """
         :param label_col: Column name of true label values;
-        :param pred_col: Colum name of predicted label values;
-        :param data: DDF;
+        :param pred_col: Column name of predicted label values;
+        :param ddf_var: DDF;
         :param true_label: Value of True label (default is 1).
         """
         super(BinaryClassificationMetrics, self).__init__()
@@ -91,7 +91,9 @@ class BinaryClassificationMetrics(DDFSketch):
 
 
 class MultilabelMetrics(DDFSketch):
-    """Evaluator for multilabel classification.
+    # noinspection PyUnresolvedReferences
+    """
+    Evaluator for multilabel classification.
 
     * True Positive (TP) - label is positive and prediction is also positive
     * True Negative (TN) - label is negative and prediction is also negative
@@ -123,8 +125,8 @@ class MultilabelMetrics(DDFSketch):
     def __init__(self, label_col, pred_col, ddf_var):
         """
         :param label_col: Column name of true label values;
-        :param pred_col: Colum name of predicted label values;
-        :param data: DDF.
+        :param pred_col: Column name of predicted label values;
+        :param ddf_var: DDF.
         """
 
         super(MultilabelMetrics, self).__init__()
@@ -214,7 +216,7 @@ def cme_stage2(confusion_matrix):
     accuracy = accuracy / n_rows
 
     _f1s = []
-    for p, r in zip(_precision, Recalls):
+    for p, r in zip(_precisions, _recalls):
         _f1s.append(2 * (p * r) / (p + r))
 
     precision_recall = \
@@ -250,7 +252,9 @@ def cme_stage2_binary(confusion_matrix, true_label):
 
 
 class RegressionMetrics(DDFSketch):
-    """RegressionModelEvaluation's methods.
+    # noinspection PyUnresolvedReferences
+    """
+    RegressionModelEvaluation's methods.
 
     * **Mean Squared Error (MSE):** Is an estimator measures the average of the
       squares of the errors or deviations, that is, the difference between the
@@ -261,7 +265,7 @@ class RegressionMetrics(DDFSketch):
 
     * **Root Mean Squared Error (RMSE):** Is a frequently used measure of the
       differences between values (sample and population values) predicted by a
-      model or an estimator and the values actually observed. The RMSD
+      model or an estimator and the values actually observed. The RMSE
       represents the sample standard deviation of the differences between
       predicted values and observed values.
 
@@ -298,7 +302,7 @@ class RegressionMetrics(DDFSketch):
         """
         :param col_features: Column name of features values;
         :param label_col: Column name of true label values;
-        :param pred_col: Colum name of predicted label values;
+        :param pred_col: Column name of predicted label values;
         :param data: DDF.
         """
 
@@ -364,14 +368,13 @@ def rme_stage1(df, cols):
 
 
 @task(returns=1)
-def rme_merge(pstatistic1, pstatistic2):
+def rme_merge(statistic1, statistic2):
     """Merge the partial statistics."""
-    dim = max(pstatistic1[1], pstatistic2[1])
-    pstatistic = pstatistic1[0] + pstatistic2[0]
-    return [pstatistic, dim]
+    dim = max(statistic1[1], statistic2[1])
+    statistic = statistic1[0] + statistic2[0]
+    return [statistic, dim]
 
 
-# @local
 def rme_stage2(statistics):
     """Generate the final evaluation."""
     statistics = compss_wait_on(statistics)
@@ -407,4 +410,3 @@ def rme_stage2(statistics):
     msr = ssr/dim
 
     return r2, mse, rmse, mae, msr
-

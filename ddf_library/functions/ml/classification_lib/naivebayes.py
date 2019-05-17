@@ -12,12 +12,11 @@ from pycompss.api.task import task
 from pycompss.functions.reduce import merge_reduce
 from pycompss.api.api import compss_wait_on
 
-import math
 import numpy as np
-import pandas as pd
 
 
 class GaussianNB(ModelDDF):
+    # noinspection PyUnresolvedReferences
     """
     The Naive Bayes algorithm is an intuitive method that uses the
     probabilities of each attribute belonged to each class to make a prediction.

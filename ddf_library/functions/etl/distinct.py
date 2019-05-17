@@ -6,7 +6,6 @@ __email__ = "lucasmsp@gmail.com"
 
 from ddf_library.utils import generate_info
 from pycompss.api.task import task
-import pandas as pd
 
 
 def distinct(data, settings):
