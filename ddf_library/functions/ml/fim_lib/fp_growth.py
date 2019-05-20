@@ -135,7 +135,7 @@ def step2_reduce(info1, info2):
 
     if i == (nfrag - 1):
 
-        min_support = int(min_support * n)
+        min_support = round(min_support * n)
         group_list = {}
         group_count = namedtuple('group_count', ['group', 'count'])
 

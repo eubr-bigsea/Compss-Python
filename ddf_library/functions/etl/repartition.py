@@ -65,8 +65,10 @@ def split_by_hash(df, cols, info, nfrag):
 
     df.reset_index(drop=True, inplace=True)
     if len(df) > 0:
-
-        keys = df[cols].astype(str).values.sum(axis=1).ravel()
+        if len(cols) > 1:
+            keys = df[cols].astype(str).values.sum(axis=1).ravel()
+        else:
+            keys = df[cols].astype(str).values.ravel()
         keys.flags.writeable = False
         v_hashcode = np.vectorize(hashcode)
         indexes = v_hashcode(keys) % nfrag
