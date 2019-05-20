@@ -17,6 +17,7 @@ import pandas as pd
 
 
 class PCA(ModelDDF):
+    # noinspection PyUnresolvedReferences
     """
     Principal component analysis (PCA) is a statistical method to find
     a rotation such that the first coordinate has the largest variance

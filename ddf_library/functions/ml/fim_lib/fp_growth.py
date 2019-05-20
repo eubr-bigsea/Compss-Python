@@ -5,32 +5,31 @@
 __author__ = "Lucas Miguel S Ponce"
 __email__ = "lucasmsp@gmail.com"
 
-from ddf_library.ddf import DDF, generate_info
+from ddf_library.ddf import DDF
+from ddf_library.utils import generate_info
 from ddf_library.ddf_base import DDFSketch
-from .association_rules import AssociationRules
 
 from pycompss.api.task import task
 from pycompss.functions.reduce import merge_reduce
 from pycompss.api.api import compss_wait_on
-# from pycompss.api.local import local
 
-from itertools import chain, combinations
-from collections import defaultdict, namedtuple, Counter
+from itertools import chain
+from collections import namedtuple, Counter
 import random
 import numpy as np
 import pandas as pd
-
-# Input is list or a vectorassembler
+import importlib
 
 
 class FPGrowth(DDFSketch):
+    # noinspection PyUnresolvedReferences
+    # noinspection SpellCheckingInspection
     """
     FPGrowth implements the FP-growth algorithm described in the paper
-    LI et al., Mining requent patterns without candidate generation, where
-    “FP” stands for frequent pattern. Given a dataset of transactions, the
+    LI et al., Mining frequent patterns without candidate generation, where
+    “FP” stands for frequent pattern. Given a data set of transactions, the
     first step of FP-growth is to calculate item frequencies and identify
     frequent items.
-
 
     LI, Haoyuan et al. Pfp: parallel fp-growth for query recommendation.
     In: Proceedings of the 2008 ACM conference on Recommender systems.
@@ -38,104 +37,72 @@ class FPGrowth(DDFSketch):
 
     :Example:
 
-    >>> fp = FPGrowth(column='col_0', min_support=0.10).run(ddf1)
-    >>> itemset = fp.get_frequent_itemsets()
-    >>> rules = fp.generate_association_rules(confidence=0.1)
+    >>> fp = FPGrowth(min_support=0.10)
+    >>> item_set = fp.fit_transform(ddf1, column='col_0')
     """
 
-    def __init__(self, column, min_support=0.5):
+    def __init__(self, min_support=0.5):
         """
         Setup all FPGrowth's parameters.
 
-        :param column: Transactions feature name;
         :param min_support: minimum support value.
         """
         super(FPGrowth, self).__init__()
 
-        self.settings = dict()
-        self.settings['column'] = column
-        self.settings['min_support'] = min_support
+        self.settings = {'min_support': min_support}
 
         self.model = {}
         self.name = 'FPGrowth'
-        self.result = []
 
-    def run(self, data):
+    def fit_transform(self, data, column):
         """
-        Fit the model.
+        Fit the model and transform the data.
 
-        :param data: DDF
-        :return: a trained model
+        :param data: DDF;
+        :param column: Transactions feature name;
+        :return: DDF
         """
-        col = self.settings.get('column', [])
         min_support = self.settings.get('min_support', 0.5)
 
-        df, nfrag, tmp = self._ddf_initial_setup(data)
+        df, nfrag, new_data = self._ddf_initial_setup(data)
 
-        info = [step2_mapper(df_p, col, min_support, nfrag) for df_p in df]
+        # stage 1 and 2: Parallel Counting and Grouping Items
+        info = [step2_mapper(df_p, column, min_support, nfrag) for df_p in df]
         g_list = merge_reduce(step2_reduce, info)
 
+        # stage 3 and 4: Parallel FP-Growth
+        splits = [[[] for _ in range(nfrag)] for _ in range(nfrag)]
         df_group = [[] for _ in range(nfrag)]
-        df_group_aux = [{} for _ in range(nfrag)]
-        for f in range(nfrag):
-            df_group[f], df_group_aux[f] = step4_pfg(df[f], col, g_list, f)
+
+        import ddf_library.config
+        ddf_library.config.x = nfrag
+
+        import ddf_library.functions.ml.fim_lib.fp_growth_aux
+        importlib.reload(ddf_library.functions.ml.fim_lib.fp_growth_aux)
 
         for f in range(nfrag):
-            for f2 in range(nfrag):
-                if f2 != f:
-                    df_group[f], df_group_aux[f2] = \
-                        step4_merge(df_group[f], df_group_aux[f2], f)
+            splits[f] = ddf_library.functions.ml.fim_lib.\
+                fp_growth_aux.step4_pfg(df[f], column, g_list, nfrag)
 
         for f in range(nfrag):
+            tmp = [splits[f2][f] for f2 in range(nfrag)]
+            df_group[f] = ddf_library.functions.ml.fim_lib.\
+                fp_growth_aux.merge_n_reduce(step4_merge, tmp, nfrag)
+
             df_group[f] = step5_mapper(df_group[f], g_list)
 
         df_group = merge_reduce(step5_reducer, df_group)
+        # split the result in nfrag to keep compatibility with others algorithms
         result, info = step6(df_group, nfrag)
 
-        self.model = {'data': result, 'info': info,
-                      'tasklist': tmp.task_list, 'last_uuid': tmp.last_uuid}
+        uuid_key = self._ddf_add_task(task_name='task_fp_growth',
+                                      status='COMPLETED',
+                                      opt=self.OPT_OTHER,
+                                      function=result,
+                                      parent=[new_data.last_uuid],
+                                      info=info)
 
-        return self
-
-    def get_frequent_itemsets(self):
-        """
-        Get the frequent item set generated by FP-Growth.
-
-        :return: DDF
-        """
-        if len(self.result) == 0:
-
-            if len(self.model) == 0:
-                raise Exception("Model is not fitted.")
-
-            uuid_key = self._ddf_add_task(task_name='task_fpgrowth',
-                                          status='COMPLETED', opt=self.OPT_OTHER,
-                                          function={0: self.model['data']},
-                                          parent=[self.model['last_uuid']],
-                                          n_output=1, n_input=1,
-                                          info=self.model['info'])
-
-            tmp = DDF(task_list=self.model['tasklist'], last_uuid=uuid_key)
-            tmp._set_n_input(uuid_key, 0)
-            self.result = [tmp]
-            return tmp
-        else:
-            return self.result[0]
-
-    def generate_association_rules(self, confidence=0.5, max_rules=-1):
-        """
-        Generate a DDF with the association rules.
-
-        :param confidence: Minimum confidence (default is 0.5);
-        :param max_rules: Maximum number of output rules, -1 to all (default);
-        :return: DDF with 'Pre-Rule', 'Post-Rule' and 'confidence' columns.
-        """
-
-        df = self.get_frequent_itemsets()
-        ar = AssociationRules(confidence=confidence, max_rules=max_rules)
-        rules = ar.run(df)
-
-        return rules
+        return DDF(task_list=new_data.task_list, last_uuid=uuid_key)
 
 
 @task(returns=1)
@@ -157,7 +124,7 @@ def step2_mapper(data, col, min_support, nfrag):
 @task(returns=1)
 def step2_reduce(info1, info2):
     """
-     Grouping Items
+    Grouping Items
     """
     item_set1, n1, i1, nfrag, min_support = info1
     item_set2, n2, i2, _, _ = info2
@@ -183,85 +150,35 @@ def step2_reduce(info1, info2):
     return [item_set, n, i, nfrag, min_support]
 
 
-@task(returns=2)
-def step4_pfg(df, col, g_list, f):
-    """
-    Parallel FP-Growth
-    """
-    g_list = g_list[0]
-    r1 = {f: []}
-    r_others = {}
+@task(returns=1)
+def step4_merge(*results):
+    output = []
+    for r in results:
+        if r != 0:
+            output.extend(r)
 
-    for transaction in df[col].values:
-
-        # group_list has already been pruned, but item_set hasn't
-
-        item_set = [item for item in transaction if item in g_list]
-
-        # for each transaction, sort item_set by count in descending order
-        item_set = sorted(item_set, key=lambda item: g_list[item].count,
-                          reverse=True)
-
-        # a list of the groups for each item
-        items = [g_list[item].group for item in item_set]
-
-        emitted_groups = set()
-
-        # iterate backwards through the ordered list of items in the transaction
-        # for each distinct group, emit the transaction to that group-specific
-        # reducer.
-
-        for i, group_id in reversed(list(enumerate(items))):
-
-            # we don't care about length 1 itemsets
-            if i == 0:
-                continue
-
-            if group_id not in emitted_groups:
-                emitted_groups.add(group_id)
-
-                if group_id == f:
-                    r1[group_id].append(item_set[:(i + 1)])
-                else:
-                    if group_id not in r_others:
-                        r_others[group_id] = []
-                    r_others[group_id].append(item_set[:(i + 1)])
-
-    return r1, r_others
-
-
-@task(returns=2)
-def step4_merge(r1, r_others, id_group):
-
-    keys = r_others.keys()
-    if id_group in keys:
-        r1[id_group].extend(r_others[id_group])
-        r_others.pop(id_group, None)
-
-    return r1, r_others
+    return output
 
 
 @task(returns=1)
 def step5_mapper(transactions, g_list):
-    min_support = g_list[4]
 
-    keys = list(transactions.keys())
+    from .fp_growth_aux import build_fp_tree, fp_growth
+    g_list, _, _, _, min_support = g_list
     patterns = {}
 
-    g_list = g_list[0]
+    keys = list(g_list.keys())  # list of items
+
     for key in g_list:
         items = frozenset({key})
         patterns[items] = g_list[key].count
 
     if len(keys) > 0:
-        key = keys[0]
-        transactions = transactions[key]
         fp_tree, header_table = build_fp_tree(transactions)
 
         for pattern in fp_growth(fp_tree, header_table, None, min_support):
             items, support = pattern.get()
-            items = frozenset(items)
-            patterns[items] = support
+            patterns[frozenset(items)] = support
 
     return patterns
 
@@ -279,11 +196,10 @@ def step5_reducer(patterns1, patterns2):
     return patterns1
 
 
-# @local
 def step6(patterns, nfrag):
+    # currently, we assume that the final list of patterns can be fit in memory
     patterns = compss_wait_on(patterns)
-    patterns = pd.DataFrame([[list(k), s]
-                             for k, s in patterns.items()],
+    patterns = pd.DataFrame([[list(k), s] for k, s in patterns.items()],
                             columns=['items', 'support'])
 
     patterns = patterns.sort_values(by=['support'], ascending=[False])
@@ -292,194 +208,3 @@ def step6(patterns, nfrag):
 
     info = [generate_info(patterns[f], f) for f in range(nfrag)]
     return patterns, info
-
-
-class Node(object):
-
-    ItemSupport = namedtuple('ItemSupport', ['item', 'support'])
-
-    def __init__(self, item, support, parent, children):
-        self.item = item
-        self.support = support
-        self.parent = parent
-        self.children = children
-
-    def get_item_support(self):
-        return self.ItemSupport(self.item, self.support)
-
-    def get_single_prefix_path(self):
-        path = []
-        node = self
-        while node.children:
-            if len(node.children) > 1:
-                return None
-            path.append(node.children[0].get_item_support())
-            node = node.children[0]
-        return path
-
-    def clone(self, item=None, support=None, parent=None, children=None):
-        return Node(self.item if item is None else item,
-                    self.support if support is None else support,
-                    self.parent if parent is None else parent,
-                    self.children if children is None else children)
-
-    def depth(self):
-        if not self.children:
-            return 1
-        max_child_depth = 0
-        for child in self.children:
-            depth = child.depth()
-            if depth > max_child_depth:
-                max_child_depth = depth
-        return 1 + max_child_depth
-
-    def destroy(self):
-        for child in self.children:
-            child.destroy()
-            child.parent = None
-        self.children = []
-
-
-class Pattern(object):
-
-    def __init__(self, items=None):
-        if items:
-            self.items = set([x.item for x in items])
-            if len(self.items) == len(items):
-                self.support = min([x.support for x in items])
-            else:
-                deduped = defaultdict(int)
-                for x in items:
-                    deduped[x.item] += x.support
-                self.support = min(deduped.values())
-        else:
-            self.items = []
-            self.support = 0
-
-    def __or__(self, other):
-        if other is None:
-            return self
-
-        pattern = Pattern()
-        pattern.items = self.items | other.items
-        pattern.support = min(self.support, other.support)
-        return pattern
-
-    def __len__(self):
-        return len(self.items)
-
-    def get(self):
-        return [list(self.items), self.support]
-
-
-def build_fp_tree(transactions):
-    fp_tree = Node(None, None, None, [])
-    header_table = defaultdict(list)
-    for transaction in transactions:
-        insert_transaction(fp_tree, header_table, transaction)
-
-    return fp_tree, header_table
-
-
-def insert_transaction(fp_tree, header_table, transaction):
-    current_node = fp_tree
-    for item in transaction:
-        found = False
-        for child in current_node.children:
-            if child.item == item:
-                current_node = child
-                current_node.support += 1
-                found = True
-                break
-        if not found:
-            new_node = Node(item, 1, current_node, [])
-            current_node.children.append(new_node)
-            header_table[item].append(new_node)
-            current_node = new_node
-
-
-def fp_growth(tree, header_table, previous_pattern, min_support):
-    single_path = tree.get_single_prefix_path()
-
-    if single_path:
-        for combination in combinations_(single_path):
-            pattern = Pattern(combination) | previous_pattern
-            if pattern.support >= min_support and len(pattern) > 1:
-                yield pattern
-    else:
-        for item in header_table:
-            nodes = header_table[item]
-            pattern = Pattern(nodes) | previous_pattern
-
-            if pattern.support >= min_support:
-                if len(pattern) > 1:
-                    yield pattern
-
-                conditional_tree, conditional_header_table = \
-                    get_conditional_tree(nodes, tree)
-                if conditional_tree:
-                    for pattern in fp_growth(conditional_tree,
-                                             conditional_header_table,
-                                             pattern, min_support):
-                        yield pattern
-
-
-def combinations_(x):
-    for i in range(1, len(x) + 1):
-        for c in combinations(x, i):
-            yield c
-
-
-def get_conditional_tree(nodes, tree):
-
-    child_list = defaultdict(set)
-    header_table = defaultdict(set)
-    shadowed = set()
-
-    for node in nodes:
-
-        leaf = node
-        first_pass = True
-
-        while node.parent is not None:
-            parent = node.parent
-            if hasattr(parent, '_shadow'):
-                if parent.parent is not None:
-                    parent._shadow.support += leaf.support
-            else:
-                if parent.parent is None:
-                    parent._shadow = parent.clone(children=[])
-                else:
-                    parent._shadow = parent.clone(support=leaf.support,
-                                                  children=[])
-                shadowed.add(parent)
-
-            if first_pass:
-                first_pass = False
-            else:
-                child_list[parent].add(node._shadow)
-                header_table[node.item].add(node._shadow)
-
-            node = parent
-
-    for node in child_list:
-        children = child_list[node]
-        node._shadow.children = list(children)
-
-    def set_parents(shadow):
-        if shadow.children:
-            for child in shadow.children:
-                child.parent = shadow
-                set_parents(child)
-
-    shadow_tree = tree._shadow
-
-    for node in shadowed:
-        del node._shadow
-
-    if not shadow_tree.children:
-        return None, None
-
-    set_parents(shadow_tree)
-
-    return shadow_tree, header_table

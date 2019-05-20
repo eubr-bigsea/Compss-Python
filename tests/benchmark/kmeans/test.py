@@ -15,7 +15,7 @@ import time
 
 @task(returns=2)
 def generate_partition(size, col_feature, dim, frag):
-    df = pd.DataFrame(np.random.standard_normal(size=(size, dim)),
+    df = pd.DataFrame(np.random.uniform(size=(size, dim)),
                       columns=col_feature)
     info = generate_info(df, frag)
     return df, info

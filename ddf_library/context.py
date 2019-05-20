@@ -116,8 +116,8 @@ class COMPSsContext(object):
                         raise ValueError("cycle")
                     if sk == black:
                         continue
-                    enter.discard(k)
-                    dfs(k)
+                    enter.discard(no)
+                    dfs(no)
                 order.appendleft(node)
                 state[node] = black
 

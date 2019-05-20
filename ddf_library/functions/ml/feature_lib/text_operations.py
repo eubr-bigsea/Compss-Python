@@ -14,13 +14,13 @@ from ddf_library.ddf_model import ModelDDF
 from ddf_library.utils import generate_info
 
 import numpy as np
-import pandas as pd
 import re
 
 __all__ = ['NGram', 'RegexTokenizer', 'RemoveStopWords', 'Tokenizer']
 
 
 class NGram(DDFSketch):
+    # noinspection PyUnresolvedReferences
     """
     A feature transformer that converts the input array of strings into an
     array of n-grams. Null values in the input array are ignored. It returns
@@ -28,6 +28,10 @@ class NGram(DDFSketch):
     string of words. When the input is empty, an empty array is returned. When
     the input array length is less than n (number of elements per n-gram), no
     n-grams are returned.
+
+    :Example:
+
+    >>> ddf = NGram(n=3).transform(ddf_input, 'col_in', 'col_out')
     """
 
     def __init__(self,  n=2):
@@ -95,6 +99,7 @@ def _ngram(df, settings):
 
 
 class RegexTokenizer(DDFSketch):
+    # noinspection PyUnresolvedReferences
     """
     A regex based tokenizer that extracts tokens either by using the provided
     regex pattern (in Java dialect) to split the text.
@@ -102,7 +107,7 @@ class RegexTokenizer(DDFSketch):
     :Example:
 
     >>> ddf2 = RegexTokenizer(input_col='col_0', pattern=r"(?u)\b\w\w+\b")\
-    ...         .transform(ddf1)
+    ...         .transform(ddf_input)
     """
 
     def __init__(self, pattern=r'\s+', min_token_length=2, to_lowercase=True):
@@ -191,6 +196,7 @@ def _tokenizer_(data, settings):
 
 
 class RemoveStopWords(ModelDDF):
+    # noinspection PyUnresolvedReferences
     """
     Remove stop-words is a operation to remove words which
     should be excluded from the input, typically because
@@ -201,7 +207,7 @@ class RemoveStopWords(ModelDDF):
     >>> remover = RemoveStopWords(input_col='col_0',
     >>>                           stops_words_list=['word1', 'word2'])
     >>> remover = remover.stopwords_from_ddf(stopwords_ddf, 'col')
-    >>> ddf2 = remover.transform(ddf1, output_col='col_1')
+    >>> ddf2 = remover.transform(ddf_input, output_col='col_1')
     """
 
     def __init__(self, case_sensitive=True, stops_words_list=None):
@@ -324,6 +330,7 @@ def _remove_stopwords(data, settings):
 
 
 class Tokenizer(DDFSketch):
+    # noinspection PyUnresolvedReferences
     """
     Tokenization is the process of taking text (such as a sentence) and
     breaking it into individual terms (usually words). A simple Tokenizer
@@ -331,7 +338,7 @@ class Tokenizer(DDFSketch):
 
     :Example:
 
-    >>> ddf2 = Tokenizer(input_col='features').transform(ddf1)
+    >>> ddf2 = Tokenizer(input_col='features').transform(ddf_input)
     """
 
     def __init__(self, min_token_length=2, to_lowercase=True):

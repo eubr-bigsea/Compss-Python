@@ -17,33 +17,34 @@ def ml_fpm_fpgrowth():
     t5	{1, 2, 3, 5}
     
     itemsets	 support
-    {1}	            3
+
     {2}	            4
     {3}     	    4
     {5}	            4
-    {1, 2}	        2
-    {1, 3}	        3
-    {1, 5}  	    2
-    {2, 3}  	    3
     {2, 5}	        4
+    {1}	            3
+    {1, 3}	        3
+    {2, 3}  	    3
     {3, 5}	        3
+    {2, 3, 5}	    3
+    {1, 2}	        2
+    {1, 5}  	    2
     {1, 2, 3}	    2
     {1, 2, 5}	    2
     {1, 3, 5}	    2
-    {2, 3, 5}	    3
     {1, 2, 3, 5}	2
     """
-    # data = pd.DataFrame([['1,3,4'],
-    #                      ['2,3,5'],
-    #                      ['1,2,3,5'],
-    #                      ['2,5'],
-    #                      ['1,2,3,5']], columns=['col_0'])
+    data = pd.DataFrame([['1,3,4'],
+                         ['2,3,5'],
+                         ['1,2,3,5'],
+                         ['2,5'],
+                         ['1,2,3,5']], columns=['col_0'])
 
-    # dataset = DDF() \
-    #     .parallelize(data, 4) \
+    # data_set = DDF() \
+    #     .parallelize(data, 2) \
     #     .map(lambda row: row['col_0'].split(','), 'col_0')
 
-    dataset = DDF()\
+    data_set = DDF()\
         .load_text('/transactions.csv', num_of_parts=4, header=False,
                    sep='\n')\
         .map(lambda row: row['col_0'].split(' ')[:-1], 'col_0')
@@ -91,26 +92,17 @@ def ml_fpm_fpgrowth():
         37             (110)      291
     """
 
-    fp = FPGrowth(column='col_0', min_support=0.0284).run(dataset)
+    fp = FPGrowth(min_support=0.0284)
+    item_set = fp.fit_transform(data_set, column='col_0')
 
-    itemset = fp.get_frequent_itemsets()
+    rules = AssociationRules(confidence=0.7) \
+        .fit_transform(item_set) \
+        .select(['Pre-Rule', 'Post-Rule', 'confidence']).cache()
 
-    # ar = AssociationRules(confidence=0.7) \
-    #     .run(itemset) \
-    #     .select(['Pre-Rule', 'Post-Rule', 'confidence']).cache()
-    #
-    rules1 = fp.generate_association_rules(confidence=0.3).cache()
-
-    # itemset = itemset.select(['items', 'support'])
-    #
-    # rules1 = rules1.show(n=5)
-    # itemset = itemset.cache().show(n=10)
-    # rules2 = ar.show(n=5)
-    print('RESULT itemset:')
-    itemset.show()
-    print("RESULT rules1:")
-    rules1.show()
-    # print "RESULT rules2:", rules2
+    print('RESULT item set:')
+    item_set.show()
+    print("RESULT rules:")
+    rules.show()
 
 
 if __name__ == '__main__':

@@ -93,7 +93,7 @@ def tf_idf_vectorizer():
 
     counter = TfidfVectorizer().fit(dff_tokens, input_col='col_0_tokens')
 
-    print (counter.model['vocabulary'])
+    print(counter.model['vocabulary'])
     counter.save_model('/tfidf_vectorizer')
     result = counter.transform(dff_tokens,  output_col='col_2')
     result.show()

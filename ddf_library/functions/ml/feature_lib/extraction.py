@@ -4,23 +4,20 @@
 __author__ = "Lucas Miguel S Ponce"
 __email__ = "lucasmsp@gmail.com"
 
-from ddf_library.ddf import DDF, DDFSketch
+from ddf_library.ddf import DDF
 from ddf_library.ddf_model import ModelDDF
 from ddf_library.utils import generate_info
-
 
 from pycompss.api.task import task
 from pycompss.functions.reduce import merge_reduce
 from pycompss.api.api import compss_wait_on
-# from pycompss.api.local import *  # requires guppy
-
 
 import numpy as np
 import pandas as pd
-import itertools
 
 
 class CountVectorizer(ModelDDF):
+    # noinspection PyUnresolvedReferences
     """
     Converts a collection of text documents to a matrix of token counts.
 
@@ -77,7 +74,7 @@ class CountVectorizer(ModelDDF):
         result_p = [[] for _ in range(nfrag)]
         for f in range(nfrag):
             result_p[f] = _wordcount(df[f], self.settings)
-        word_dic = merge_reduce(merge_wordCount, result_p)
+        word_dic = merge_reduce(merge_word_count, result_p)
 
         vocabulary = create_vocabulary(word_dic, -1)
 
@@ -131,12 +128,12 @@ class CountVectorizer(ModelDDF):
 
 @task(returns=dict)
 def _wordcount(data, params):
-    """Auxilar method to create a model."""
+    """Auxiliary method to create a model."""
     wordcount = {}
     columns = params['input_col']
-    # first:   Number of all occorrences with term t
-    # second:  Number of diferent documents with term t
-    # third:   temporary - only to idetify the last occorrence
+    # first:   Number of all occurrences with term t
+    # second:  Number of different documents with term t
+    # third:   temporary - only to identify the last occurrence
 
     for i_doc, doc in enumerate(data[columns].tolist()):
 
@@ -152,8 +149,8 @@ def _wordcount(data, params):
 
 
 @task(returns=1)
-def merge_wordCount(dic1, dic2):
-    """Merge the wordcounts."""
+def merge_word_count(dic1, dic2):
+    """Merge the word counts."""
     for k in dic2:
         if k in dic1:
             dic1[k][0] += dic2[k][0]
@@ -165,7 +162,6 @@ def merge_wordCount(dic1, dic2):
 
 @task(returns=1)
 def merge_lists(list1, list2):
-    """Auxiliar method."""
     list1 = list1+list2
     return list1
 
@@ -250,6 +246,7 @@ def _transform_bow(data, params):
 
 
 class TfidfVectorizer(ModelDDF):
+    # noinspection PyUnresolvedReferences
     """
     Term frequency-inverse document frequency (TF-IDF) is a numerical
     statistic transformation that is intended to reflect how important a word
@@ -304,12 +301,12 @@ class TfidfVectorizer(ModelDDF):
 
         # TODO: info instead to generate new tasks
         counts = [count_records(df[f]) for f in range(nfrag)]
-        count = merge_reduce(mergeCount, counts)
+        count = merge_reduce(merge_count, counts)
 
         result_p = [[] for _ in range(nfrag)]
         for f in range(nfrag):
             result_p[f] = _wordcount(df[f], self.settings)
-        word_dic = merge_reduce(merge_wordCount, result_p)
+        word_dic = merge_reduce(merge_word_count, result_p)
         vocabulary = create_vocabulary(word_dic, n_rows=count)
 
         if any([min_tf > 0, min_df > 0, vocab_size > 0]):
@@ -360,7 +357,6 @@ class TfidfVectorizer(ModelDDF):
         return DDF(task_list=data.task_list, last_uuid=uuid_key)
 
 
-
 @task(returns=1)
 def count_records(data):
     """Count the partial number of records in each fragment."""
@@ -368,8 +364,8 @@ def count_records(data):
 
 
 @task(returns=1)
-def mergeCount(data1, data2):
-    """Auxiliar method to merge the lengths."""
+def merge_count(data1, data2):
+    """Auxiliary method to merge the lengths."""
     return data1 + data2
 
 
@@ -400,6 +396,7 @@ def construct_tf_idf(data, params):
         return doc
 
     from sklearn.feature_extraction.text import TfidfVectorizer
+    # noinspection PyTypeChecker
     vectorizer = TfidfVectorizer(analyzer='word',
                                  tokenizer=dummy_fun,
                                  preprocessor=dummy_fun,
@@ -407,23 +404,6 @@ def construct_tf_idf(data, params):
     vectorizer.vocabulary_ = vocabulary_
     vectorizer.idf_ = vocabulary['InverseDistinctFrequency'].values
     vector = vectorizer.transform(data[column].tolist())
-
-    # vector = np.zeros((data.shape[0], vocabulary.shape[0]), dtype=np.float)
-    # if len(data) > 0:
-    #     vocab = vocabulary['Word'].values
-    #     for i, lines in enumerate(data[column].tolist()):
-    #         total = len(lines)
-    #         for w, token in enumerate(vocab):
-    #             if token in lines:
-    #                 # TF = (Number of times term t appears in the document) /
-    #                 #        (Total number of terms in the document).
-    #                 tf = np.count_nonzero(lines == token) / total
-    #
-    #                 idf = vocabulary.\
-    #                     loc[vocabulary['Word'] == token,
-    #                         'InverseDistinctFrequency'].item()
-    #
-    #                 vector[i][w] = tf*idf
 
     cols = [col for col in output_col if col in data.columns]
     if len(cols) > 0:

@@ -17,6 +17,7 @@ import pandas as pd
 
 
 class Binarizer(ModelDDF):
+    # noinspection PyUnresolvedReferences
     """
     Binarize data (set feature values to 0 or 1) according to a threshold
 
@@ -108,6 +109,7 @@ def _binarizer(df, settings):
 
 
 class OneHotEncoder(ModelDDF):
+    # noinspection PyUnresolvedReferences
     """
     Encode categorical integer features as a one-hot numeric array.
 
@@ -276,6 +278,7 @@ class PolynomialExpansion(ModelDDF):
 
     def __init__(self, input_col, degree=2, interaction_only=False,
                  remove=False):
+        # noinspection PyUnresolvedReferences
         """
        :param input_col: List of columns;
        :param degree: The degree of the polynomial features. Default = 2.
@@ -376,6 +379,7 @@ def _poly_expansion(df, params):
 
 
 class StringIndexer(ModelDDF):
+    # noinspection PyUnresolvedReferences
     """
     StringIndexer indexes a feature by encoding a string column as a
     column containing indexes.
@@ -486,6 +490,7 @@ def _string_to_indexer(data, settings):
 
 
 class IndexToString(ModelDDF):
+    # noinspection PyUnresolvedReferences
     """
     Symmetrically to StringIndexer, IndexToString maps a column of
     label indices back to a column containing the original labels as strings.

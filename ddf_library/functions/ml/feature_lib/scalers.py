@@ -17,6 +17,7 @@ import pandas as pd
 
 
 class MaxAbsScaler(ModelDDF):
+    # noinspection PyUnresolvedReferences
     """
     MaxAbsScaler transforms a data set of features rows,
     rescaling each feature to range [-1, 1] by dividing through
@@ -37,7 +38,6 @@ class MaxAbsScaler(ModelDDF):
     def __init__(self, input_col, remove=False):
         """
         :param input_col: Column with the features;
-        :param output_col: Output column;
         :param remove: Remove input columns after execution (default, False).
         """
         super(MaxAbsScaler, self).__init__()
@@ -137,7 +137,7 @@ def _maxabs_scaler(data, settings):
     values = data[features].values
     to_remove = [c for c in alias if c in data.columns]
     if remove_input:
-        to_remove += input_col
+        to_remove += features
     data.drop(to_remove, axis=1, inplace=True)
 
     if len(data) > 0:
@@ -171,6 +171,7 @@ def _maxabs_scaler(data, settings):
 
 
 class MinMaxScaler(ModelDDF):
+    # noinspection PyUnresolvedReferences
     """
     MinMaxScaler transforms a data set of features rows, rescaling
     each feature to a specific range (often [0, 1])
@@ -317,7 +318,7 @@ def _minmax_scaler(data, settings):
     values = data[features].values
     to_remove = [c for c in alias if c in data.columns]
     if remove_input:
-        to_remove += input_col
+        to_remove += features
     data.drop(to_remove, axis=1, inplace=True)
 
     if len(data) > 0:
@@ -351,6 +352,7 @@ def _minmax_scaler(data, settings):
 
 
 class StandardScaler(ModelDDF):
+    # noinspection PyUnresolvedReferences
     """
     The standard score of a sample x is calculated as:
 
@@ -370,7 +372,6 @@ class StandardScaler(ModelDDF):
     def __init__(self, input_col, with_mean=True, with_std=True, remove=False):
         """
         :param input_col: Column with the features;
-        :param output_col: Output column;
         :param with_mean: True to use the mean (default is True);
         :param with_std: True to use standard deviation of the
          training samples (default is True);
@@ -530,7 +531,7 @@ def _standard_scaler(data, settings):
     values = data[features].values
     to_remove = [c for c in alias if c in data.columns]
     if remove_input:
-        to_remove += input_col
+        to_remove += features
     data.drop(to_remove, axis=1, inplace=True)
 
     if len(data) > 0:
