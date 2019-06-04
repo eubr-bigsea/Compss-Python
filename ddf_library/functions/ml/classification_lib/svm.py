@@ -5,7 +5,8 @@
 __author__ = "Lucas Miguel S Ponce"
 __email__ = "lucasmsp@gmail.com"
 
-from ddf_library.ddf import DDF, generate_info
+from ddf_library.ddf import DDF
+from ddf_library.utils import generate_info
 from ddf_library.ddf_model import ModelDDF
 
 from pycompss.api.task import task
@@ -43,14 +44,15 @@ class SVM(ModelDDF):
     """
 
     def __init__(self, feature_col, label_col, coef_lambda=0.1,
-                 coef_lr=0.01, threshold=0.001, max_iter=100):
+                 coef_lr=0.01, threshold=0.001, max_iter=100, penalty='l2'):
         """
         :param feature_col: Feature column name;
         :param label_col: Label column name;
         :param coef_lambda: Regularization parameter (default, 0.1);
         :param coef_lr: Learning rate parameter (default, 0.1);
         :param threshold: Tolerance for stopping criterion (default, 0.001);
-        :param max_iter: Number max of iterations (default, 100).
+        :param max_iter: Number max of iterations (default, 100);
+        :param penalty: Apply 'l2' or 'l1' penalization (default, 'l2')
         """
         super(SVM, self).__init__()
 
@@ -61,8 +63,9 @@ class SVM(ModelDDF):
         self.settings['coef_lr'] = coef_lr
         self.settings['threshold'] = threshold
         self.settings['max_iter'] = max_iter
+        self.settings['regularization'] = penalty
 
-        self.model = []
+        self.model = {}
         self.name = 'SVM'
 
     def fit(self, data):
@@ -75,9 +78,9 @@ class SVM(ModelDDF):
 
         coef_lambda = float(self.settings.get('coef_lambda', 0.1))
         coef_lr = float(self.settings.get('coef_lr', 0.01))
-        coef_threshold = float(self.settings.get('coef_threshold', 0.001))
+        coef_threshold = float(self.settings.get('threshold', 0.001))
         coef_max_iter = int(self.settings.get('max_iter', 100))
-
+        regularization = self.settings.get('regularization', 'l2')
         df, nfrag, tmp = self._ddf_initial_setup(data)
 
         col_label = self.settings['label_col']
@@ -85,6 +88,7 @@ class SVM(ModelDDF):
 
         w = np.zeros(1, dtype=float)
         old_cost = np.inf
+        old_w = w.copy()
 
         cost_grad_p = [[] for _ in range(nfrag)]
 
@@ -99,16 +103,20 @@ class SVM(ModelDDF):
 
             cost_grad = merge_reduce(_accumulate_cost_grad, cost_grad_p)
 
-            w, cost = _update_weight(coef_lr, cost_grad, w, coef_lambda)
+            w, cost = _update_weight(coef_lr, cost_grad, w,
+                                     coef_lambda, regularization)
 
             print("[INFO] SVM - it {} - cost:{:.4f}".format(it, cost))
-            threshold = np.abs(old_cost - cost)
+            threshold = old_cost - cost
             if threshold <= coef_threshold:
+                w = old_w
                 break
             else:
                 old_cost = cost
+                old_w = w
 
-        self.model = [w]
+        self.model['model'] = w
+        self.model['algorithm'] = self.name
 
         return self
 
@@ -134,13 +142,12 @@ class SVM(ModelDDF):
         :return: DDF
         """
 
-        if len(self.model) == 0:
-            raise Exception("Model is not fitted.")
+        self.check_fitted_model()
 
         task_list = data.task_list
         settings = self.settings.copy()
         settings['pred_col'] = pred_col
-        settings['model'] = self.model[0].copy()
+        settings['model'] = self.model['model'].copy()
 
         def task_transform_svm(df, params):
             return _svm_predict(df, params)
@@ -154,18 +161,30 @@ class SVM(ModelDDF):
         return DDF(task_list=task_list, last_uuid=uuid_key)
 
 
-def _update_weight(coef_lr, cost_grad, w, coef_lambda):
+def _update_weight(coef_lr, cost_grad, w, coef_lambda, regularization):
     """Update the svm's weight."""
-    cost, grad = compss_wait_on(cost_grad)
+    loss, grad, size = compss_wait_on(cost_grad)
 
     dim = len(grad)
     if dim != len(w):
         w = np.zeros(dim)
 
-    grad += np.abs(coef_lambda * w)
+    penalty = 0
+    if regularization == 'l1':  # Lasso
+        # Lasso adds absolute value of magnitude of coefficient as penalty term
+        penalty = coef_lambda * np.linalg.norm(w, 1)
 
-    w = np.subtract(w, np.multiply(coef_lr, grad))
-    return w, cost
+    elif regularization == 'l2':  # Ridge
+        # Ridge adds squared magnitude of coefficient as penalty term
+        penalty = coef_lambda * (np.linalg.norm(w))**2
+
+    dw = (grad/size) + 2 * penalty
+
+    loss = loss/size + penalty
+
+    w = w - coef_lr * dw
+
+    return w, loss
 
 
 @task(returns=2)
@@ -181,16 +200,18 @@ def _calc_cost_grad_first(train_data, w, label, features):
         if dim != len(w):
             w = np.zeros(dim, dtype=float)  # initial
 
-        conditions = (labels * np.dot(train_data, w))
-        idx = np.nonzero((conditions - 1) < 0)
+        prediction = (labels * np.dot(train_data, w))
 
-        cost = np.sum(1 - conditions[idx])
+        # hinge loss (select negative values)
+        idx = np.nonzero((prediction - 1) < 0)
+        loss = np.sum(1 - prediction[idx])
 
+        # -y * x for all values lesser than 1
         grad = - np.dot(labels[idx], train_data[idx])
 
-        return [cost, grad], [labels, train_data]
+        return [loss, grad, size_train], [labels, train_data]
     else:
-        return [0, 0], [labels, train_data]
+        return [0, 0, size_train], [labels, train_data]
 
 
 @task(returns=1)
@@ -205,28 +226,31 @@ def _calc_cost_grad(train_data, w):
         if dim != len(w):
             w = np.zeros(dim, dtype=float)  # initial
 
-        conditions = (labels * np.dot(train_data, w))
-        idx = np.nonzero((conditions - 1) < 0)
+        prediction = (labels * np.dot(train_data, w))
 
-        cost = np.sum(1 - conditions[idx])
+        # hinge loss (select negative values)
+        idx = np.nonzero((prediction - 1) < 0)
+        loss = np.sum(1 - prediction[idx])
 
+        # -y * x for all values lesser than 1
         grad = - np.dot(labels[idx], train_data[idx])
 
-        return [cost, grad]
+        return [loss, grad, size_train]
     else:
-        return [0, 0]
+        return [0, 0, size_train]
 
 
 @task(returns=1)
 def _accumulate_cost_grad(cost_grad_p1, cost_grad_p2):
     """Merge cost and gradient."""
-    cost_p1, grad_p1 = cost_grad_p1
-    cost_p2, grad_p2 = cost_grad_p2
+    cost_p1, grad_p1, size_p1 = cost_grad_p1
+    cost_p2, grad_p2, size_p2 = cost_grad_p2
 
     cost_p1 += cost_p2
+    size_p1 += size_p2
     grad_p1 = np.add(grad_p1, grad_p2)
 
-    return [cost_p1, grad_p1]
+    return [cost_p1, grad_p1, size_p1]
 
 
 def _svm_predict(data, settings):
@@ -243,8 +267,9 @@ def _svm_predict(data, settings):
         data.drop([pred_col], axis=1, inplace=True)
 
     if len(data) > 0:
-        values = np.matmul(data[features].values, w)
-        values = np.where(values >= 0, 1, -1)
+        # values = np.matmul(data[features].values, w)
+        # values = np.where(values >= 0, 1, -1)
+        values = np.sign(np.dot(data[features].values, w)).astype(int)
         data[pred_col] = values
     else:
         data[pred_col] = np.nan

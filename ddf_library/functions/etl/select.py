@@ -32,6 +32,7 @@ def select(data, settings):
 
 
 def select_exprs(data, settings):
+    # noinspection PyUnresolvedReferences
     """
     Projects a set of expressions and returns a new DataFrame. This is a
     variant of select() that accepts expressions.
@@ -42,43 +43,34 @@ def select_exprs(data, settings):
      - 'exprs': SQL expressions. The column names are keywords;
     :return: A pandas's DataFrame with only the selected columns.
 
-    .. note: These operations are supported by select_exprs:
+    .. note:: These operations are supported by select_exprs:
 
-    * Arithmetic operations except for the left shift (<<) and right shift (>>)
-     operators, e.g., df + 2 * pi / s ** 4 % 42 - the_golden_ratio
-    * Comparison operations, including chained comparisons, e.g., 2 < df < df2
-    * Boolean operations, e.g., df < df2 and df3 < df4 or not df_bool
-    * list and tuple literals, e.g., [1, 2] or (1, 2)
-    * Attribute access, e.g., df.a
-    * Subscript expressions, e.g., df[0]
-    * Simple variable evaluation, e.g., pd.eval('df') (this is not very useful)
-    * Math functions: sin, cos, exp, log, expm1, log1p, sqrt, sinh, cosh, tanh,
-     arcsin, arccos, arctan, arccosh, arcsinh, arctanh, abs, arctan2 and log10.
+          * Arithmetic operations except for the left shift (<<) and
+            right shift (>>) operators,
+             e.g., 'col' + 2 * pi / s ** 4 % 42 - the_golden_ratio
 
-    * This Python syntax is not allowed:
+          * list and tuple literals, e.g., [1, 2] or (1, 2)
+          * Math functions: sin, cos, exp, log, abs, log10, ...
+          * You must explicitly reference any local variable that you want to
+            use in an expression by placing the @ character in front of the
+            name.
+          * This Python syntax is not allowed:
 
-     * Expressions
-
-      - Function calls other than math functions.
-      - is/is not operations
-      - if expressions
-      - lambda expressions
-      - list/set/dict comprehensions
-      - Literal dict and set expressions
-      - yield expressions
-      - Generator expressions
-      - Boolean expressions consisting of only scalar values
-
-     * Statements: Neither simple nor compound statements are allowed.
-      This includes things like for, while, and if.
-
-
-    You must explicitly reference any local variable that you want to use in an
-    expression by placing the @ character in front of the name.
+           - Function calls other than math functions.
+           - is/is not operations
+           - if expressions
+           - lambda expressions
+           - list/set/dict comprehensions
+           - Literal dict and set expressions
+           - yield expressions
+           - Generator expressions
+           - Boolean expressions consisting of only scalar values
+           - Statements: Neither simple nor compound statements are allowed.
 
     .. seealso:: Visit this `link <https://pandas-docs.github.io/pandas-docs
-         -travis/reference/api/pandas.eval.html#pandas.eval>`__ to more
-         information about eval options.
+       -travis/reference/api/pandas.eval.html#pandas.eval>`__ to more
+       information about eval options.
+
     """
 
     frag = settings['id_frag']

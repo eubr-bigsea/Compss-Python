@@ -5,7 +5,8 @@
 __author__ = "Lucas Miguel S Ponce"
 __email__ = "lucasmsp@gmail.com"
 
-from ddf_library.ddf import DDF, generate_info
+from ddf_library.ddf import DDF
+from ddf_library.utils import generate_info
 from ddf_library.ddf_model import ModelDDF
 
 from pycompss.api.task import task
@@ -39,15 +40,14 @@ class Kmeans(ModelDDF):
 
     :Example:
 
-    >>> clu = Kmeans(feature_col='features', n_clusters=2,
-    >>>                 init_mode='random').fit(ddf1)
-    >>> ddf2 = clu.transform(ddf1)
+    >>> clu = Kmeans(n_clusters=2, init_mode='random')
+    >>> ddf2 = clu.fit_transform(ddf1, feature_col=['col1', 'col2'])
     """
 
-    def __init__(self, feature_col, n_clusters=3, max_iter=100,
+    def __init__(self, n_clusters=3, max_iter=100,
                  epsilon=0.01, init_mode='k-means||'):
         """
-        :param feature_col: Feature column name;
+
         :param n_clusters: Number of clusters;
         :param max_iter: Number maximum of iterations;
         :param epsilon: tolerance value (default, 0.01);
@@ -60,7 +60,6 @@ class Kmeans(ModelDDF):
                             "k-means|| as a initialization mode. ")
 
         self.settings = dict()
-        self.settings['feature_col'] = feature_col
         self.settings['max_iter'] = max_iter
         self.settings['init_mode'] = init_mode
         self.settings['k'] = n_clusters
@@ -70,11 +69,13 @@ class Kmeans(ModelDDF):
         self.name = 'Kmeans'
         self.cost = np.inf
 
-    def fit(self, data):
+    def fit(self, data, feature_col):
         """
         :param data: DDF
+        :param feature_col: Features column names;
         :return: trained model
         """
+        self.settings['feature_col'] = feature_col
 
         df, nfrag, tmp = self._ddf_initial_setup(data)
 
@@ -116,19 +117,21 @@ class Kmeans(ModelDDF):
             it += 1
             print('[INFO] - KMeans - it {} cost: {}'.format(it, cost))
 
-        self.model = centroids
+        self.model['algorithm'] = self.name
+        self.model['model'] = centroids
         return self
 
-    def fit_transform(self, data, pred_col='prediction_kmeans'):
+    def fit_transform(self, data, feature_col, pred_col='prediction_kmeans'):
         """
         Fit the model and transform.
 
         :param data: DDF
+        :param feature_col: Features column names;
         :param pred_col: Output prediction column;
         :return: DDF
         """
 
-        self.fit(data)
+        self.fit(data, feature_col)
         ddf = self.transform(data, pred_col=pred_col)
 
         return ddf
@@ -146,7 +149,7 @@ class Kmeans(ModelDDF):
         task_list = data.task_list
         settings = self.settings.copy()
         settings['pred_col'] = pred_col
-        settings['model'] = self.model.copy()
+        settings['model'] = self.model['model'].copy()
 
         def task_transform_kmeans(df, params):
             return _kmeans_predict(df, params)

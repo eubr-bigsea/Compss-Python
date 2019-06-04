@@ -113,11 +113,11 @@ def _freq_items_merge(df1, df2):
 # @local
 def _freq_items_get(info):
     info = compss_wait_on(info)
-    freqs, settings = info
+    freq, settings = info
     cols = settings['col']
 
     cols_name = ['{}_freqItems'.format(c) for c in cols]
-    row = [freqs[c].keys() for c in cols]
-    freqs = pd.DataFrame([row], columns=cols_name)
+    row = [freq[c].keys() for c in cols]
+    freq = pd.DataFrame([row], columns=cols_name)
 
-    return freqs
+    return freq

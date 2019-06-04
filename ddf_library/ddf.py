@@ -22,7 +22,6 @@ from ddf_library.utils import concatenate_pandas
 
 import pandas as pd
 
-
 __all__ = ['DDF']
 
 
@@ -247,7 +246,7 @@ class DDF(DDFSketch):
     def import_data(self, df_list, info=None):
         # noinspection PyUnresolvedReferences
         """
-        Import a previous Pandas DataFrame list in DDF abstraction.
+        Import a previous Pandas DataFrame list into DDF abstraction.
         Replace old data if DDF is not empty.
 
         :param df_list: DataFrame input
@@ -322,8 +321,15 @@ class DDF(DDFSketch):
         return size
 
     def balancer(self, forced=False):
+        # noinspection PyUnresolvedReferences
         """
+        Repartition data in order to balance the distributed data between nodes.
 
+        :return: DDF
+
+        :Example:
+
+        >>> ddf1.balancer(force=True)
         """
 
         from .functions.etl.balancer import WorkloadBalancer
@@ -349,7 +355,7 @@ class DDF(DDFSketch):
     def count_rows(self, total=True):
         # noinspection PyUnresolvedReferences
         """
-        Return a number of rows in this DDF.
+        Return the number of rows in this DDF.
 
         :param total: Show the total number (default) or the number over
          the fragments.
@@ -596,6 +602,11 @@ class DDF(DDFSketch):
             return DDF(task_list=task_list, last_uuid=new_state_uuid)
 
     def columns(self):
+        """
+        Returns the columns name in the current DDF.
+
+        :return: A list of strings
+        """
 
         columns = self._get_info()['cols']
         return columns
@@ -745,6 +756,16 @@ class DDF(DDFSketch):
         result = describe(df, columns)
 
         return result
+
+    def export_ddf(self):
+        """
+        Export ddf data.
+
+        :return: A list of Pandas's DataFrame
+        """
+
+        self._check_cache()
+        return self.partitions
 
     def freq_items(self, col, support=0.01):
         # noinspection PyUnresolvedReferences
@@ -1458,6 +1479,7 @@ class DDF(DDFSketch):
          :param mode: Defines the distribution used for calculating the p-value.
             - 'approx' : use approximation to exact distribution
             - 'asymp' : use asymptotic distribution of test statistic
+
         :param args: A tuple of distribution parameters. Default is (0,1);
         :return: KS statistic and two-tailed p-value
 
@@ -1582,7 +1604,14 @@ class DDF(DDFSketch):
     def repartition(self, nfrag=-1, distribution=None):
         # noinspection PyUnresolvedReferences
         """
+        Repartition a distributed data based in a fixed number of partitions or
+        based on a distribution list.
 
+        :param nfrag: Optional, if used, the data will be partitioned in
+         nfrag fragments.
+        :param distribution: Optional, a list of integers where each
+         element will represent the amount of data in this index.
+        :return: DDF
         """
 
         from .functions.etl.repartition import repartition
@@ -1716,7 +1745,7 @@ class DDF(DDFSketch):
         return DDF(task_list=task_list, last_uuid=new_state_uuid)
 
     def save(self, filename, format='csv', storage='hdfs',
-             header=True, mode='overwrite'):
+             header=True, mode='overwrite', host='localhost', port=9000):
         # noinspection PyUnresolvedReferences
         """
         Save the data in the storage.
@@ -1724,11 +1753,13 @@ class DDF(DDFSketch):
         Is it a Lazy function: Yes
 
         :param filename: output name;
-        :param format: format file, CSV or JSON;
+        :param format: format file, csv, json or a pickle;
         :param storage: 'fs' to common file system or 'hdfs' to use HDFS;
         :param header: save with the columns header;
         :param mode: 'overwrite' (default) if file exists, 'ignore' or 'error'.
          Only used when storage is 'hdfs'.
+        :param host: Namenode HDFS host;
+        :param port: Namenode HDFS port
         :return: Return the same input data to perform others operations;
         """
 
@@ -1738,7 +1769,9 @@ class DDF(DDFSketch):
                     'format': format,
                     'storage': storage,
                     'header': header,
-                    'mode': mode}
+                    'mode': mode,
+                    'host': host,
+                    'port': port}
 
         SaveOperation().preprocessing(settings)
 
@@ -1749,20 +1782,25 @@ class DDF(DDFSketch):
         COMPSsContext.tasks_map[new_state_uuid] = \
             {'name': 'save',
              'status': 'WAIT',
-             'optimization': self.OPT_SERIAL,
+             'optimization': self.OPT_OTHER,
              'function': [task_save, settings],
              'parent': [self.last_uuid],
              'output': 1,
              'input': 1
              }
 
-        return DDF(task_list=self.task_list, last_uuid=new_state_uuid)
+        res = DDF(task_list=self.task_list,
+                  last_uuid=new_state_uuid)._run_compss_context(new_state_uuid)
+
+        return res
 
     def schema(self):
         # noinspection PyUnresolvedReferences
         """
+        Returns a schema table where each row contains the name
+        columns and its data types of the current DDF.
 
-        :return:
+        :return: a Pandas's DataFrame
         """
 
         info = self._get_info()
@@ -1808,7 +1846,7 @@ class DDF(DDFSketch):
     def select_expression(self, *exprs):
         # noinspection PyUnresolvedReferences
         """
-        Projects a set of SQL expressions and returns a new DataFrame.
+        Projects a set of SQL expressions and returns a new DDF.
         This is a variant of select() that accepts SQL expressions.
 
         Is it a Lazy function: Yes
@@ -1816,35 +1854,29 @@ class DDF(DDFSketch):
         :param exprs: SQL expressions.
         :return: DDF
 
-        .. note: These operations are supported by select_exprs:
+        .. note:: These operations are supported by select_exprs:
 
-        * Arithmetic operations except for the left shift (<<) and right shift
-         (>>) operators, e.g., 'col' + 2 * pi / s ** 4 % 42 - the_golden_ratio
-        * Comparison operations, including chained comparisons,
-         e.g., 2 < df < df2
-        * Boolean operations, e.g., df < df2 and df3 < df4 or not df_bool
-        * list and tuple literals, e.g., [1, 2] or (1, 2)
-        * Subscript expressions, e.g., df[0]
-        * Math functions: sin, cos, exp, log, abs, log10, ...
-        * This Python syntax is not allowed:
+          * Arithmetic operations except for the left shift (<<) and
+            right shift (>>) operators, e.g., 'col' + 2 * pi / s ** 4 % 42
+            - the_golden_ratio
 
-         * Expressions
+          * list and tuple literals, e.g., [1, 2] or (1, 2)
+          * Math functions: sin, cos, exp, log, abs, log10, ...
+          * You must explicitly reference any local variable that you want to
+            use in an expression by placing the @ character in front of the
+            name.
+          * This Python syntax is not allowed:
 
-          - Function calls other than math functions.
-          - is/is not operations
-          - if expressions
-          - lambda expressions
-          - list/set/dict comprehensions
-          - Literal dict and set expressions
-          - yield expressions
-          - Generator expressions
-          - Boolean expressions consisting of only scalar values
-
-         * Statements: Neither simple nor compound statements are allowed.
-          This includes things like for, while, and if.
-
-        You must explicitly reference any local variable that you want to use
-        in an expression by placing the @ character in front of the name.
+           - Function calls other than math functions.
+           - is/is not operations
+           - if expressions
+           - lambda expressions
+           - list/set/dict comprehensions
+           - Literal dict and set expressions
+           - yield expressions
+           - Generator expressions
+           - Boolean expressions consisting of only scalar values
+           - Statements: Neither simple nor compound statements are allowed.
 
         .. seealso:: Visit this `link <https://pandas-docs.github.io/pandas-docs
             -travis/reference/api/pandas.eval.html#pandas.eval>`__ to more
@@ -2112,7 +2144,7 @@ class DDF(DDFSketch):
         """
         Combine this data set with some other DDF. Also as standard in SQL,
         this function resolves columns by position (not by name). The old names
-        are replaced to 'col_' + index.
+        are replaced to `col_` + index.
 
         Is it a Lazy function: No
 
@@ -2223,3 +2255,12 @@ class DDF(DDFSketch):
              }
 
         return DDF(task_list=self.task_list, last_uuid=new_state_uuid)
+
+    # def remove_parent(self):
+    #     """
+    #     Cache result and remove all parents
+    #     :return:
+    #     """
+    #     pass
+
+

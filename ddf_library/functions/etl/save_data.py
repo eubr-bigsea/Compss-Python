@@ -4,7 +4,8 @@
 __author__ = "Lucas Miguel S Ponce"
 __email__ = "lucasmsp@gmail.com"
 
-from ddf_library.utils import generate_info
+from pycompss.api.task import task
+from pycompss.api.parameter import FILE_OUT
 
 
 class SaveOperation(object):
@@ -25,37 +26,46 @@ class SaveOperation(object):
         mode = settings['mode']
         header = settings['header']
 
-        frag = settings['id_frag']
-
         storage = settings.get('storage', 'hdfs')
         host = settings.get('host', 'localhost')
         port = settings.get('port', 9000)
 
-        output = "{}_part_{}".format(filename, frag)
+        nfrag = len(data)
+        for f in range(nfrag):
 
-        if storage == 'hdfs':
-            """Store the DataFrame in CSV or JSON format in HDFS."""
+            output = "{}_part_{}".format(filename, f)
 
-            if format_file == 'csv':
-                _save_csv_hdfs_(host, port, output, data, mode, header)
+            if storage == 'hdfs':
+                """Store the DataFrame in CSV or JSON format in HDFS."""
 
-            elif format_file == 'json':
-                _save_json_hdfs_(host, port, output, data, mode)
+                if format_file == 'csv':
+                    options = [host, port, output, mode, header]
+                    _save_csv_hdfs_(data[f], options)
 
-        elif storage == 'fs':
-            """Store the DataFrame in CSV or JSON format in common FS."""
+                elif format_file == 'json':
+                    options = [host, port, output, mode]
+                    _save_json_hdfs_(data[f], options)
 
-            if format_file == 'csv':
-                _save_csv_fs_(output, data, header)
+            elif storage == 'fs':
+                """Store the DataFrame in CSV or JSON format in common FS."""
 
-            elif format_file == 'json':
-                _save_json_fs_(output, data)
+                if format_file == 'csv':
+                    _save_csv_fs_(output, data[f], header)
 
-        info = generate_info(data, frag)
-        return data, info
+                elif format_file == 'json':
+                    _save_json_fs_(output, data[f])
+
+                elif format_file == 'pickle':
+                    _save_pickle_fs_(output, data[f])
+
+        output = {'key_data': ['data'], 'key_info': ['info'],
+                  'data': [], 'info': []}
+        return output
 
 
-def _save_csv_hdfs_(host, port, filename, data, mode, header):
+@task(returns=1)
+def _save_csv_hdfs_(data, settings):
+    host, port, filename, mode, header = settings
     from hdfspycompss.hdfs import HDFS
     dfs = HDFS(host=host, port=port)
     over, append = False,  False
@@ -70,13 +80,19 @@ def _save_csv_hdfs_(host, port, filename, data, mode, header):
         elif mode == 'error':
             raise Exception('SaveOperation: File already exists.')
 
-    success = dfs.write_dataframe(filename, data, header=header,
-                                  overwrite=over, append=append)
+    # 'float_format': '%.6f',
+    params_pandas = {'header': header,
+                     'index': False, 'sep': ','}
+    success = dfs.write_dataframe(filename, data, append=append,
+                                  overwrite=over,
+                                  params_pandas=params_pandas)
     if not success:
         raise Exception('Error in SaveHDFSOperation.')
+    return []
 
 
-def _save_json_hdfs_(host, port, filename, data, mode):
+@task(returns=1)
+def _save_json_hdfs_(data, settings):
     """
     Method used to save a DataFrame into a JSON (using the 'records'
     pandas orientation).
@@ -84,6 +100,8 @@ def _save_json_hdfs_(host, port, filename, data, mode):
     :param filename: The name used in the output.
     :param data: The pandas DataFrame which you want to save.
     """
+    host, port, filename, mode = settings
+
     from hdfspycompss.hdfs import HDFS
     dfs = HDFS(host=host, port=port)
     over, append = False,  False
@@ -102,8 +120,10 @@ def _save_json_hdfs_(host, port, filename, data, mode):
 
     if not success:
         raise Exception('Error in SaveHDFSOperation.')
+    return []
 
 
+@task(filename=FILE_OUT)
 def _save_csv_fs_(filename, data, header):
     """
     Method used to save a DataFrame into a file (CSV).
@@ -120,6 +140,7 @@ def _save_csv_fs_(filename, data, header):
         data.to_csv(filename, sep=',', mode=mode, header=False, index=False)
 
 
+@task(filename=FILE_OUT)
 def _save_json_fs_(filename, data):
     """
     Method used to save a dataFrame into a JSON (using the 'records'
@@ -129,3 +150,16 @@ def _save_json_fs_(filename, data):
     :param data: The pandas DataFrame which you want to save.
     """
     data.to_json(filename, orient='records')
+
+
+@task(filename=FILE_OUT)
+def _save_pickle_fs_(filename, data):
+    """
+    Method used to save a dataFrame into a Pickle.
+
+    :param filename: The name used in the output.
+    :param data: The pandas DataFrame which you want to save.
+    """
+    import _pickle as pickle
+    with open(filename, 'wb') as output:
+        pickle.dump(data, output, pickle.HIGHEST_PROTOCOL)

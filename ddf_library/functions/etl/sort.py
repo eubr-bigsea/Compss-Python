@@ -36,7 +36,7 @@ def sort(data, settings):
     return output
 
 
-def sort_stage_1(data, settings):
+def sort_stage_1(data, settings, return_info=False):
 
     nfrag = len(data)
     settings = preprocessing(settings)
@@ -49,7 +49,10 @@ def sort_stage_1(data, settings):
                   'ascending': settings['ascending'],
                   'info': [info]}
         output_range = range_partition(data, params)
-        data = output_range['data']
+        data, info = output_range['data'], output_range['info']
+
+    if return_info:
+        return data, info, settings
 
     return data, settings
 

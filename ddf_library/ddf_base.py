@@ -8,6 +8,7 @@ __email__ = "lucasmsp@gmail.com"
 
 from ddf_library.context import COMPSsContext
 from ddf_library.utils import merge_schema, _gen_uuid
+
 from pycompss.functions.reduce import merge_reduce
 from pycompss.api.api import compss_wait_on
 
@@ -56,7 +57,7 @@ class DDFSketch(object):
     def _ddf_initial_setup(data):
         tmp = data.cache()
         data.task_list, data.last_uuid = tmp.task_list, tmp.last_uuid
-        df = COMPSsContext.tasks_map[data.last_uuid]['function']
+        df = COMPSsContext.tasks_map[data.last_uuid]['function'].copy()
         nfrag = len(df)
         return df, nfrag, data
 
@@ -77,7 +78,6 @@ class DDFSketch(object):
 
         :return: Check if ddf variable is currently executed.
         """
-
         cached = False
 
         for _ in range(2):

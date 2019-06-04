@@ -8,7 +8,6 @@ __email__ = "lucasmsp@gmail.com"
 from pycompss.api.task import task
 from pycompss.functions.reduce import merge_reduce
 from pycompss.api.api import compss_delete_object, compss_wait_on
-# from pycompss.api.local import local # requires guppy
 
 import numpy as np
 

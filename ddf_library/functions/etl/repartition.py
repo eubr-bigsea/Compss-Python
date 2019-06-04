@@ -85,7 +85,7 @@ def hashcode(x):
     return int(zlib.adler32(x.encode()) & 0xffffffff)
 
 
-@constraint(ComputingUnits="2")  # approach to have more available memory
+# @constraint(ComputingUnits="2")  # approach to have more available memory
 @task(returns=config.x)
 def split_by_boundary(data, cols, ascending, bounds, info, nfrag):
     splits = [pd.DataFrame(columns=info['cols'], dtype=info['dtypes'])

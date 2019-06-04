@@ -1,11 +1,9 @@
 
-<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
-  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<!DOCTYPE html>
 
 <html xmlns="http://www.w3.org/1999/xhtml">
   <head>
-    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
-    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <meta charset="utf-8" />
     <title>ML.Regression &#8212; DDF</title>
     <link rel="stylesheet" href="_static/nature.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
@@ -45,8 +43,8 @@
   <div class="section" id="module-ddf_library.functions.ml.regression">
 <span id="ml-regression"></span><h1>ML.Regression<a class="headerlink" href="#module-ddf_library.functions.ml.regression" title="Permalink to this headline">¶</a></h1>
 <dl class="class">
-<dt id="ddf_library.functions.ml.regression.LinearRegression">
-<em class="property">class </em><code class="descclassname">ddf_library.functions.ml.regression.</code><code class="descname">LinearRegression</code><span class="sig-paren">(</span><em>feature_col</em>, <em>label_col</em>, <em>pred_col='pred_LinearReg'</em>, <em>mode='SDG'</em>, <em>max_iter=100</em>, <em>alpha=0.01</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.functions.ml.regression.LinearRegression" title="Permalink to this definition">¶</a></dt>
+<dt id="ddf_library.functions.ml.regression.OrdinaryLeastSquares">
+<em class="property">class </em><code class="sig-prename descclassname">ddf_library.functions.ml.regression.</code><code class="sig-name descname">OrdinaryLeastSquares</code><span class="sig-paren">(</span><em class="sig-param">feature_col</em>, <em class="sig-param">label_col</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.functions.ml.regression.OrdinaryLeastSquares" title="Permalink to this definition">¶</a></dt>
 <dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">ddf_library.ddf_model.ModelDDF</span></code></p>
 <p>Linear regression is a linear model, e.g. a model that assumes a linear
 relationship between the input variables and the single output variable.
@@ -58,143 +56,306 @@ literature from statistics often refers to the method as multiple
 linear regression.</p>
 <p>b1 = (sum(x*y) + n*m_x*m_y) / (sum(x²) -n*(m_x²))
 b0 = m_y - b1*m_x</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Example:</th><td class="field-body"></td>
-</tr>
-</tbody>
-</table>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">model</span> <span class="o">=</span> <span class="n">LinearRegression</span><span class="p">(</span><span class="s1">&#39;features&#39;</span><span class="p">,</span> <span class="s1">&#39;y&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">ddf1</span><span class="p">)</span>
+<dl class="field-list simple">
+<dt class="field-odd">Example</dt>
+<dd class="field-odd"><p></p></dd>
+</dl>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">model</span> <span class="o">=</span> <span class="n">OrdinaryLeastSquares</span><span class="p">(</span><span class="s1">&#39;features&#39;</span><span class="p">,</span> <span class="s1">&#39;y&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">ddf1</span><span class="p">)</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">ddf2</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">transform</span><span class="p">(</span><span class="n">ddf1</span><span class="p">)</span>
 </pre></div>
 </div>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
-<li><strong>feature_col</strong> – Feature column name;</li>
-<li><strong>label_col</strong> – Label column name;</li>
-<li><strong>pred_col</strong> – Output prediction column (default, <em>‘pred_LinearReg’</em>);</li>
-<li><strong>mode</strong> – <em>‘simple’</em> to use method of least squares (works only
-for 2-D data) or <em>‘SDG’</em> to using Stochastic Gradient Descent;</li>
-<li><strong>max_iter</strong> – Maximum number of iterations (default, 100);</li>
-<li><strong>alpha</strong> – <em>‘SDG’</em> learning rate parameter  (default, 0.01).</li>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>feature_col</strong> – Feature column name;</p></li>
+<li><p><strong>label_col</strong> – Label column name;</p></li>
 </ul>
-</td>
-</tr>
-</tbody>
-</table>
+</dd>
+</dl>
+<dl class="attribute">
+<dt id="ddf_library.functions.ml.regression.OrdinaryLeastSquares.OPT_LAST">
+<code class="sig-name descname">OPT_LAST</code><em class="property"> = 'last'</em><a class="headerlink" href="#ddf_library.functions.ml.regression.OrdinaryLeastSquares.OPT_LAST" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="ddf_library.functions.ml.regression.OrdinaryLeastSquares.OPT_OTHER">
+<code class="sig-name descname">OPT_OTHER</code><em class="property"> = 'other'</em><a class="headerlink" href="#ddf_library.functions.ml.regression.OrdinaryLeastSquares.OPT_OTHER" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="ddf_library.functions.ml.regression.OrdinaryLeastSquares.OPT_SERIAL">
+<code class="sig-name descname">OPT_SERIAL</code><em class="property"> = 'serial'</em><a class="headerlink" href="#ddf_library.functions.ml.regression.OrdinaryLeastSquares.OPT_SERIAL" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
 <dl class="method">
-<dt id="ddf_library.functions.ml.regression.LinearRegression.fit">
-<code class="descname">fit</code><span class="sig-paren">(</span><em>data</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.functions.ml.regression.LinearRegression.fit" title="Permalink to this definition">¶</a></dt>
+<dt id="ddf_library.functions.ml.regression.OrdinaryLeastSquares.check_fitted_model">
+<code class="sig-name descname">check_fitted_model</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.functions.ml.regression.OrdinaryLeastSquares.check_fitted_model" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="ddf_library.functions.ml.regression.OrdinaryLeastSquares.fit">
+<code class="sig-name descname">fit</code><span class="sig-paren">(</span><em class="sig-param">data</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.functions.ml.regression.OrdinaryLeastSquares.fit" title="Permalink to this definition">¶</a></dt>
 <dd><p>Fit the model.</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>data</strong> – DDF</td>
-</tr>
-<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">trained model</td>
-</tr>
-</tbody>
-</table>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>data</strong> – DDF</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>trained model</p>
+</dd>
+</dl>
 </dd></dl>
 
 <dl class="method">
-<dt id="ddf_library.functions.ml.regression.LinearRegression.fit_transform">
-<code class="descname">fit_transform</code><span class="sig-paren">(</span><em>data</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.functions.ml.regression.LinearRegression.fit_transform" title="Permalink to this definition">¶</a></dt>
+<dt id="ddf_library.functions.ml.regression.OrdinaryLeastSquares.fit_transform">
+<code class="sig-name descname">fit_transform</code><span class="sig-paren">(</span><em class="sig-param">data</em>, <em class="sig-param">pred_col='pred_LinearReg'</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.functions.ml.regression.OrdinaryLeastSquares.fit_transform" title="Permalink to this definition">¶</a></dt>
 <dd><p>Fit the model and transform.</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>data</strong> – DDF</td>
-</tr>
-<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">DDF</td>
-</tr>
-</tbody>
-</table>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>data</strong> – DDF</p></li>
+<li><p><strong>pred_col</strong> – Output prediction column (default, <em>‘pred_LinearReg’</em>);</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>DDF</p>
+</dd>
+</dl>
 </dd></dl>
 
 <dl class="method">
-<dt id="ddf_library.functions.ml.regression.LinearRegression.load_model">
-<code class="descname">load_model</code><span class="sig-paren">(</span><em>filepath</em>, <em>storage='hdfs'</em>, <em>namenode='localhost'</em>, <em>port=9000</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.functions.ml.regression.LinearRegression.load_model" title="Permalink to this definition">¶</a></dt>
+<dt id="ddf_library.functions.ml.regression.OrdinaryLeastSquares.load_model">
+<code class="sig-name descname">load_model</code><span class="sig-paren">(</span><em class="sig-param">filepath</em>, <em class="sig-param">storage='hdfs'</em>, <em class="sig-param">namenode='localhost'</em>, <em class="sig-param">port=9000</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.functions.ml.regression.OrdinaryLeastSquares.load_model" title="Permalink to this definition">¶</a></dt>
 <dd><p>Load a machine learning model from a binary file in a storage.</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
-<li><strong>filepath</strong> – The absolute path name;</li>
-<li><strong>storage</strong> – <em>‘hdfs’</em> to load from HDFS storage or <em>‘fs’</em> to load
-from common file system;</li>
-<li><strong>storage</strong> – <em>‘hdfs’</em> to save in HDFS storage or <em>‘fs’</em> to save in
-common file system;</li>
-<li><strong>namenode</strong> – IP or DNS address to NameNode (default, <em>‘localhost’</em>).
-Note: Only if storage is <em>‘hdfs’</em>;</li>
-<li><strong>port</strong> – NameNode port (default, 9000). Note: Only if storage is
-<em>‘hdfs’</em>;</li>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>filepath</strong> – The absolute path name;</p></li>
+<li><p><strong>storage</strong> – <em>‘hdfs’</em> to load from HDFS storage or <em>‘fs’</em> to load
+from common file system;</p></li>
+<li><p><strong>storage</strong> – <em>‘hdfs’</em> to save in HDFS storage or <em>‘fs’</em> to save in
+common file system;</p></li>
+<li><p><strong>namenode</strong> – IP or DNS address to NameNode (default, <em>‘localhost’</em>).
+Note: Only if storage is <em>‘hdfs’</em>;</p></li>
+<li><p><strong>port</strong> – NameNode port (default, 9000). Note: Only if storage is
+<em>‘hdfs’</em>;</p></li>
 </ul>
-</td>
-</tr>
-<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">self</p>
-</td>
-</tr>
-<tr class="field-odd field"><th class="field-name">Example:</th><td class="field-body"></td>
-</tr>
-</tbody>
-</table>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>self</p>
+</dd>
+<dt class="field-odd">Example</dt>
+<dd class="field-odd"><p></p></dd>
+</dl>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">ml_model</span> <span class="o">=</span> <span class="n">ml_algorithm</span><span class="p">()</span><span class="o">.</span><span class="n">load_model</span><span class="p">(</span><span class="s1">&#39;/saved_model&#39;</span><span class="p">)</span>
 </pre></div>
 </div>
 </dd></dl>
 
+<dl class="attribute">
+<dt id="ddf_library.functions.ml.regression.OrdinaryLeastSquares.optimization_ops">
+<code class="sig-name descname">optimization_ops</code><em class="property"> = ['other', 'serial', 'last']</em><a class="headerlink" href="#ddf_library.functions.ml.regression.OrdinaryLeastSquares.optimization_ops" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
 <dl class="method">
-<dt id="ddf_library.functions.ml.regression.LinearRegression.save_model">
-<code class="descname">save_model</code><span class="sig-paren">(</span><em>filepath</em>, <em>storage='hdfs'</em>, <em>overwrite=True</em>, <em>namenode='localhost'</em>, <em>port=9000</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.functions.ml.regression.LinearRegression.save_model" title="Permalink to this definition">¶</a></dt>
+<dt id="ddf_library.functions.ml.regression.OrdinaryLeastSquares.save_model">
+<code class="sig-name descname">save_model</code><span class="sig-paren">(</span><em class="sig-param">filepath</em>, <em class="sig-param">storage='hdfs'</em>, <em class="sig-param">overwrite=True</em>, <em class="sig-param">namenode='localhost'</em>, <em class="sig-param">port=9000</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.functions.ml.regression.OrdinaryLeastSquares.save_model" title="Permalink to this definition">¶</a></dt>
 <dd><p>Save a machine learning model as a binary file in a storage.</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
-<li><strong>filepath</strong> – The output absolute path name;</li>
-<li><strong>storage</strong> – <em>‘hdfs’</em> to save in HDFS storage or <em>‘fs’</em> to save in
-common file system;</li>
-<li><strong>overwrite</strong> – Overwrite if file already exists (default, True);</li>
-<li><strong>namenode</strong> – IP or DNS address to NameNode (default, <em>‘localhost’</em>);</li>
-<li><strong>port</strong> – NameNode port (default, 9000);</li>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>filepath</strong> – The output absolute path name;</p></li>
+<li><p><strong>storage</strong> – <em>‘hdfs’</em> to save in HDFS storage or <em>‘fs’</em> to save in
+common file system;</p></li>
+<li><p><strong>overwrite</strong> – Overwrite if file already exists (default, True);</p></li>
+<li><p><strong>namenode</strong> – IP or DNS address to NameNode (default, <em>‘localhost’</em>);</p></li>
+<li><p><strong>port</strong> – NameNode port (default, 9000);</p></li>
 </ul>
-</td>
-</tr>
-<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">self</p>
-</td>
-</tr>
-<tr class="field-odd field"><th class="field-name">Example:</th><td class="field-body"></td>
-</tr>
-</tbody>
-</table>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>self</p>
+</dd>
+<dt class="field-odd">Example</dt>
+<dd class="field-odd"><p></p></dd>
+</dl>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">ml_model</span><span class="o">.</span><span class="n">save_model</span><span class="p">(</span><span class="s1">&#39;/trained_model&#39;</span><span class="p">)</span>
 </pre></div>
 </div>
 </dd></dl>
 
 <dl class="method">
-<dt id="ddf_library.functions.ml.regression.LinearRegression.transform">
-<code class="descname">transform</code><span class="sig-paren">(</span><em>data</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.functions.ml.regression.LinearRegression.transform" title="Permalink to this definition">¶</a></dt>
-<dd><table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>data</strong> – DDF</td>
-</tr>
-<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">DDF</td>
-</tr>
-</tbody>
-</table>
+<dt id="ddf_library.functions.ml.regression.OrdinaryLeastSquares.transform">
+<code class="sig-name descname">transform</code><span class="sig-paren">(</span><em class="sig-param">data</em>, <em class="sig-param">pred_col='pred_LinearReg'</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.functions.ml.regression.OrdinaryLeastSquares.transform" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>data</strong> – DDF</p></li>
+<li><p><strong>pred_col</strong> – Output prediction column (default, <em>‘pred_LinearReg’</em>);</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>DDF</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="ddf_library.functions.ml.regression.GDRegressor">
+<em class="property">class </em><code class="sig-prename descclassname">ddf_library.functions.ml.regression.</code><code class="sig-name descname">GDRegressor</code><span class="sig-paren">(</span><em class="sig-param">feature_col</em>, <em class="sig-param">label_col</em>, <em class="sig-param">max_iter=100</em>, <em class="sig-param">alpha=1</em>, <em class="sig-param">tol=0.001</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.functions.ml.regression.GDRegressor" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">ddf_library.ddf_model.ModelDDF</span></code></p>
+<p>Linear model fitted by minimizing a regularized empirical loss with
+Gradient Descent.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Example</dt>
+<dd class="field-odd"><p></p></dd>
+</dl>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">model</span> <span class="o">=</span> <span class="n">GDRegressor</span><span class="p">(</span><span class="s1">&#39;features&#39;</span><span class="p">,</span> <span class="s1">&#39;y&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">ddf1</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">ddf2</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">transform</span><span class="p">(</span><span class="n">ddf1</span><span class="p">)</span>
+</pre></div>
+</div>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>feature_col</strong> – Feature column name;</p></li>
+<li><p><strong>label_col</strong> – Label column name;</p></li>
+<li><p><strong>max_iter</strong> – Maximum number of iterations (default, 100);</p></li>
+<li><p><strong>alpha</strong> – learning rate parameter  (default, 1). This method sets
+the learning rate parameter used by Gradient Descent when updating
+the hypothesis after each iteration. Up to a point, higher values will
+cause the algorithm to converge on the optimal solution more quickly,
+however if the value is set too high then it will fail to converge at
+all, yielding successively larger errors on each iteration;</p></li>
+<li><p><strong>tol</strong> – Tolerance stop criteria (default, 1e-3).</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="attribute">
+<dt id="ddf_library.functions.ml.regression.GDRegressor.OPT_LAST">
+<code class="sig-name descname">OPT_LAST</code><em class="property"> = 'last'</em><a class="headerlink" href="#ddf_library.functions.ml.regression.GDRegressor.OPT_LAST" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="ddf_library.functions.ml.regression.GDRegressor.OPT_OTHER">
+<code class="sig-name descname">OPT_OTHER</code><em class="property"> = 'other'</em><a class="headerlink" href="#ddf_library.functions.ml.regression.GDRegressor.OPT_OTHER" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="ddf_library.functions.ml.regression.GDRegressor.OPT_SERIAL">
+<code class="sig-name descname">OPT_SERIAL</code><em class="property"> = 'serial'</em><a class="headerlink" href="#ddf_library.functions.ml.regression.GDRegressor.OPT_SERIAL" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="ddf_library.functions.ml.regression.GDRegressor.check_fitted_model">
+<code class="sig-name descname">check_fitted_model</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.functions.ml.regression.GDRegressor.check_fitted_model" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="ddf_library.functions.ml.regression.GDRegressor.fit">
+<code class="sig-name descname">fit</code><span class="sig-paren">(</span><em class="sig-param">data</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.functions.ml.regression.GDRegressor.fit" title="Permalink to this definition">¶</a></dt>
+<dd><p>Fit the model.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>data</strong> – DDF</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>trained model</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="method">
+<dt id="ddf_library.functions.ml.regression.GDRegressor.fit_transform">
+<code class="sig-name descname">fit_transform</code><span class="sig-paren">(</span><em class="sig-param">data</em>, <em class="sig-param">pred_col='pred_LinearReg'</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.functions.ml.regression.GDRegressor.fit_transform" title="Permalink to this definition">¶</a></dt>
+<dd><p>Fit the model and transform.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>data</strong> – DDF</p></li>
+<li><p><strong>pred_col</strong> – Output prediction column (default, <em>‘pred_LinearReg’</em>);</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>DDF</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="method">
+<dt id="ddf_library.functions.ml.regression.GDRegressor.load_model">
+<code class="sig-name descname">load_model</code><span class="sig-paren">(</span><em class="sig-param">filepath</em>, <em class="sig-param">storage='hdfs'</em>, <em class="sig-param">namenode='localhost'</em>, <em class="sig-param">port=9000</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.functions.ml.regression.GDRegressor.load_model" title="Permalink to this definition">¶</a></dt>
+<dd><p>Load a machine learning model from a binary file in a storage.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>filepath</strong> – The absolute path name;</p></li>
+<li><p><strong>storage</strong> – <em>‘hdfs’</em> to load from HDFS storage or <em>‘fs’</em> to load
+from common file system;</p></li>
+<li><p><strong>storage</strong> – <em>‘hdfs’</em> to save in HDFS storage or <em>‘fs’</em> to save in
+common file system;</p></li>
+<li><p><strong>namenode</strong> – IP or DNS address to NameNode (default, <em>‘localhost’</em>).
+Note: Only if storage is <em>‘hdfs’</em>;</p></li>
+<li><p><strong>port</strong> – NameNode port (default, 9000). Note: Only if storage is
+<em>‘hdfs’</em>;</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>self</p>
+</dd>
+<dt class="field-odd">Example</dt>
+<dd class="field-odd"><p></p></dd>
+</dl>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">ml_model</span> <span class="o">=</span> <span class="n">ml_algorithm</span><span class="p">()</span><span class="o">.</span><span class="n">load_model</span><span class="p">(</span><span class="s1">&#39;/saved_model&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="ddf_library.functions.ml.regression.GDRegressor.optimization_ops">
+<code class="sig-name descname">optimization_ops</code><em class="property"> = ['other', 'serial', 'last']</em><a class="headerlink" href="#ddf_library.functions.ml.regression.GDRegressor.optimization_ops" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="ddf_library.functions.ml.regression.GDRegressor.save_model">
+<code class="sig-name descname">save_model</code><span class="sig-paren">(</span><em class="sig-param">filepath</em>, <em class="sig-param">storage='hdfs'</em>, <em class="sig-param">overwrite=True</em>, <em class="sig-param">namenode='localhost'</em>, <em class="sig-param">port=9000</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.functions.ml.regression.GDRegressor.save_model" title="Permalink to this definition">¶</a></dt>
+<dd><p>Save a machine learning model as a binary file in a storage.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>filepath</strong> – The output absolute path name;</p></li>
+<li><p><strong>storage</strong> – <em>‘hdfs’</em> to save in HDFS storage or <em>‘fs’</em> to save in
+common file system;</p></li>
+<li><p><strong>overwrite</strong> – Overwrite if file already exists (default, True);</p></li>
+<li><p><strong>namenode</strong> – IP or DNS address to NameNode (default, <em>‘localhost’</em>);</p></li>
+<li><p><strong>port</strong> – NameNode port (default, 9000);</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>self</p>
+</dd>
+<dt class="field-odd">Example</dt>
+<dd class="field-odd"><p></p></dd>
+</dl>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">ml_model</span><span class="o">.</span><span class="n">save_model</span><span class="p">(</span><span class="s1">&#39;/trained_model&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="method">
+<dt id="ddf_library.functions.ml.regression.GDRegressor.transform">
+<code class="sig-name descname">transform</code><span class="sig-paren">(</span><em class="sig-param">data</em>, <em class="sig-param">pred_col='pred_LinearReg'</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.functions.ml.regression.GDRegressor.transform" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>data</strong> – DDF</p></li>
+<li><p><strong>pred_col</strong> – Output prediction column (default, <em>‘pred_LinearReg’</em>);</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>DDF</p>
+</dd>
+</dl>
 </dd></dl>
 
 </dd></dl>
@@ -211,13 +372,11 @@ common file system;</li>
   <p class="topless"><a href="ddf_library.functions.ml.fpm.html"
                         title="previous chapter">ML.Frequent Pattern Mining</a></p>
 <div id="searchbox" style="display: none" role="search">
-  <h3>Quick search</h3>
+  <h3 id="searchlabel">Quick search</h3>
     <div class="searchformwrapper">
     <form class="search" action="search.html" method="get">
-      <input type="text" name="q" />
+      <input type="text" name="q" aria-labelledby="searchlabel" />
       <input type="submit" value="Go" />
-      <input type="hidden" name="check_keywords" value="yes" />
-      <input type="hidden" name="area" value="default" />
     </form>
     </div>
 </div>
@@ -245,7 +404,7 @@ common file system;</li>
     </div>
     <div class="footer" role="contentinfo">
         &#169; Copyright 2019, Lucas M Ponce.
-      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.8.4.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 2.1.0.
     </div>
   </body>
 </html>

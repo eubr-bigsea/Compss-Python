@@ -5,18 +5,19 @@
 __author__ = "Lucas Miguel S Ponce"
 __email__ = "lucasmsp@gmail.com"
 
-from ddf_library.ddf import DDF, generate_info
+from ddf_library.ddf import DDF
 from ddf_library.ddf_model import ModelDDF
+from ddf_library.utils import generate_info
 
 from pycompss.api.task import task
 from pycompss.functions.reduce import merge_reduce
 from pycompss.api.api import compss_wait_on, compss_delete_object
 
 import numpy as np
-import pandas as pd
 
 
 class GDRegressor(ModelDDF):
+    # noinspection PyUnresolvedReferences
     """
     Linear model fitted by minimizing a regularized empirical loss with
     Gradient Descent.

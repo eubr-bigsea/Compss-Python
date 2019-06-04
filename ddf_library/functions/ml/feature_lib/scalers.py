@@ -178,9 +178,8 @@ class MinMaxScaler(ModelDDF):
 
     :Example:
 
-    >>> scaler = MinMaxScaler(input_col='features',
-    >>>                       output_col='output').fit(ddf1)
-    >>> ddf2 = scaler.transform(ddf1)
+    >>> scaler = MinMaxScaler()
+    >>> ddf2 = scaler.fit_transform(ddf1, input_col=['col1', 'col2'])
     """
 
     def __init__(self, input_col, feature_range=(0, 1), remove=False):
@@ -364,14 +363,13 @@ class StandardScaler(ModelDDF):
 
     :Example:
 
-    >>> scaler = StandardScaler(input_col='features',
-    >>>                         output_col='norm').fit(ddf1)
-    >>> ddf2 = scaler.transform(ddf1)
+    >>> scaler = StandardScaler(with_mean=True, with_std=True)
+    >>> ddf2 = scaler.fit_transform(ddf1, input_col=['col1', 'col2'])
     """
 
-    def __init__(self, input_col, with_mean=True, with_std=True, remove=False):
+    def __init__(self, with_mean=True, with_std=True, remove=False):
         """
-        :param input_col: Column with the features;
+
         :param with_mean: True to use the mean (default is True);
         :param with_std: True to use standard deviation of the
          training samples (default is True);
@@ -379,11 +377,8 @@ class StandardScaler(ModelDDF):
         """
         super(StandardScaler, self).__init__()
 
-        if not isinstance(input_col, list):
-            input_col = [input_col]
-
         self.settings = dict()
-        self.settings['input_col'] = input_col
+
         self.settings['with_mean'] = with_mean
         self.settings['with_std'] = with_std
         self.settings['remove'] = remove
@@ -391,54 +386,57 @@ class StandardScaler(ModelDDF):
         self.model = {}
         self.name = 'StandardScaler'
 
-    def fit(self, data):
+    def fit(self, data, input_col):
         """
         Fit the model.
 
         :param data: DDF
+        :param input_col: Column with the features;
         :return: trained model
         """
 
         df, nfrag, tmp = self._ddf_initial_setup(data)
 
-        features = self.settings['input_col']
+        if not isinstance(input_col, list):
+            input_col = [input_col]
+        # noinspection PyTypeChecker
+        self.settings['input_col'] = input_col
 
         # compute the sum of each subset column
-        data_set = [[] for _ in range(nfrag)]
-        sums = [[] for _ in range(nfrag)]
-        sse = [[] for _ in range(nfrag)]
+        sums = [0] * nfrag
+        sse = [0] * nfrag
 
         for f in range(nfrag):
-            data_set[f], sums[f] = _agg_sum(df[f], features)
+            sums[f] = _agg_sum(df[f], input_col)
         # merge then to compute a mean
         mean = merge_reduce(_merge_sum, sums)
 
         # using this mean, compute the variance of each subset column
         for f in range(nfrag):
             # noinspection PyTypeChecker
-            sse[f] = _agg_sse(data_set[f], mean)
+            sse[f] = _agg_sse(df[f], mean, input_col)
         merged_sse = merge_reduce(_merge_sse, sse)
 
         mean = compss_wait_on(mean)
         sse = compss_wait_on(merged_sse)
 
-        compss_delete_object(data_set)
         compss_delete_object(sums)
         compss_delete_object(sse)
         self.model = {'model': [mean, sse], 'algorithm': self.name}
 
         return self
 
-    def fit_transform(self, data, output_col=None):
+    def fit_transform(self, data, input_col, output_col=None):
         """
         Fit the model and transform.
 
         :param data: DDF
+        :param input_col: Column with the features;
         :param output_col: Output column;
         :return: DDF
         """
 
-        self.fit(data)
+        self.fit(data, input_col)
         ddf = self.transform(data, output_col)
 
         return ddf
@@ -460,6 +458,7 @@ class StandardScaler(ModelDDF):
             settings['output_col'] = settings['input_col']
 
         elif not isinstance(output_col, list):
+            # noinspection PyTypeChecker
             settings['output_col'] = ['{}{}'.format(col, output_col)
                                       for col in settings['input_col']]
         else:
@@ -477,14 +476,12 @@ class StandardScaler(ModelDDF):
         return DDF(task_list=task_list, last_uuid=uuid_key)
 
 
-@task(returns=2)
+@task(returns=1)
 def _agg_sum(df, features):
     """Pre-compute some values."""
 
-    df = df[features].values
-    sum_partial = [np.nansum(df, axis=0), len(df)]
-
-    return df, sum_partial
+    sum_partial = [np.nansum(df[features].values, axis=0), len(df)]
+    return sum_partial
 
 
 @task(returns=1, priority=True)
@@ -498,9 +495,9 @@ def _merge_sum(sum1, sum2):
 
 
 @task(returns=1)
-def _agg_sse(df, sum_count):
+def _agg_sse(df, sum_count, features):
     """Perform a partial SSE calculation."""
-
+    df = df[features].values
     means = np.array(sum_count[0]) / sum_count[1]
     sum_sse = np.sum((df - means)**2, axis=0)
 
@@ -544,10 +541,15 @@ def _standard_scaler(data, settings):
 
         scaler = StandardScaler()
         scaler.mean_ = mean_ if with_mean else None
-        scaler.scale_ = np.sqrt(var_) if with_std else None
-        scaler.var_ = var_ if with_std else None
-        scaler.n_samples_seen_ = size
+        if with_std:
+            scaler.scale_ = np.sqrt(var_)
+            scaler.mean_ = mean_
+            scaler.var_ = var_ if with_std else None
 
+        else:
+            scaler.scale_ = None
+
+        scaler.n_samples_seen_ = size
         res = scaler.transform(values)
         del values
 

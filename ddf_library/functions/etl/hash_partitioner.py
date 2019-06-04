@@ -70,7 +70,7 @@ def hash_partition(data, settings):
     return output
 
 
-@constraint(ComputingUnits="2")  # approach to have more memory
+# @constraint(ComputingUnits="2")  # approach to have more memory
 @task(returns=1)
 def concat_n_pandas(*args):
     dfs = [df for df in args if isinstance(df, pd.DataFrame)]

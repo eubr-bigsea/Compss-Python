@@ -8,7 +8,6 @@ __email__ = "lucasmsp@gmail.com"
 from pycompss.api.task import task
 from pycompss.functions.reduce import merge_reduce
 from pycompss.api.api import compss_wait_on, compss_delete_object
-# from pycompss.api.local import local
 
 import pandas as pd
 import numpy as np
@@ -73,7 +72,8 @@ def _describe_stage2(info1, info2):
     sum_values = np.add(info1['mean'], info2['mean'])
     nan = np.add(info1['nan'], info2['nan'])
 
-    are_str = lambda x, y: isinstance(x, str) or isinstance(y, str)
+    def are_str(x, y):
+        return isinstance(x, str) or isinstance(y, str)
 
     minimum = [x if are_str(x, y) else min([x, y])
                for x, y in zip(info1['min'], info2['min'])]

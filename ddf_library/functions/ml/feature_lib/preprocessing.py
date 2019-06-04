@@ -445,7 +445,8 @@ class StringIndexer(ModelDDF):
         settings['model'] = self.model['model'].copy()
 
         if output_col is None:
-            settings['output_col'] = "{}_indexed".format(settings['input_col'])
+            output_col = "{}_indexed".format(settings['input_col'])
+        settings['output_col'] = output_col
 
         def task_string_to_indexer(df, params):
             return _string_to_indexer(df, params)
@@ -482,7 +483,7 @@ def _string_to_indexer(data, settings):
     mapper = settings['model']
     frag = settings['id_frag']
 
-    news = [i for i in range(len(mapper))]
+    news = np.arange(len(mapper), dtype=int)
     data[out_col] = data[in_col].replace(to_replace=mapper, value=news)
 
     info = generate_info(data, frag)
@@ -547,7 +548,7 @@ def _index_to_string(data, settings):
     output_col = settings['output_col']
     mapper = settings['model']
     frag = settings['id_frag']
-    news = [i for i in range(len(mapper))]
+    news = np.arange(len(mapper), dtype=int)
     data[output_col] = data[input_col].replace(to_replace=news, value=mapper)
 
     info = generate_info(data, frag)

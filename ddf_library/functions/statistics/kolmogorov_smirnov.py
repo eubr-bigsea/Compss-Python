@@ -6,7 +6,7 @@ __email__ = "lucasmsp@gmail.com"
 
 from ddf_library.utils import merge_info
 from ddf_library.functions.etl.select import select
-from ddf_library.functions.etl.sort import SortOperation
+from ddf_library.functions.etl.sort import sort_stage_1, sort_stage_2
 
 from pycompss.api.task import task
 from pycompss.functions.reduce import merge_reduce
@@ -25,10 +25,10 @@ def kolmogorov_smirnov_one_sample(data, settings):
 
     :param data: A list with of pandas's DataFrame;
     :param settings: A dictionary that contains:
-        - col: sample column name;
-        - distribution: Name of distribution (default is 'norm');
-        - args: A tuple of distribution parameters;
-        - mode: Defines the distribution used for calculating the p-value,
+      - col: sample column name;
+      - distribution: Name of distribution (default is 'norm');
+      - args: A tuple of distribution parameters;
+      - mode: Defines the distribution used for calculating the p-value,
          'approx' to use approximation to exact distribution or 'asymp' to
          use asymptotic distribution of test statistic
     :return: KS statistic and p-value
@@ -54,22 +54,20 @@ def kolmogorov_smirnov_one_sample(data, settings):
         params = {'columns': col, 'id_frag': f}
         data[f], info[f] = _select(data[f], params)
     info = merge_info(info)
-    info = compss_wait_on(info)
 
-    params = {
-        'columns': col,
-        'ascending': [True for _ in col],
-        'info': [info]
-    }
+    settings['columns'] = col
+    settings['ascending'] = [True for _ in col]
+    settings['info'] = [compss_wait_on(info)]
 
     # range_partition used in sort operation can create less partitions
-    sort_output = SortOperation().transform(data, params)
-    sort_data, info = sort_output['data'], sort_output['info']
+    sort_data, info, _ = sort_stage_1(data, settings, return_info=True)
+
     info = merge_info(info)
     nfrag = len(sort_data)
 
     for f in range(nfrag):
-        sort_data[f] = _ks_theoretical_dist(sort_data[f], info, f, settings)
+        settings['id_frag'] = f
+        sort_data[f] = _ks_theoretical_dist(sort_data[f], info, settings.copy())
 
     info = merge_reduce(_ks_merge, sort_data)
     compss_delete_object(sort_data)
@@ -85,11 +83,14 @@ def _select(data, col):
 
 
 @task(returns=1)
-def _ks_theoretical_dist(data, info, f, settings):
+def _ks_theoretical_dist(data, info, settings):
     col = settings['col']
+    f = settings['id_frag']
     distribution = settings.get('distribution', 'norm')
     args = settings.get('args', ())
     n = info['size']
+
+    data, _ = sort_stage_2(data, settings)
 
     if f == 0:
         n1 = 0
@@ -127,7 +128,6 @@ def _ks_merge(info1, info2):
     return [[max(error1)], n]
 
 
-# @local
 def _ks_d_critical(info, mode):
 
     info = compss_wait_on(info)

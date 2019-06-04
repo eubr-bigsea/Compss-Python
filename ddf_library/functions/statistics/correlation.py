@@ -8,8 +8,6 @@ __email__ = "lucasmsp@gmail.com"
 from pycompss.api.task import task
 from pycompss.functions.reduce import merge_reduce
 from pycompss.api.api import compss_delete_object, compss_wait_on
-# from pycompss.api.local import local # guppy module isnt available in python3
-from pycompss.api.api import compss_delete_object
 
 
 import numpy as np
@@ -42,8 +40,7 @@ def correlation(data, settings):
 
 @task(returns=1)
 def _covariance_stage1(df, settings):
-    col1 = settings['col1']
-    col2 = settings['col2']
+    col1, col2 = settings['col1'], settings['col2']
     columns = [col1, col2]
 
     sums = df[columns].sum(skipna=True, numeric_only=True).values

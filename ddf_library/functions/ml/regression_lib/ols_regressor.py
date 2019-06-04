@@ -5,18 +5,19 @@
 __author__ = "Lucas Miguel S Ponce"
 __email__ = "lucasmsp@gmail.com"
 
-from ddf_library.ddf import DDF, generate_info
+from ddf_library.ddf import DDF
 from ddf_library.ddf_model import ModelDDF
+from ddf_library.utils import generate_info
 
 from pycompss.api.task import task
 from pycompss.functions.reduce import merge_reduce
-from pycompss.api.api import compss_wait_on, compss_delete_object
+from pycompss.api.api import compss_wait_on
 
 import numpy as np
-import pandas as pd
 
 
 class OrdinaryLeastSquares(ModelDDF):
+    # noinspection PyUnresolvedReferences
     """
     Linear regression is a linear model, e.g. a model that assumes a linear
     relationship between the input variables and the single output variable.
@@ -41,10 +42,6 @@ class OrdinaryLeastSquares(ModelDDF):
         """
         :param feature_col: Feature column name;
         :param label_col: Label column name;
-        :param mode: *'simple'* to use method of least squares (works only
-         for 2-D data) or *'SDG'* to using Stochastic Gradient Descent;
-        :param max_iter: Maximum number of iterations (default, 100);
-        :param alpha: *'SDG'* learning rate parameter  (default, 0.01).
         """
         super(OrdinaryLeastSquares, self).__init__()
 

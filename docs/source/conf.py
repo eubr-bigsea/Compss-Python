@@ -24,9 +24,9 @@ copyright = u'2019, Lucas M Ponce'
 author = u'Lucas M Ponce'
 
 # The short X.Y version
-version = u'0.2'
+version = u'0.3'
 # The full version, including alpha/beta/rc tags
-release = u'0.2.1'
+release = u'0.3.1'
 
 
 # -- General configuration ---------------------------------------------------
@@ -43,6 +43,8 @@ extensions = [
     'sphinx.ext.ifconfig',
     'sphinx.ext.githubpages',
 ]
+
+autodoc_mock_imports = ["pycompss", 'numpy', 'pandas', 'sklearn']
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']

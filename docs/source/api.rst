@@ -64,19 +64,33 @@ ETL
 
 :func:`DDF.cast <ddf.DDF.cast>` - Change the data's type of some columns.
 
+:func:`DDF.columns <ddf.DDF.columns>` - Returns the columns name in the current DDF..
+
+:func:`DDF.count_rows <ddf.DDF.count_rows>` - Returns the number of rows in this DDF.
+
 :func:`DDF.distinct <ddf.DDF.distinct>` - Returns a new DDF with non duplicated rows.
 
-:func:`DDF.drop <ddf.DDF.drop>` - Remove some columns from DDF.
+:func:`DDF.drop <ddf.DDF.drop>` - Removes some columns from DDF.
 
-:func:`DDF.dropna <ddf.DDF.dropna>` - Drop rows or columns with NaN elements.
+:func:`DDF.drop_duplicates <ddf.DDF.drop_duplicates>` - Alias for distinct.
+
+:func:`DDF.distinct <ddf.DDF.distinct>` - Returns a new DDF with non duplicated rows.
 
 :func:`DDF.except_all <ddf.DDF.except_all>` - Returns a new set with containing rows in the first frame but not in the second one while preserving duplicates.
+
+:func:`DDF.explode <ddf.DDF.explode>` - Returns a new row for each element in the given array.
+
+:func:`DDF.export_ddf <ddf.DDF.export_ddf>` - Export ddf data as a list of Pandas's DataFrame.
 
 :func:`DDF.fillna <ddf.DDF.fillna>` - Replace NaN elements by value or by median, mean or mode.
 
 :func:`DDF.filter <ddf.DDF.filter>` - Filters elements based on a condition.
 
 :func:`DDF.group_by <ddf.DDF.group_by>` - Returns a GroupedDFF with a set of methods for aggregations on a DDF.
+
+:func:`DDF.hash_partition <ddf.DDF.hash_partition>` - Hash partitioning is a partitioning technique where data is stored separately in different fragments by a hash function.
+
+:func:`DDF.import_data <ddf.DDF.import_data>` - Import a previous Pandas DataFrame list into DDF abstraction.
 
 :func:`DDF.intersect <ddf.DDF.intersect>` - Returns a new DDF containing rows in both DDF.
 
@@ -86,7 +100,15 @@ ETL
 
 :func:`DDF.load_text <ddf.DDF.load_text>` - Create a DDF from a commom file system or from HDFS.
 
+:func:`DDF.map <ddf.DDF.map>` - Applies a function to each row of this data set.
+
+:func:`DDF.num_of_partitions <ddf.DDF.num_of_partitions>` - Returns the number of data partitions (Task parallelism).
+
 :func:`DDF.parallelize <ddf.DDF.parallelize>` - Distributes a DataFrame into DDF.
+
+:func:`DDF.range_partition <ddf.DDF.range_partition>` - Range partitioning is a partitioning technique where ranges of data is stored separately in different fragments.
+
+:func:`DDF.repartition <ddf.DDF.repartition>` - Repartition a distributed data based in a fixed number of partitions or based on a distribution list.
 
 :func:`DDF.replace <ddf.DDF.replace>` - Replaces one or more values to new ones.
 
@@ -94,7 +116,11 @@ ETL
 
 :func:`DDF.save <ddf.DDF.save>` - Saves the data in the storage.
 
+:func:`DDF.schema <ddf.DDF.schema>` - Returns a schema table where each row contains the name columns and its data types of the current DDF.
+
 :func:`DDF.select <ddf.DDF.select>` - Performs a projection of selected columns.
+
+:func:`DDF.select_expression <ddf.DDF.select_expression>` - Projects a set of SQL expressions and returns a new DDF.
 
 :func:`DDF.show <ddf.DDF.show>` - Collect the current DDF into a single DataFrame.
 
@@ -106,13 +132,13 @@ ETL
 
 :func:`DDF.take <ddf.DDF.take>` - Returns the first num rows.
 
-:func:`DDF.map <ddf.DDF.map>` - Applies a function to each row of this data set.
+:func:`DDF.to_df <ddf.DDF.to_df>` - Returns the DDF contents as a pandas's DataFrame.
 
 :func:`DDF.union <ddf.DDF.union>` - Combines two DDF (concatenate) by column position.
 
 :func:`DDF.union_by_name <ddf.DDF.union_by_name>` - Combines two DDF (concatenate) by column name.
 
-:func:`DDF.with_column_renamed <ddf.DDF.with_column_renamed>` - Renames some columns.
+:func:`DDF.rename <ddf.DDF.rename>` - Returns a new DDF by renaming an existing column.
 
 
 .. _statistics-anchor:

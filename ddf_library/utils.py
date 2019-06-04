@@ -129,8 +129,13 @@ def _gen_uuid():
 
 def create_auxiliary_column(columns):
     condition = True
-    col = "aux_column"
+    column = "aux_column"
     while condition:
-        col = _gen_uuid()[0:8]
-        condition = col in columns
-    return col
+        column = _gen_uuid()[0:8]
+        condition = column in columns
+    return column
+
+
+def col(name):
+    from ddf_library.config import columns
+    return columns.index(name)

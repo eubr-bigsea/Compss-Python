@@ -1,11 +1,9 @@
 
-<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
-  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<!DOCTYPE html>
 
 <html xmlns="http://www.w3.org/1999/xhtml">
   <head>
-    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
-    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <meta charset="utf-8" />
     <title>API Reference &#8212; DDF</title>
     <link rel="stylesheet" href="_static/nature.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
@@ -52,58 +50,71 @@
 <div class="section" id="contents">
 <h2>Contents<a class="headerlink" href="#contents" title="Permalink to this headline">¶</a></h2>
 <ul class="simple">
-<li><a class="reference internal" href="#etl-anchor"><span class="std std-ref">ETL</span></a></li>
-<li><a class="reference internal" href="#statistics-anchor"><span class="std std-ref">Statistics</span></a></li>
-<li><a class="reference internal" href="#ml-anchor"><span class="std std-ref">ML</span></a></li>
+<li><p><a class="reference internal" href="#etl-anchor"><span class="std std-ref">ETL</span></a></p></li>
+<li><p><a class="reference internal" href="#statistics-anchor"><span class="std std-ref">Statistics</span></a></p></li>
+<li><p><a class="reference internal" href="#ml-anchor"><span class="std std-ref">ML</span></a></p></li>
 </ul>
 <blockquote>
 <div><ul class="simple">
-<li><a class="reference internal" href="#classification-anchor"><span class="std std-ref">ML.Classification</span></a></li>
-<li><a class="reference internal" href="#clustering-anchor"><span class="std std-ref">ML.Clustering</span></a></li>
-<li><a class="reference internal" href="#feature-anchor"><span class="std std-ref">ML.Feature</span></a></li>
-<li><a class="reference internal" href="#fpm-anchor"><span class="std std-ref">ML.Frequent Pattern Mining</span></a></li>
-<li><a class="reference internal" href="#evaluation-anchor"><span class="std std-ref">ML.Evaluation</span></a></li>
-<li><a class="reference internal" href="#regression-anchor"><span class="std std-ref">ML.Regression</span></a></li>
+<li><p><a class="reference internal" href="#classification-anchor"><span class="std std-ref">ML.Classification</span></a></p></li>
+<li><p><a class="reference internal" href="#clustering-anchor"><span class="std std-ref">ML.Clustering</span></a></p></li>
+<li><p><a class="reference internal" href="#feature-anchor"><span class="std std-ref">ML.Feature</span></a></p></li>
+<li><p><a class="reference internal" href="#fpm-anchor"><span class="std std-ref">ML.Frequent Pattern Mining</span></a></p></li>
+<li><p><a class="reference internal" href="#evaluation-anchor"><span class="std std-ref">ML.Evaluation</span></a></p></li>
+<li><p><a class="reference internal" href="#regression-anchor"><span class="std std-ref">ML.Regression</span></a></p></li>
 </ul>
 </div></blockquote>
 <ul class="simple">
-<li><a class="reference internal" href="#geo-anchor"><span class="std std-ref">Geographic Operations</span></a></li>
-<li><a class="reference internal" href="#graph-anchor"><span class="std std-ref">Graph Algorithms</span></a></li>
+<li><p><a class="reference internal" href="#geo-anchor"><span class="std std-ref">Geographic Operations</span></a></p></li>
+<li><p><a class="reference internal" href="#graph-anchor"><span class="std std-ref">Graph Algorithms</span></a></p></li>
 </ul>
 <div class="section" id="etl">
 <span id="etl-anchor"></span><h3>ETL<a class="headerlink" href="#etl" title="Permalink to this headline">¶</a></h3>
 <p><a class="reference internal" href="ddf_library.html#ddf_library.ddf.DDF.add_column" title="ddf_library.ddf.DDF.add_column"><code class="xref py py-func docutils literal notranslate"><span class="pre">DDF.add_column</span></code></a> - Merges two dataFrames, column-wise.</p>
 <p><a class="reference internal" href="ddf_library.html#ddf_library.ddf.DDF.cache" title="ddf_library.ddf.DDF.cache"><code class="xref py py-func docutils literal notranslate"><span class="pre">DDF.cache</span></code></a> - Forces the computation of all tasks in the current stack.</p>
 <p><a class="reference internal" href="ddf_library.html#ddf_library.ddf.DDF.cast" title="ddf_library.ddf.DDF.cast"><code class="xref py py-func docutils literal notranslate"><span class="pre">DDF.cast</span></code></a> - Change the data’s type of some columns.</p>
+<p><a class="reference internal" href="ddf_library.html#ddf_library.ddf.DDF.columns" title="ddf_library.ddf.DDF.columns"><code class="xref py py-func docutils literal notranslate"><span class="pre">DDF.columns</span></code></a> - Returns the columns name in the current DDF..</p>
+<p><a class="reference internal" href="ddf_library.html#ddf_library.ddf.DDF.count_rows" title="ddf_library.ddf.DDF.count_rows"><code class="xref py py-func docutils literal notranslate"><span class="pre">DDF.count_rows</span></code></a> - Returns the number of rows in this DDF.</p>
 <p><a class="reference internal" href="ddf_library.html#ddf_library.ddf.DDF.distinct" title="ddf_library.ddf.DDF.distinct"><code class="xref py py-func docutils literal notranslate"><span class="pre">DDF.distinct</span></code></a> - Returns a new DDF with non duplicated rows.</p>
-<p><a class="reference internal" href="ddf_library.html#ddf_library.ddf.DDF.drop" title="ddf_library.ddf.DDF.drop"><code class="xref py py-func docutils literal notranslate"><span class="pre">DDF.drop</span></code></a> - Remove some columns from DDF.</p>
-<p><a class="reference internal" href="ddf_library.html#ddf_library.ddf.DDF.dropna" title="ddf_library.ddf.DDF.dropna"><code class="xref py py-func docutils literal notranslate"><span class="pre">DDF.dropna</span></code></a> - Drop rows or columns with NaN elements.</p>
+<p><a class="reference internal" href="ddf_library.html#ddf_library.ddf.DDF.drop" title="ddf_library.ddf.DDF.drop"><code class="xref py py-func docutils literal notranslate"><span class="pre">DDF.drop</span></code></a> - Removes some columns from DDF.</p>
+<p><a class="reference internal" href="ddf_library.html#ddf_library.ddf.DDF.drop_duplicates" title="ddf_library.ddf.DDF.drop_duplicates"><code class="xref py py-func docutils literal notranslate"><span class="pre">DDF.drop_duplicates</span></code></a> - Alias for distinct.</p>
+<p><a class="reference internal" href="ddf_library.html#ddf_library.ddf.DDF.distinct" title="ddf_library.ddf.DDF.distinct"><code class="xref py py-func docutils literal notranslate"><span class="pre">DDF.distinct</span></code></a> - Returns a new DDF with non duplicated rows.</p>
 <p><a class="reference internal" href="ddf_library.html#ddf_library.ddf.DDF.except_all" title="ddf_library.ddf.DDF.except_all"><code class="xref py py-func docutils literal notranslate"><span class="pre">DDF.except_all</span></code></a> - Returns a new set with containing rows in the first frame but not in the second one while preserving duplicates.</p>
+<p><a class="reference internal" href="ddf_library.html#ddf_library.ddf.DDF.explode" title="ddf_library.ddf.DDF.explode"><code class="xref py py-func docutils literal notranslate"><span class="pre">DDF.explode</span></code></a> - Returns a new row for each element in the given array.</p>
+<p><a class="reference internal" href="ddf_library.html#ddf_library.ddf.DDF.export_ddf" title="ddf_library.ddf.DDF.export_ddf"><code class="xref py py-func docutils literal notranslate"><span class="pre">DDF.export_ddf</span></code></a> - Export ddf data as a list of Pandas’s DataFrame.</p>
 <p><a class="reference internal" href="ddf_library.html#ddf_library.ddf.DDF.fillna" title="ddf_library.ddf.DDF.fillna"><code class="xref py py-func docutils literal notranslate"><span class="pre">DDF.fillna</span></code></a> - Replace NaN elements by value or by median, mean or mode.</p>
 <p><a class="reference internal" href="ddf_library.html#ddf_library.ddf.DDF.filter" title="ddf_library.ddf.DDF.filter"><code class="xref py py-func docutils literal notranslate"><span class="pre">DDF.filter</span></code></a> - Filters elements based on a condition.</p>
 <p><a class="reference internal" href="ddf_library.html#ddf_library.ddf.DDF.group_by" title="ddf_library.ddf.DDF.group_by"><code class="xref py py-func docutils literal notranslate"><span class="pre">DDF.group_by</span></code></a> - Returns a GroupedDFF with a set of methods for aggregations on a DDF.</p>
+<p><a class="reference internal" href="ddf_library.html#ddf_library.ddf.DDF.hash_partition" title="ddf_library.ddf.DDF.hash_partition"><code class="xref py py-func docutils literal notranslate"><span class="pre">DDF.hash_partition</span></code></a> - Hash partitioning is a partitioning technique where data is stored separately in different fragments by a hash function.</p>
+<p><a class="reference internal" href="ddf_library.html#ddf_library.ddf.DDF.import_data" title="ddf_library.ddf.DDF.import_data"><code class="xref py py-func docutils literal notranslate"><span class="pre">DDF.import_data</span></code></a> - Import a previous Pandas DataFrame list into DDF abstraction.</p>
 <p><a class="reference internal" href="ddf_library.html#ddf_library.ddf.DDF.intersect" title="ddf_library.ddf.DDF.intersect"><code class="xref py py-func docutils literal notranslate"><span class="pre">DDF.intersect</span></code></a> - Returns a new DDF containing rows in both DDF.</p>
 <p><a class="reference internal" href="ddf_library.html#ddf_library.ddf.DDF.intersect_all" title="ddf_library.ddf.DDF.intersect_all"><code class="xref py py-func docutils literal notranslate"><span class="pre">DDF.intersect_all</span></code></a> - Returns a new DDF containing rows in both DDF while preserving duplicates.</p>
 <p><a class="reference internal" href="ddf_library.html#ddf_library.ddf.DDF.join" title="ddf_library.ddf.DDF.join"><code class="xref py py-func docutils literal notranslate"><span class="pre">DDF.join</span></code></a> - Joins two DDF using the given join expression.</p>
 <p><a class="reference internal" href="ddf_library.html#ddf_library.ddf.DDF.load_text" title="ddf_library.ddf.DDF.load_text"><code class="xref py py-func docutils literal notranslate"><span class="pre">DDF.load_text</span></code></a> - Create a DDF from a commom file system or from HDFS.</p>
+<p><a class="reference internal" href="ddf_library.html#ddf_library.ddf.DDF.map" title="ddf_library.ddf.DDF.map"><code class="xref py py-func docutils literal notranslate"><span class="pre">DDF.map</span></code></a> - Applies a function to each row of this data set.</p>
+<p><a class="reference internal" href="ddf_library.html#ddf_library.ddf.DDF.num_of_partitions" title="ddf_library.ddf.DDF.num_of_partitions"><code class="xref py py-func docutils literal notranslate"><span class="pre">DDF.num_of_partitions</span></code></a> - Returns the number of data partitions (Task parallelism).</p>
 <p><a class="reference internal" href="ddf_library.html#ddf_library.ddf.DDF.parallelize" title="ddf_library.ddf.DDF.parallelize"><code class="xref py py-func docutils literal notranslate"><span class="pre">DDF.parallelize</span></code></a> - Distributes a DataFrame into DDF.</p>
+<p><a class="reference internal" href="ddf_library.html#ddf_library.ddf.DDF.range_partition" title="ddf_library.ddf.DDF.range_partition"><code class="xref py py-func docutils literal notranslate"><span class="pre">DDF.range_partition</span></code></a> - Range partitioning is a partitioning technique where ranges of data is stored separately in different fragments.</p>
+<p><a class="reference internal" href="ddf_library.html#ddf_library.ddf.DDF.repartition" title="ddf_library.ddf.DDF.repartition"><code class="xref py py-func docutils literal notranslate"><span class="pre">DDF.repartition</span></code></a> - Repartition a distributed data based in a fixed number of partitions or based on a distribution list.</p>
 <p><a class="reference internal" href="ddf_library.html#ddf_library.ddf.DDF.replace" title="ddf_library.ddf.DDF.replace"><code class="xref py py-func docutils literal notranslate"><span class="pre">DDF.replace</span></code></a> - Replaces one or more values to new ones.</p>
 <p><a class="reference internal" href="ddf_library.html#ddf_library.ddf.DDF.sample" title="ddf_library.ddf.DDF.sample"><code class="xref py py-func docutils literal notranslate"><span class="pre">DDF.sample</span></code></a> - Returns a sampled subset.</p>
 <p><a class="reference internal" href="ddf_library.html#ddf_library.ddf.DDF.save" title="ddf_library.ddf.DDF.save"><code class="xref py py-func docutils literal notranslate"><span class="pre">DDF.save</span></code></a> - Saves the data in the storage.</p>
+<p><a class="reference internal" href="ddf_library.html#ddf_library.ddf.DDF.schema" title="ddf_library.ddf.DDF.schema"><code class="xref py py-func docutils literal notranslate"><span class="pre">DDF.schema</span></code></a> - Returns a schema table where each row contains the name columns and its data types of the current DDF.</p>
 <p><a class="reference internal" href="ddf_library.html#ddf_library.ddf.DDF.select" title="ddf_library.ddf.DDF.select"><code class="xref py py-func docutils literal notranslate"><span class="pre">DDF.select</span></code></a> - Performs a projection of selected columns.</p>
+<p><a class="reference internal" href="ddf_library.html#ddf_library.ddf.DDF.select_expression" title="ddf_library.ddf.DDF.select_expression"><code class="xref py py-func docutils literal notranslate"><span class="pre">DDF.select_expression</span></code></a> - Projects a set of SQL expressions and returns a new DDF.</p>
 <p><a class="reference internal" href="ddf_library.html#ddf_library.ddf.DDF.show" title="ddf_library.ddf.DDF.show"><code class="xref py py-func docutils literal notranslate"><span class="pre">DDF.show</span></code></a> - Collect the current DDF into a single DataFrame.</p>
 <p><a class="reference internal" href="ddf_library.html#ddf_library.ddf.DDF.sort" title="ddf_library.ddf.DDF.sort"><code class="xref py py-func docutils literal notranslate"><span class="pre">DDF.sort</span></code></a> - Returns a sorted DDF by the specified column(s).</p>
 <p><a class="reference internal" href="ddf_library.html#ddf_library.ddf.DDF.split" title="ddf_library.ddf.DDF.split"><code class="xref py py-func docutils literal notranslate"><span class="pre">DDF.split</span></code></a> - Randomly splits a DDF into two DDF.</p>
 <p><a class="reference internal" href="ddf_library.html#ddf_library.ddf.DDF.subtract" title="ddf_library.ddf.DDF.subtract"><code class="xref py py-func docutils literal notranslate"><span class="pre">DDF.subtract</span></code></a> - Returns a new set with containing rows in the first frame but not in the second one.</p>
 <p><a class="reference internal" href="ddf_library.html#ddf_library.ddf.DDF.take" title="ddf_library.ddf.DDF.take"><code class="xref py py-func docutils literal notranslate"><span class="pre">DDF.take</span></code></a> - Returns the first num rows.</p>
-<p><a class="reference internal" href="ddf_library.html#ddf_library.ddf.DDF.map" title="ddf_library.ddf.DDF.map"><code class="xref py py-func docutils literal notranslate"><span class="pre">DDF.map</span></code></a> - Applies a function to each row of this data set.</p>
+<p><a class="reference internal" href="ddf_library.html#ddf_library.ddf.DDF.to_df" title="ddf_library.ddf.DDF.to_df"><code class="xref py py-func docutils literal notranslate"><span class="pre">DDF.to_df</span></code></a> - Returns the DDF contents as a pandas’s DataFrame.</p>
 <p><a class="reference internal" href="ddf_library.html#ddf_library.ddf.DDF.union" title="ddf_library.ddf.DDF.union"><code class="xref py py-func docutils literal notranslate"><span class="pre">DDF.union</span></code></a> - Combines two DDF (concatenate) by column position.</p>
 <p><a class="reference internal" href="ddf_library.html#ddf_library.ddf.DDF.union_by_name" title="ddf_library.ddf.DDF.union_by_name"><code class="xref py py-func docutils literal notranslate"><span class="pre">DDF.union_by_name</span></code></a> - Combines two DDF (concatenate) by column name.</p>
-<p><code class="xref py py-func docutils literal notranslate"><span class="pre">DDF.with_column_renamed</span></code> - Renames some columns.</p>
+<p><a class="reference internal" href="ddf_library.html#ddf_library.ddf.DDF.rename" title="ddf_library.ddf.DDF.rename"><code class="xref py py-func docutils literal notranslate"><span class="pre">DDF.rename</span></code></a> - Returns a new DDF by renaming an existing column.</p>
 </div>
 <div class="section" id="statistics">
 <span id="statistics-anchor"></span><h3>Statistics<a class="headerlink" href="#statistics" title="Permalink to this headline">¶</a></h3>
-<p><a class="reference internal" href="ddf_library.html#ddf_library.ddf.DDF.count" title="ddf_library.ddf.DDF.count"><code class="xref py py-func docutils literal notranslate"><span class="pre">DDF.count</span></code></a> - Returns a number of rows in this DDF.</p>
+<p><code class="xref py py-func docutils literal notranslate"><span class="pre">DDF.count</span></code> - Returns a number of rows in this DDF.</p>
 <p><a class="reference internal" href="ddf_library.html#ddf_library.ddf.DDF.correlation" title="ddf_library.ddf.DDF.correlation"><code class="xref py py-func docutils literal notranslate"><span class="pre">DDF.correlation</span></code></a> - Calculates the Pearson Correlation Coefficient.</p>
 <p><a class="reference internal" href="ddf_library.html#ddf_library.ddf.DDF.covariance" title="ddf_library.ddf.DDF.covariance"><code class="xref py py-func docutils literal notranslate"><span class="pre">DDF.covariance</span></code></a> - Calculates the sample covariance for the given columns.</p>
 <p><a class="reference internal" href="ddf_library.html#ddf_library.ddf.DDF.cross_tab" title="ddf_library.ddf.DDF.cross_tab"><code class="xref py py-func docutils literal notranslate"><span class="pre">DDF.cross_tab</span></code></a> - Computes a pair-wise frequency table of the given columns.</p>
@@ -125,7 +136,7 @@
 <span id="clustering-anchor"></span><h4>ML.Clustering<a class="headerlink" href="#ml-clustering" title="Permalink to this headline">¶</a></h4>
 <p>The <strong>ml.clustering</strong> module gathers popular unsupervised clustering algorithms:</p>
 <p><a class="reference internal" href="ddf_library.functions.ml.clustering.html#ddf_library.functions.ml.clustering.Kmeans" title="ddf_library.functions.ml.clustering.Kmeans"><code class="xref py py-class docutils literal notranslate"><span class="pre">ml.clustering.Kmeans</span></code></a> - The algorithm works iteratively to assign each data point to one of K groups based on the features that are provided. Data points are clustered based on feature similarity.</p>
-<p><a class="reference internal" href="ddf_library.functions.ml.clustering.html#ddf_library.functions.ml.clustering.DBSCAN" title="ddf_library.functions.ml.clustering.DBSCAN"><code class="xref py py-class docutils literal notranslate"><span class="pre">ml.clustering.DBSCAN</span></code></a> - A density-based clustering algorithm: given a set of points in some space, it groups together points that are closely packed together (points with many nearby neighbors), marking as outliers points that lie alone in low-density regions (whose nearest neighbors are too far away).</p>
+<p><code class="xref py py-class docutils literal notranslate"><span class="pre">ml.clustering.DBSCAN</span></code> - A density-based clustering algorithm: given a set of points in some space, it groups together points that are closely packed together (points with many nearby neighbors), marking as outliers points that lie alone in low-density regions (whose nearest neighbors are too far away).</p>
 </div>
 <div class="section" id="ml-evaluation">
 <span id="evaluation-anchor"></span><h4>ML.Evaluation<a class="headerlink" href="#ml-evaluation" title="Permalink to this headline">¶</a></h4>
@@ -138,8 +149,8 @@
 <span id="feature-anchor"></span><h4>ML.Feature<a class="headerlink" href="#ml-feature" title="Permalink to this headline">¶</a></h4>
 <p>The <strong>ml.feature</strong> covers algorithms for working with features to extracting features from “raw” data, scaling, converting or modifying features:
 Selection: Selecting a subset from a larger set of features:</p>
-<p><a class="reference internal" href="ddf_library.functions.ml.feature.html#ddf_library.functions.ml.feature.VectorAssembler" title="ddf_library.functions.ml.feature.VectorAssembler"><code class="xref py py-class docutils literal notranslate"><span class="pre">ml.feature.VectorAssembler</span></code></a> - Vector Assembler is a transformer that combines a given list of columns into a single vector column.</p>
-<p><a class="reference internal" href="ddf_library.functions.ml.feature.html#ddf_library.functions.ml.feature.VectorSlicer" title="ddf_library.functions.ml.feature.VectorSlicer"><code class="xref py py-class docutils literal notranslate"><span class="pre">ml.feature.VectorSlicer</span></code></a> - Vector Slicer create a new feature vector with a subarray of an original features.</p>
+<p><code class="xref py py-class docutils literal notranslate"><span class="pre">ml.feature.VectorAssembler</span></code> - Vector Assembler is a transformer that combines a given list of columns into a single vector column.</p>
+<p><code class="xref py py-class docutils literal notranslate"><span class="pre">ml.feature.VectorSlicer</span></code> - Vector Slicer create a new feature vector with a subarray of an original features.</p>
 <p><a class="reference internal" href="ddf_library.functions.ml.feature.html#ddf_library.functions.ml.feature.Binarizer" title="ddf_library.functions.ml.feature.Binarizer"><code class="xref py py-class docutils literal notranslate"><span class="pre">ml.feature.Binarizer</span></code></a> - Binarize data (set feature values to 0 or 1) according to a threshold.</p>
 <p><a class="reference internal" href="ddf_library.functions.ml.feature.html#ddf_library.functions.ml.feature.OneHotEncoder" title="ddf_library.functions.ml.feature.OneHotEncoder"><code class="xref py py-class docutils literal notranslate"><span class="pre">ml.feature.OneHotEncoder</span></code></a> - Encode categorical integer features as a one-hot numeric array.</p>
 <p><a class="reference internal" href="ddf_library.functions.ml.feature.html#ddf_library.functions.ml.feature.Tokenizer" title="ddf_library.functions.ml.feature.Tokenizer"><code class="xref py py-class docutils literal notranslate"><span class="pre">ml.feature.Tokenizer</span></code></a> - Tokenization is the process of taking text (such as a sentence) and breaking it into individual terms (usually words). A simple Tokenizer class provides this functionality.</p>
@@ -163,7 +174,7 @@ Selection: Selecting a subset from a larger set of features:</p>
 </div>
 <div class="section" id="ml-regression">
 <span id="regression-anchor"></span><h4>ML.Regression<a class="headerlink" href="#ml-regression" title="Permalink to this headline">¶</a></h4>
-<p><a class="reference internal" href="ddf_library.functions.ml.regression.html#ddf_library.functions.ml.regression.LinearRegression" title="ddf_library.functions.ml.regression.LinearRegression"><code class="xref py py-class docutils literal notranslate"><span class="pre">ml.regression.LinearRegression</span></code></a> - Linear Regression using method of least squares (works only for 2-D data) or using Stochastic Gradient Descent.</p>
+<p><code class="xref py py-class docutils literal notranslate"><span class="pre">ml.regression.LinearRegression</span></code> - Linear Regression using method of least squares (works only for 2-D data) or using Stochastic Gradient Descent.</p>
 </div>
 </div>
 <div class="section" id="geographic-operations">
@@ -214,13 +225,11 @@ Selection: Selecting a subset from a larger set of features:</p>
   <p class="topless"><a href="ddf_library.html"
                         title="next chapter">DDF operations</a></p>
 <div id="searchbox" style="display: none" role="search">
-  <h3>Quick search</h3>
+  <h3 id="searchlabel">Quick search</h3>
     <div class="searchformwrapper">
     <form class="search" action="search.html" method="get">
-      <input type="text" name="q" />
+      <input type="text" name="q" aria-labelledby="searchlabel" />
       <input type="submit" value="Go" />
-      <input type="hidden" name="check_keywords" value="yes" />
-      <input type="hidden" name="area" value="default" />
     </form>
     </div>
 </div>
@@ -249,7 +258,7 @@ Selection: Selecting a subset from a larger set of features:</p>
     </div>
     <div class="footer" role="contentinfo">
         &#169; Copyright 2019, Lucas M Ponce.
-      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.8.4.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 2.1.0.
     </div>
   </body>
 </html>

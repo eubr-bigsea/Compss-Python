@@ -6,42 +6,22 @@ packages
 
 .. toctree::
 
-    ddf_library.functions.ml.classification
-    ddf_library.functions.ml.clustering
-    ddf_library.functions.ml.evaluation
-    ddf_library.functions.ml.feature
-    ddf_library.functions.ml.fpm
-    ddf_library.functions.ml.regression
-    ddf_library.functions.graph
+    ddf.functions.ml.classification
+    ddf.functions.ml.clustering
+    ddf.functions.ml.evaluation
+    ddf.functions.ml.feature
+    ddf.functions.ml.fpm
+    ddf.functions.ml.regression
+    ddf.functions.graph
 
 Module contents
 ---------------
 
-.. automodule:: ddf_library.ddf
+.. automodule:: ddf.ddf
     :members: DDF
     :undoc-members:
     :show-inheritance:
-
-
-.. automodule:: ddf_library.groupby
-    :members: 
-    :show-inheritance:
-    :exclude-members: GroupedDDF
-
-    .. autoclass:: GroupedDDF()
-
-.. automethod:: ddf_library.groupby.GroupedDDF.agg 
-.. automethod:: ddf_library.groupby.GroupedDDF.avg 
-.. automethod:: ddf_library.groupby.GroupedDDF.count 
-.. automethod:: ddf_library.groupby.GroupedDDF.first 
-.. automethod:: ddf_library.groupby.GroupedDDF.last   
-.. automethod:: ddf_library.groupby.GroupedDDF.list 
-.. automethod:: ddf_library.groupby.GroupedDDF.max 
-.. automethod:: ddf_library.groupby.GroupedDDF.mean 
-.. automethod:: ddf_library.groupby.GroupedDDF.min  
-.. automethod:: ddf_library.groupby.GroupedDDF.set 
-.. automethod:: ddf_library.groupby.GroupedDDF.sum
-
+    
 
 
 

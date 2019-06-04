@@ -480,9 +480,9 @@ class COMPSsContext(object):
         info = result[:]
 
         if type_function:
-            function = task_bundle_file
+            function = task_bundle_1inf
         else:
-            function = task_bundle
+            function = task_bundle_1out
 
         for f, df in enumerate(input_data):
             result[f], info[f] = function(df, opt, f)
@@ -516,27 +516,29 @@ class COMPSsContext(object):
 
         if n_input == 1:
             for f, df in enumerate(tmp):
-                result[f], info[f] = task_bundle(df, opt, f)
+                result[f], info[f] = task_bundle_1out(df, opt, f)
         else:
             for f in range(nfrag):
-                result[f], info[f] = task_bundle2(tmp[f], tmp1[f], opt, f)
+                result[f], info[f] = task_bundle_2in(tmp[f], tmp1[f], opt, f)
 
         return result, info
 
 
+# task has 1 data input and return 1 data output
 @task(returns=2)
-def task_bundle(data, stage, id_frag):
+def task_bundle_1out(data, stage, id_frag):
     return _bundle(data, stage, id_frag)
 
 
-@task(returns=2, filename=FILE_IN)
-def task_bundle_file(data, stage, id_frag):
-    return _bundle(data, stage, id_frag)
-
-
+# task where the first execution has 2 inputs data
 @task(returns=2)
-def task_bundle2(data1, data2, stage, id_frag):
+def task_bundle_2in(data1, data2, stage, id_frag):
     data = [data1, data2]
+    return _bundle(data, stage, id_frag)
+
+
+@task(returns=1, filename=FILE_IN)   # TODO: Test!
+def task_bundle_1inf(data, stage, id_frag):
     return _bundle(data, stage, id_frag)
 
 
