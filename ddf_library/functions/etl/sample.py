@@ -1,47 +1,13 @@
-#!/usr/bin/python
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
 __author__ = "Lucas Miguel S Ponce"
 __email__ = "lucasmsp@gmail.com"
 
+from ddf_library.utils import generate_info
 from pycompss.api.task import task
 import numpy as np
 import math
-
-
-def take(data, settings):
-    """
-    Returns the first n elements of the input panda's DataFrame.
-
-    :param data: A list of pandas's DataFrame;
-    :param settings: dictionary that contains:
-     - value: integer value to be sampled;
-     - info: information generated from others tasks (automatic);
-    :return: A list of pandas's DataFrame.
-
-    .. note: This operations contains two stages: the first one is to define
-     the distribution; and the second is to create the sample itself. The first
-     part cannot be grouped with others tasks because this function needs
-     the schema information. The second part could be grouped.
-
-    TODO: rebalance the list, group the second stage
-    """
-    nfrag = len(data)
-
-    info = settings['info'][0]
-    value = settings['value']
-
-    idxs = _take_define_sample(info, value, nfrag)
-
-    result = [[] for _ in range(nfrag)]
-    info = [[] for _ in range(nfrag)]
-
-    for f in range(nfrag):
-        result[f], info[f] = _get_samples(data[f], idxs, f)
-
-    output = {'key_data': ['data'], 'key_info': ['info'],
-              'data': result, 'info': info}
-    return output
 
 
 def sample(data, params):
@@ -63,23 +29,29 @@ def sample(data, params):
      part cannot be grouped with others tasks because this function needs
      the schema information. The second part could be grouped.
 
-    TODO: rebalance the list, group the second stage
+    TODO: re-balance the list, group the second stage
     """
+
+    data, params = sample_stage_1(data, params)
+
     nfrag = len(data)
-    idxs = _sample_preprocessing(params, nfrag)
 
     result = [[] for _ in range(nfrag)]
-    info = [[] for _ in range(nfrag)]
+    info = result[:]
+
     for f in range(nfrag):
-        result[f], info[f] = _get_samples(data[f], idxs, f)
+        params['id_frag'] = f
+        result[f], info[f] = sample_stage_2(data[f], params.copy())
 
     output = {'key_data': ['data'], 'key_info': ['info'],
               'data': result, 'info': info}
     return output
 
 
-def _sample_preprocessing(params, nfrag):
-    """Check the settings."""
+def sample_stage_1(data, params):
+
+    nfrag = len(data)
+
     sample_type = params.get("type", 'percent')
     seed = params.get('seed', None)
     info = params['info'][0]
@@ -87,86 +59,73 @@ def _sample_preprocessing(params, nfrag):
     op = 'int' if isinstance(value, int) else 'per'
 
     if sample_type == 'percent':
-        idxs = _define_n_sample(info, None, seed, True, 'null', nfrag)
+        idx_list = _define_bulks(info, None, seed, True, 'random', nfrag)
 
     else:
         if op is 'per':
             if value > 1 or value < 0:
                 raise Exception('Percentage value must between 0 and 1.0.')
 
-        idxs = _define_n_sample(info, value, seed, False, op, nfrag)
+        idx_list = _define_bulks(info, value, seed, False, op, nfrag)
 
-    return idxs
+    params['idx_list'] = idx_list
+    params['seed'] = seed
+
+    return data, params
 
 
-@task(returns=1)
-def _define_n_sample(info, value, seed, random, int_per, nfrag):
+def _define_bulks(info, value, seed, random, int_per, nfrag):
     """Define the N random indexes to be sampled."""
 
-    n_list = info[2]
+    n_list = info['size']
     total = sum(n_list)
 
     if int_per == 'int':
         if total < value:
             value = total
-    elif int_per == 'per':
-        value = int(math.ceil(total*value))
+
+        if total == 0:
+            ratio = 0
+        else:
+            ratio = value/total
+    else:
+        ratio = value
 
     if random:
         np.random.seed(seed)
-        percentage = np.random.random_sample()
-        value = int(math.ceil(total*percentage))
+        ratio = np.random.random_sample()
 
+    target_value = int(math.ceil(ratio * total))
     np.random.seed(seed)
-    ids = np.array(sorted(np.random.choice(total, value, replace=False)))
-    sizes = np.cumsum(n_list)
-    list_ids = [[] for _ in range(nfrag)]
+    sizes = [int(math.ceil(n * ratio)) for n in n_list]
 
-    first_id = 0
+    val = sum(sizes)
     for i in range(nfrag):
-        last_id = sizes[i]
-        idx = (ids >= first_id) & (ids < last_id)
-        list_ids[i] = ids[idx] - first_id
-        first_id = last_id
+        if val == target_value:
+            break
+        if sizes[i] > 0:
+            sizes[i] -= 1
+            val -= 1
 
-    return list_ids
+    return sizes
 
 
-@task(returns=1)
-def _take_define_sample(info, head, nfrag):
-    """Define the head N indexes to be sampled."""
-    n_list = info[2]
-    total = sum(n_list)
+def sample_stage_2(data, params):
+    """Perform a partial sampling."""
 
-    if total < head:
-        head = total
+    frag = params['id_frag']
+    seed = params['seed']
+    indexes = params['idx_list'][frag]
+    n = len(data)
 
-    list_ids = [[] for _ in range(nfrag)]
+    if n > 0:
+        data.reset_index(drop=True, inplace=True)
+        data = data.sample(n=indexes, replace=False, random_state=seed)
 
-    frag = 0
-    while head > 0:
-        off = head - n_list[frag]
-        if off < 0:
-            off = head
-        else:
-            off = n_list[frag]
-
-        list_ids[frag] = [i for i in range(off)]
-        head -= off
-        frag += 1
-
-    return list_ids
+    info = generate_info(data, frag)
+    return data, info
 
 
 @task(returns=2)
-def _get_samples(data, indexes, i):
-    """Perform a partial sampling."""
-    indexes = indexes[i]
-    data.reset_index(drop=True, inplace=True)
-    result = data.loc[data.index.isin(indexes)]
-
-    info = [result.columns.tolist(), result.dtypes.values, [len(result)]]
-    return result, info
-
-
-
+def task_sample_stage_2(data, params):
+    return sample_stage_2(data, params)

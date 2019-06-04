@@ -1,13 +1,16 @@
-#!/usr/bin/python
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
 __author__ = "Lucas Miguel S Ponce"
 __email__ = "lucasmsp@gmail.com"
 
 
+from ddf_library.utils import generate_info
+
 from pycompss.api.task import task
+from pycompss.api.api import compss_wait_on, compss_delete_object
 from pycompss.functions.reduce import merge_reduce
-from pycompss.api.local import local
+
 
 import numpy as np
 import pandas as pd
@@ -26,16 +29,14 @@ def cross_tab(data, settings):
     :return: A list of pandas's DataFrame;
     """
 
-    col1 = settings['col1']
-    col2 = settings['col2']
-    cols = [col1, col2]
+    cols = [settings['col1'], settings['col2']]
     nfrag = len(data)
 
-    for f in range(nfrag):
-        data[f] = _crosstab_partial(data[f], cols)
+    partial = [_crosstab_partial(data[f], cols) for f in range(nfrag)]
+    crosstab_df = merge_reduce(_merge_counts, partial)
+    compss_delete_object(partial)
 
-    data = merge_reduce(_merge_counts, data)
-    data, info = _create_tab(data, nfrag)
+    data, info = _create_tab(crosstab_df, nfrag)
 
     output = {'key_data': ['data'], 'key_info': ['info'],
               'data': data, 'info': info}
@@ -47,7 +48,6 @@ def _crosstab_partial(data, cols):
     col1, col2 = cols
     data = pd.crosstab(index=data[col1], columns=data[col2])
     data.columns = data.columns.values
-
     data.index = data.index.values
     return data
 
@@ -55,24 +55,27 @@ def _crosstab_partial(data, cols):
 @task(returns=1)
 def _merge_counts(data1, data2):
 
-    data = data1.add(data2, fill_value=0).fillna(0).astype(int)
+    max_size_cols = 1e4
+    max_len_rows = 1e6
+
+    data = data1.add(data2, fill_value=0).astype(int)
     size_cols = data.shape[1]
     size_len = data.shape[0]
-    if size_cols > 1e4:
-        data = data.drop(data.columns[10000:], axis=1)
-    if size_len > 1e6:
-        data = data[:1000000]
+
+    if size_cols > max_size_cols:
+        data = data.drop(data.columns[max_size_cols:], axis=1)
+
+    if size_len > max_len_rows:
+        data = data[:max_len_rows]
+
     return data
 
 
-@local
 def _create_tab(data, nfrag):
+    data = compss_wait_on(data)
     data.insert(0, 'key', data.index.values)
 
-    cols = data.columns.values
-    dtypes = data.dtypes.values
-
     data = np.array_split(data, nfrag)
-    info = [[cols, dtypes, [d]] for d in data]
+    info = [generate_info(data[f], f) for f in range(nfrag)]
 
     return data, info

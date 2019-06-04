@@ -5,11 +5,18 @@ from ddf_library.ddf import DDF
 import pandas as pd
 
 
-def geographic():
+def load_shapefile():
 
     ddf1 = DDF()\
         .load_shapefile(shp_path='/41CURITI.shp', dbf_path='/41CURITI.dbf')\
         .select(['points', 'NOMEMESO'])
+
+    ddf1.show()
+    print(ddf1.schema())
+    return ddf1
+
+
+def geo_within(shapefile_ddf):
 
     data = pd.DataFrame([[-25.251240, -49.166195],
                          [-25.440731, -49.271526],
@@ -21,11 +28,11 @@ def geographic():
 
     ddf2 = DDF()\
         .parallelize(data, 4)\
-        .select(['LATITUDE', 'LONGITUDE'])\
-        .geo_within(ddf1, 'LATITUDE', 'LONGITUDE', 'points')\
-        .select(['LATITUDE', 'LONGITUDE'])
+        .geo_within(shapefile_ddf, 'LATITUDE', 'LONGITUDE', polygon='points')
 
-    print "> Print results: \n", ddf2.show()
+    print("> Print results: \n")
+    ddf2.show()
+
     """
       -25.440731 -49.271526
       -25.610885 -49.276478
@@ -35,5 +42,6 @@ def geographic():
 
 
 if __name__ == '__main__':
-    print "_____Geographic Operations_____"
-    geographic()
+    print("_____Geographic Operations_____")
+    geo_ddf = load_shapefile()
+    geo_within(geo_ddf)

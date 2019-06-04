@@ -1,11 +1,14 @@
-#!/usr/bin/python
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
 __author__ = "Lucas Miguel S Ponce"
 __email__ = "lucasmsp@gmail.com"
 
+import ddf_library.config as config
+from ddf_library.utils import generate_info
 import numpy as np
 import datetime
+import importlib
 
 
 def map(data, settings):
@@ -22,17 +25,27 @@ def map(data, settings):
     https://engineering.upside.com/a-beginners-guide-to-optimizing-pandas-
     code-for-speed-c09ef2c6a4d6
     """
+    config.columns = data.columns.tolist()
     function = settings['function']
     new_column = settings['alias']
+    frag = settings['id_frag']
 
-    if len(data) > 0:
-        # vectorized_function = np.vectorize(function)
-        data[new_column] = data.apply(function, axis=1)
+    size = len(data)
+    if size > 0:
+        # data[new_column] = data.apply(function, axis=1)
+        output = [0] * size
 
+        import ddf_library.utils
+        importlib.reload(ddf_library.utils)
+
+        for i, row in enumerate(data.values):
+            output[i] = function(row)
+
+        data[new_column] = output
     else:
         data[new_column] = np.nan
 
-    info = [data.columns.tolist(), data.dtypes.values, [len(data)]]
+    info = generate_info(data, frag)
     return data, info
 
 

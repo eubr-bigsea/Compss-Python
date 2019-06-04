@@ -1,147 +1,165 @@
-#!/usr/bin/python
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
 __author__ = "Lucas Miguel S Ponce"
 __email__ = "lucasmsp@gmail.com"
 
+from ddf_library.utils import generate_info
+
 from pycompss.api.task import task
 from pycompss.functions.reduce import merge_reduce
-from pycompss.api.local import local
+from pycompss.api.api import compss_wait_on, compss_delete_object
+
 import pandas as pd
 import numpy as np
-import copy
 
 
-class DropNaN(object):
+def drop_nan_rows(data, settings):
+    subset = settings['attributes']
+    thresh = settings['thresh']
+    how = settings['how']
+    frag = settings['id_frag']
 
-    def __init__(self, subset=None, how='any', thresh=None, mode=0):
+    data.dropna(how=how, subset=subset, thresh=thresh, inplace=True)
+    data.reset_index(drop=True, inplace=True)
+
+    info = generate_info(data, frag)
+    return data, info
+
+
+def fill_by_value(data, settings):
+    value = settings['value']
+    subset = settings['attributes']
+    frag = settings['id_frag']
+
+    if isinstance(value, dict):
+        data.fillna(value=value, inplace=True)
+    else:
+        if not subset:
+            subset = data.columns.tolist()
+        values = {key: value for key in subset}
+        data.fillna(value=values, inplace=True)
+
+    data.reset_index(drop=True, inplace=True)
+    info = generate_info(data, frag)
+    return data, info
+
+
+def drop_nan_columns(data, settings):
+    """
+    :param data: A list with pandas's DataFrame.
+    :param settings: A dictionary with:
+     * subset:  optional list of column names to consider.
+     * thresh: int, default None If specified, drop rows that have less
+       than thresh non-null values. This overwrites the how parameter.
+     * how: ‘any’ or ‘all’. If ‘any’, drop a row if it contains any
+     nulls. If ‘all’, drop a row only if all its values are null.
+    :return: Returns a list with pandas's DataFrame.
+    """
+    data, settings = drop_nan_columns_stage_1(data, settings)
+
+    nfrag = len(data)
+
+    result = [[] for _ in range(nfrag)]
+    info = result[:]
+
+    for f in range(nfrag):
+        settings['id_frag'] = f
+        result[f], info[f] = drop_nan_columns_stage_2(data[f], settings.copy())
+
+    output = {'key_data': ['data'], 'key_info': ['info'],
+              'data': result, 'info': info}
+    return output
+
+
+def drop_nan_columns_stage_1(data, settings):
+    return clean_missing_preprocessing(data, settings)
+
+
+def drop_nan_columns_stage_2(data, settings):
+    return _clean_missing(data, settings)
+
+
+def fill_nan(data, settings):
+    """
+    :param data: A list with pandas's DataFrame.
+    :param settings: A dictionary with:
+       * subset:  optional list of column names to consider.
+       * thresh: int, default None If specified, drop rows that have less
+     than thresh non-null values. This overwrites the how parameter.
+       * how: ‘any’ or ‘all’. If ‘any’, drop a row if it contains any
+     nulls. If ‘all’, drop a row only if all its values are null.
+    :return: Returns a list with pandas's DataFrame.
+    """
+    data, settings = fill_nan_stage_1(data, settings)
+
+    nfrag = len(data)
+
+    result = [[] for _ in range(nfrag)]
+    info = result[:]
+
+    for f in range(nfrag):
+        settings['id_frag'] = f
+        result[f], info[f] = fill_nan_stage_2(data[f], settings.copy())
+
+    output = {'key_data': ['data'], 'key_info': ['info'],
+              'data': result, 'info': info}
+    return output
+
+
+def fill_nan_stage_1(data, settings):
+    return clean_missing_preprocessing(data, settings)
+
+
+def fill_nan_stage_2(data, settings):
+    return _clean_missing(data, settings)
+
+
+def clean_missing_preprocessing(data, settings):
+
+    if settings['cleaning_mode'] is not 'MEDIAN':
+        # we need to generate mean value
+        params = [_clean_missing_pre(df, settings) for df in data]
+        settings = merge_reduce(merge_clean_options, params)
+        settings = compss_wait_on(settings)
+
+    else:
+        # noinspection SpellCheckingInspection
         """
-
-        :param subset:  optional list of column names to consider.
-        :param thresh: int, default None If specified, drop rows that have less
-            than thresh non-null values. This overwrites the how parameter.
-        :param how: ‘any’ or ‘all’. If ‘any’, drop a row if it contains any
-         nulls. If ‘all’, drop a row only if all its values are null.
-        :return: Returns a list with pandas's DataFrame.
+        Based on : 
+        FUJIWARA, Akihiro; INOUE, Michiko; MASUZAWA, Toshimitsu. Parallel 
+        selection algorithms for CGM and BSP models with application to 
+        sorting. IPSJ Journal, v. 41, p. 1500-1508, 2000.
         """
+        # 1- On each processor, find the median of all elements on the
+        # processor.
+        stage1 = [_median_stage1(df, settings) for df in data]
+        stage1 = merge_reduce(_median_stage1_merge, stage1)
 
-        self.settings = {'cleaning_mode': mode,
-                         'attributes': subset,
-                         'how': how, 'thresh': thresh}
-
-    def preprocessing(self, data):
-
-        # we need to take in count others rows/fragments
-
-        params = [_clean_missing_pre(df, self.settings) for df in data]
-        self.settings = merge_reduce(merge_clean_options, params)
-
-        return self
-
-    def drop_rows(self, data):
-
-        subset = self.settings['attributes']
-        thresh = self.settings['thresh']
-        how = self.settings['how']
-        data.dropna(how=how, subset=subset, thresh=thresh, inplace=True)
-
-        data.reset_index(drop=True, inplace=True)
-        info = [data.columns.tolist(), data.dtypes.values, [len(data)]]
-        return data, info
-
-    def drop_columns(self, data):
-        settings = copy.deepcopy(self.settings)
+        # 2- Select the median of the medians. Let M M be the median of the
+        # medians.
         nfrag = len(data)
-        result = [[] for _ in range(nfrag)]
         info = [[] for _ in range(nfrag)]
-
-        for f in range(nfrag):
-            result[f], info[f] = _clean_missing(data[f], settings)
-
-        output = {'key_data': ['data'], 'key_info': ['info'],
-                  'data': result, 'info': info}
-        return output
-
-
-class FillNa(object):
-
-    def __init__(self, subset=None, mode='VALUE', value=None):
-
-        self.settings = {'cleaning_mode': mode,
-                         'attributes': subset,
-                         'value': value}
-
-    def preprocessing(self, data):
-
-        if self.settings['cleaning_mode'] is not 'MEDIAN':
-            # we need to generate mean value
-            settings = copy.deepcopy(self.settings)
-            params = [_clean_missing_pre(df, settings) for df in data]
-            self.settings = merge_reduce(merge_clean_options, params)
-        else:
-            """
-            Based on : 
-            FUJIWARA, Akihiro; INOUE, Michiko; MASUZAWA, Toshimitsu. Parallel 
-            selection algorithms for CGM and BSP models with application to 
-            sorting. IPSJ Journal, v. 41, p. 1500-1508, 2000.
-            """
-            # 1- On each processor, find the median of all elements on the
-            # processor.
-            stage1 = [_median_stage1(df, self.settings) for df in data]
-            stage1 = merge_reduce(_median_stage1_merge, stage1)
-
-            # 2- Select the median of the medians. Let M M be the median of the
-            # medians.
-            nfrag = len(data)
-            info = [[] for _ in range(nfrag)]
-            result = [[] for _ in range(nfrag)]
-            for f in range(nfrag):
-                info[f], result[f] = _median_stage2(data[f], stage1)
-            info_stage2 = merge_reduce(_median_stage2_merge, info)
-
-            # 3 Broadcast M M to all processors.
-            # 4- Split the elements on each processor into two subsets, L and U.
-            # The subset L contains elements that are smaller than MM, and
-            # the subset U contains elements that are larger than MM .
-            # 5 - Compute SUM L
-            for f in range(nfrag):
-                info[f] = _median_stage3(result[f], info_stage2)
-            info = merge_reduce(_median_stage3_merge, info)
-
-            self.settings['values'] = _median_define(info)
-
-        return self
-
-    def fill_by_value(self, data):
-        value = self.settings['value']
-        subset = self.settings['attributes']
-
-        if isinstance(value, dict):
-            data.fillna(value=value, inplace=True)
-        else:
-            if not subset:
-                subset = data.columns.tolist()
-            values = {key: value for key in subset}
-            data.fillna(value=values, inplace=True)
-
-        data.reset_index(drop=True, inplace=True)
-        info = [data.columns.tolist(), data.dtypes.values, [len(data)]]
-        return data, info
-
-    def fill_by_statistic(self, data):
-
-        settings = copy.deepcopy(self.settings)
-
-        nfrag = len(data)
         result = [[] for _ in range(nfrag)]
-        info = [[] for _ in range(nfrag)]
-
         for f in range(nfrag):
-            result[f], info[f] = _clean_missing(data[f], settings)
+            info[f], result[f] = _median_stage2(data[f], stage1)
+        info_stage2 = merge_reduce(_median_stage2_merge, info)
+        compss_delete_object(info)
+        # 3 Broadcast M M to all processors.
+        # 4- Split the elements on each processor into two subsets, L and U.
+        # The subset L contains elements that are smaller than MM, and
+        # the subset U contains elements that are larger than MM .
+        # 5 - Compute SUM L
+        info = [[] for _ in range(nfrag)]
+        for f in range(nfrag):
+            info[f] = _median_stage3(result[f], info_stage2)
+        medians_info = merge_reduce(_median_stage3_merge, info)
+        compss_delete_object(info)
 
-        output = {'key_data': ['data'], 'key_info': ['info'],
-                  'data': result, 'info': info}
-        return output
+        medians_info = compss_wait_on(medians_info)
+        settings['values'] = _median_define(medians_info)
+
+    return data, settings
 
 
 @task(returns=1)
@@ -274,7 +292,6 @@ def _median_stage3_merge(info1, info2):
     return info1
 
 
-@local
 def _median_define(info):
     for att in info:
 
@@ -286,7 +303,7 @@ def _median_define(info):
                 nums = sum(nums1)
         else:
             nums = sum(nums1)
-        info[att] = float(nums) / last
+        info[att] = nums / last
 
     return info
 
@@ -326,7 +343,7 @@ def _clean_missing_pre(data, params):
         for att in subset:
             dict_mode[att] = data[att].value_counts()
         params['dict_mode'] = dict_mode
-        print dict_mode
+
     return params
 
 
@@ -365,11 +382,11 @@ def merge_clean_options(params1, params2):
     return params1
 
 
-@task(returns=2)
 def _clean_missing(data, params):
     """Perform REMOVE_ROW, REMOVE_COLUMN, VALUE, MEAN, MODE and MEDIAN."""
     attributes = params['attributes']
     cleaning_mode = params['cleaning_mode']
+    frag = params['id_frag']
 
     if cleaning_mode == "REMOVE_COLUMN":
 
@@ -399,11 +416,10 @@ def _clean_missing(data, params):
             data[att] = data[att].fillna(value=mode)
 
     elif cleaning_mode == 'MEDIAN':
-        print params
         medians = params['values']
         for att in medians:
             data[att] = data[att].fillna(value=medians[att])
 
     data.reset_index(drop=True, inplace=True)
-    info = [data.columns.tolist(), data.dtypes.values, [len(data)]]
+    info = generate_info(data, frag)
     return data, info

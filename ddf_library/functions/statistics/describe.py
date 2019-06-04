@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
 __author__ = "Lucas Miguel S Ponce"
@@ -7,7 +7,7 @@ __email__ = "lucasmsp@gmail.com"
 
 from pycompss.api.task import task
 from pycompss.functions.reduce import merge_reduce
-from pycompss.api.local import local
+from pycompss.api.api import compss_wait_on, compss_delete_object
 
 import pandas as pd
 import numpy as np
@@ -31,11 +31,15 @@ def describe(data, columns):
 
     info = [_describe_stage1(df, columns) for df in data]
     agg_info = merge_reduce(_describe_stage2, info)
+    compss_delete_object(info)
 
     sse = [_describe_stage3(df, agg_info) for df in data]
-    sse = merge_reduce(_describe_stage4, sse)
+    agg_sse = merge_reduce(_describe_stage4, sse)
+    compss_delete_object(sse)
 
-    result = _generate_stage5(agg_info, sse)
+    agg_info = compss_wait_on(agg_info)
+    agg_sse = compss_wait_on(agg_sse)
+    result = _generate_stage5(agg_info, agg_sse)
 
     return result
 
@@ -49,8 +53,10 @@ def _describe_stage1(df, columns):
     count = len(df)
     nan = df[columns].isna().sum()
     nan = [nan.loc[att] if att in nan.index else np.nan for att in columns]
+
     mean = df[columns].sum(skipna=True, numeric_only=True)
     means = [mean.loc[att] if att in mean.index else np.nan for att in columns]
+
     minimum = df[columns].min(skipna=True, axis=0).values
     maximum = df[columns].max(skipna=True, axis=0).values
 
@@ -65,8 +71,14 @@ def _describe_stage2(info1, info2):
     count = info1['count'] + info2['count']
     sum_values = np.add(info1['mean'], info2['mean'])
     nan = np.add(info1['nan'], info2['nan'])
-    minimum = [min([x, y]) for x, y in zip(info1['min'], info2['min'])]
-    maximum = [max([x, y]) for x, y in zip(info1['max'], info2['max'])]
+
+    def are_str(x, y):
+        return isinstance(x, str) or isinstance(y, str)
+
+    minimum = [x if are_str(x, y) else min([x, y])
+               for x, y in zip(info1['min'], info2['min'])]
+    maximum = [y if are_str(x, y) else max([x, y])
+               for x, y in zip(info1['max'], info2['max'])]
 
     info = {'columns': info1['columns'], 'count': count, 'mean': sum_values,
             'min': minimum, 'max': maximum, 'nan': nan}
@@ -97,7 +109,7 @@ def _describe_stage4(sse1, sse2):
     return sse
 
 
-@local
+# @local
 def _generate_stage5(agg_info, sse):
     mean = [m / agg_info['count'] if m else np.nan for m in agg_info['mean']]
 

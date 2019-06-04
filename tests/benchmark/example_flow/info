@@ -1,5 +1,0 @@
-Without trace:
-Example_flow - Exec: 8 Nodes - nfrag 32 - nsize 100000000 -  iteration 1 - It took 71 seconds.
-
-With trace:
-Example_flow - Exec: 8 Nodes - nfrag 32 - nsize 100000000 -  iteration 1 - It took 441 seconds.

@@ -1,11 +1,9 @@
 
-<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
-  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<!DOCTYPE html>
 
 <html xmlns="http://www.w3.org/1999/xhtml">
   <head>
-    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
-    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <meta charset="utf-8" />
     <title>ML.Frequent Pattern Mining &#8212; DDF</title>
     <link rel="stylesheet" href="_static/nature.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
@@ -50,146 +48,134 @@
 <span id="ml-frequent-pattern-mining"></span><h1>ML.Frequent Pattern Mining<a class="headerlink" href="#module-ddf_library.functions.ml.fpm" title="Permalink to this headline">¶</a></h1>
 <dl class="class">
 <dt id="ddf_library.functions.ml.fpm.AssociationRules">
-<em class="property">class </em><code class="descclassname">ddf_library.functions.ml.fpm.</code><code class="descname">AssociationRules</code><span class="sig-paren">(</span><em>col_item='items'</em>, <em>col_freq='support'</em>, <em>confidence=0.5</em>, <em>max_rules=-1</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.functions.ml.fpm.AssociationRules" title="Permalink to this definition">¶</a></dt>
-<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">ddf_library.ddf.DDFSketch</span></code></p>
+<em class="property">class </em><code class="sig-prename descclassname">ddf_library.functions.ml.fpm.</code><code class="sig-name descname">AssociationRules</code><span class="sig-paren">(</span><em class="sig-param">confidence=0.5</em>, <em class="sig-param">max_rules=-1</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.functions.ml.fpm.AssociationRules" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">ddf_library.ddf_base.DDFSketch</span></code></p>
 <p>Association rule learning is a rule-based machine learning method for
 discovering interesting relations between variables in large databases.
-It is intended to identify strong rules discovered in databases using
-some measures of interestingness.</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Example:</th><td class="field-body"></td>
-</tr>
-</tbody>
-</table>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">rules</span> <span class="o">=</span> <span class="n">AssociationRules</span><span class="p">(</span><span class="n">confidence</span><span class="o">=</span><span class="mf">0.10</span><span class="p">)</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">itemset</span><span class="p">)</span>
+It is intended to identify strong rules discovered in databases.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Example</dt>
+<dd class="field-odd"><p></p></dd>
+</dl>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">rules</span> <span class="o">=</span> <span class="n">AssociationRules</span><span class="p">(</span><span class="n">confidence</span><span class="o">=</span><span class="mf">0.10</span><span class="p">)</span><span class="o">.</span><span class="n">fit_transform</span><span class="p">(</span><span class="n">item_set</span><span class="p">)</span>
 </pre></div>
 </div>
 <p>Setup all AssociationsRules’s parameters.</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
-<li><strong>col_item</strong> – Column with the frequent item set (default, <em>‘items’</em>);</li>
-<li><strong>col_freq</strong> – Column with its support (default, <em>‘support’</em>);</li>
-<li><strong>confidence</strong> – Minimum confidence (default is 0.5);</li>
-<li><strong>max_rules</strong> – Maximum number of output rules, -1 to all (default).</li>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>confidence</strong> – Minimum confidence (default is 0.5);</p></li>
+<li><p><strong>max_rules</strong> – Maximum number of output rules, -1 to all (default).</p></li>
 </ul>
-</td>
-</tr>
-</tbody>
-</table>
+</dd>
+</dl>
+<dl class="attribute">
+<dt id="ddf_library.functions.ml.fpm.AssociationRules.OPT_LAST">
+<code class="sig-name descname">OPT_LAST</code><em class="property"> = 'last'</em><a class="headerlink" href="#ddf_library.functions.ml.fpm.AssociationRules.OPT_LAST" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="ddf_library.functions.ml.fpm.AssociationRules.OPT_OTHER">
+<code class="sig-name descname">OPT_OTHER</code><em class="property"> = 'other'</em><a class="headerlink" href="#ddf_library.functions.ml.fpm.AssociationRules.OPT_OTHER" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="ddf_library.functions.ml.fpm.AssociationRules.OPT_SERIAL">
+<code class="sig-name descname">OPT_SERIAL</code><em class="property"> = 'serial'</em><a class="headerlink" href="#ddf_library.functions.ml.fpm.AssociationRules.OPT_SERIAL" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
 <dl class="method">
-<dt id="ddf_library.functions.ml.fpm.AssociationRules.run">
-<code class="descname">run</code><span class="sig-paren">(</span><em>data</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.functions.ml.fpm.AssociationRules.run" title="Permalink to this definition">¶</a></dt>
+<dt id="ddf_library.functions.ml.fpm.AssociationRules.fit_transform">
+<code class="sig-name descname">fit_transform</code><span class="sig-paren">(</span><em class="sig-param">data</em>, <em class="sig-param">col_item='items'</em>, <em class="sig-param">col_freq='support'</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.functions.ml.fpm.AssociationRules.fit_transform" title="Permalink to this definition">¶</a></dt>
 <dd><p>Fit the model.</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>data</strong> – DDF</td>
-</tr>
-<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">DDF with ‘Pre-Rule’, ‘Post-Rule’ and ‘confidence’ columns</td>
-</tr>
-</tbody>
-</table>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>data</strong> – DDF;</p></li>
+<li><p><strong>col_item</strong> – Column with the frequent item set (default, <em>‘items’</em>);</p></li>
+<li><p><strong>col_freq</strong> – Column with its support (default, <em>‘support’</em>);</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>DDF with ‘Pre-Rule’, ‘Post-Rule’ and ‘confidence’ columns.</p>
+</dd>
+</dl>
 </dd></dl>
+
+<dl class="attribute">
+<dt id="ddf_library.functions.ml.fpm.AssociationRules.optimization_ops">
+<code class="sig-name descname">optimization_ops</code><em class="property"> = ['other', 'serial', 'last']</em><a class="headerlink" href="#ddf_library.functions.ml.fpm.AssociationRules.optimization_ops" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
 
 <dl class="method">
 <dt id="ddf_library.functions.ml.fpm.AssociationRules.set_min_confidence">
-<code class="descname">set_min_confidence</code><span class="sig-paren">(</span><em>confidence</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.functions.ml.fpm.AssociationRules.set_min_confidence" title="Permalink to this definition">¶</a></dt>
+<code class="sig-name descname">set_min_confidence</code><span class="sig-paren">(</span><em class="sig-param">confidence</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.functions.ml.fpm.AssociationRules.set_min_confidence" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 </dd></dl>
 
 <dl class="class">
 <dt id="ddf_library.functions.ml.fpm.FPGrowth">
-<em class="property">class </em><code class="descclassname">ddf_library.functions.ml.fpm.</code><code class="descname">FPGrowth</code><span class="sig-paren">(</span><em>column</em>, <em>min_support=0.5</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.functions.ml.fpm.FPGrowth" title="Permalink to this definition">¶</a></dt>
-<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">ddf_library.ddf.DDFSketch</span></code></p>
+<em class="property">class </em><code class="sig-prename descclassname">ddf_library.functions.ml.fpm.</code><code class="sig-name descname">FPGrowth</code><span class="sig-paren">(</span><em class="sig-param">min_support=0.5</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.functions.ml.fpm.FPGrowth" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">ddf_library.ddf_base.DDFSketch</span></code></p>
 <p>FPGrowth implements the FP-growth algorithm described in the paper
-Han et al., Mining requent patterns without candidate generation, where
-“FP” stands for frequent pattern. Given a dataset of transactions, the
+LI et al., Mining frequent patterns without candidate generation, where
+“FP” stands for frequent pattern. Given a data set of transactions, the
 first step of FP-growth is to calculate item frequencies and identify
 frequent items.</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Example:</th><td class="field-body"></td>
-</tr>
-</tbody>
-</table>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">fp</span> <span class="o">=</span> <span class="n">FPGrowth</span><span class="p">(</span><span class="n">column</span><span class="o">=</span><span class="s1">&#39;col_0&#39;</span><span class="p">,</span> <span class="n">min_support</span><span class="o">=</span><span class="mf">0.10</span><span class="p">)</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">ddf1</span><span class="p">)</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="n">itemset</span> <span class="o">=</span> <span class="n">fp</span><span class="o">.</span><span class="n">get_frequent_itemsets</span><span class="p">()</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="n">rules</span> <span class="o">=</span> <span class="n">fp</span><span class="o">.</span><span class="n">generate_association_rules</span><span class="p">(</span><span class="n">confidence</span><span class="o">=</span><span class="mf">0.1</span><span class="p">)</span>
+<p>LI, Haoyuan et al. Pfp: parallel fp-growth for query recommendation.
+In: Proceedings of the 2008 ACM conference on Recommender systems.
+ACM, 2008. p. 107-114.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Example</dt>
+<dd class="field-odd"><p></p></dd>
+</dl>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">fp</span> <span class="o">=</span> <span class="n">FPGrowth</span><span class="p">(</span><span class="n">min_support</span><span class="o">=</span><span class="mf">0.10</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">item_set</span> <span class="o">=</span> <span class="n">fp</span><span class="o">.</span><span class="n">fit_transform</span><span class="p">(</span><span class="n">ddf1</span><span class="p">,</span> <span class="n">column</span><span class="o">=</span><span class="s1">&#39;col_0&#39;</span><span class="p">)</span>
 </pre></div>
 </div>
 <p>Setup all FPGrowth’s parameters.</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
-<li><strong>column</strong> – Transactions feature name;</li>
-<li><strong>min_support</strong> – minimum support value.</li>
-</ul>
-</td>
-</tr>
-</tbody>
-</table>
-<dl class="method">
-<dt id="ddf_library.functions.ml.fpm.FPGrowth.generate_association_rules">
-<code class="descname">generate_association_rules</code><span class="sig-paren">(</span><em>confidence=0.5</em>, <em>max_rules=-1</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.functions.ml.fpm.FPGrowth.generate_association_rules" title="Permalink to this definition">¶</a></dt>
-<dd><p>Generate a DDF with the association rules.</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
-<li><strong>confidence</strong> – Minimum confidence (default is 0.5);</li>
-<li><strong>max_rules</strong> – Maximum number of output rules, -1 to all (default);</li>
-</ul>
-</td>
-</tr>
-<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">DDF with ‘Pre-Rule’, ‘Post-Rule’ and ‘confidence’ columns.</p>
-</td>
-</tr>
-</tbody>
-</table>
-</dd></dl>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>min_support</strong> – minimum support value.</p>
+</dd>
+</dl>
+<dl class="attribute">
+<dt id="ddf_library.functions.ml.fpm.FPGrowth.OPT_LAST">
+<code class="sig-name descname">OPT_LAST</code><em class="property"> = 'last'</em><a class="headerlink" href="#ddf_library.functions.ml.fpm.FPGrowth.OPT_LAST" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="ddf_library.functions.ml.fpm.FPGrowth.OPT_OTHER">
+<code class="sig-name descname">OPT_OTHER</code><em class="property"> = 'other'</em><a class="headerlink" href="#ddf_library.functions.ml.fpm.FPGrowth.OPT_OTHER" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="ddf_library.functions.ml.fpm.FPGrowth.OPT_SERIAL">
+<code class="sig-name descname">OPT_SERIAL</code><em class="property"> = 'serial'</em><a class="headerlink" href="#ddf_library.functions.ml.fpm.FPGrowth.OPT_SERIAL" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
 
 <dl class="method">
-<dt id="ddf_library.functions.ml.fpm.FPGrowth.get_frequent_itemsets">
-<code class="descname">get_frequent_itemsets</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.functions.ml.fpm.FPGrowth.get_frequent_itemsets" title="Permalink to this definition">¶</a></dt>
-<dd><p>Get the frequent item set generated by FP-Growth.</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">DDF</td>
-</tr>
-</tbody>
-</table>
+<dt id="ddf_library.functions.ml.fpm.FPGrowth.fit_transform">
+<code class="sig-name descname">fit_transform</code><span class="sig-paren">(</span><em class="sig-param">data</em>, <em class="sig-param">column</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.functions.ml.fpm.FPGrowth.fit_transform" title="Permalink to this definition">¶</a></dt>
+<dd><p>Fit the model and transform the data.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>data</strong> – DDF;</p></li>
+<li><p><strong>column</strong> – Transactions feature name;</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>DDF</p>
+</dd>
+</dl>
 </dd></dl>
 
-<dl class="method">
-<dt id="ddf_library.functions.ml.fpm.FPGrowth.run">
-<code class="descname">run</code><span class="sig-paren">(</span><em>data</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.functions.ml.fpm.FPGrowth.run" title="Permalink to this definition">¶</a></dt>
-<dd><p>Fit the model.</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>data</strong> – DDF</td>
-</tr>
-<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">a trained model</td>
-</tr>
-</tbody>
-</table>
-</dd></dl>
+<dl class="attribute">
+<dt id="ddf_library.functions.ml.fpm.FPGrowth.optimization_ops">
+<code class="sig-name descname">optimization_ops</code><em class="property"> = ['other', 'serial', 'last']</em><a class="headerlink" href="#ddf_library.functions.ml.fpm.FPGrowth.optimization_ops" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
 
 </dd></dl>
 
@@ -208,13 +194,11 @@ frequent items.</p>
   <p class="topless"><a href="ddf_library.functions.ml.regression.html"
                         title="next chapter">ML.Regression</a></p>
 <div id="searchbox" style="display: none" role="search">
-  <h3>Quick search</h3>
+  <h3 id="searchlabel">Quick search</h3>
     <div class="searchformwrapper">
     <form class="search" action="search.html" method="get">
-      <input type="text" name="q" />
+      <input type="text" name="q" aria-labelledby="searchlabel" />
       <input type="submit" value="Go" />
-      <input type="hidden" name="check_keywords" value="yes" />
-      <input type="hidden" name="area" value="default" />
     </form>
     </div>
 </div>
@@ -245,7 +229,7 @@ frequent items.</p>
     </div>
     <div class="footer" role="contentinfo">
         &#169; Copyright 2019, Lucas M Ponce.
-      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.8.4.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 2.1.0.
     </div>
   </body>
 </html>

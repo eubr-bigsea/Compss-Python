@@ -1,9 +1,0 @@
-Without Trace:
-
-Sort - Exec: 8 Nodes - nfrag 32 - nsize 100000000 -  iteration 1 - It took 50 seconds.
-
-
-
-With Trace:
-
-Sort - Exec: 8 Nodes - nfrag 32 - nsize 100000000 -  iteration 1 - It took 93 seconds.

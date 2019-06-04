@@ -1,16 +1,16 @@
-#!/usr/bin/python
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
 __author__ = "Lucas Miguel S Ponce"
 __email__ = "lucasmsp@gmail.com"
 
-import cPickle as pickle
-from ddf import DDFSketch
+import _pickle as pickle
+from .ddf_base import DDFSketch
 
 
 class ModelDDF(DDFSketch):
     """
-
+    Class base of model DDF algorithms
     """
 
     def __init__(self):
@@ -20,8 +20,13 @@ class ModelDDF(DDFSketch):
         self.model = {}
         self.name = ''
 
+    def check_fitted_model(self):
+        if self.model.get('algorithm', '42') != self.name:
+            raise Exception("Model is not fitted by {}".format(self.name))
+
     def save_model(self, filepath, storage='hdfs', overwrite=True,
                    namenode='localhost', port=9000):
+        # noinspection PyUnresolvedReferences
         """
         Save a machine learning model as a binary file in a storage.
 
@@ -50,6 +55,7 @@ class ModelDDF(DDFSketch):
 
     def load_model(self, filepath, storage='hdfs', namenode='localhost',
                    port=9000):
+        # noinspection PyUnresolvedReferences
         """
         Load a machine learning model from a binary file in a storage.
 
@@ -84,20 +90,20 @@ def save_model_hdfs(model, path, namenode='localhost', port=9000,
     """
     Save a machine learning model as a binary file in a HDFS storage.
 
-    :param model: Model to be storaged in HDFS;
+    :param model: Model to be stored in HDFS;
     :param path: The path of the file from the '/' of the HDFS;
     :param namenode: The host of the Namenode HDFS; (default, 'localhost')
     :param port: NameNode port (default, 9000).
     :param overwrite: Overwrite if file already exists (default, True);
     """
-    from hdfspycompss.HDFS import HDFS
+    from hdfspycompss.hdfs import HDFS
     dfs = HDFS(host=namenode, port=port)
 
     if dfs.exist(path) and not overwrite:
         raise Exception("File already exists in this source.")
 
     to_save = pickle.dumps(model, 0)
-    dfs.writeBlock(path, to_save, append=False, overwrite=True)
+    dfs.write_block(path, to_save, append=False, overwrite=True)
     return [-1]
 
 
@@ -122,12 +128,12 @@ def load_model_hdfs(filepath, namenode='localhost', port=9000):
     :param port: NameNode port (default, 9000).
     :return: Returns a model
     """
-    from hdfspycompss.HDFS import HDFS
-    from hdfspycompss.Block import Block
+    from hdfspycompss.hdfs import HDFS
+    from hdfspycompss.block import Block
 
     dfs = HDFS(host=namenode, port=port)
-    blk = dfs.findNBlocks(filepath, 1)
-    to_load = Block(blk).readBinary()
+    blk = dfs.find_n_blocks(filepath, 1)
+    to_load = Block(blk).read_binary()
     model = None
     if len(to_load) > 0:
         model = pickle.loads(to_load)

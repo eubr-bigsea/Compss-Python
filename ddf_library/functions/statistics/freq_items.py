@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
 __author__ = "Lucas Miguel S Ponce"
@@ -7,7 +7,8 @@ __email__ = "lucasmsp@gmail.com"
 
 from pycompss.api.task import task
 from pycompss.functions.reduce import merge_reduce
-from pycompss.api.local import local
+# from pycompss.api.local import local # guppy module isnt available in python3
+from pycompss.api.api import compss_delete_object, compss_wait_on
 
 import numpy as np
 import pandas as pd
@@ -28,6 +29,7 @@ def freq_items(data, settings):
     :return: A DataFrame
     """
 
+    nfrag = len(data)
     support = settings['support']
     if support is None:
         support = 0.01
@@ -36,13 +38,15 @@ def freq_items(data, settings):
     if not isinstance(settings['col'], list):
         settings['col'] = [settings['col']]
 
-    for f in range(len(data)):
-        data[f] = _freq_items(data[f], settings)
+    partial_frequency = [[] for _ in range(nfrag)]
+    for f in range(nfrag):
+        partial_frequency[f] = _freq_items(data[f], settings)
 
-    data = merge_reduce(_freq_items_merge, data)
-    data = _freq_items_get(data)
+    global_frequency = merge_reduce(_freq_items_merge, partial_frequency)
+    compss_delete_object(partial_frequency)
+    frequent_items = _freq_items_get(global_frequency)
 
-    return data
+    return frequent_items
 
 
 @task(returns=1)
@@ -62,7 +66,7 @@ def _freq_items(df, settings):
                     base_map[key] = 1
 
                     if len(base_map) > support:
-                        for k in base_map.keys():
+                        for k in list(base_map.keys()):
                             base_map[k] -= 1
                             if base_map[k] == 0:
                                 del base_map[k]
@@ -106,13 +110,14 @@ def _freq_items_merge(df1, df2):
     return [freq1, settings]
 
 
-@local
+# @local
 def _freq_items_get(info):
-    freqs, settings = info
+    info = compss_wait_on(info)
+    freq, settings = info
     cols = settings['col']
 
     cols_name = ['{}_freqItems'.format(c) for c in cols]
-    row = [freqs[c].keys() for c in cols]
-    freqs = pd.DataFrame([row], columns=cols_name)
+    row = [freq[c].keys() for c in cols]
+    freq = pd.DataFrame([row], columns=cols_name)
 
-    return freqs
+    return freq

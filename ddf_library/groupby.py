@@ -1,11 +1,11 @@
-#!/usr/bin/python
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
 __author__ = "Lucas Miguel S Ponce"
 __email__ = "lucasmsp@gmail.com"
 
-import context
-from .ddf import DDF
+from ddf_library.context import COMPSsContext
+from ddf_library.ddf import DDF
 
 
 class GroupedDDF(DDF):
@@ -30,13 +30,14 @@ class GroupedDDF(DDF):
     def __init__(self, ddf_var):
         self.last_uuid = ddf_var.last_uuid
         self.ddf_var = ddf_var
-        self.parameters = context.COMPSsContext() \
-            .get_task_function(self.last_uuid)[1]
+        self.last2 = ddf_var.task_list[-2]
+        self.parameters = COMPSsContext().get_task_function(self.last_uuid)[1]
 
         super(GroupedDDF, self).__init__(task_list=ddf_var.task_list,
                                          last_uuid=self.last_uuid)
 
     def agg(self, exprs, alias=None):
+        # noinspection PyUnresolvedReferences
         """
         Compute aggregates and returns the result as a DDF.
 
@@ -60,12 +61,14 @@ class GroupedDDF(DDF):
                     alias[col].append("{}({})".format(f, col))
 
         self.parameters['aliases'] = alias
-        context.COMPSsContext.tasks_map[self.last_uuid]['function'][1] = \
+        COMPSsContext.tasks_map[self.last_uuid]['function'][1] = \
             self.parameters
+        COMPSsContext.tasks_map[self.last2]['function'][1] = self.parameters
 
         return self.ddf_var
 
     def avg(self, cols, alias=None):
+        # noinspection PyUnresolvedReferences
         """
         Computes average values for each numeric columns for each group.
 
@@ -80,6 +83,7 @@ class GroupedDDF(DDF):
         return self
 
     def count(self, cols, alias=None):
+        # noinspection PyUnresolvedReferences
         """
         Counts the number of records for each group.
 
@@ -94,6 +98,7 @@ class GroupedDDF(DDF):
         return self
 
     def first(self, cols, alias=None):
+        # noinspection PyUnresolvedReferences
         """
         Returns the first element of group.
 
@@ -108,6 +113,7 @@ class GroupedDDF(DDF):
         return self
 
     def last(self, cols, alias=None):
+        # noinspection PyUnresolvedReferences
         """
         Returns the last element of group.
 
@@ -122,6 +128,7 @@ class GroupedDDF(DDF):
         return self
 
     def list(self, cols, alias=None):
+        # noinspection PyUnresolvedReferences
         """
         Returns a list of objects with duplicates;
 
@@ -136,6 +143,7 @@ class GroupedDDF(DDF):
         return self
 
     def max(self, cols, alias=None):
+        # noinspection PyUnresolvedReferences
         """
         Computes the max value for each numeric columns for each group.
 
@@ -150,6 +158,7 @@ class GroupedDDF(DDF):
         return self
 
     def mean(self, cols, alias=None):
+        # noinspection PyUnresolvedReferences
         """
         Alias for avg. Computes average values for each numeric columns for
         each group.
@@ -165,6 +174,7 @@ class GroupedDDF(DDF):
         return self
 
     def min(self, cols, alias=None):
+        # noinspection PyUnresolvedReferences
         """
         Computes the min value for each numeric column for each group.
 
@@ -179,6 +189,7 @@ class GroupedDDF(DDF):
         return self
 
     def set(self, cols, alias=None):
+        # noinspection PyUnresolvedReferences
         """
         Returns a set of objects with duplicate elements.
 
@@ -193,6 +204,7 @@ class GroupedDDF(DDF):
         return self
 
     def sum(self, cols, alias=None):
+        # noinspection PyUnresolvedReferences
         """
         Computes the sum for each numeric columns for each group.
 
@@ -241,6 +253,5 @@ class GroupedDDF(DDF):
         self.parameters['operation'] = exprs
         self.parameters['aliases'] = aliases
 
-        context.COMPSsContext.tasks_map[self.last_uuid]['function'][1] = \
-            self.parameters
-
+        COMPSsContext.tasks_map[self.last_uuid]['function'][1] = self.parameters
+        COMPSsContext.tasks_map[self.last2]['function'][1] = self.parameters
