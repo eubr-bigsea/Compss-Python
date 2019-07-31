@@ -11,7 +11,7 @@ try:
 except ImportError:
     from io import StringIO
 
-from pyspark.ml.feature import StringIndexer
+from pyspark.ml.feature import VectorAssembler, StringIndexer, StandardScaler
 from pyspark.sql import SparkSession
 from pyspark.sql.types import *
 from pyspark.sql.functions import *
@@ -20,21 +20,27 @@ from pyspark import StorageLevel
 spark = SparkSession.builder.getOrCreate()
 sc = spark.sparkContext
 
-# Data generation
+####
+#### Data generation
+#### 
+
 block = ''
 with open('base_titanic.csv', 'r') as content_file:
     block = content_file.read()
 size_block = float(sys.argv[1])*1024*1024 # in bytes
 num_partitions = int(sys.argv[2]) 
-print("Num partitions: ", num_partitions)
 size_original = 61113
 n_repeat  = int(math.ceil(size_block/size_original))
+block = block * n_repeat
 def splitter(x):
     x = pd.read_csv(StringIO(x), sep=',').values.tolist()
     return x
-block = block * n_repeat
-t1 = time.time()
+
 rdd = sc.parallelize(range(num_partitions), numSlices=num_partitions).flatMap(lambda x: splitter(block))
+
+####
+#### Titanic workflow
+#### 
 
 mySchema = StructType([StructField("PassengerId", IntegerType(), True),
                        StructField("Survived", IntegerType(), True),
@@ -104,6 +110,7 @@ cat1 =  udf (lambda x: sex_replacer(x), IntegerType())
 cat2 =  udf (lambda x: title_checker(x), IntegerType())
 cat3 =  udf (lambda x: age_categorizer(x), IntegerType())
 cat4 =  udf (lambda x: fare_categorizer(x), IntegerType())
+cat5 =  udf (lambda x: ', '.join([str(f) for f in x.toArray()]), StringType())
 
 features = ['Pclass', 'Sex', 'Age', 'SibSp', 'Parch', 'Fare', 'Embarked']
 
@@ -123,18 +130,15 @@ clean_df = StringIndexer(inputCol="Embarked", outputCol="EmbarkedC")\
 features[6] = 'EmbarkedC'
 features +=['Survived', 'Name']
 
-from pyspark.ml.feature import VectorAssembler
-
 clean_df = VectorAssembler(inputCols=features, outputCol="features")\
     .transform(clean_df)\
     .drop('Pclass', 'Sex', 'Age', 'SibSp', 'Parch', 'Fare', 'EmbarkedC', 'Survived', 'Name')
-
-from pyspark.ml.feature import StandardScaler
 
 scaler = StandardScaler(inputCol="features", outputCol="scaledFeatures",
                         withStd=True, withMean=True)
 
 clean_df = scaler.fit(clean_df).transform(clean_df).drop('features')
-catf =  udf (lambda x: ', '.join([str(f) for f in x.toArray()]), StringType())
-clean_df.withColumn('scaledFeatures', catf(col('scaledFeatures'))).write.save('/titanic', format='csv', mode='overwrite')
+
+clean_df.withColumn('scaledFeatures', cat5(col('scaledFeatures')))\
+        .write.save('/titanic', format='csv', mode='overwrite')
 

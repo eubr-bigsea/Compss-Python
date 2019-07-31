@@ -19,6 +19,10 @@ try:
 except ImportError:
     from io import StringIO
 
+####
+#### Data generation
+#### 
+
 @task(returns=2)
 def generate_partition(x, multiplier, frag):
     x = x * multiplier
@@ -34,37 +38,34 @@ def generate_partition(x, multiplier, frag):
     schema = generate_info(df, frag)
     return df, schema
 
-
 def generate_data(n_repeat, nfrag):
-
     dfs = [[] for _ in range(nfrag)]
     info = [[] for _ in range(nfrag)]
-
     block = ''
     with open('base_titanic.csv', 'r') as content_file:
         block = content_file.read()
 
     for f in range(nfrag):
         dfs[f], info[f] = generate_partition(block, n_repeat, f)
-
     return dfs, info
-
-
 
 if __name__ == "__main__":
 
-    # Data generation:
+    ####
+    #### Data generation
+    #### 
     size_block = int(sys.argv[1])*1024*1024  # in bytes
     n_frag = int(sys.argv[2])
 
     size_original = 61113
-    n_repeat = int(math.ceil(size_block / size_original))
+    n_repeat = int(math.ceil(size_block/size_original))
     df_list, info = generate_data(n_repeat, n_frag)
     
-    # DDF:
+    ####
+    #### Titanic workflow
+    #### 
     ddf1 = DDF().import_data(df_list, info)
     
-
     def title_checker(row):
         from ddf_library.utils import col
         titles = {"Mr.": 1, "Miss": 2, "Mrs.": 3, "Master": 4, "Rare": 5}
@@ -108,7 +109,6 @@ if __name__ == "__main__":
         elif (row[col('Fare')] > 99) and (row[col('Fare')] <= 250):
             category = 4
         return category
-
 
     features = ['Pclass', 'Sex', 'Age', 'SibSp', 'Parch', 'Fare', 'Embarked']
     all_columns = features +['Survived']
