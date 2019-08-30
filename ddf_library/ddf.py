@@ -14,11 +14,10 @@ Public classes:
 """
 
 from pycompss.api.api import compss_wait_on
-from pycompss.runtime.binding import Future
 
 from ddf_library.ddf_base import DDFSketch
 from ddf_library.context import COMPSsContext
-from ddf_library.utils import concatenate_pandas
+from ddf_library.utils import concatenate_pandas, check_serialization
 
 import pandas as pd
 
@@ -137,7 +136,8 @@ class DDF(DDFSketch):
                     {'name': 'load_text',
                      'status': 'COMPLETED',
                      'optimization': self.OPT_OTHER,
-                     'function': result,
+                     'function': None,
+                     'result': result,
                      'output': 1,
                      'input': 0,
                      'parent': [self.last_uuid]
@@ -186,9 +186,10 @@ class DDF(DDFSketch):
         COMPSsContext.schemas_map[new_state_uuid] = info
         COMPSsContext.tasks_map[new_state_uuid] = \
             {'name': 'parallelize',
-             'status': 'COMPLETED',
+             'status': 'MATERIALIZED',
              'optimization': self.OPT_OTHER,
-             'function': result,
+             'function': None,
+             'result': result,
              'output': 1, 'input': 0,
              'parent': [self.last_uuid]
              }
@@ -236,7 +237,8 @@ class DDF(DDFSketch):
             {'name': 'load_shapefile',
              'status': 'COMPLETED',
              'optimization': self.OPT_OTHER,
-             'function': result,
+             'function': None,
+             'result': result,
              'output': 1, 'input': 0,
              'parent': [self.last_uuid]
              }
@@ -271,7 +273,8 @@ class DDF(DDFSketch):
             {'name': 'import_data',
              'status': 'COMPLETED',
              'optimization': self.OPT_OTHER,
-             'function': result,
+             'function': None,
+             'result': result,
              'output': 1, 'input': 0,
              'parent': [tmp.last_uuid]
              }
@@ -281,7 +284,7 @@ class DDF(DDFSketch):
     def cache(self):
         # noinspection PyUnresolvedReferences
         """
-        Compute all tasks until the current state
+        Currently it is only an alias for persist().
 
         :return: DDF
 
@@ -289,20 +292,7 @@ class DDF(DDFSketch):
 
         >>> ddf1.cache()
         """
-
-        new_state_uuid = self._generate_uuid()
-        COMPSsContext.tasks_map[new_state_uuid] = \
-            {'name': 'sync',
-             'status': 'WAIT',
-             'optimization': self.OPT_OTHER,
-             'parent': [self.last_uuid],
-             'function': None
-             }
-
-        res = DDF(task_list=self.task_list,
-                  last_uuid=new_state_uuid)._run_compss_context(new_state_uuid)
-
-        return res
+        return self.persist()
 
     def num_of_partitions(self):
         # noinspection PyUnresolvedReferences
@@ -764,7 +754,7 @@ class DDF(DDFSketch):
         :return: A list of Pandas's DataFrame
         """
 
-        self._check_cache()
+        self._check_stored()
         return self.partitions
 
     def freq_items(self, col, support=0.01):
@@ -1530,7 +1520,7 @@ class DDF(DDFSketch):
 
         >>> ddf1.map(lambda row: row['col_0'].split(','), 'col_0_new')
         """
-
+        from ddf_library.utils import col
         settings = {'function': f, 'alias': alias}
 
         from .functions.etl.map import map as task
@@ -1549,6 +1539,33 @@ class DDF(DDFSketch):
              'input': 1}
 
         return DDF(task_list=self.task_list, last_uuid=new_state_uuid)
+
+    def persist(self):
+        # noinspection PyUnresolvedReferences
+        """
+        Compute the current flow and keep in disk.
+
+        :return: DDF
+
+        :Example:
+
+        >>> ddf1.persist()
+        """
+
+        status = COMPSsContext.tasks_map[self.last_uuid]\
+            .get('status', COMPSsContext.STATUS_WAIT)
+        if status == COMPSsContext.STATUS_WAIT:
+            self._run_compss_context()
+
+        if status in [COMPSsContext.STATUS_COMPLETED,
+                      COMPSsContext.STATUS_WAIT]:
+            COMPSsContext.tasks_map[self.last_uuid]['status'] = \
+                COMPSsContext.STATUS_PERSISTED
+        elif status == COMPSsContext.STATUS_TEMP_VIEW:
+            COMPSsContext.tasks_map[self.last_uuid]['status'] = \
+                COMPSsContext.STATUS_MATERIALIZED
+
+        return self
 
     def range_partition(self, columns, ascending=None, nfrag=None):
         # noinspection PyUnresolvedReferences
@@ -1790,7 +1807,7 @@ class DDF(DDFSketch):
              }
 
         res = DDF(task_list=self.task_list,
-                  last_uuid=new_state_uuid)._run_compss_context(new_state_uuid)
+                  last_uuid=new_state_uuid)._run_compss_context()
 
         return res
 
@@ -1920,7 +1937,7 @@ class DDF(DDFSketch):
         >>> ddf1.show()
         """
 
-        self._check_cache()
+        self._check_stored()
 
         n_rows_frags = self.count_rows(False)
 
@@ -2111,18 +2128,17 @@ class DDF(DDFSketch):
         >>> df = ddf1.to_df(['col_1', 'col_2'])
         """
 
-        self._check_cache()
+        self._check_stored()
 
-        if isinstance(self.partitions[0], Future):
+        if check_serialization(self.partitions):
             res = compss_wait_on(self.partitions)
+            COMPSsContext.tasks_map[self.last_uuid]['result'] = res
+            status = COMPSsContext.STATUS_TEMP_VIEW
+            if COMPSsContext.tasks_map[self.last_uuid]['status'] == \
+                    COMPSsContext.STATUS_PERSISTED:
+                status = COMPSsContext.STATUS_MATERIALIZED
+            COMPSsContext.tasks_map[self.last_uuid]['status'] = status
 
-            # the last operation will be the 'cache' operation,
-            # and the second last will be current stage itself
-
-            last_last_uuid = self.task_list[-2]
-            COMPSsContext.tasks_map[self.last_uuid]['function'] = res
-            if len(self.task_list) > 2:
-                COMPSsContext.tasks_map[last_last_uuid]['function'] = res
         else:
             res = self.partitions
 
@@ -2138,6 +2154,16 @@ class DDF(DDFSketch):
 
             df.reset_index(drop=True, inplace=True)
         return df
+
+    def unpersist(self):
+        status = COMPSsContext.tasks_map[self.last_uuid]['status']
+        if status == COMPSsContext.STATUS_PERSISTED:
+            status = COMPSsContext.STATUS_COMPLETED
+        elif status == COMPSsContext.STATUS_MATERIALIZED:
+            status = COMPSsContext.STATUS_TEMP_VIEW
+        COMPSsContext.tasks_map[self.last_uuid]['status'] = status
+
+        return self
 
     def union(self, data2):
         # noinspection PyUnresolvedReferences

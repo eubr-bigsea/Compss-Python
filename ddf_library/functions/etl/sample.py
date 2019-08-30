@@ -114,7 +114,7 @@ def sample_stage_2(data, params):
     """Perform a partial sampling."""
 
     frag = params['id_frag']
-    seed = params['seed']
+    seed = params.get('seed', None)
     indexes = params['idx_list'][frag]
     n = len(data)
 
