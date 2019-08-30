@@ -67,17 +67,6 @@ class COMPSsContext(object):
      - n_input: a ordered list that informs the id key of its parent output
     """
 
-    @staticmethod
-    def get_var_by_task(variables, uuid):
-        """
-        Return the variable id which contains the task uuid.
-
-        :param variables:
-        :param uuid:
-        :return:
-        """
-        return [i for i, v in enumerate(variables) if uuid in v.task_list]
-
     def show_workflow(self, selected_tasks):
         """
         Show the final workflow. Only to debug
@@ -124,8 +113,7 @@ class COMPSsContext(object):
         from networkx.drawing.nx_agraph import write_dot
         import time
         t = time.localtime()
-        write_dot(dag,
-                  'DAG_{}.dot'.format(time.strftime('%b-%d-%Y_%H%M', t)))
+        write_dot(dag, 'DAG_{}.dot'.format(time.strftime('%b-%d-%Y_%H%M', t)))
 
     def create_dag(self, specials=None):
         """
@@ -155,37 +143,6 @@ class COMPSsContext(object):
             for j in self.adj_tasks[k]:
                 self.dag.add_node(j, label=self.get_task_name(j))
                 self.dag.add_edge(k, j)
-
-        return self.dag
-
-    def get_taskslist(self, wanted):
-        from ddf_library.ddf import DDF
-        import gc
-        # mapping all tasks that produce a final result
-        action_tasks = []
-        if wanted != -1:
-            action_tasks.append(wanted)
-
-        for t in self.tasks_map:
-            if self.check_action(t):
-                action_tasks.append(t)
-
-        # based on that, get the their variables
-        variables, n_vars = [], 0
-        for obj in gc.get_objects():
-            if isinstance(obj, DDF):
-                n_vars += 1
-                tasks = obj.task_list
-                for k in action_tasks:
-                    if k in tasks:
-                        variables.append(copy.deepcopy(obj))
-
-        # list all tasks used in these variables
-        selected_tasks = list()
-        for var in variables:
-            selected_tasks.extend(var.task_list)
-
-        return selected_tasks, variables
 
     def check_action(self, uuid_task):
         return self.tasks_map[uuid_task]['name'] in ['save', 'sync']
@@ -222,18 +179,6 @@ class COMPSsContext(object):
 
     def get_task_sibling(self, uuid_task):
         return self.tasks_map[uuid_task].get('sibling', [uuid_task])
-
-    def set_auxiliary_variables(self, variables, current_task):
-        id_var = self.get_var_by_task(variables, current_task)
-        if len(id_var) == 0:
-            raise Exception("Variable is already deleted")
-
-        id_var = id_var[0]
-        tasks_list = variables[id_var].task_list
-        id_task = tasks_list.index(current_task)
-        tasks_list = tasks_list[id_task:]
-
-        return id_var, tasks_list
 
     def get_input_data(self, id_parents):
         data = [self.get_task_return(id_p) for id_p in id_parents]
@@ -328,6 +273,7 @@ class COMPSsContext(object):
                                                    inputs, id_parents)
                 current_task = lineage[i_task + jump]
                 self.delete_old_tasks(current_task)
+
             elif jump > 0:
                 jump -= 1
 
