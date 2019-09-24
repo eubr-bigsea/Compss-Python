@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 
 from pycompss.api.task import task
+from ddf_library.context import COMPSsContext
 from ddf_library.ddf import DDF
 from ddf_library.utils import generate_data
 import pandas as pd
@@ -11,7 +12,7 @@ from pandas.util.testing import assert_frame_equal
 
 
 def etl():
-
+    # COMPSsContext().set_log(True)
     url = ('https://archive.ics.uci.edu/ml/'
            'machine-learning-databases/abalone/abalone.data')
     cols = ['sex', 'length', 'diam', 'height', 'weight', 'rings']
@@ -150,8 +151,7 @@ def etl():
     print("etl_test_7b - OK")
     print('-' * 50)
 
-    from ddf_library.utils import context_status
-    context_status()
+    COMPSsContext().context_status()
 
 
 def add_columns():

@@ -44,6 +44,7 @@ setuptools.setup(
      ],
      packages=setuptools.find_packages(),
      install_requires=get_requirements(),
+     package_data={'ddf_library': ['settings.xml']},
 
  )
 

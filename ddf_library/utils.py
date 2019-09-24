@@ -155,38 +155,10 @@ def col(name):
 
 
 def clear_context():
-    from ddf_library.context import COMPSsContext, OrderedDict, nx
+    from ddf_library.context import COMPSsContext, nx
 
     COMPSsContext.adj_tasks = dict()
     COMPSsContext.schemas_map = dict()
-    COMPSsContext.tasks_map = OrderedDict()
+    COMPSsContext.tasks_map = dict()
     COMPSsContext.dag = nx.DiGraph()
 
-
-def context_status():
-    from ddf_library.context import COMPSsContext
-    n_tasks = sum([1 for k in COMPSsContext.tasks_map
-                   if COMPSsContext.tasks_map[k]['name'] != 'init'])
-    n_cached = sum([1 for k in COMPSsContext.tasks_map
-                    if COMPSsContext.tasks_map[k]['status'] == 'PERSISTED' and
-                    COMPSsContext.tasks_map[k]['name'] != 'init'])
-    n_materialized = sum([1 for k in COMPSsContext.tasks_map
-                          if COMPSsContext.tasks_map[k]['status'] ==
-                          'MATERIALIZED'and COMPSsContext.tasks_map[k]['name']
-                          != 'init'])
-    n_output = sum([1 for k in COMPSsContext.tasks_map
-                    if COMPSsContext.tasks_map[k].get("result", False) and
-                    COMPSsContext.tasks_map[k]['name'] != 'init'])
-    n_tmp = sum([1 for k in COMPSsContext.tasks_map
-                 if COMPSsContext.tasks_map[k]['status']
-                 in ['TEMP_VIEWED', 'COMPLETED'] and
-                 COMPSsContext.tasks_map[k]['name'] != 'init'])
-    print("""
-    Number of tasks: {}
-    Number of Persisted tasks: {}
-    Number of Materialized tasks: {}
-    Number of temporary results saved (Temporary view and completed): {}
-    Number of output: {}
-    """.format(n_tasks, n_cached, n_materialized, n_tmp, n_output))
-
-    COMPSsContext.plot_graph(COMPSsContext.tasks_map, COMPSsContext.dag)

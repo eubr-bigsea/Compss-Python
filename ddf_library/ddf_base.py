@@ -81,8 +81,6 @@ class DDFSketch(object):
         stored = False
 
         for _ in range(2):
-            print("Checking storage for: ",
-                  COMPSsContext.tasks_map[self.last_uuid])
             if COMPSsContext.tasks_map[self.last_uuid]['status'] in \
                 [COMPSsContext.STATUS_COMPLETED,
                  COMPSsContext.STATUS_PERSISTED,

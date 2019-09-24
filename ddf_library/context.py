@@ -15,18 +15,10 @@ from pycompss.api.task import task
 from pycompss.api.parameter import FILE_IN
 from pycompss.api.api import compss_wait_on, compss_delete_object
 
-from collections import OrderedDict
 import copy
-import untangle
-import os.path
 import networkx as nx
 
-
-my_path = os.path.abspath(os.path.dirname(__file__))
-path = os.path.join(my_path, 'settings.xml')
-settings_xml = untangle.parse(path)
-DAG = settings_xml.ddf.monitor['enabled'] == "True"
-DEBUG = settings_xml.ddf.log_level.cdata == "debug"
+DEBUG = False
 
 
 class COMPSsContext(object):
@@ -35,7 +27,7 @@ class COMPSsContext(object):
     """
     adj_tasks = dict()
     schemas_map = dict()
-    tasks_map = OrderedDict()
+    tasks_map = dict()
     dag = nx.DiGraph()
 
     OPT_SERIAL = 'serial'  # it can be grouped with others operations
@@ -66,6 +58,39 @@ class COMPSsContext(object):
          multiple outputs, like split task);
      - n_input: a ordered list that informs the id key of its parent output
     """
+
+    def set_log(self, enabled=True):
+        global DEBUG
+        DEBUG = enabled
+
+    def context_status(self):
+        n_tasks = sum([1 for k in self.tasks_map
+                       if self.tasks_map[k]['name'] != 'init'])
+        n_cached = sum([1 for k in self.tasks_map
+                        if
+                        self.tasks_map[k]['status'] == 'PERSISTED' and
+                        self.tasks_map[k]['name'] != 'init'])
+        n_materialized = sum([1 for k in self.tasks_map
+                              if self.tasks_map[k]['status'] ==
+                              'MATERIALIZED' and self.tasks_map[k][
+                                  'name']
+                              != 'init'])
+        n_output = sum([1 for k in self.tasks_map
+                        if self.tasks_map[k].get("result", False) and
+                        self.tasks_map[k]['name'] != 'init'])
+        n_tmp = sum([1 for k in self.tasks_map
+                     if self.tasks_map[k]['status']
+                     in ['TEMP_VIEWED', 'COMPLETED'] and
+                     self.tasks_map[k]['name'] != 'init'])
+        print("""
+        Number of tasks: {}
+        Number of Persisted tasks: {}
+        Number of Materialized tasks: {}
+        Number of temporary results saved (Temporary view and completed): {}
+        Number of output: {}
+        """.format(n_tasks, n_cached, n_materialized, n_tmp, n_output))
+
+        self.plot_graph(COMPSsContext.tasks_map, COMPSsContext.dag)
 
     def show_workflow(self, selected_tasks):
         """
@@ -241,7 +266,6 @@ class COMPSsContext(object):
         lineage = self.check_pointer(lineage)
 
         if DEBUG:
-            # self.show_tasks()
             self.show_workflow(lineage)
             print("topological_tasks: ", lineage)
 
@@ -348,7 +372,6 @@ class COMPSsContext(object):
 
                 if not (self.dag.out_degree(task_opt) ==
                         self.dag.in_degree(next_task) == 1):
-                    print("Out-Degree != In-Degree")
                     break
 
         if DEBUG:
@@ -395,7 +418,6 @@ class COMPSsContext(object):
 
                 if not(self.dag.out_degree(task_opt) ==
                        self.dag.in_degree(next_task) == 1):
-                    print("Out-Degree != In-Degree")
                     break
 
                 if not all([self.get_task_opt_type(task_opt) == self.OPT_SERIAL,
