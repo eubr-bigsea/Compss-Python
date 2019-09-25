@@ -200,6 +200,7 @@ def merge_stage1(p1, p2):
 @task(returns=1)
 def cme_stage2(confusion_matrix):
     """Generate the final evaluation."""
+    confusion_matrix = confusion_matrix.fillna(0).astype(int)
     n_rows = confusion_matrix.sum().sum()
     labels = confusion_matrix.index
     accuracy = 0
@@ -286,7 +287,7 @@ class RegressionMetrics(DDFSketch):
 
     :Example:
 
-    >>> reg_metrics = RegressionMetrics(col_features='features',
+    >>> reg_metrics = RegressionMetrics(col_features=['x1', 'x2'],
     >>>                                 label_col='label', pred_col='pred',
     >>>                                 data=data)
     >>> print reg_metrics.get_metrics()
@@ -351,9 +352,7 @@ def rme_stage1(df, cols):
     size = len(df)
     if size > 0:
         df.reset_index(drop=True, inplace=True)
-        head = df.loc[0, col_features]
-        if isinstance(head, list):
-            dim = len(head)
+        dim = len(col_features)
 
         sum_y = df[col_test].sum()
         ssy_partial = np.sum(df[col_test] ** 2)
@@ -397,6 +396,7 @@ def rme_stage2(statistics):
 
     # MSE = Mean Square Errors = Error Mean Square = Residual Mean Square
     den = n_rows - dim - 1
+
     if den == 0:
         msg = "You must have at least {} sample of rows.".format(dim)
         raise Exception(msg)

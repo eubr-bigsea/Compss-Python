@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 
 from pycompss.api.task import task
+from ddf_library.context import COMPSsContext
 from ddf_library.ddf import DDF
 from ddf_library.utils import generate_data
 import pandas as pd
@@ -11,21 +12,19 @@ from pandas.util.testing import assert_frame_equal
 
 
 def etl():
-
+    # COMPSsContext().set_log(True)
     url = ('https://archive.ics.uci.edu/ml/'
            'machine-learning-databases/abalone/abalone.data')
     cols = ['sex', 'length', 'diam', 'height', 'weight', 'rings']
     n_dataset = 20
     data = pd.read_csv(url, usecols=[0, 1, 2, 3, 4, 8], names=cols)[:n_dataset]
 
-    f1 = lambda col: -42 if col['height'] > 0.090 else col['height']
-    data1 = DDF().parallelize(data, 4)\
-                 .map(f1, 'height_nan').cache()
+    from ddf_library.utils import col
+    f1 = lambda row: -42 if row[col('height')] > 0.090 else row[col('height')]
+    data1 = DDF().parallelize(data, 4).map(f1, 'height_nan').cache()
+    data2 = data1.map(lambda row: "." + row[col('sex')], 'sex')
 
-    data2 = data1.map(lambda col: "."+col['sex'], 'sex')\
-                 .cache()
-
-    print ('-' * 50)
+    print('-' * 50)
     print("etl_test_1: Multiple caches")
 
     df = data1.cache().to_df()
@@ -39,7 +38,7 @@ def etl():
     if not cond:
         raise Exception('Error in etl_test_1b')
     print('etl_test_1b - ok')
-
+    print (data1)
     df = data1.to_df()
     cond = df['sex'].values.tolist()[:5] == ['M', 'M', 'F', 'M', 'I']
     if not cond:
@@ -78,7 +77,7 @@ def etl():
     print("etl_test_3: The operations 'drop', 'drop', and 'replace' "
           "must be grouped in a single task")
     data4 = data2.drop(['length']).drop(['diam'])\
-        .replace({15: 42}, subset=['rings'])
+        .replace({15: 42}, subset=['rings']).cache()
 
     df = data4.to_df()[0:5]
     cond1 = df['rings'].values.tolist()[:5] == [42, 7, 9, 10, 7]
@@ -112,7 +111,7 @@ def etl():
         .filter('(rings > 8)')\
         .select(['sex_l', 'height_l', 'weight_l', 'rings'])
 
-    df = data6.to_df()
+    df = data6.cache().to_df()
     cond = df.columns.tolist() == ['sex_l', 'height_l', 'weight_l', 'rings']
     if not cond:
         print(df)
@@ -151,6 +150,8 @@ def etl():
         raise Exception('Error in etl_test_6b')
     print("etl_test_7b - OK")
     print('-' * 50)
+
+    COMPSsContext().context_status()
 
 
 def add_columns():
@@ -368,6 +369,26 @@ def fill_na():
     print("A: 9.5 - B: 14.5 - D: 19.0 - E: 10.0 - G: 19.0 - H: 5.0 - I: 8.5")
 
 
+def flow_recompute_task():
+    print("\n|-------- Flow to test task recomputation --------|\n")
+    # COMPSsContext().set_log(True)
+    data = pd.DataFrame([[i, i + 5, 'hello', i + 7] for i in range(1, 15)],
+                        columns=['a', 'b', 'c', 'd'])
+    ddf1 = DDF().parallelize(data, '*')\
+        .drop(['c']) \
+        .sample(10)
+
+    ddf2 = ddf1.distinct(['a'])\
+        .select(['a', 'b', 'd'])\
+        .select(['a', 'b']) \
+        .select(['a'])\
+        .sample(5)
+    ddf2.show()
+
+    ddf3 = ddf1.select(['a', 'b', 'c', 'd'])
+    ddf3.show()
+
+
 def hash_partition():
     print("\n|-------- Hash partition --------|\n")
     n_rows = 1000
@@ -495,8 +516,8 @@ def map():
     data = pd.DataFrame([[i, i + 5, 0] for i in range(10)],
                         columns=['a', 'b', 'c'])
 
-    def f(col):
-        return 7 if col['a'] > 5 else col['a']
+    def f(row):
+        return 7 if row[col('a')] > 5 else row[col('a')]
 
     ddf_1 = DDF().parallelize(data, 4).map(f, 'a')
     df1 = ddf_1.to_df()
@@ -834,13 +855,14 @@ if __name__ == '__main__':
     # balancer()
     # cast()
     # cross_join()
-    etl()
+    # etl()
     # except_all()
     # explode()
     # filter_operation()
     # fill_na()  #TODO change dtypes
+    flow_recompute_task()
     # distinct()
-    # drop()
+    #drop()
     # drop_na()
     # import_data()
     # intersect()

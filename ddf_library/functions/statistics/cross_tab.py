@@ -58,7 +58,7 @@ def _merge_counts(data1, data2):
     max_size_cols = 1e4
     max_len_rows = 1e6
 
-    data = data1.add(data2, fill_value=0).astype(int)
+    data = data1.add(data2, fill_value=0).fillna(0).astype(int)
     size_cols = data.shape[1]
     size_len = data.shape[0]
 

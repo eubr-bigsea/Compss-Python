@@ -76,8 +76,8 @@ def std_scaler():
     ddf_std = DDF().parallelize(df_std, 4)
 
     from ddf_library.functions.ml.feature import StandardScaler
-    scaler = StandardScaler(input_col=cols, with_mean=True,
-                            with_std=True).fit(ddf_std)
+    scaler = StandardScaler(with_mean=True,
+                            with_std=True).fit(ddf_std, input_col=cols)
     ddf_std = scaler.transform(ddf_std)
 
     res = ddf_std.to_df(cols).values.tolist()
@@ -98,7 +98,7 @@ def pca_workflow():
     ddf = DDF().parallelize(df, 4)
 
     from ddf_library.functions.ml.feature import StandardScaler
-    ddf_std = StandardScaler(input_col=columns).fit_transform(ddf)
+    ddf_std = StandardScaler().fit_transform(ddf, input_col=columns)
 
     n_components = 2
     new_columns = ['col{}'.format(i) for i in range(n_components)]
@@ -168,12 +168,25 @@ def onehot_encoder():
 
 
 if __name__ == '__main__':
-    print("_____Testing Features operations_____")
+    import argparse
+    parser = argparse.ArgumentParser(
+        description="Testing Features operations")
+    parser.add_argument('-o', '--operation',
+                        type=int,
+                        required=True,
+                        help="""
+                         1. binarizer
+                         2. PCA workflow
+                         3. polynomial expansion
+                         4. One hot encoder
+                         5. Maxabs scaler
+                         6. Minmax scaler
+                         7. Standard scaler
+                        """)
+    arg = vars(parser.parse_args())
 
-    # binarizer()
-    # pca_workflow()
-    # poly_expansion()
-    # onehot_encoder()
-    # maxabs_scaler()
-    # minmax_scaler()
-    # std_scaler()
+    operation = arg['operation']
+    list_operations = [binarizer, pca_workflow,
+                       poly_expansion, onehot_encoder,
+                       maxabs_scaler, minmax_scaler, std_scaler]
+    list_operations[operation-1]()

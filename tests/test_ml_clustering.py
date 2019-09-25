@@ -31,19 +31,25 @@ def base():
 def kmeans(ddf, columns):
 
     from ddf_library.functions.ml.clustering import Kmeans
-    clu = Kmeans(feature_col=columns, n_clusters=3,
-                 init_mode='k-means||').fit(ddf)
-    clu.save_model('/kmeans')
-    del clu
-
-    # to test save and load models
-    clu = Kmeans(feature_col=cols, n_clusters=3, init_mode='k-means||')\
-        .load_model('/kmeans')
-    print(clu.model)
+    clu = Kmeans(n_clusters=3, init_mode='k-means||')\
+        .fit(ddf, feature_col=columns)
     clu.transform(ddf, pred_col='kmeans1').show(15)
 
 
 if __name__ == '__main__':
-    print("_____Testing Machine Learning Clustering_____")
     ddf_test, cols = base()
-    kmeans(ddf_test, cols)
+    import argparse
+
+    parser = argparse.ArgumentParser(
+            description="Testing Machine Learning Clustering")
+    parser.add_argument('-o', '--operation',
+                        type=int,
+                        required=True,
+                        help="""
+                             1. kmeans
+                            """)
+    arg = vars(parser.parse_args())
+
+    operation = arg['operation']
+    list_operations = [kmeans]
+    list_operations[operation - 1](ddf_test, cols)

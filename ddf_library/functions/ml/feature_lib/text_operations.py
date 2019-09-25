@@ -264,7 +264,8 @@ class RemoveStopWords(ModelDDF):
             output_col = "{}_rm_stopwords".format(input_col)
 
         settings['output_col'] = output_col
-        settings['stopwords'] = self.model['stopwords']
+        if 'stopwords' in self.model:
+            settings['stopwords'] = self.model['stopwords']
 
         def task_stopwords(df, params):
             return _remove_stopwords(df, params)
@@ -300,7 +301,9 @@ def _remove_stopwords(data, settings):
     output_col = settings['output_col']
     frag = settings['id_frag']
 
-    stopwords = settings['stopwords'] + settings['news_stops_words']
+    stopwords = settings['news_stops_words']
+    if 'stopwords' in settings:
+        stopwords += settings['stopwords']
     stopwords = np.unique(stopwords)
 
     tmp = []

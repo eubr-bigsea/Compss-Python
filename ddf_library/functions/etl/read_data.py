@@ -55,7 +55,7 @@ class DataReader(object):
         if storage not in ['fs', 'hdfs']:
             raise Exception("Only `fs` and `hdfs` are supported.")
 
-        if nfrag is None:
+        if nfrag in [None, '*']:
             import multiprocessing
             nfrag = multiprocessing.cpu_count()
 

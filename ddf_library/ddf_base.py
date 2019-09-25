@@ -57,13 +57,13 @@ class DDFSketch(object):
     def _ddf_initial_setup(data):
         tmp = data.cache()
         data.task_list, data.last_uuid = tmp.task_list, tmp.last_uuid
-        df = COMPSsContext.tasks_map[data.last_uuid]['function'].copy()
+        df = COMPSsContext.tasks_map[data.last_uuid]['result'].copy()
         nfrag = len(df)
         return df, nfrag, data
 
     def _get_info(self):
 
-        self._check_cache()
+        self._check_stored()
         info = COMPSsContext.schemas_map[self.last_uuid]
         if isinstance(info, list):
             if not isinstance(info[0], list):
@@ -73,27 +73,31 @@ class DDFSketch(object):
         COMPSsContext.schemas_map[self.last_uuid] = info
         return info
 
-    def _check_cache(self):
+    def _check_stored(self):
         """
 
         :return: Check if ddf variable is currently executed.
         """
-        cached = False
+        stored = False
 
         for _ in range(2):
-            if COMPSsContext.tasks_map[self.last_uuid]['status'] == 'COMPLETED':
+            if COMPSsContext.tasks_map[self.last_uuid]['status'] in \
+                [COMPSsContext.STATUS_COMPLETED,
+                 COMPSsContext.STATUS_PERSISTED,
+                 COMPSsContext.STATUS_MATERIALIZED,
+                 COMPSsContext.STATUS_TEMP_VIEW]:
                 self.partitions = \
-                    COMPSsContext.tasks_map[self.last_uuid]['function']
-                cached = True
+                    COMPSsContext.tasks_map[self.last_uuid]['result']
+                stored = True
                 break
             else:
-                self.cache()
+                self._run_compss_context()
 
-        if not cached:
-            raise Exception("ERROR - _check_cache - not cached")
+        if not stored:
+            raise Exception("ERROR - _check_stored - not stored")
 
-    def _ddf_add_task(self, task_name, opt, function,
-                      parent, n_output=1, n_input=1, status='WAIT', info=None):
+    def _ddf_add_task(self, task_name, opt, function, parent, n_output=1,
+                      n_input=1, status='WAIT', info=None, result=None):
 
         uuid_key = self._generate_uuid()
         COMPSsContext.tasks_map[uuid_key] = {
@@ -108,8 +112,10 @@ class DDFSketch(object):
 
         if info:
             COMPSsContext.schemas_map[uuid_key] = info
+        if result:
+            COMPSsContext.tasks_map[uuid_key]['result'] = result
         return uuid_key
 
-    def _run_compss_context(self, wanted=None):
-        COMPSsContext().run_workflow(wanted)
+    def _run_compss_context(self):
+        COMPSsContext().run_workflow(self)
         return self

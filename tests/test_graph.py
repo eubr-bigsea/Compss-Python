@@ -13,9 +13,10 @@ def graph_pagerank():
     result = PageRank(inlink_col='inlink', outlink_col='outlink', max_iters=7)\
         .transform(data1).select(['Vertex', 'Rank'])
 
-    print "RESULT :\n", result.cache().show()
+    print("RESULT :\n")
+    result.show()
 
 
 if __name__ == '__main__':
-    print "_____Testing Graph - PageRank_____"
+    print("_____Testing Graph - PageRank_____")
     graph_pagerank()

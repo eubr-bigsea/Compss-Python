@@ -6,6 +6,7 @@ __email__ = "lucasmsp@gmail.com"
 
 from pycompss.api.task import task
 from pycompss.functions.reduce import merge_reduce
+from pycompss.runtime.binding import Future
 
 import numpy as np
 import pandas as pd
@@ -96,6 +97,18 @@ def _get_schema(df, f):
     return info
 
 
+def check_serialization(data):
+    """
+    Check if output is a Future object or is data in-memory.
+    :param data:
+    :return:
+    """
+    if isinstance(data, list):
+        return isinstance(data[0], Future)
+
+    return isinstance(data, Future)
+
+
 def divide_idx_in_frags(ids, n_list):
     """
     Retrieve the real index (index in a fragment n) given a global index and
@@ -139,3 +152,13 @@ def create_auxiliary_column(columns):
 def col(name):
     from ddf_library.config import columns
     return columns.index(name)
+
+
+def clear_context():
+    from ddf_library.context import COMPSsContext, nx
+
+    COMPSsContext.adj_tasks = dict()
+    COMPSsContext.schemas_map = dict()
+    COMPSsContext.tasks_map = dict()
+    COMPSsContext.dag = nx.DiGraph()
+
