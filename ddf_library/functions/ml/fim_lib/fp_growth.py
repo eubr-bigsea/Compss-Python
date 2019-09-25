@@ -96,9 +96,10 @@ class FPGrowth(DDFSketch):
         result, info = step6(df_group, nfrag)
 
         uuid_key = self._ddf_add_task(task_name='task_fp_growth',
-                                      status='COMPLETED',
+                                      status='MATERIALIZED',
                                       opt=self.OPT_OTHER,
-                                      function=result,
+                                      function=self.fit_transform,
+                                      result=result,
                                       parent=[new_data.last_uuid],
                                       info=info)
 

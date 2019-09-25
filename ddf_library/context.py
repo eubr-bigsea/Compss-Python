@@ -59,36 +59,31 @@ class COMPSsContext(object):
      - n_input: a ordered list that informs the id key of its parent output
     """
 
-    def set_log(self, enabled=True):
+    @staticmethod
+    def set_log(enabled=True):
         global DEBUG
         DEBUG = enabled
 
     def context_status(self):
         n_tasks = sum([1 for k in self.tasks_map
-                       if self.tasks_map[k]['name'] != 'init'])
+                       if self.get_task_name(k) != 'init'])
         n_cached = sum([1 for k in self.tasks_map
-                        if
-                        self.tasks_map[k]['status'] == 'PERSISTED' and
-                        self.tasks_map[k]['name'] != 'init'])
+                        if self.get_task_status(k) == 'PERSISTED' and
+                        self.get_task_name(k) != 'init'])
         n_materialized = sum([1 for k in self.tasks_map
-                              if self.tasks_map[k]['status'] ==
-                              'MATERIALIZED' and self.tasks_map[k][
-                                  'name']
-                              != 'init'])
+                              if self.get_task_status(k) == 'MATERIALIZED'
+                              and self.get_task_name(k) != 'init'])
         n_output = sum([1 for k in self.tasks_map
                         if self.tasks_map[k].get("result", False) and
-                        self.tasks_map[k]['name'] != 'init'])
+                        self.get_task_name(k) != 'init'])
         n_tmp = sum([1 for k in self.tasks_map
-                     if self.tasks_map[k]['status']
-                     in ['TEMP_VIEWED', 'COMPLETED'] and
-                     self.tasks_map[k]['name'] != 'init'])
-        print("""
-        Number of tasks: {}
-        Number of Persisted tasks: {}
-        Number of Materialized tasks: {}
-        Number of temporary results saved (Temporary view and completed): {}
-        Number of output: {}
-        """.format(n_tasks, n_cached, n_materialized, n_tmp, n_output))
+                     if self.get_task_status(k) in ['TEMP_VIEWED', 'COMPLETED']
+                     and self.get_task_name(k) != 'init'])
+        print("\nNumber of tasks: {}\nNumber of Persisted tasks: {}\n"
+              "Number of Materialized tasks: {}\nNumber of temporary "
+              "results saved (Temporary view and completed): {}\nNumber "
+              "of output: {}".format(n_tasks, n_cached,
+                                     n_materialized, n_tmp, n_output))
 
         self.plot_graph(COMPSsContext.tasks_map, COMPSsContext.dag)
 
@@ -301,7 +296,26 @@ class COMPSsContext(object):
             elif jump > 0:
                 jump -= 1
 
+    def check_task_childrens(self, task_opt):
+        """
+        is possible, when join lineages that a task wil have a children
+        in the future. So, its important to keep track on that.
+        :return:
+        """
+        out_edges = self.dag.out_edges(task_opt)
+        for (inv, outv) in out_edges:
+            if self.get_task_status(outv) == self.STATUS_WAIT:
+                return True
+
+        return False
+
     def delete_old_tasks(self, current_task):
+        """
+        We keep all tasks that is not computed yet or that have a not computed
+        children.
+        :param current_task:
+        :return:
+        """
         # the same thing to schema
         for id_task in self.tasks_map:
             # take care to not delete data from leaf nodes
@@ -309,8 +323,12 @@ class COMPSsContext(object):
                 else self.dag.out_degree(id_task)
             siblings = self.get_task_sibling(current_task)
             has_siblings = len(siblings) > 1
-
-            if degree > 0 and id_task != current_task and not has_siblings:
+            childrens = self.check_task_childrens(id_task)
+            if all([degree > 0,  # do not delete leaf tasks
+                    id_task != current_task,  # or if the current task
+                    not has_siblings,  # or if is a split
+                    not childrens  # or if it has a children that needs its data
+                    ]):
                 if self.get_task_status(id_task) in [self.STATUS_COMPLETED,
                                                      self.STATUS_TEMP_VIEW]:
                     if DEBUG:
@@ -374,6 +392,9 @@ class COMPSsContext(object):
                         self.dag.in_degree(next_task) == 1):
                     break
 
+                if task_opt not in self.get_task_parents(next_task):
+                    break
+
         if DEBUG:
             print("Stages (optimized): {}".format(group_uuids))
             print("opt_functions", group_func)
@@ -423,6 +444,9 @@ class COMPSsContext(object):
                 if not all([self.get_task_opt_type(task_opt) == self.OPT_SERIAL,
                             self.get_task_opt_type(next_task) == self.OPT_SERIAL
                             ]):
+                    break
+
+                if task_opt not in self.get_task_parents(next_task):
                     break
 
         if DEBUG:

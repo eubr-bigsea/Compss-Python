@@ -96,7 +96,8 @@ class AssociationRules(DDFSketch):
 
         uuid_key = self._ddf_add_task(task_name='task_associative_rules',
                                       status='COMPLETED', opt=self.OPT_OTHER,
-                                      function=result,
+                                      result=result,
+                                      function=self.fit_transform,
                                       parent=[tmp.last_uuid],
                                       info=info)
 

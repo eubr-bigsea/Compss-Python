@@ -96,8 +96,8 @@ class DDFSketch(object):
         if not stored:
             raise Exception("ERROR - _check_stored - not stored")
 
-    def _ddf_add_task(self, task_name, opt, function,
-                      parent, n_output=1, n_input=1, status='WAIT', info=None):
+    def _ddf_add_task(self, task_name, opt, function, parent, n_output=1,
+                      n_input=1, status='WAIT', info=None, result=None):
 
         uuid_key = self._generate_uuid()
         COMPSsContext.tasks_map[uuid_key] = {
@@ -112,6 +112,8 @@ class DDFSketch(object):
 
         if info:
             COMPSsContext.schemas_map[uuid_key] = info
+        if result:
+            COMPSsContext.tasks_map[uuid_key]['result'] = result
         return uuid_key
 
     def _run_compss_context(self):

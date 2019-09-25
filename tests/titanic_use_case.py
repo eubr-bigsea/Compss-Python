@@ -11,11 +11,12 @@ def use_case1():
     or survived along with their gender and age.
     """
     df = pd.read_csv('./titanic.csv', sep='\t')
-
-    ddf1 = DDF().parallelize(df, num_of_parts=4)\
+    from ddf_library.context import COMPSsContext
+    # COMPSsContext().set_log(True)
+    ddf1 = DDF().parallelize(df, num_of_parts='*')\
         .select(['Sex', 'Age', 'Survived'])\
         .dropna(['Sex', 'Age'], mode='REMOVE_ROW')\
-        .replace({0: 'No', 1: 'Yes'}, subset=['Survived']).cache()
+        .replace({0: 'No', 1: 'Yes'}, subset=['Survived']).persist()
 
     ddf_women = ddf1.filter('(Sex == "female") and (Age >= 18)').\
         group_by(['Survived']).count(['*'], alias=['Women'])
@@ -31,6 +32,7 @@ def use_case1():
         .join(ddf_kids, key1=['Survived'], key2=['Survived'], mode='inner')
 
     ddf_final.show()
+    # COMPSsContext().context_status()
 
 
 def use_case2():
@@ -49,42 +51,46 @@ def use_case2():
     titles = {"Mr": 1, "Miss": 2, "Mrs": 3, "Master": 4, "Rare": 5}
 
     def title_checker(row):
+        from ddf_library.utils import col
+        titles = {"Mr.": 1, "Miss": 2, "Mrs.": 3, "Master": 4, "Rare": 5}
         for title in titles:
-            if title in row['Name']:
+            if title in row[col('Name')]:
                 return titles[title]
         return -1
 
     def age_categorizer(row):
+        from ddf_library.utils import col
         category = 7
 
-        if row['Age'] <= 11:
+        if row[col('Age')] <= 11:
             category = 0
-        elif (row['Age'] > 11) and (row['Age'] <= 18):
+        elif (row[col('Age')] > 11) and (row[col('Age')] <= 18):
             category = 1
-        elif (row['Age'] > 18) and (row['Age'] <= 22):
+        elif (row[col('Age')] > 18) and (row[col('Age')] <= 22):
             category = 2
-        elif (row['Age'] > 22) and (row['Age'] <= 27):
+        elif (row[col('Age')] > 22) and (row[col('Age')] <= 27):
             category = 3
-        elif (row['Age'] > 27) and (row['Age'] <= 33):
+        elif (row[col('Age')] > 27) and (row[col('Age')] <= 33):
             category = 4
-        elif (row['Age'] > 33) and (row['Age'] <= 40):
+        elif (row[col('Age')] > 33) and (row[col('Age')] <= 40):
             category = 5
-        elif (row['Age'] > 40) and (row['Age'] <= 66):
+        elif (row[col('Age')] > 40) and (row[col('Age')] <= 66):
             category = 6
 
         return category
 
     def fare_categorizer(row):
+        from ddf_library.utils import col
         category = 5
-        if row['Fare'] <= 7.91:
+        if row[col('Fare')] <= 7.91:
             category = 0
-        elif (row['Fare'] > 7.91) and (row['Fare'] <= 14.454):
+        elif (row[col('Fare')] > 7.91) and (row[col('Fare')] <= 14.454):
             category = 1
-        elif (row['Fare'] > 14.454) and (row['Fare'] <= 31):
+        elif (row[col('Fare')] > 14.454) and (row[col('Fare')] <= 31):
             category = 2
-        elif (row['Fare'] > 31) and (row['Fare'] <= 99):
+        elif (row[col('Fare')] > 31) and (row[col('Fare')] <= 99):
             category = 3
-        elif (row['Fare'] > 99) and (row['Fare'] <= 250):
+        elif (row[col('Fare')] > 99) and (row[col('Fare')] <= 250):
             category = 4
         return category
 
@@ -109,8 +115,8 @@ def use_case2():
         .map(age_categorizer, 'Age')\
         .map(fare_categorizer, 'Fare')
 
-    ddf1 = StringIndexer(input_col='Embarked')\
-        .fit_transform(ddf1, output_col='Embarked')
+    ddf1 = StringIndexer()\
+        .fit_transform(ddf1, input_col='Embarked', output_col='Embarked')
 
     """
     After that, we put together all columns (except Survived, which will be
@@ -121,8 +127,8 @@ def use_case2():
     """
 
     # scaling using StandardScaler
-    ddf1 = StandardScaler(input_col=features)\
-        .fit_transform(ddf1, output_col=features)
+    ddf1 = StandardScaler()\
+        .fit_transform(ddf1, output_col=features, input_col=features)
 
     # 70% to train the model and 30% to test
     ddf_train, ddf_test = ddf1.split(0.7)
@@ -181,6 +187,20 @@ def use_case2():
 
 
 if __name__ == '__main__':
-    print("_____Titanic's use case_____")
-    # use_case1()
-    # use_case2()
+    import argparse
+
+    parser = argparse.ArgumentParser(
+            description="Titanic's use case")
+    parser.add_argument('-o', '--operation',
+                        type=int,
+                        required=True,
+                        help="""
+                            1. use case1: ratio between women, men and kids
+                            2. use case2: prediction of survived
+                            """)
+    arg = vars(parser.parse_args())
+
+    operation = arg['operation']
+    list_operations = [use_case1,
+                       use_case2]
+    list_operations[operation - 1]()
