@@ -12,9 +12,10 @@ def ml_fpm_fpgrowth():
                          ['1,2,3,5'],
                          ['1,2']], columns=['col_0'])
 
+    from ddf_library.utils import col
     data_set = DDF() \
         .parallelize(data, 2) \
-        .map(lambda row: row['col_0'].split(','), 'col_0')
+        .map(lambda row: row[col('col_0')].split(','), 'col_0')
 
     # data_set = DDF()\
     #     .load_text('/transactions.csv', num_of_parts=4, header=False,

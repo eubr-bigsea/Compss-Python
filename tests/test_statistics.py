@@ -134,9 +134,28 @@ def kolmogorov_smirnov_one_sample():
 
 if __name__ == '__main__':
     print("_____Statistics_____")
-    # correlation()
-    # covariance()
-    # crosstab()
-    # describe()
-    # frequent_items()
-    kolmogorov_smirnov_one_sample()
+    import argparse
+
+    parser = argparse.ArgumentParser(
+            description="Testing Statistics Operations")
+    parser.add_argument('-o', '--operation',
+                        type=int,
+                        required=True,
+                        help="""
+                        1. Correlation
+                        2. Covariance
+                        3. Crosstab
+                        4. Describe
+                        5. Frequent items
+                        6. Kolmogorov-Smirnov One sample test
+                        """)
+    arg = vars(parser.parse_args())
+
+    operation = arg['operation']
+    list_operations = [correlation,
+                       covariance,
+                       crosstab,
+                       describe,
+                       frequent_items,
+                       kolmogorov_smirnov_one_sample]
+    list_operations[operation - 1]()

@@ -369,6 +369,26 @@ def fill_na():
     print("A: 9.5 - B: 14.5 - D: 19.0 - E: 10.0 - G: 19.0 - H: 5.0 - I: 8.5")
 
 
+def flow_recompute_task():
+    print("\n|-------- Flow to test task recomputation --------|\n")
+    # COMPSsContext().set_log(True)
+    data = pd.DataFrame([[i, i + 5, 'hello', i + 7] for i in range(1, 15)],
+                        columns=['a', 'b', 'c', 'd'])
+    ddf1 = DDF().parallelize(data, '*')\
+        .drop(['c']) \
+        .sample(10)
+
+    ddf2 = ddf1.distinct(['a'])\
+        .select(['a', 'b', 'd'])\
+        .select(['a', 'b']) \
+        .select(['a'])\
+        .sample(5)
+    ddf2.show()
+
+    ddf3 = ddf1.select(['a', 'b', 'c', 'd'])
+    ddf3.show()
+
+
 def hash_partition():
     print("\n|-------- Hash partition --------|\n")
     n_rows = 1000
@@ -835,11 +855,12 @@ if __name__ == '__main__':
     # balancer()
     # cast()
     # cross_join()
-    etl()
+    # etl()
     # except_all()
     # explode()
     # filter_operation()
     # fill_na()  #TODO change dtypes
+    flow_recompute_task()
     # distinct()
     #drop()
     # drop_na()
