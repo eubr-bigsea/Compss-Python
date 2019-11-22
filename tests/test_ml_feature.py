@@ -36,8 +36,8 @@ def maxabs_scaler():
     ddf_maxabs = DDF().parallelize(df_maxabs, 4)
 
     from ddf_library.functions.ml.feature import MaxAbsScaler
-    ddf_maxabs = MaxAbsScaler(input_col=cols) \
-        .fit_transform(ddf_maxabs)
+    ddf_maxabs = MaxAbsScaler() \
+        .fit_transform(ddf_maxabs, input_col=cols)
 
     res = ddf_maxabs.to_df(cols).values.tolist()
 
@@ -57,8 +57,8 @@ def minmax_scaler():
     ddf_minmax = DDF().parallelize(df_minmax, 4)
 
     from ddf_library.functions.ml.feature import MinMaxScaler
-    ddf_minmax = MinMaxScaler(input_col=cols)\
-        .fit_transform(ddf_minmax)
+    ddf_minmax = MinMaxScaler()\
+        .fit_transform(ddf_minmax, input_col=cols)
 
     res = ddf_minmax.to_df(cols).values.tolist()
     sol = [[0., 0.], [0.25, 0.25], [0.5,  0.5], [1., 1.]]

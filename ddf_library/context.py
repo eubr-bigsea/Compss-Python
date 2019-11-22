@@ -396,8 +396,8 @@ class COMPSsContext(object):
                     break
 
         if DEBUG:
-            print("Stages (optimized): {}".format(group_uuids))
-            print("opt_functions", group_func)
+            print(" - Stage: {}\n opt_functions: {}".format(
+                    group_uuids, group_func))
 
         file_serial_function = any(['file_in' in self.get_task_name(uid)
                                     for uid in group_uuids])
@@ -450,8 +450,8 @@ class COMPSsContext(object):
                     break
 
         if DEBUG:
-            print("Stages (optimized): {}".format(group_uuids))
-            print("opt_functions in last", group_func)
+            print(" - Stage: {}\n opt_functions: {}".format(
+                    group_uuids, group_func))
 
         result, info = self._execute_opt_last_tasks(group_func, inputs, n_input)
         self.save_lazy_states(result, info, group_uuids)

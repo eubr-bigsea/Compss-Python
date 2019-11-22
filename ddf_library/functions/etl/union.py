@@ -11,7 +11,8 @@ import numpy as np
 
 def union(data1, data2, settings):
     """
-    Function which do a union between two pandas DataFrame.
+    Function which do a union between two pandas DataFrame. Union can only be
+    performed on tables with the same number of columns.
 
     :param data1: A list with nfrag pandas's DataFrame;
     :param data2: Other list with nfrag pandas's DataFrame;
@@ -33,13 +34,12 @@ def union(data1, data2, settings):
     news_cols1, news_cols2 = [], []
 
     if not by_name:
-        # if we want to concatenate by the columns index, what we need to do
-        # is just rename the columns and add new columns to the less one.
-
-        n_cols = max(len(cols2), len(cols1))
+        if len(cols2) != len(cols1):
+            raise Exception("Union can only be performed on tables with the "
+                            "same number of columns.")
 
         key = 'add'
-        news_cols1 = {key: ['col_{}'.format(i) for i in range(n_cols)]}
+        news_cols1 = {key: cols1}
         news_cols2 = news_cols1
         new_columns = news_cols1[key]
 

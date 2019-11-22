@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 
 from pycompss.api.task import task
+from pycompss.api.api import compss_barrier
 from ddf_library.context import COMPSsContext
 from ddf_library.ddf import DDF
 from ddf_library.utils import generate_data
@@ -189,8 +190,9 @@ def aggregation():
         print(df)
         raise Exception('Error in aggregation')
 
-    ddf_1 = DDF().parallelize(data3, 4).group_by(['a', 'c']).count('*')
-    df = ddf_1.to_df()
+    ddf_2 = DDF().parallelize(data3, 4).group_by(['a', 'c']).count('*')
+
+    df = ddf_2.to_df()
     cond1 = len(df) == n
     cond2 = all([f == 1 for f in df['count(*)'].values])
     if not (cond1 and cond2):
@@ -369,6 +371,18 @@ def fill_na():
     print("A: 9.5 - B: 14.5 - D: 19.0 - E: 10.0 - G: 19.0 - H: 5.0 - I: 8.5")
 
 
+def flow_serial_only():
+    print("\n|-------- Flow to test serial tasks --------|\n")
+    COMPSsContext().set_log(True)
+    data = pd.DataFrame([[i, i + 5, 'hello', i + 7] for i in range(1, 15)],
+                        columns=['a', 'b', 'c', 'd'])
+    ddf1 = DDF().parallelize(data, '*') \
+        .drop(['c'])\
+        .select(['a', 'b', 'd'])\
+        .select(['a', 'b']).to_df()
+
+    print (ddf1)
+
 def flow_recompute_task():
     print("\n|-------- Flow to test task recomputation --------|\n")
     # COMPSsContext().set_log(True)
@@ -515,12 +529,17 @@ def map():
     print("\n|-------- Map operation --------|\n")
     data = pd.DataFrame([[i, i + 5, 0] for i in range(10)],
                         columns=['a', 'b', 'c'])
+    from ddf_library.utils import col
 
     def f(row):
+        from ddf_library.utils import col
         return 7 if row[col('a')] > 5 else row[col('a')]
 
-    ddf_1 = DDF().parallelize(data, 4).map(f, 'a')
+    f2 = lambda row: row[col('a')] - 9999
+
+    ddf_1 = DDF().parallelize(data, 4).map(f2, 'a')
     df1 = ddf_1.to_df()
+    print (df1)
     res_tra = pd.DataFrame([[0, 5, 0], [1, 6, 0], [2, 7, 0], [3, 8, 0],
                             [4, 9, 0], [5, 10, 0], [7, 11, 0], [7, 12, 0],
                             [7, 13, 0], [7, 14, 0]], columns=['a', 'b', 'c'])
@@ -810,9 +829,9 @@ def union():
 
     data = pd.DataFrame([["left_{}".format(i), 'middle_b']
                          for i in range(size1)], columns=['a', 'b'])
-    data1 = pd.DataFrame([["left_{}".format(i), 42, "right_{}".format(i)]
+    data1 = pd.DataFrame([[42, "right_{}".format(i)]
                           for i in range(size1, size1+size2)],
-                         columns=['b', 'a', 'c'])
+                         columns=['b', 'c'])
 
     ddf_1a = DDF().parallelize(data, 4)
     ddf_1b = DDF().parallelize(data1, 4)
@@ -860,9 +879,10 @@ if __name__ == '__main__':
     # explode()
     # filter_operation()
     # fill_na()  #TODO change dtypes
-    flow_recompute_task()
-    # distinct()
-    #drop()
+    # flow_serial_only()
+    # flow_recompute_task()
+    distinct()
+    # drop()
     # drop_na()
     # import_data()
     # intersect()

@@ -34,7 +34,7 @@ class NGram(DDFSketch):
     >>> ddf = NGram(n=3).transform(ddf_input, 'col_in', 'col_out')
     """
 
-    def __init__(self,  n=2):
+    def __init__(self, n=2):
         """
         :param n: Number integer. Default = 2;
         """
@@ -210,7 +210,8 @@ class RemoveStopWords(ModelDDF):
     >>> ddf2 = remover.transform(ddf_input, output_col='col_1')
     """
 
-    def __init__(self, case_sensitive=True, stops_words_list=None):
+    def __init__(self, case_sensitive=True, stops_words_list=None,
+                 language=None):
         """
         :param case_sensitive: To compare words using case sensitive (default);
         :param stops_words_list: Optional, a list of words to be removed.
@@ -220,6 +221,18 @@ class RemoveStopWords(ModelDDF):
         self.settings = dict()
         self.settings['news_stops_words'] = stops_words_list
         self.settings['case_sensitive'] = case_sensitive
+
+        if language:
+            from nltk.corpus import stopwords
+            try:
+                stopwords = stopwords.words(language)
+            except OSError:
+                import nltk
+                nltk.download('stopwords')
+                stopwords = stopwords.words(language)
+            self.settings['news_stops_words'] += stopwords
+            self.settings['news_stops_words'] = \
+                list(set(self.settings['news_stops_words']))
 
         self.name = 'RemoveStopWords'
         self.model = {}
@@ -290,7 +303,6 @@ def read_stopwords(data1, input_col):
 
 @task(returns=1)
 def merge_stopwords(data1, data2):
-
     data1 += data2
     return data1
 

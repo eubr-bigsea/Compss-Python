@@ -14,9 +14,10 @@ class DataReader(object):
     """
 
     def __init__(self, filepath, nfrag=None, format='csv', storage='hdfs',
-                 distributed=True, dtype=None, separator=',',
+                 dtype=None, separator=',',
                  error_bad_lines=True, header=True, na_values=None,
-                 host='localhost', port=9000):
+                 host='default', port=0, encoding=None, parse_dates=None,
+                 converters=None):
         """
         :param filepath: The absolute path where the data set is stored;
         :param nfrag: Number of partitions to split the loaded data,
@@ -28,7 +29,7 @@ class DataReader(object):
          a folder with multiple files;
         :param dtype: Type name or dict of column (default, 'str'). Data type
          for data or columns. E.g. {‘a’: np.float64, ‘b’: np.int32, ‘c’:
-         ‘Int64’} Use str or object together with suitable na_values settings
+         ‘np.int64’} Use str or object together with suitable na_values settings
          to preserve and not interpret dtype;
         :param separator: Value used to separate fields (default, ',');
         :param error_bad_lines: Lines with too many fields (e.g. a csv line
@@ -39,8 +40,13 @@ class DataReader(object):
         :param na_values: A list with the all nan characters. Default list:
          ['', '#N/A', '#N/A N/A', '#NA', '-1.#IND', '-1.#QNAN', '-NaN',
          '-nan', '1.#IND', '1.#QNAN', 'N/A', 'NA', 'NULL', 'NaN', 'nan']
-        :param host: Namenode host if storage is `hdfs` (default, 'localhost');
-        :param port: Port to Namenode host if storage is `hdfs` (default, 9000);
+        :param host: Namenode host if storage is `hdfs` (default, 'default');
+        :param port: Port to Namenode host if storage is `hdfs` (default, 0);
+        :param encoding=Encoding to use for UTF when reading (ex. ‘utf-8’);
+        :param parse_dates: bool or list of int or names or list of lists or
+         dict, default False
+        :param converters: Dict of functions for converting values in certain
+         columns. Keys can either be integers or column labels.
 
         :return A list with length N.
 
@@ -52,7 +58,7 @@ class DataReader(object):
         if format not in ['csv', 'json', 'txt']:
             raise Exception("Only `csv`, `json` and `txt` are supported.")
 
-        if storage not in ['fs', 'hdfs']:
+        if storage not in ['file', 'hdfs']:
             raise Exception("Only `fs` and `hdfs` are supported.")
 
         if nfrag in [None, '*']:
@@ -62,21 +68,19 @@ class DataReader(object):
         if dtype is None:
             dtype = 'str'
 
-        if na_values is None:
-            na_values = ['', '#N/A', '#N/A N/A', '#NA', '-1.#IND',
-                         '-1.#QNAN', '-NaN', '-nan', '1.#IND', '1.#QNAN',
-                         'N/A', 'NA', 'NULL', 'NaN', 'nan']
-
         self.filepath = filepath
         self.nfrag = nfrag
         self.format = format
         self.storage = storage
-        self.distributed = distributed
         self.dtype = [dtype]
         self.na_values = na_values
         self.error_bad_lines = error_bad_lines
         self.host = host
         self.port = port
+        self.distributed = self.check_file_or_folder(filepath)
+        self.encoding = encoding
+        self.converters = converters
+        self.parse_dates = parse_dates
 
         if self.format == 'txt':
             separator = '\n'
@@ -90,6 +94,15 @@ class DataReader(object):
             self.blocks = self.preprocessing_hdfs()
         else:
             self.blocks = self.preprocessing_fs()
+
+    def check_file_or_folder(self, fpath):
+        if self.storage == 'hdfs':
+            from hdfspycompss.hdfs import HDFS
+            distributed = HDFS(host=self.host, port=self.port).isdir(fpath)
+        else:
+            import os
+            distributed = os.path.isdir(fpath)
+        return distributed
 
     def preprocessing_hdfs(self):
         from hdfspycompss.hdfs import HDFS
@@ -130,11 +143,12 @@ class DataReader(object):
     def transform_fs_single(self):
 
         block = self.blocks[0]
-
         result, _ = _read_fs(block, self.format,
                              self.separator,
                              self.header, self.na_values,
-                             self.dtype, self.error_bad_lines, 0)
+                             self.dtype, self.error_bad_lines,
+                             self.encoding, self.converters,
+                             self.parse_dates, 0)
         result, info = parallelize(result, self.nfrag)
 
         return result, info
@@ -142,26 +156,27 @@ class DataReader(object):
     def transform_fs_distributed(self, block, params):
 
         frag = params['id_frag']
-
         result, info = _read_fs(block, self.format, self.separator,
                                 self.header, self.na_values, self.dtype,
-                                self.error_bad_lines, frag)
+                                self.error_bad_lines, self.encoding,
+                                self.converters, self.parse_dates, frag)
 
         return result, info
 
     def transform_hdfs(self, block, params):
 
         frag = params['id_frag']
-
         result, info = _read_hdfs(block, self.format, self.separator,
                                   self.header, self.na_values,
-                                  self.dtype, self.error_bad_lines, frag)
+                                  self.dtype, self.error_bad_lines,
+                                  self.encoding, self.converters,
+                                  self.parse_dates, frag)
 
         return result, info
 
 
 def _read_fs(filename, format_type, separator, header, na_values,
-             dtype, error_bad_lines, frag):
+             dtype, error_bad_lines, encoding, converters, parse_dates, frag):
     """Load a fragment of a csv or json file in a pandas DataFrame."""
 
     if format_type in ['csv', 'txt']:
@@ -171,7 +186,8 @@ def _read_fs(filename, format_type, separator, header, na_values,
 
         df = pd.read_csv(filename, sep=separator, na_values=na_values,
                          header=header, dtype=dtype[0],
-                         error_bad_lines=error_bad_lines)
+                         error_bad_lines=error_bad_lines, encoding=encoding,
+                         converters=converters, parse_dates=parse_dates)
 
         if not header:
             n_cols = len(df.columns)
@@ -188,7 +204,7 @@ def _read_fs(filename, format_type, separator, header, na_values,
 
 
 def _read_hdfs(blk, format_type, separator, header, na_values, dtype,
-               error_bad_lines, frag):
+               error_bad_lines, encoding, converters, parse_dates, frag):
     """Load a DataFrame from a HDFS file."""
     print("[INFO - ReadOperationHDFS] - ", blk)
     from hdfspycompss.block import Block
@@ -197,7 +213,10 @@ def _read_hdfs(blk, format_type, separator, header, na_values, dtype,
     df = Block(blk).read_dataframe(format_file=format_type, infer=False,
                                    separator=separator, dtype=dtype[0],
                                    header=header, na_values=na_values,
-                                   error_bad_lines=error_bad_lines)
+                                   error_bad_lines=error_bad_lines,
+                                   encoding=encoding,
+                                   converters=converters,
+                                   parse_dates=parse_dates)
 
     info = generate_info(df, frag)
     return df, info

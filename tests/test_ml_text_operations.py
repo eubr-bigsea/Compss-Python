@@ -8,8 +8,15 @@ import pandas as pd
 def tokenizer():
     from ddf_library.functions.ml.feature import Tokenizer
 
-    data1 = DDF() \
-        .load_text('/text_data.txt', num_of_parts=4, header=False, sep='\n')
+    corpus = [
+        'This is the first document',
+        'This document is the second document',
+        'And this is the third one',
+        'Is this the first document',
+    ]
+    data1 = pd.DataFrame.from_dict({'col_0': corpus})
+
+    data1 = DDF().parallelize(data1)
 
     tokens = Tokenizer().transform(data1, input_col='col_0')
     tokens.show()
@@ -20,7 +27,8 @@ def remove_stopwords():
     from ddf_library.functions.ml.feature import RemoveStopWords
 
     ddf1 = tokenizer()
-    remover = RemoveStopWords(stops_words_list=['rock', 'destined', 'the'])
+    remover = RemoveStopWords(stops_words_list=['rock', 'destined', 'the'],
+                              language='english')
 
     result = remover\
         .transform(ddf1, input_col='col_0_tokens', output_col='col_1')
@@ -89,17 +97,18 @@ def tf_idf_vectorizer():
 def categorization():
 
     from ddf_library.functions.ml.feature import StringIndexer, IndexToString
-    data = pd.DataFrame([(0, "a"), (1, "b"), (2, "c"),
-                         (3, "a"), (4, "a"), (5, "c")],
-                        columns=["id", "category"])
+    data = pd.DataFrame([(0, "a", 'b'), (1, "b", 'b'), (2, "c", 'b'),
+                         (3, "a", 'b'), (4, "a", 'b'), (5, "c", 'b')],
+                        columns=["id", "category", 'category2'])
 
-    data = DDF().parallelize(data, 4).select(['id', 'category'])
+    data = DDF().parallelize(data, 4)
 
-    model = StringIndexer().fit(data, input_col='category')
+    model = StringIndexer().fit(data, input_col=['category', 'category2'])
     converted = model.transform(data)
 
     result = IndexToString(model=model) \
-        .transform(converted, input_col='category_indexed').drop(['id'])
+        .transform(converted, input_col=['category_indexed',
+                                         'category2_indexed']).drop(['id'])
 
     result.show()
 

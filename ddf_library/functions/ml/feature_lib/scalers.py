@@ -35,32 +35,33 @@ class MaxAbsScaler(ModelDDF):
     >>> ddf2 = scaler.transform(ddf1)
     """
 
-    def __init__(self, input_col, remove=False):
+    def __init__(self, remove=False):
         """
-        :param input_col: Column with the features;
         :param remove: Remove input columns after execution (default, False).
         """
         super(MaxAbsScaler, self).__init__()
 
-        if not isinstance(input_col, list):
-            input_col = [input_col]
-
         self.settings = dict()
-        self.settings['input_col'] = input_col
         self.settings['remove'] = remove
 
         self.model = {}
         self.name = 'MaxAbsScaler'
 
-    def fit(self, data):
+    def fit(self, data, input_col):
         """
         Fit the model.
 
         :param data: DDF
+        :param input_col: Column with the features;
         :return: trained model
         """
 
         df, nfrag, tmp = self._ddf_initial_setup(data)
+
+        if not isinstance(input_col, list):
+            input_col = [input_col]
+
+        self.settings['input_col'] = input_col
 
         columns = self.settings['input_col']
         # generate a list of the min and the max element to each subset.
@@ -75,16 +76,17 @@ class MaxAbsScaler(ModelDDF):
         self.model = {'model': minmax, 'algorithm': self.name}
         return self
 
-    def fit_transform(self, data, output_col=None):
+    def fit_transform(self, data, input_col, output_col=None):
         """
         Fit the model and transform.
 
         :param data: DDF
+        :param input_col: Column with the features;
         :param output_col: Output column;
         :return: DDF
         """
 
-        self.fit(data)
+        self.fit(data, input_col)
         ddf = self.transform(data, output_col)
 
         return ddf
@@ -106,8 +108,9 @@ class MaxAbsScaler(ModelDDF):
             settings['output_col'] = settings['input_col']
 
         elif not isinstance(output_col, list):
-            settings['output_col'] = ['{}{}'.format(col, output_col)
-                                      for col in settings['input_col']]
+            settings['output_col'] = \
+                ['{}{}'.format(col, output_col)
+                 for col in settings['input_col']]
         else:
             settings['output_col'] = output_col
 
@@ -182,43 +185,42 @@ class MinMaxScaler(ModelDDF):
     >>> ddf2 = scaler.fit_transform(ddf1, input_col=['col1', 'col2'])
     """
 
-    def __init__(self, input_col, feature_range=(0, 1), remove=False):
+    def __init__(self, feature_range=(0, 1), remove=False):
         """
-        :param input_col: Column with the features;
         :param feature_range: A tuple with the range, default is (0,1);
         :param remove: Remove input columns after execution (default, False).
         """
         super(MinMaxScaler, self).__init__()
-
-        if not isinstance(input_col, list):
-            input_col = [input_col]
 
         if not isinstance(feature_range, tuple) or \
                 feature_range[0] >= feature_range[1]:
             raise Exception("You must inform a valid `feature_range`.")
 
         self.settings = dict()
-        self.settings['input_col'] = input_col
         self.settings['feature_range'] = feature_range
         self.settings['remove'] = remove
 
         self.model = {}
         self.name = 'MinMaxScaler'
 
-    def fit(self, data):
+    def fit(self, data, input_col):
         """
         Fit the model.
 
         :param data: DDF
+        :param input_col: Column with the features;
         :return: trained model
         """
 
+        if not isinstance(input_col, list):
+            input_col = [input_col]
+
+        self.settings['input_col'] = input_col
         df, nfrag, tmp = self._ddf_initial_setup(data)
 
-        columns = self.settings['input_col']
         # generate a list of the min and the max element to each subset.
         minmax_partial = \
-            [_agg_maxmin(df[f], columns) for f in range(nfrag)]
+            [_agg_maxmin(df[f], input_col) for f in range(nfrag)]
 
         # merge them into only one list
         minmax = merge_reduce(_merge_maxmin, minmax_partial)
@@ -228,16 +230,17 @@ class MinMaxScaler(ModelDDF):
         self.model = {'model': minmax, 'algorithm': self.name}
         return self
 
-    def fit_transform(self, data, output_col=None):
+    def fit_transform(self, data, input_col, output_col=None):
         """
         Fit the model and transform.
 
         :param data: DDF
+        :param input_col: Column with the features;
         :param output_col: Output column;
         :return: DDF
         """
 
-        self.fit(data)
+        self.fit(data, input_col)
         ddf = self.transform(data, output_col)
 
         return ddf

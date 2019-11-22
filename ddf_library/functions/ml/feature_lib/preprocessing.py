@@ -392,18 +392,19 @@ class StringIndexer(ModelDDF):
         super(StringIndexer, self).__init__()
 
         self.settings = dict()
-
-        self.model = {}
+        self.model = dict()
         self.name = 'StringIndexer'
 
     def fit(self, data, input_col):
         """
         Fit the model.
         :param data: DDF
-        :param input_col: Input string column;
+        :param input_col: list of columns;
         :return: a trained model
         """
 
+        input_col = [input_col] \
+            if isinstance(input_col, str) else input_col
         self.settings['input_col'] = input_col
 
         df, nfrag, tmp = self._ddf_initial_setup(data)
@@ -419,7 +420,7 @@ class StringIndexer(ModelDDF):
         """
         Fit the model and transform.
         :param data: DDF
-        :param input_col: Input string column;
+        :param input_col: list of columns;
         :param output_col:  Output indexes column.
         :return: DDF
         """
@@ -432,7 +433,7 @@ class StringIndexer(ModelDDF):
     def transform(self, data, output_col=None):
         """
         :param data: DDF
-        :param output_col:  Output indexes column.
+        :param output_col:  List of output indexes column.
         :return: DDF
         """
 
@@ -443,7 +444,12 @@ class StringIndexer(ModelDDF):
         settings['model'] = self.model['model'].copy()
 
         if output_col is None:
-            output_col = "{}_indexed".format(settings['input_col'])
+            output_col = ["{}_indexed".format(col)
+                          for col in settings['input_col']]
+
+        output_col = [output_col] \
+            if isinstance(output_col, str) else output_col
+
         settings['output_col'] = output_col
 
         def task_string_to_indexer(df, params):
@@ -459,10 +465,13 @@ class StringIndexer(ModelDDF):
 
 
 @task(returns=1)
-def get_indexes(data, in_col):
+def get_indexes(data, in_cols):
     """Create partial model to convert string to index."""
-    data = data[in_col].dropna().unique().tolist()
-    return data
+    result = []
+    for in_col in in_cols:
+        result.extend(data[in_col].dropna().unique().tolist())
+    result = np.unique(result).tolist()
+    return result
 
 
 @task(returns=1)
@@ -476,13 +485,14 @@ def merge_mapper(data1, data2):
 
 def _string_to_indexer(data, settings):
     """Convert string to index based in the model."""
-    in_col = settings['input_col']
-    out_col = settings['output_col']
+    in_cols = settings['input_col']
+    out_cols = settings['output_col']
     mapper = settings['model']
     frag = settings['id_frag']
 
-    news = np.arange(len(mapper), dtype=int)
-    data[out_col] = data[in_col].replace(to_replace=mapper, value=news)
+    for in_col, out_col in zip(in_cols, out_cols):
+        news = np.arange(len(mapper), dtype=int)
+        data[out_col] = data[in_col].replace(to_replace=mapper, value=news)
 
     info = generate_info(data, frag)
     return data, info
@@ -518,14 +528,18 @@ class IndexToString(ModelDDF):
         """
 
         self.check_fitted_model()
-        self.settings['input_col'] = input_col
 
         task_list = data.task_list
         settings = self.settings.copy()
         settings['model'] = self.model['model'].copy()
 
+        settings['input_col'] = [input_col] \
+            if isinstance(input_col, str) else input_col
+
         if not output_col:
-            settings['output_col'] = str(input_col)+"_converted"
+            output_col = ["{}_converted".format(col)
+                          for col in settings['input_col']]
+            settings['output_col'] = output_col
 
         def task_index_to_string(df, params):
             return _index_to_string(df, params)
@@ -544,8 +558,9 @@ def _index_to_string(data, settings):
     output_col = settings['output_col']
     mapper = settings['model']
     frag = settings['id_frag']
-    news = np.arange(len(mapper), dtype=int)
-    data[output_col] = data[input_col].replace(to_replace=news, value=mapper)
+    for in_col, out_col in zip(input_col, output_col):
+        news = np.arange(len(mapper), dtype=int)
+        data[out_col] = data[in_col].replace(to_replace=news, value=mapper)
 
     info = generate_info(data, frag)
     return data, info

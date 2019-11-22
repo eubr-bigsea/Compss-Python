@@ -28,7 +28,8 @@ def hash_partition(data, settings):
     """
     info = settings['info'][0]
     nfrag = len(data)
-    cols = settings['columns']
+    cols = settings['columns'] if settings['columns'] else []
+
     if len(cols) == 0:
         cols = info['cols']
         settings['columns'] = cols

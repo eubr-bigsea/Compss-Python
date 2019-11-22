@@ -52,7 +52,9 @@ class DDF(DDFSketch):
         if last_uuid != 'init':
 
             self.task_list = task_list.copy()
-            self.task_list.append(last_uuid)
+            # used to handle groupby tasks
+            if last_uuid not in self.task_list:
+                self.task_list.append(last_uuid)
 
         else:
             last_uuid = self._ddf_add_task(task_name='init',
@@ -72,31 +74,29 @@ class DDF(DDFSketch):
     def __str__(self):
         return "DDF object."
 
-    def load_text(self, filename, num_of_parts='*',
-                  header=True, sep=',', dtype=None, na_values=None,
-                  storage='hdfs', host='localhost', port=9000,
-                  distributed=False):
+    def load_text(self, path, num_of_parts='*',
+                  header=True, sep=',', dtypes=None, na_values=None,
+                  encoding=None, parse_dates=None, converters=None):
         """
         Create a DDF from a common file system or from HDFS.
 
-        :param filename: Input file name;
+        :param path: Input file path, e.g.: file:/tmp/filename;
         :param num_of_parts: number of partitions (default, '*' meaning all
          cores available in master CPU);
         :param header: Use the first line as DataFrame header (default, True);
-        :param dtype: Type name or dict of column (default, 'str'). Data type
+        :param dtypes: Type name or dict of column (default, 'str'). Data type
          for data or columns. E.g. {‘a’: np.float64, ‘b’: np.int32, ‘c’:
          ‘Int64’} Use str or object together with suitable na_values settings
          to preserve and not interpret dtype;
         :param sep: separator delimiter (default, ',');
         :param na_values: A list with the all nan characters. Default list:
          ['', '#N/A', '#N/A N/A', '#NA', '-1.#IND', '-1.#QNAN', '-NaN',
-         '-nan', '1.#IND', '1.#QNAN', 'N/A', 'NA', 'NULL', 'NaN', 'nan']
-        :param storage: *'hdfs'* to use HDFS as storage or *'fs'* to use the
-         common file system;
-        :param distributed: if the absolute path represents a unique file or
-         a folder with multiple files;
-        :param host: Namenode host if storage is `hdfs` (default, 'localhost');
-        :param port: Port to Namenode host if storage is `hdfs` (default, 9000);
+         '-nan', '1.#IND', '1.#QNAN', 'N/A', 'NA', 'NULL', 'NaN', 'nan'];
+        :param encoding=Encoding to use for UTF when reading (ex. ‘utf-8’);
+        :param parse_dates: bool or list of int or names or list of lists or
+         dict, default False
+        :param converters: Dict of functions for converting values in certain
+         columns. Keys can either be integers or column labels.
         :return: DDF.
 
         ..see also: Visit this `link <https://docs.scipy.org/doc/numpy-1.15
@@ -106,20 +106,31 @@ class DDF(DDFSketch):
 
         >>> ddf1 = DDF().load_text('/titanic.csv', num_of_parts='*')
         """
-        if storage not in ['hdfs', 'fs']:
-            raise Exception('`hdfs` and `fs` storage are supported.')
+        host, port = None, None
+        import re
+        if re.match(r"hdfs:+", path):
+            storage = 'hdfs'
+            host, filename = path[0:5].split(':')
+            port, filename = filename.split('/', 1)
+        elif re.match(r"file:+", path):
+            storage = 'file'
+            filename = path[5:]
+        else:
+            raise Exception('`hdfs:` and `file:` storage are supported.')
 
         from .functions.etl.read_data import DataReader
-
+        if na_values:
+            na_values = na_values if len(na_values) else None
         data_reader = DataReader(filename, nfrag=num_of_parts,
                                  format='csv', storage=storage,
-                                 distributed=distributed,
-                                 dtype=dtype, separator=sep, header=header,
-                                 na_values=na_values, host=host, port=port)
+                                 dtype=dtypes, separator=sep, header=header,
+                                 na_values=na_values, host=host, port=port,
+                                 encoding=encoding, parse_dates=parse_dates,
+                                 converters=converters)
 
-        if storage is 'fs':
+        if storage is 'file':
 
-            if distributed:
+            if data_reader.distributed:
                 blocks = data_reader.get_blocks()
                 COMPSsContext.tasks_map[self.last_uuid]['function'] = blocks
 
@@ -210,7 +221,7 @@ class DDF(DDFSketch):
         return DDF(task_list=self.task_list, last_uuid=new_state_uuid)
 
     def load_shapefile(self, shp_path, dbf_path, polygon='points',
-                       attributes=None, num_of_parts=4):
+                       attributes=None, num_of_parts='*'):
         """
         Reads a shapefile using the shp and dbf file.
 
@@ -233,6 +244,10 @@ class DDF(DDFSketch):
 
         if attributes is None:
             attributes = []
+
+        if isinstance(num_of_parts, str):
+            import multiprocessing
+            num_of_parts = multiprocessing.cpu_count()
 
         settings = dict()
         settings['shp_path'] = shp_path
@@ -517,7 +532,6 @@ class DDF(DDFSketch):
              }
 
         tmp = DDF(task_list=task_list, last_uuid=new_state_uuid)
-
         return GroupedDDF(tmp)
 
     def fillna(self, subset=None, mode='VALUE', value=None):
@@ -910,14 +924,14 @@ class DDF(DDFSketch):
 
         return DDF(task_list=task_list, last_uuid=new_state_uuid)
 
-    def distinct(self, cols):
+    def distinct(self, cols=None):
         # noinspection PyUnresolvedReferences
         """
         Returns a new DDF containing the distinct rows in this DDF.
 
         Is it a Lazy function: No
 
-        :param cols: subset of columns;
+        :param cols: subset of columns. None to use all columns;
         :return: DDF
 
         :Example:
@@ -1774,24 +1788,31 @@ class DDF(DDFSketch):
 
         return DDF(task_list=task_list, last_uuid=new_state_uuid)
 
-    def save(self, filename, format='csv', storage='hdfs',
-             header=True, mode='overwrite', host='localhost', port=9000):
+    def save(self, filepath, format='csv', header=True, mode='overwrite'):
         # noinspection PyUnresolvedReferences
         """
         Save the data in the storage.
 
         Is it a Lazy function: Yes
 
-        :param filename: output name;
+        :param filepath: output file path;
         :param format: format file, csv, json or a pickle;
-        :param storage: 'fs' to common file system or 'hdfs' to use HDFS;
         :param header: save with the columns header;
         :param mode: 'overwrite' (default) if file exists, 'ignore' or 'error'.
          Only used when storage is 'hdfs'.
-        :param host: Namenode HDFS host;
-        :param port: Namenode HDFS port
         :return: Return the same input data to perform others operations;
         """
+        host, port = None, None
+        import re
+        if re.match(r"hdfs://+", filepath):
+            storage = 'hdfs'
+            host, filename = filepath[0:7].split(':')
+            port, filename = filename.split('/', 1)
+        elif re.match(r"file://+", filepath):
+            storage = 'file'
+            filename = filepath[7:]
+        else:
+            raise Exception('`hdfs:` and `file:` storage are supported.')
 
         from ddf_library.functions.etl.save_data import SaveOperation
 
@@ -1837,6 +1858,17 @@ class DDF(DDFSketch):
         tmp = pd.DataFrame.from_dict({'columns': info['cols'],
                                       'dtypes': info['dtypes']})
         return tmp
+
+    def dtypes(self):
+        # noinspection PyUnresolvedReferences
+        """
+        Returns a list of dtypes of each column on the current DDF.
+
+        :return: a list
+        """
+
+        info = self._get_info()['dtypes']
+        return info
 
     def select(self, columns):
         # noinspection PyUnresolvedReferences
@@ -2182,8 +2214,8 @@ class DDF(DDFSketch):
         # noinspection PyUnresolvedReferences
         """
         Combine this data set with some other DDF. Also as standard in SQL,
-        this function resolves columns by position (not by name). The old names
-        are replaced to `col_` + index.
+        this function resolves columns by position (not by name). Union can
+        only be performed on tables with the same number of columns.
 
         Is it a Lazy function: No
 

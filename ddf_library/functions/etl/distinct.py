@@ -52,12 +52,11 @@ def distinct_stage_1(data, settings):
 def distinct_stage_2(data, settings):
     """Remove duplicate rows."""
 
-    cols = settings['columns']
+    cols = settings['columns'] if settings['columns'] else []
     frag = settings['id_frag']
 
-    all_cols = data.columns
     if len(cols) == 0:
-        cols = all_cols
+        cols = list(data.columns)
 
     data = data.drop_duplicates(cols, keep='first').reset_index(drop=True)
     info = generate_info(data, frag)

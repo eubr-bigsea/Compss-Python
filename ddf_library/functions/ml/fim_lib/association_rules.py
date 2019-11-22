@@ -52,6 +52,9 @@ class AssociationRules(DDFSketch):
     def set_min_confidence(self, confidence):
         self.settings['confidence'] = confidence
 
+    def set_max_rules(self, count):
+        self.settings['max_rules'] = count
+
     def fit_transform(self, data, col_item='items', col_freq='support'):
         """
         Fit the model.
@@ -90,6 +93,10 @@ class AssociationRules(DDFSketch):
         for f in range(nfrag):
             result[f], info[f] = _ar_calculate_conf(out1[f], out2[f],
                                                     settings, f)
+
+        # TODO: sort by confidence, sample, rebase ?
+        if settings['max_rules'] > 0:
+            pass
 
         compss_delete_object(out1)
         compss_delete_object(out2)

@@ -33,7 +33,7 @@ class GroupedDDF(DDF):
         self.last2 = ddf_var.task_list[-2]
         self.parameters = COMPSsContext().get_task_function(self.last_uuid)[1]
 
-        super(GroupedDDF, self).__init__(task_list=ddf_var.task_list,
+        super(GroupedDDF, self).__init__(task_list=ddf_var.task_list.copy(),
                                          last_uuid=self.last_uuid)
 
     def agg(self, exprs, alias=None):
