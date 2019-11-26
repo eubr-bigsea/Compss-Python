@@ -4,6 +4,7 @@
 __author__ = "Lucas Miguel S Ponce"
 __email__ = "lucasmsp@gmail.com"
 
+from pycompss.api.parameter import FILE_IN
 from pycompss.api.task import task
 from pycompss.functions.reduce import merge_reduce
 from pycompss.runtime.binding import Future
@@ -91,8 +92,9 @@ def merge_schema(schema1, schema2):
     return schema
 
 
-@task(returns=1)
-def _get_schema(df, f):
+@task(data_input=FILE_IN,returns=1)
+def _get_schema(data_input, f):
+    df = read_stage_file(data_input)
     info = generate_info(df, f)
     return info
 
@@ -162,3 +164,19 @@ def clear_context():
     COMPSsContext.tasks_map = dict()
     COMPSsContext.dag = nx.DiGraph()
 
+
+def create_stage_files(stage_id, nfrag, suffix=''):
+    file_names = ['/tmp/ddf_stage{}_{}block{}_{}.parquet'.format(stage_id,
+                                                                 suffix,
+                                                                 f,
+                                                                 _gen_uuid())
+                  for f in range(nfrag)]
+    return file_names
+
+
+def read_stage_file(filepath, cols=None):
+    return pd.read_parquet(filepath, columns=cols)
+
+
+def save_stage_file(filepath, df):
+    return df.to_parquet(filepath)

@@ -1,3 +1,4 @@
-x = 10
+x = {'input_data': 'FILE_IN'}
+
 
 columns = []

@@ -94,7 +94,7 @@ class DDFSketch(object):
                 self._run_compss_context()
 
         if not stored:
-            raise Exception("ERROR - _check_stored - not stored")
+            raise Exception("[ERROR] - _check_stored - cache cant be done")
 
     def _ddf_add_task(self, task_name, opt, function, parent, n_output=1,
                       n_input=1, status='WAIT', info=None, result=None):
@@ -117,5 +117,5 @@ class DDFSketch(object):
         return uuid_key
 
     def _run_compss_context(self):
-        COMPSsContext().run_workflow(self)
+        COMPSsContext().run_workflow(self.task_list)
         return self

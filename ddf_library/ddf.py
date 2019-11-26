@@ -13,7 +13,7 @@ Public classes:
       Distributed DataFrame (DDF), the abstraction of this library.
 """
 
-from pycompss.api.api import compss_wait_on
+from pycompss.api.api import compss_wait_on, compss_wait_on_file, compss_open
 
 from ddf_library.ddf_base import DDFSketch
 from ddf_library.context import COMPSsContext
@@ -204,7 +204,8 @@ class DDF(DDFSketch):
             import multiprocessing
             num_of_parts = multiprocessing.cpu_count()
 
-        result, info = parallelize(df, num_of_parts)
+        stage_id = COMPSsContext.stage_id
+        result, info = parallelize(df, num_of_parts, stage_id)
 
         new_state_uuid = self._generate_uuid()
         COMPSsContext.schemas_map[new_state_uuid] = info
@@ -2175,28 +2176,30 @@ class DDF(DDFSketch):
 
         self._check_stored()
 
-        if check_serialization(self.partitions):
-            res = compss_wait_on(self.partitions)
-            COMPSsContext.tasks_map[self.last_uuid]['result'] = res
-            status = COMPSsContext.STATUS_TEMP_VIEW
-            if COMPSsContext.tasks_map[self.last_uuid]['status'] == \
-                    COMPSsContext.STATUS_PERSISTED:
-                status = COMPSsContext.STATUS_MATERIALIZED
-            COMPSsContext.tasks_map[self.last_uuid]['status'] = status
+        print(self.partitions)
 
-        else:
-            res = self.partitions
+        # if check_serialization(self.partitions):
+        print('Retrieving blocks')
+        res = [compss_open(f, mode='rb') for f in self.partitions]
+        # COMPSsContext.tasks_map[self.last_uuid]['result'] = res
+        status = COMPSsContext.STATUS_TEMP_VIEW
+        if COMPSsContext.tasks_map[self.last_uuid]['status'] == \
+                COMPSsContext.STATUS_PERSISTED:
+            status = COMPSsContext.STATUS_MATERIALIZED
+        COMPSsContext.tasks_map[self.last_uuid]['status'] = status
+
+        # else:
+        #     print('Blocks')
+        #     res = self.partitions
+
+        print(res)
+        for i, f in enumerate(res):
+            res[i] = pd.read_parquet(f, columns=columns)
 
         if split:
-            if columns:
-                df = [d[columns] for d in res]
-            else:
-                df = res
+            df = res
         else:
             df = concatenate_pandas(res)
-            if columns:
-                df = df[columns]
-
             df.reset_index(drop=True, inplace=True)
         return df
 

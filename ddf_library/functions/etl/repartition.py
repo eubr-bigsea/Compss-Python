@@ -5,10 +5,11 @@ __author__ = "Lucas Miguel S Ponce"
 __email__ = "lucasmsp@gmail.com"
 
 from pycompss.api.task import task
-
+from pycompss.api.parameter import FILE_IN
 from pycompss.api.constraint import constraint
 
-from ddf_library.utils import create_auxiliary_column
+from ddf_library.utils import create_auxiliary_column, read_stage_file, \
+    create_stage_files, save_stage_file
 from .parallelize import _generate_distribution2
 from .balancer import _balancer
 import ddf_library.config as config
@@ -58,11 +59,12 @@ def repartition(data, settings):
     return output
 
 
-@task(returns=config.x)
-def split_by_hash(df, cols, info, nfrag):
+@task(input_data=FILE_IN, returns=config.x)
+def split_by_hash(input_data, cols, info, nfrag):
     splits = [pd.DataFrame(columns=info['cols'], dtype=info['dtypes'])
               for _ in range(nfrag)]
 
+    df = read_stage_file(input_data)
     df.reset_index(drop=True, inplace=True)
     if len(df) > 0:
         if len(cols) > 1:
@@ -86,11 +88,12 @@ def hashcode(x):
 
 
 # @constraint(ComputingUnits="2")  # approach to have more available memory
-@task(returns=config.x)
-def split_by_boundary(data, cols, ascending, bounds, info, nfrag):
+@task(input_data=FILE_IN, returns=config.x)
+def split_by_boundary(input_data, cols, ascending, bounds, info, nfrag):
     splits = [pd.DataFrame(columns=info['cols'], dtype=info['dtypes'])
               for _ in range(nfrag)]
 
+    data = read_stage_file(input_data)
     if len(data) > 0:
         aux_col = create_auxiliary_column(info['cols'])
         data.reset_index(drop=True, inplace=True)
@@ -137,7 +140,7 @@ def split_by_boundary(data, cols, ascending, bounds, info, nfrag):
     return splits
 
 
-def merge_n_reduce(f, data, n):
+def merge_n_reduce(f, data, n, fileout):
     """
     Apply f cumulatively to the items of data,
     from left to right in binary tree structure, so as to
@@ -161,7 +164,7 @@ def merge_n_reduce(f, data, n):
             xs = [q.popleft() for _ in range(min_d)]
             xs = [new_data[i] for i in xs] + [0] * (n - min_d - 1)
 
-            new_data[x] = f(new_data[x], *xs)
+            new_data[x] = f(fileout, new_data[x], *xs)
             q.append(x)
 
         else:

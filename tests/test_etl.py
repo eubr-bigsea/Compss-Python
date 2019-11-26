@@ -13,7 +13,7 @@ from pandas.util.testing import assert_frame_equal
 
 
 def etl():
-    # COMPSsContext().set_log(True)
+    COMPSsContext().set_log(True)
     url = ('https://archive.ics.uci.edu/ml/'
            'machine-learning-databases/abalone/abalone.data')
     cols = ['sex', 'length', 'diam', 'height', 'weight', 'rings']
@@ -108,6 +108,7 @@ def etl():
     print('-' * 50)
     print("etl_test_5: Check if operations with multiple inputs are working")
 
+    input()
     data6 = data5b.join(data5a, ['rings'], ['rings'])\
         .filter('(rings > 8)')\
         .select(['sex_l', 'height_l', 'weight_l', 'rings'])
@@ -881,7 +882,7 @@ if __name__ == '__main__':
     # fill_na()  #TODO change dtypes
     # flow_serial_only()
     # flow_recompute_task()
-    distinct()
+    # distinct()
     # drop()
     # drop_na()
     # import_data()
@@ -905,7 +906,7 @@ if __name__ == '__main__':
     # select_expression()
     # show()
     # sort()
-    # split()
+    split()
     # subtract()
     # take()
     # union()

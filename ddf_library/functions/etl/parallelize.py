@@ -3,14 +3,15 @@
 
 from pycompss.functions.reduce import merge_reduce
 from pycompss.api.api import compss_wait_on, compss_delete_object
-from ddf_library.utils import merge_schema, _get_schema
+from ddf_library.utils import merge_schema, _get_schema, create_stage_files, \
+    save_stage_file
 
 import pandas as pd
 import numpy as np
 import sys
 
 
-def parallelize(data, nfrag):
+def parallelize(data, nfrag, stage_id):
     """
     Method to split the data in nfrag parts. This method simplifies
     the use of chunks.
@@ -29,7 +30,7 @@ def parallelize(data, nfrag):
 
     cols = data.columns.tolist()
     data.reset_index(drop=True, inplace=True)
-    result = [pd.DataFrame(columns=cols) for _ in range(nfrag)]
+    result = create_stage_files(stage_id, nfrag)
 
     info = {'cols': cols,
             'dtypes': data.dtypes.values,
@@ -38,11 +39,11 @@ def parallelize(data, nfrag):
             }
 
     begin = 0
-    for i, n in enumerate(sizes):
+    for i, (n, out) in enumerate(zip(sizes, result)):
         partition = data.iloc[begin:begin+n]
         begin += n
         partition.reset_index(drop=True, inplace=True)
-        result[i] = partition
+        save_stage_file(out, partition)
         info['size'].append(len(partition))
         info['memory'].append(sys.getsizeof(partition))
 

@@ -6,9 +6,11 @@ __email__ = "lucasmsp@gmail.com"
 
 from pycompss.api.task import task
 from pycompss.api.constraint import constraint
+from pycompss.api.parameter import FILE_OUT
 from pycompss.api.api import compss_wait_on, compss_delete_object
 
-from ddf_library.utils import concatenate_pandas, _get_schema
+from ddf_library.utils import concatenate_pandas, _get_schema, \
+    create_stage_files, save_stage_file
 
 import pandas as pd
 import numpy as np
@@ -70,16 +72,15 @@ def range_partition(data, settings):
                 .split_by_boundary(data[f], cols, ascending, bounds,
                                    info, nfrag_target)
 
-        result = [[] for _ in range(nfrag_target)]
+        result = create_stage_files(settings['stage_id'], nfrag_target)
         info = [{} for _ in range(nfrag_target)]
-
         for f in range(nfrag_target):
             if nfrag_target == 1:
                 tmp = splits
             else:
                 tmp = [splits[t][f] for t in range(nfrag)]
-            result[f] = ddf_library.functions.etl.repartition\
-                .merge_n_reduce(concat_n_pandas, tmp, nfrag)
+            ddf_library.functions.etl.repartition\
+                .merge_n_reduce(concat_n_pandas, tmp, nfrag, result[f])
             info[f] = _get_schema(result[f], f)
 
         compss_delete_object(splits)
@@ -154,11 +155,10 @@ def _determine_bounds(sample, cols, ascending, nfrag_target):
 
 
 # @constraint(ComputingUnits="2")  # approach to have more memory
-@task(returns=1)
-def concat_n_pandas(*args):
+@task(data_out=FILE_OUT)
+def concat_n_pandas(data_out, *args):
     dfs = [df for df in args if isinstance(df, pd.DataFrame)]
     dfs = pd.concat(dfs, ignore_index=True, sort=False)
     del args
     dfs = dfs.infer_objects()
-
-    return dfs
+    save_stage_file(data_out, dfs)

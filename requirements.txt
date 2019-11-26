@@ -10,3 +10,4 @@ networkx>=1.11
 pyshp>=1.2.11
 nltk>=3.4
 graphviz>=0.5.2
+prettytable>=0.7.2
