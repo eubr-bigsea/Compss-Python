@@ -12,33 +12,33 @@ from pycompss.api.task import task
 import pandas as pd
 
 
-def intersect(data1, data2, settings):
-    """
-    Returns a new DataFrame containing rows in both frames.
-
-    :param data1: A list with nfrag pandas's DataFrame;
-    :param data2: Other list with nfrag pandas's DataFrame;
-    :param settings: A dictionary with:
-        - distinct: True to be equivalent to INTERSECT, False to INTERSECT ALL;
-    :return: Returns a new pandas DataFrame
-
-    .. note:: Rows with NA elements will not be take in count.
-    """
-
-    data1, data2, _ = intersect_stage_1(data1, data2, settings)
-
-    nfrag = len(data1)
-    result = [[] for _ in range(nfrag)]
-    info = result[:]
-
-    for f in range(nfrag):
-        settings['id_frag'] = f
-        result[f], info[f] = intersect_stage_2(data1[f], data2[f],
-                                               settings.copy())
-
-    output = {'key_data': ['data'], 'key_info': ['info'],
-              'data': result, 'info': info}
-    return output
+# def intersect(data1, data2, settings):
+#     """
+#     Returns a new DataFrame containing rows in both frames.
+#
+#     :param data1: A list with nfrag pandas's DataFrame;
+#     :param data2: Other list with nfrag pandas's DataFrame;
+#     :param settings: A dictionary with:
+#         - distinct: True to be equivalent to INTERSECT, False to INTERSECT ALL;
+#     :return: Returns a new pandas DataFrame
+#
+#     .. note:: Rows with NA elements will not be take in count.
+#     """
+#
+#     data1, data2, _ = intersect_stage_1(data1, data2, settings)
+#
+#     nfrag = len(data1)
+#     result = [[] for _ in range(nfrag)]
+#     info = result[:]
+#
+#     for f in range(nfrag):
+#         settings['id_frag'] = f
+#         result[f], info[f] = task_intersect_stage_2(data1[f], data2[f],
+#                                                     settings.copy())
+#
+#     output = {'key_data': ['data'], 'key_info': ['info'],
+#               'data': result, 'info': info}
+#     return output
 
 
 def intersect_stage_1(data1, data2, settings):

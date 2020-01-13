@@ -14,21 +14,16 @@ def select(data, settings):
     :param data: pandas's DataFrame;
     :param settings:
         - 'columns': A list with the columns names which will be selected;
-    :return: A pandas's DataFrame with only the columns choosed.
+    :return: A pandas's DataFrame with only the selected columns.
     """
+
     columns = settings['columns']
     frag = settings['id_frag']
-    # remove the columns that not in list1
     fields = [field for field in columns if field in data.columns]
-    if len(fields) == 0:
-        raise Exception("The columns passed as parameters "
-                        "do not belong to this dataframe.")
+    data = data[fields]
 
-    result = data[fields]
-    del data
-
-    info = generate_info(result, frag)
-    return result, info
+    info = generate_info(data, frag)
+    return data, info
 
 
 def select_exprs(data, settings):

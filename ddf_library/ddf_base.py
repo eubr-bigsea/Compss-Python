@@ -64,13 +64,13 @@ class DDFSketch(object):
     def _get_info(self):
 
         self._check_stored()
-        info = COMPSsContext.schemas_map[self.last_uuid]
+        info = COMPSsContext.catalog[self.last_uuid]
         if isinstance(info, list):
             if not isinstance(info[0], list):
                 info = merge_reduce(merge_schema, info)
         info = compss_wait_on(info)
 
-        COMPSsContext.schemas_map[self.last_uuid] = info
+        COMPSsContext.catalog[self.last_uuid] = info
         return info
 
     def _check_stored(self):
@@ -111,7 +111,7 @@ class DDFSketch(object):
         }
 
         if info:
-            COMPSsContext.schemas_map[uuid_key] = info
+            COMPSsContext.catalog[uuid_key] = info
         if result:
             COMPSsContext.tasks_map[uuid_key]['result'] = result
         return uuid_key

@@ -4,10 +4,12 @@
 __author__ = "Lucas Miguel S Ponce"
 __email__ = "lucasmsp@gmail.com"
 
-from ddf_library.utils import generate_info
+from ddf_library.utils import generate_info, read_stage_file, \
+    create_stage_files, save_stage_file
 
 from pycompss.api.task import task
 from pycompss.api.api import compss_wait_on
+from pycompss.api.parameter import FILE_IN, FILE_OUT
 
 import numpy as np
 
@@ -32,12 +34,12 @@ def take(data, settings):
     data, settings = take_stage_1(data, settings)
 
     nfrag = len(data)
-    result = [[] for _ in range(nfrag)]
-    info = result[:]
+    info = [[] for _ in range(nfrag)]
+    result = create_stage_files(nfrag)
 
     for f in range(nfrag):
         settings['id_frag'] = f
-        result[f], info[f] = task_take_stage_2(data[f], settings.copy())
+        info[f] = task_take_stage_2(data[f], result[f], settings.copy())
 
     output = {'key_data': ['data'], 'key_info': ['info'],
               'data': result, 'info': info}
@@ -86,6 +88,8 @@ def take_stage_2(data, settings):
     return data, info
 
 
-@task(returns=2)
-def task_take_stage_2(data, settings):
-    return take_stage_2(data, settings)
+@task(returns=1, input_data=FILE_IN, output_data=FILE_OUT)
+def task_take_stage_2(input_data, output_data, settings):
+    data = read_stage_file(input_data)
+    data, info = take_stage_2(data, settings)
+    save_stage_file(output_data, data)

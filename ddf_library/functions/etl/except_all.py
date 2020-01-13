@@ -81,8 +81,3 @@ def except_all_stage_2(df1, df2, settings):
 
     info = generate_info(df1, frag)
     return df1, info
-
-
-@task(returns=2)
-def task_except_all_stage_2(data1, data2, settings):
-    return except_all_stage_2(data1, data2, settings)

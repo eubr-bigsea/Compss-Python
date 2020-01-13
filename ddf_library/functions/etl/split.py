@@ -13,7 +13,7 @@ def random_split(input_files, settings):
     """
     Randomly splits a DataFrame into two distinct DataFrames.
 
-    :param data: A list with nfrag pandas's DataFrame;
+    :param input_files: A list with nfrag pandas's DataFrame;
     :param settings: A dictionary that contains:
       - 'percentage': Percentage to split the data (default, 0.5);
       - 'seed': Optional, seed in case of deterministic random operation;
@@ -33,11 +33,11 @@ def random_split(input_files, settings):
     info1 = [[] for _ in range(nfrag)]
     info2 = info1[:]
 
-    stage_id = settings['stage_id']
-    out1 = create_stage_files(stage_id, nfrag, suffix='split1_')
-    out2 = create_stage_files(stage_id, nfrag, suffix='split2_')
-    for i, (fraction, o1, o2) in enumerate(zip(idx, out1, out2)):
-        info1[i], info2[i] = _split_get(input_files[i], o1, o2, fraction, i)
+    out1 = create_stage_files(nfrag, suffix='split1_')
+    out2 = create_stage_files(nfrag, suffix='split2_')
+    for i, fraction in enumerate(idx):
+        info1[i], info2[i] = _split_get(input_files[i], out1[i],
+                                        out2[i], fraction, i)
 
     output = {'key_data': ['data1', 'data2'],
               'key_info': ['info1', 'info2'],
@@ -88,15 +88,15 @@ def _split_get(data, fout1, fout2, value, frag):
     data = read_stage_file(data)
     if n > 0:
         data = data.sample(frac=1).reset_index(drop=True)
-
         split2 = data.iloc[value:].reset_index(drop=True)
         data = data.iloc[:value].reset_index(drop=True)
-        save_stage_file(fout1, data)
     else:
         split2 = data.copy()
-        save_stage_file(fout2, split2)
 
     info1 = generate_info(data, frag)
     info2 = generate_info(split2, frag)
+
+    save_stage_file(fout1, data)
+    save_stage_file(fout2, split2)
 
     return info1, info2

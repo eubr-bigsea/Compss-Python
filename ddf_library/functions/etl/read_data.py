@@ -130,7 +130,8 @@ class DataReader(object):
             import os.path
             files = sorted(os.listdir(self.filepath))
             for f, name in enumerate(files):
-                obj = "{}/{}".format(self.filepath, name)
+                sep = '' if self.filepath[-1] == '/' else '/'
+                obj = "{}{}{}".format(self.filepath, sep, name)
                 blocks.append(obj)
         else:
             blocks.append(self.filepath)

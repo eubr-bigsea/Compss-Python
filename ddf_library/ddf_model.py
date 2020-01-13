@@ -16,137 +16,99 @@ class ModelDDF(DDFSketch):
     def __init__(self):
         super(ModelDDF, self).__init__()
 
-        self.settings = dict()
-        self.model = {}
-        self.name = ''
+        self.model = dict()
+        self.name = self.__class__.__name__
+        self.output_col = None
+        self.input_col = None
+        self.remove = False
 
     def check_fitted_model(self):
-        if self.model.get('algorithm', '42') != self.name:
+        if self.model.get('algorithm') != self.name:
             raise Exception("Model is not fitted by {}".format(self.name))
 
-    def save_model(self, filepath, storage='hdfs', overwrite=True,
-                   namenode='localhost', port=9000):
+    def save_model(self, filepath, overwrite=True):
         # noinspection PyUnresolvedReferences
         """
         Save a machine learning model as a binary file in a storage.
 
         :param filepath: The output absolute path name;
-        :param storage: *'hdfs'* to save in HDFS storage or *'fs'* to save in
-         common file system;
         :param overwrite: Overwrite if file already exists (default, True);
-        :param namenode: IP or DNS address to NameNode (default, *'localhost'*);
-        :param port: NameNode port (default, 9000);
         :return: self
 
         :Example:
 
-        >>> ml_model.save_model('/trained_model')
+        >>> cls = KMeans().fit(dataset, input_col='features')
+        >>> cls.save_model('hdfs://localhost:9000/trained_model')
         """
-        if storage not in ['hdfs', 'fs']:
-            raise Exception('Only `hdfs` and `fs` storage are supported.')
+        host, port = None, None
+        import re
+        if re.match(r"hdfs:\/\/+", filepath):
+            storage = 'hdfs'
+            host, filename = filepath[7:].split(':')
+            port, filename = filename.split('/', 1)
+            filename = '/' + filename
+            port = int(port)
+        elif re.match(r"file:\/\/+", filepath):
+            storage = 'file'
+            filename = filepath[7:]
+        else:
+            raise Exception('`hdfs:` and `file:` storage are supported.')
 
         if storage == 'hdfs':
-            save_model_hdfs(self.model, filepath, namenode,
-                            port, overwrite)
+            from hdfspycompss.hdfs import HDFS
+            dfs = HDFS(host=host, port=port)
+
+            if dfs.exist(filename) and not overwrite:
+                raise Exception("File already exists in this source.")
+
+            to_save = pickle.dumps(self.__dict__, 0)
+            dfs.write_block(filename, to_save, append=False,
+                            overwrite=True, binary=True)
+
         else:
-            save_model_fs(self.model, self.settings)
+            with open(filepath, 'wb') as output:
+                pickle.dump(self.__dict__, output, pickle.HIGHEST_PROTOCOL)
 
         return self
 
-    def load_model(self, filepath, storage='hdfs', namenode='localhost',
-                   port=9000):
+    def load_model(self, filepath):
         # noinspection PyUnresolvedReferences
         """
         Load a machine learning model from a binary file in a storage.
 
         :param filepath: The absolute path name;
-        :param storage: *'hdfs'* to load from HDFS storage or *'fs'* to load
-         from common file system;
-        :param storage: *'hdfs'* to save in HDFS storage or *'fs'* to save in
-         common file system;
-        :param namenode: IP or DNS address to NameNode (default, *'localhost'*).
-         Note: Only if storage is *'hdfs'*;
-        :param port: NameNode port (default, 9000). Note: Only if storage is
-         *'hdfs'*;
         :return: self
 
         :Example:
 
-        >>> ml_model = ml_algorithm().load_model('/saved_model')
+        >>> ml_model = Kmeans().load_model('hdfs://localhost:9000/model')
         """
-        if storage not in ['hdfs', 'fs']:
-            raise Exception('Only `hdfs` and `fs` storage are supported.')
+        host, port = None, None
+        import re
+        if re.match(r"hdfs:\/\/+", filepath):
+            storage = 'hdfs'
+            host, filename = filepath[7:].split(':')
+            port, filename = filename.split('/', 1)
+            filename = '/' + filename
+            port = int(port)
+        elif re.match(r"file:\/\/+", filepath):
+            storage = 'file'
+            filename = filepath[7:]
+        else:
+            raise Exception('`hdfs:` and `file:` storage are supported.')
 
         if storage == 'hdfs':
-            self.model = load_model_hdfs(filepath, namenode, port)
+            from hdfspycompss.hdfs import HDFS
+            from hdfspycompss.block import Block
+
+            blk = HDFS(host=host, port=port)\
+                .find_n_blocks(filename, 1)
+            to_load = Block(blk).read_binary()
+
+            if len(to_load) > 0:
+                self.__dict__ = pickle.loads(to_load)
         else:
-            self.model = load_model_fs(filepath)
+            with open(filename, 'rb') as data:
+                self.__dict__ = pickle.load(data)
 
         return self
-
-
-def save_model_hdfs(model, path, namenode='localhost', port=9000,
-                    overwrite=True):
-    """
-    Save a machine learning model as a binary file in a HDFS storage.
-
-    :param model: Model to be stored in HDFS;
-    :param path: The path of the file from the '/' of the HDFS;
-    :param namenode: The host of the Namenode HDFS; (default, 'localhost')
-    :param port: NameNode port (default, 9000).
-    :param overwrite: Overwrite if file already exists (default, True);
-    """
-    from hdfspycompss.hdfs import HDFS
-    dfs = HDFS(host=namenode, port=port)
-
-    if dfs.exist(path) and not overwrite:
-        raise Exception("File already exists in this source.")
-
-    to_save = pickle.dumps(model, 0)
-    dfs.write_block(path, to_save, append=False, overwrite=True)
-    return [-1]
-
-
-def save_model_fs(model, filepath):
-    """
-    Save a machine learning model as a binary file in a common file system.
-
-    Save a machine learning model into a file.
-    :param filepath: Absolute file path;
-    :param model: The model to be saved
-    """
-    with open(filepath, 'wb') as output:
-        pickle.dump(model, output, pickle.HIGHEST_PROTOCOL)
-
-
-def load_model_hdfs(filepath, namenode='localhost', port=9000):
-    """
-    Load a machine learning model from a HDFS source.
-
-    :param filepath: The path of the file from the '/' of the HDFS;
-    :param namenode: The host of the Namenode HDFS; (default, 'localhost')
-    :param port: NameNode port (default, 9000).
-    :return: Returns a model
-    """
-    from hdfspycompss.hdfs import HDFS
-    from hdfspycompss.block import Block
-
-    dfs = HDFS(host=namenode, port=port)
-    blk = dfs.find_n_blocks(filepath, 1)
-    to_load = Block(blk).read_binary()
-    model = None
-    if len(to_load) > 0:
-        model = pickle.loads(to_load)
-    return model
-
-
-def load_model_fs(filepath):
-    """
-    Load a machine learning model from a common file system.
-
-    :param filepath: Absolute file path;
-    :return: Returns a model.
-    """
-    with open(filepath, 'rb') as data:
-        model = pickle.load(data)
-    return model

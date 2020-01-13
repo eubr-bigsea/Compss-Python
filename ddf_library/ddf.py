@@ -13,7 +13,7 @@ Public classes:
       Distributed DataFrame (DDF), the abstraction of this library.
 """
 
-from pycompss.api.api import compss_wait_on, compss_wait_on_file, compss_open
+from pycompss.api.api import compss_wait_on, compss_wait_on_file, compss_open, compss_delete_file
 
 from ddf_library.ddf_base import DDFSketch
 from ddf_library.context import COMPSsContext
@@ -80,7 +80,7 @@ class DDF(DDFSketch):
         """
         Create a DDF from a common file system or from HDFS.
 
-        :param path: Input file path, e.g.: file:/tmp/filename;
+        :param path: Input file path, e.g.: file:///tmp/filename;
         :param num_of_parts: number of partitions (default, '*' meaning all
          cores available in master CPU);
         :param header: Use the first line as DataFrame header (default, True);
@@ -104,17 +104,18 @@ class DDF(DDFSketch):
 
         :Example:
 
-        >>> ddf1 = DDF().load_text('/titanic.csv', num_of_parts='*')
+        >>> ddf1 = DDF().load_text('file:///tmp/titanic.csv', num_of_parts='*')
         """
         host, port = None, None
         import re
-        if re.match(r"hdfs:+", path):
+        if re.match(r"hdfs:\/\/+", path):
             storage = 'hdfs'
-            host, filename = path[0:5].split(':')
+            host, filename = path[7:].split(':')
             port, filename = filename.split('/', 1)
-        elif re.match(r"file:+", path):
+            filename = '/' + filename
+        elif re.match(r"file:\/\/+", path):
             storage = 'file'
-            filename = path[5:]
+            filename = path[7:]
         else:
             raise Exception('`hdfs:` and `file:` storage are supported.')
 
@@ -124,15 +125,16 @@ class DDF(DDFSketch):
         data_reader = DataReader(filename, nfrag=num_of_parts,
                                  format='csv', storage=storage,
                                  dtype=dtypes, separator=sep, header=header,
-                                 na_values=na_values, host=host, port=port,
+                                 na_values=na_values, host=host, port=int(port),
                                  encoding=encoding, parse_dates=parse_dates,
                                  converters=converters)
 
         if storage is 'file':
 
             if data_reader.distributed:
+                # setting the last task's input (init)
                 blocks = data_reader.get_blocks()
-                COMPSsContext.tasks_map[self.last_uuid]['function'] = blocks
+                COMPSsContext.tasks_map[self.last_uuid]['result'] = blocks
 
                 def reader(block, params):
                     return data_reader.transform_fs_distributed(block, params)
@@ -164,7 +166,7 @@ class DDF(DDFSketch):
                      'parent': [self.last_uuid]
                      }
 
-                COMPSsContext.schemas_map[new_state_uuid] = info
+                COMPSsContext.catalog[new_state_uuid] = info
         else:
             blocks = data_reader.get_blocks()
 
@@ -175,7 +177,7 @@ class DDF(DDFSketch):
 
             new_state_uuid = self._generate_uuid()
             COMPSsContext.tasks_map[new_state_uuid] = \
-                {'name': 'load_text',
+                {'name': 'load_text-0in',
                  'status': self.STATUS_WAIT,
                  'optimization': self.OPT_SERIAL,
                  'function': [reader, {}],
@@ -191,7 +193,8 @@ class DDF(DDFSketch):
         Distributes a DataFrame into DDF.
 
         :param df: DataFrame input
-        :param num_of_parts: number of partitions
+        :param num_of_parts: number of partitions (default, '*' meaning all
+         cores available in master CPU);
         :return: DDF
 
         :Example:
@@ -204,17 +207,18 @@ class DDF(DDFSketch):
             import multiprocessing
             num_of_parts = multiprocessing.cpu_count()
 
-        stage_id = COMPSsContext.stage_id
-        result, info = parallelize(df, num_of_parts, stage_id)
+        def task_parallelize(_, params):
+            return parallelize(df, num_of_parts)
+
+        # result, info = parallelize(df, num_of_parts)
 
         new_state_uuid = self._generate_uuid()
-        COMPSsContext.schemas_map[new_state_uuid] = info
+        # COMPSsContext.catalog[new_state_uuid] = info
         COMPSsContext.tasks_map[new_state_uuid] = \
             {'name': 'parallelize',
-             'status': self.STATUS_MATERIALIZED,
+             'status': self.STATUS_WAIT,
              'optimization': self.OPT_OTHER,
-             'function': None,
-             'result': result,
+             'function': [task_parallelize, {}],
              'output': 1, 'input': 0,
              'parent': [self.last_uuid]
              }
@@ -232,10 +236,9 @@ class DDF(DDFSketch):
                 polygon coordinates (default, 'points');
         :param attributes: List of attributes to keep in the DataFrame,
                 empty to use all fields;
-        :param num_of_parts: The number of fragments;
+        :param num_of_parts: number of partitions (default, '*' meaning all
+         cores available in master CPU);
         :return: DDF
-
-        .. note:: $ pip install pyshp
 
         :Example:
 
@@ -261,7 +264,7 @@ class DDF(DDFSketch):
         result, info = read_shapefile(settings, num_of_parts)
 
         new_state_uuid = self._generate_uuid()
-        COMPSsContext.schemas_map[new_state_uuid] = info
+        COMPSsContext.catalog[new_state_uuid] = info
         COMPSsContext.tasks_map[new_state_uuid] = \
             {'name': 'load_shapefile',
              'status': self.STATUS_COMPLETED,
@@ -274,13 +277,14 @@ class DDF(DDFSketch):
 
         return DDF(task_list=self.task_list, last_uuid=new_state_uuid)
 
-    def import_data(self, df_list, info=None):
+    def import_data(self, df_list, info=None, parquet=False):
         # noinspection PyUnresolvedReferences
         """
         Import a previous Pandas DataFrame list into DDF abstraction.
         Replace old data if DDF is not empty.
 
         :param df_list: DataFrame input
+        :param parquet: if data is saved as list of parquet files
         :param info: (Optional) A list of columns names, data types and size
          in each partition;
         :return: DDF
@@ -292,17 +296,19 @@ class DDF(DDFSketch):
 
         from .functions.etl.parallelize import import_to_ddf
 
-        result, info = import_to_ddf(df_list, info)
+        def task_import_to_ddf(x, y):
+            return import_to_ddf(df_list, parquet=parquet, schema=info)
+        result, info = import_to_ddf(df_list, parquet=parquet, schema=info)
 
         new_state_uuid = self._generate_uuid()
-        COMPSsContext.schemas_map[new_state_uuid] = info
+        COMPSsContext.catalog[new_state_uuid] = info
 
         tmp = DDF()
         COMPSsContext.tasks_map[new_state_uuid] = \
             {'name': 'import_data',
              'status': self.STATUS_COMPLETED,
              'optimization': self.OPT_OTHER,
-             'function': None,
+             'function': [task_import_to_ddf, {}],
              'result': result,
              'output': 1, 'input': 0,
              'parent': [tmp.last_uuid]
@@ -495,7 +501,7 @@ class DDF(DDFSketch):
 
         >>> ddf1.group_by(group_by=['col_1']).mean(['col_2']).first(['col_2'])
         """
-        settings = {'groupby': group_by, 'operation': {}}
+        settings = {'groupby': group_by, 'operation': []}
         from .groupby import GroupedDDF
         from .functions.etl.aggregation import aggregation_stage_1, \
             aggregation_stage_2
@@ -514,7 +520,8 @@ class DDF(DDFSketch):
              'function': [task_aggregation_stage_1, settings],
              'parent': [self.last_uuid],
              'output': 1,
-             'input': 1
+             'input': 1,
+             'info': True
              }
 
         last_uuid = new_state_uuid
@@ -925,14 +932,15 @@ class DDF(DDFSketch):
 
         return DDF(task_list=task_list, last_uuid=new_state_uuid)
 
-    def distinct(self, cols=None):
+    def distinct(self, cols, opt=True):
         # noinspection PyUnresolvedReferences
         """
         Returns a new DDF containing the distinct rows in this DDF.
 
         Is it a Lazy function: No
 
-        :param cols: subset of columns. None to use all columns;
+        :param cols: subset of columns;
+        :param opt: Tries to reduce partial output size before shuffle;
         :return: DDF
 
         :Example:
@@ -941,7 +949,7 @@ class DDF(DDFSketch):
         """
         from .functions.etl.distinct import distinct_stage_1, distinct_stage_2
 
-        settings = {'columns': cols}
+        settings = {'columns': cols, 'opt_function': opt}
 
         def task_distinct_stage_1(df, params):
             return distinct_stage_1(df, params)
@@ -1803,13 +1811,14 @@ class DDF(DDFSketch):
          Only used when storage is 'hdfs'.
         :return: Return the same input data to perform others operations;
         """
-        host, port = None, None
+        host, port = 'default', 0
         import re
-        if re.match(r"hdfs://+", filepath):
+        if re.match(r"hdfs:\/\/+", filepath):
             storage = 'hdfs'
-            host, filename = filepath[0:7].split(':')
+            host, filename = filepath[7:].split(':')
             port, filename = filename.split('/', 1)
-        elif re.match(r"file://+", filepath):
+            filename = '/' + filename
+        elif re.match(r"file:\/\/+", filepath):
             storage = 'file'
             filename = filepath[7:]
         else:
@@ -1823,7 +1832,7 @@ class DDF(DDFSketch):
                     'header': header,
                     'mode': mode,
                     'host': host,
-                    'port': port}
+                    'port': int(port)}
 
         SaveOperation().preprocessing(settings)
 
@@ -1989,10 +1998,13 @@ class DDF(DDFSketch):
 
         from .functions.etl.take import take
         res = take(self.partitions, {'value': n,
-                                     'info': [{'size': n_rows_frags}]})
-        res = compss_wait_on(res['data'])
-        df = concatenate_pandas(res)
+                                     'info': [{'size': n_rows_frags}]})['data']
 
+        df = [0 for _ in range(len(res))]
+        for i, f in enumerate(res):
+            df[i] = pd.read_parquet(compss_open(f, mode='rb'))
+            compss_delete_file(f)
+        df = concatenate_pandas(df)
         print(df)
         return self
 
@@ -2176,30 +2188,26 @@ class DDF(DDFSketch):
 
         self._check_stored()
 
-        print(self.partitions)
-
-        # if check_serialization(self.partitions):
-        print('Retrieving blocks')
-        res = [compss_open(f, mode='rb') for f in self.partitions]
-        # COMPSsContext.tasks_map[self.last_uuid]['result'] = res
-        status = COMPSsContext.STATUS_TEMP_VIEW
-        if COMPSsContext.tasks_map[self.last_uuid]['status'] == \
-                COMPSsContext.STATUS_PERSISTED:
-            status = COMPSsContext.STATUS_MATERIALIZED
-        COMPSsContext.tasks_map[self.last_uuid]['status'] = status
-
-        # else:
-        #     print('Blocks')
-        #     res = self.partitions
-
-        print(res)
-        for i, f in enumerate(res):
-            res[i] = pd.read_parquet(f, columns=columns)
-
-        if split:
-            df = res
+        if not check_serialization(self.partitions):
+            print('Retrieving blocks')
+            res = [compss_open(f, mode='rb') for f in self.partitions]
+            # COMPSsContext.tasks_map[self.last_uuid]['result'] = res #TODO
+            status = COMPSsContext.STATUS_TEMP_VIEW
+            if COMPSsContext.tasks_map[self.last_uuid]['status'] == \
+                    COMPSsContext.STATUS_PERSISTED:
+                status = COMPSsContext.STATUS_MATERIALIZED
+            COMPSsContext.tasks_map[self.last_uuid]['status'] = status
         else:
-            df = concatenate_pandas(res)
+            # res = self.partitions
+            res = [compss_open(f, mode='rb') for f in self.partitions]
+
+        if isinstance(columns, str):
+            columns = [columns]
+        if split:
+            df = [pd.read_parquet(f, columns=columns) for f in res]
+        else:
+            df = concatenate_pandas([pd.read_parquet(f, columns=columns)
+                                     for f in res])
             df.reset_index(drop=True, inplace=True)
         return df
 

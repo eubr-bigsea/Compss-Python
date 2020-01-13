@@ -14,7 +14,7 @@ from ddf_library.utils import merge_info, check_serialization, \
 
 from pycompss.api.task import task
 from pycompss.api.parameter import FILE_IN, FILE_OUT
-from pycompss.api.api import compss_wait_on, compss_delete_object
+from pycompss.api.api import compss_wait_on, compss_delete_file, compss_wait_on_file
 
 import copy
 import networkx as nx
@@ -28,10 +28,9 @@ class COMPSsContext(object):
     Controls the DDF tasks executions
     """
     adj_tasks = dict()
-    schemas_map = dict()
+    catalog = dict()
     tasks_map = dict()
     dag = nx.DiGraph()
-    stage_id = 0
 
     OPT_SERIAL = 'serial'  # it can be grouped with others operations
     OPT_OTHER = 'other'  # it can not be performed any kind of task optimization
@@ -50,7 +49,7 @@ class COMPSsContext(object):
     task_map: a dictionary to stores all following information about a task:
 
      - name: task name;
-     - status: WAIT or COMPLETED;
+     - status: WAIT, COMPLETED, TEMP_VIEWED, PERSISTED, MATERIALIZED
      - parent: a list with its parents uuid;
      - output: number of output;
      - input: number of input;
@@ -61,6 +60,18 @@ class COMPSsContext(object):
          multiple outputs, like split task);
      - n_input: a ordered list that informs the id key of its parent output
     """
+
+    def stop(self):
+        """To avoid that COMPSs sends back all partial result at end."""
+        for id_task in list(self.tasks_map.keys()):
+            data = self.get_task_return(id_task)
+
+            if check_serialization(data):
+                for f in data:
+                    compss_delete_file(f)
+
+            self.tasks_map.pop(id_task)
+            self.catalog.pop(id_task, None)
 
     @staticmethod
     def set_log(enabled=True):
@@ -105,7 +116,7 @@ class COMPSsContext(object):
 
         t = PrettyTable(['Order', 'Task name', 'uuid', 'Result is stored'])
         for i, uuid in enumerate(selected_tasks):
-            t.add_row([i,
+            t.add_row([i+1,
                        tasks_map[uuid]['name'],
                        uuid[:8],
                        isinstance(tasks_map[uuid].get("result", None), list)
@@ -230,11 +241,11 @@ class COMPSsContext(object):
         if self.tasks_map[child_task].get('info', False):
             task_and_operation[1]['info'] = []
             for p in id_parents:
-                sc = self.schemas_map[p]
+                sc = self.catalog[p]
                 if isinstance(sc, list):
                     sc = merge_info(sc)
                     sc = compss_wait_on(sc)
-                    self.schemas_map[p] = sc
+                    self.catalog[p] = sc
                 task_and_operation[1]['info'].append(sc)
 
         return task_and_operation
@@ -294,27 +305,23 @@ class COMPSsContext(object):
                 inputs = self.get_input_data(id_parents)
 
                 if self.get_task_opt_type(current_task) == self.OPT_OTHER:
-                    self.run_opt_others_tasks(current_task, id_parents, inputs,
-                                              self.stage_id)
-                    self.stage_id += 1
+                    self.run_opt_others_tasks(current_task, id_parents, inputs)
 
                 elif self.get_task_opt_type(current_task) == self.OPT_SERIAL:
                     jump = self.run_opt_serial_tasks(current_task,
-                                                     lineage[i_task:], inputs,
-                                                     self.stage_id)
-                    self.stage_id += 1
+                                                     lineage[i_task:], inputs)
 
                 elif self.get_task_opt_type(current_task) == self.OPT_LAST:
                     jump = self.run_opt_last_tasks(current_task,
                                                    lineage[i_task:],
-                                                   inputs, id_parents,
-                                                   self.stage_id)
-                    self.stage_id += 2
+                                                   inputs, id_parents)
+
                 current_task = lineage[i_task + jump]
-                self.delete_old_tasks(current_task)
 
             elif jump > 0:
                 jump -= 1
+
+            self.delete_old_tasks(current_task, lineage)
 
     def check_task_childrens(self, task_opt):
         """
@@ -329,7 +336,7 @@ class COMPSsContext(object):
 
         return False
 
-    def delete_old_tasks(self, current_task):
+    def delete_old_tasks(self, current_task, lineage):
         """
         We keep all tasks that is not computed yet or that have a not computed
         children.
@@ -337,33 +344,44 @@ class COMPSsContext(object):
         :return:
         """
         # the same thing to schema
-        for id_task in self.tasks_map:
+        # print (lineage)
+        for id_task in lineage:
             # take care to not delete data from leaf nodes
             degree = -1 if id_task not in self.dag.nodes \
                 else self.dag.out_degree(id_task)
             siblings = self.get_task_sibling(current_task)
             has_siblings = len(siblings) > 1
-            childrens = self.check_task_childrens(id_task)
-            if all([degree > 0,  # do not delete leaf tasks
-                    id_task != current_task,  # or if the current task
-                    not has_siblings,  # or if is a split
-                    not childrens  # or if it has a children that needs its data
-                    ]):
-                if self.get_task_status(id_task) in [self.STATUS_COMPLETED,
-                                                     self.STATUS_TEMP_VIEW]:
-                    if DEBUG:
-                        print("[delete_old_tasks] - id: {} - TASK NAME: {} "
-                              "- Degree: {} - siblings : {}"
-                              .format(id_task, self.tasks_map[id_task]['name'],
-                                      degree, siblings))
-                    data = self.tasks_map[id_task].get('result', False)
-                    if check_serialization(data):
-                        compss_delete_object(data)
-                    self.set_task_status(id_task, self.STATUS_WAIT)
-                    self.tasks_map[id_task]['result'] = None
-                    self.schemas_map.pop(id_task, None)
+            # childrens = self.check_task_childrens(id_task)
+            #print("EVALUATING"+ id_task[0:8] + " "+ self.get_task_name(id_task))
+            #print(' - childrens:', not childrens)
 
-    def run_opt_others_tasks(self, child_task, id_parents, inputs, stage_id):
+            if id_task == current_task:
+                return 1
+            elif all([degree > 0,  # do not delete leaf tasks
+                    #id_task != current_task,  # if is not the current task
+                    not has_siblings,  # if is a split
+                    # not childrens,  # if it has a children that needs its data
+                    self.get_task_status(id_task) in
+                    [self.STATUS_COMPLETED, self.STATUS_TEMP_VIEW]
+                    ]):
+
+                if DEBUG:
+                    print(" - delete_old_tasks - {} ({})"
+                          "- Degree: {} - has siblings: {}"
+                          .format(self.tasks_map[id_task]['name'],
+                                  id_task[:8],
+                                  degree, len(siblings) > 1))
+                data = self.get_task_return(id_task)
+
+                if check_serialization(data):
+                    for f in data:
+                        compss_delete_file(f)
+
+                self.set_task_status(id_task, self.STATUS_WAIT)
+                self.set_task_result(id_task, None)
+                self.catalog.pop(id_task, None)
+
+    def run_opt_others_tasks(self, child_task, id_parents, inputs):
         """
         The current operation can not be grouped with other operations, so,
         it must be executed separated.
@@ -374,13 +392,20 @@ class COMPSsContext(object):
                     self.tasks_map[child_task]['name']))
 
         operation = self.set_operation(child_task, id_parents)
-
         # execute this operation that returns a dictionary
-        output_dict = self._execute_task(operation, inputs, stage_id)
+        output_dict = self._execute_task(operation, inputs)
 
-        self.save_opt_others_tasks(output_dict, child_task)
+        if self.tasks_map[child_task]['name'] == 'save':
 
-    def run_opt_serial_tasks(self, child_task, lineage, inputs, stage_id):
+            self.catalog[child_task] = \
+                self.catalog.get(id_parents[0], None)
+            self.set_task_result(child_task, inputs[0])
+            self.set_task_status(child_task, self.STATUS_COMPLETED)
+
+        else:
+            self.save_opt_others_tasks(output_dict, child_task)
+
+    def run_opt_serial_tasks(self, child_task, lineage, inputs):
         """
         The current operation can be grouped with other operations. This method
         check if the next operations share this behavior. If it does, group
@@ -420,17 +445,22 @@ class COMPSsContext(object):
             print(" - Stages (optimized): {}".format(group_uuids))
             print(" - opt_functions", group_func)
 
-        file_serial_function = any(['file_in' in self.get_task_name(uid)
-                                    for uid in group_uuids])
+        file_serial_function = 0
+        if any(['load_text-file_in' in self.get_task_name(uid)
+                for uid in group_uuids]):
+            file_serial_function = 1
+        elif any(['load_text-0in' in self.get_task_name(uid)
+                  for uid in group_uuids]):
+            file_serial_function = 2
+
         result, info = self._execute_serial_tasks(group_func, inputs,
-                                                  file_serial_function,
-                                                  stage_id)
+                                                  file_serial_function)
         self.save_lazy_states(result, info, group_uuids)
         jump = len(group_func)-1
         return jump
 
     def run_opt_last_tasks(self, child_task, lineage,
-                           inputs, id_parents, stage_id):
+                           inputs, id_parents):
         """
         The current operation can be grouped with other operations. This method
         check if the next operations share this behavior. If it does, group
@@ -477,7 +507,7 @@ class COMPSsContext(object):
             print(" - opt_functions", group_func)
 
         result, info = self._execute_opt_last_tasks(group_func, inputs,
-                                                    n_input, stage_id)
+                                                    n_input)
         self.save_lazy_states(result, info, group_uuids)
         jump = len(group_func)-1
         return jump
@@ -492,20 +522,29 @@ class COMPSsContext(object):
         for f, (id_t, key_r, key_i) in enumerate(zip(siblings, keys_r, keys_i)):
             result, info = output_dict[key_r], output_dict[key_i]
 
-            # save results in task_map and schemas_map
-            self.schemas_map[id_t] = info
+            # save results in task_map and catalog
+            self.catalog[id_t] = info
             self.set_task_result(id_t, result)
             self.set_task_status(id_t, self.STATUS_COMPLETED)
 
     def save_lazy_states(self, result, info, opt_uuids):
+        """
+        All list must be updated in order to remove obsolete tasks in the future
+
+        :param result:
+        :param info:
+        :param opt_uuids:
+        :return:
+        """
+        last_uuid = opt_uuids[-1]
+        self.set_task_result(last_uuid, result)
+        self.catalog[last_uuid] = info
 
         for o in opt_uuids:
-            self.set_task_result(o, result)
-            self.schemas_map[o] = info
             self.set_task_status(o, self.STATUS_COMPLETED)
 
     @staticmethod
-    def _execute_task(env, input_data, stage_id):
+    def _execute_task(env, input_data):
         """
         Used to execute all non-lazy functions.
 
@@ -513,30 +552,27 @@ class COMPSsContext(object):
         :param input_data: A list of DataFrame as input data
         :return:
         """
-
         function, settings = env
 
         nfrag = len(input_data)
         if nfrag == 1:
             input_data = input_data[0]
 
-        settings['stage_id'] = stage_id
-
         if DEBUG:
-            print(' - running task by _execute_serial_tasks')
+            print(' - running task by _execute_task')
             print('   * input file {}'.format(input_data))
 
         output = function(input_data, settings)
         return output
 
     @staticmethod
-    def _execute_serial_tasks(opt, input_data, type_function, stage_id):
+    def _execute_serial_tasks(tasks_list, input_data, type_function):
 
         """
         Used to execute a group of lazy tasks. This method submit
         multiple 'context.task_bundle', one for each data fragment.
 
-        :param opt: sequence of functions and parameters to be executed in
+        :param tasks_list: sequence of functions and parameters to be executed in
             each fragment
         :param input_data: A list of DataFrame as input data
         :param type_function: if False, use task_bundle otherwise
@@ -549,23 +585,27 @@ class COMPSsContext(object):
 
         nfrag = len(input_data)
         info = [[] for _ in range(nfrag)]
-        out_files = create_stage_files(stage_id, nfrag)
+        out_files = create_stage_files(nfrag)
 
-        if type_function:
-            function = task_bundle_1inf
+        if type_function == 0:
+            function = task_bundle_1parquet_1parquet
+        elif type_function == 1:
+            function = task_bundle_1csv_1parquet
+        elif type_function == 2:
+            function = task_bundle_0in_1parquet
         else:
-            function = task_bundle_1out
+            raise Exception("[CONTEXT] - ERROR in _execute_serial_tasks")
 
         if DEBUG:
-            print(' - running task by _execute_serial_tasks')
+            print(' - running task by _execute_serial_tasks - nfrag:', nfrag)
             print('   * input file {}\n   * output file {}'.format(input_data,
                                                                    out_files))
         for f, (in_file, out_file) in enumerate(zip(input_data, out_files)):
-            info[f] = function(in_file, opt, f, out_file)
+            info[f] = function(in_file, tasks_list, f, out_file)
 
         return out_files, info
 
-    def _execute_opt_last_tasks(self, opt, data, n_input, stage_id):
+    def _execute_opt_last_tasks(self, opt, data, n_input):
 
         """
         Used to execute a group of lazy tasks. This method submit
@@ -580,30 +620,39 @@ class COMPSsContext(object):
         fist_task, opt = opt[0], opt[1:]
         out_tmp2 = None
         if n_input == 1:
-            out_tmp, settings = self._execute_task(fist_task, data, stage_id)
+            out_tmp, settings = self._execute_task(fist_task, data)
         else:
-            out_tmp, out_tmp2, settings = self._execute_task(fist_task, data,
-                                                             stage_id)
+            out_tmp, out_tmp2, settings = self._execute_task(fist_task, data)
         nfrag = len(out_tmp)
 
         opt[0][1] = settings
 
         info = [[] for _ in range(nfrag)]
-        out_files = create_stage_files(stage_id, nfrag)
+        out_files = create_stage_files(nfrag)
 
         if n_input == 1:
             for f, (in_file, out_file) in enumerate(zip(out_tmp, out_files)):
-                info[f] = task_bundle_1out(in_file, opt, f, out_file)
+                info[f] = task_bundle_1parquet_1parquet(in_file, opt, f,
+                                                        out_file)
+
         else:
             for f, (in_file1, in_file2, out_file) in \
                     enumerate(zip(out_tmp, out_tmp2, out_files)):
-                info[f] = task_bundle_2in(in_file1, in_file2, opt, f, out_file)
+                info[f] = task_bundle_2parquet_1parquet(in_file1, in_file2,
+                                                        opt, f, out_file)
+            # removing temporary tasks
+            for f in out_tmp2:
+                compss_delete_file(f)
+
+        # removing temporary tasks
+        for f in out_tmp:
+            compss_delete_file(f)
 
         return out_files, info
 
 
 @task(input_file=FILE_IN, output_file=FILE_OUT, returns=1)
-def task_bundle_1out(input_file, stage, id_frag, output_file):
+def task_bundle_1parquet_1parquet(input_file, stage, id_frag, output_file):
     """
     Will perform most functions with the serial tag. Task has 1 data input
     and return 1 data output with its schema
@@ -614,14 +663,19 @@ def task_bundle_1out(input_file, stage, id_frag, output_file):
     :param output_file: Output filepath;
     :return:
     """
-    data = read_stage_file(input_file)
+    columns = None
+    if stage[0][0].__name__ == 'task_select':
+        columns = stage[0][1]['columns']
+
+    data = read_stage_file(input_file, columns)
     data, info = _bundle(data, stage, id_frag)
     save_stage_file(output_file, data)
     return info
 
 
 @task(input_file1=FILE_IN, input_file2=FILE_IN, output_file=FILE_OUT, returns=1)
-def task_bundle_2in(input_file1, input_file2, stage, id_frag, output_file):
+def task_bundle_2parquet_1parquet(input_file1, input_file2, stage,
+                                  id_frag, output_file):
     """
     Executed when the first task has two inputs.
 
@@ -640,9 +694,37 @@ def task_bundle_2in(input_file1, input_file2, stage, id_frag, output_file):
     return info
 
 
-@task(returns=1, filename=FILE_IN)   # TODO: Test!
-def task_bundle_1inf(data, stage, id_frag):
-    return _bundle(data, stage, id_frag)
+@task(returns=1, data_input=FILE_IN, data_output=FILE_OUT)   # TODO: Test!
+def task_bundle_1csv_1parquet(data_input, stage, id_frag, data_output):
+    """
+    Used to read a folder from common file system.
+
+    :param data_input:
+    :param stage:
+    :param id_frag:
+    :param data_output:
+    :return:
+    """
+
+    data, info = _bundle(data_input, stage, id_frag)
+    save_stage_file(data_output, data)
+    return info
+
+
+@task(returns=1,  data_output=FILE_OUT)   # TODO: Test!
+def task_bundle_0in_1parquet(data, stage, id_frag, data_output):
+    """
+    Used to read files from HDFS.
+
+    :param data:
+    :param stage:
+    :param id_frag:
+    :param data_output:
+    :return:
+    """
+    data, info = _bundle(data, stage, id_frag)
+    save_stage_file(data_output, data)
+    return info
 
 
 def _bundle(data, stage, id_frag):

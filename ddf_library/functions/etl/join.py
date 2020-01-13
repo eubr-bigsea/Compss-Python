@@ -34,8 +34,7 @@ import pandas as pd
 #     data1, data2, settings = join_stage_1(data1, data2, settings)
 #     nfrag = len(data1)
 #     # second, pair-wise join
-#     stage_id = settings['stage_id']
-#     result = create_stage_files(stage_id, nfrag)
+#     result = create_stage_files(nfrag)
 #     info = result[:]
 #
 #     for f in range(nfrag):

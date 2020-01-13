@@ -4,9 +4,9 @@
 __author__ = "Lucas Miguel S Ponce"
 __email__ = "lucasmsp@gmail.com"
 
-from ddf_library.utils import _get_schema, save_stage_file, create_stage_files
+from ddf_library.utils import generate_info, save_stage_file, create_stage_files
 
-from pycompss.api.parameter import FILE_OUT
+from pycompss.api.parameter import FILE_OUT, COLLECTION_IN
 from pycompss.api.task import task
 from pycompss.api.constraint import constraint
 from pycompss.api.api import compss_delete_object
@@ -55,13 +55,11 @@ def hash_partition(data, settings):
                 .split_by_hash(data[f], cols, info, nfrag_target)
 
         # n_concat = nfrag // 2 if nfrag > 10 else nfrag
-        result = create_stage_files(settings['stage_id'], nfrag_target)
+        result = create_stage_files(nfrag_target)
         info = [{} for _ in range(nfrag_target)]
         for f in range(nfrag_target):
             tmp = [splits[t][f] for t in range(nfrag)]
-            ddf_library.functions.etl.repartition\
-                .merge_n_reduce(concat_n_pandas, tmp, nfrag, result[f])
-            info[f] = _get_schema(result[f], f)
+            info[f] = concat_n_pandas(result[f], f, tmp)
 
         compss_delete_object(splits)
     else:
@@ -73,10 +71,13 @@ def hash_partition(data, settings):
 
 
 # @constraint(ComputingUnits="2")  # approach to have more memory
-@task(data_out=FILE_OUT)
-def concat_n_pandas(data_out, *args):
+@task(data_out=FILE_OUT, args=COLLECTION_IN, returns=1)
+def concat_n_pandas(data_out, f, args):
     dfs = [df for df in args if isinstance(df, pd.DataFrame)]
     dfs = pd.concat(dfs, ignore_index=True, sort=False)
     del args
     dfs = dfs.infer_objects()
+    info = generate_info(dfs, f)
     save_stage_file(data_out, dfs)
+    return info
+

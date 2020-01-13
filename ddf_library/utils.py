@@ -7,12 +7,13 @@ __email__ = "lucasmsp@gmail.com"
 from pycompss.api.parameter import FILE_IN
 from pycompss.api.task import task
 from pycompss.functions.reduce import merge_reduce
-from pycompss.runtime.binding import Future
 
 import numpy as np
 import pandas as pd
 import uuid
 import sys
+
+stage_id = 0
 
 
 @task(returns=2)
@@ -87,12 +88,10 @@ def merge_schema(schema1, schema2):
     if set(schema1['cols']) != set(schema2['cols']):
         schema = "Error: Partitions have different columns names."
 
-    # dtypes = info['dtypes'][0]  # TODO
-
     return schema
 
 
-@task(data_input=FILE_IN,returns=1)
+@task(data_input=FILE_IN, returns=1)
 def _get_schema(data_input, f):
     df = read_stage_file(data_input)
     info = generate_info(df, f)
@@ -101,14 +100,18 @@ def _get_schema(data_input, f):
 
 def check_serialization(data):
     """
-    Check if output is a Future object or is data in-memory.
+    Check if output is a Future file object or is data in-memory.
     :param data:
     :return:
     """
-    if isinstance(data, list):
-        return isinstance(data[0], Future)
 
-    return isinstance(data, Future)
+    if isinstance(data, list):
+        if len(data) > 0:
+            return isinstance(data[0], str)
+        else:
+            return False
+
+    return isinstance(data, str)
 
 
 def divide_idx_in_frags(ids, n_list):
@@ -160,21 +163,23 @@ def clear_context():
     from ddf_library.context import COMPSsContext, nx
 
     COMPSsContext.adj_tasks = dict()
-    COMPSsContext.schemas_map = dict()
+    COMPSsContext.catalog = dict()
     COMPSsContext.tasks_map = dict()
     COMPSsContext.dag = nx.DiGraph()
 
 
-def create_stage_files(stage_id, nfrag, suffix=''):
-    file_names = ['/tmp/ddf_stage{}_{}block{}_{}.parquet'.format(stage_id,
-                                                                 suffix,
-                                                                 f,
-                                                                 _gen_uuid())
+def create_stage_files(nfrag, suffix=''):
+    global stage_id
+    file_names = ['/tmp/ddf_stage{}_{}block{}_{}.parquet'
+                  .format(stage_id, suffix, f, _gen_uuid())
                   for f in range(nfrag)]
+    stage_id += 1
     return file_names
 
 
 def read_stage_file(filepath, cols=None):
+    if isinstance(cols, str):
+        cols = [cols]
     return pd.read_parquet(filepath, columns=cols)
 
 

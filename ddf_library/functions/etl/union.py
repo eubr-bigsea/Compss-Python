@@ -6,6 +6,9 @@ __email__ = "lucasmsp@gmail.com"
 
 
 from pycompss.api.task import task
+from pycompss.api.parameter import FILE_INOUT
+
+from ddf_library.utils import read_stage_file, save_stage_file
 import numpy as np
 
 
@@ -62,11 +65,11 @@ def union(data1, data2, settings):
     # second, update each one
     if len(news_cols1[key]) > 0:
         for f in range(nfrag1):
-            data1[f] = _update_cols(data1[f], news_cols1)
+            _update_cols(data1[f], news_cols1)
 
     if len(news_cols2[key]) > 0:
         for f in range(nfrag2):
-            data2[f] = _update_cols(data2[f], news_cols2)
+            _update_cols(data2[f], news_cols2)
 
     # third, group them
     data = data1 + data2
@@ -82,8 +85,10 @@ def union(data1, data2, settings):
     return output
 
 
-@task(returns=1)
-def _update_cols(data, news_cols):
+@task(data_input=FILE_INOUT)
+def _update_cols(data_input, news_cols):
+
+    data = read_stage_file(data_input)
     if 'update' in news_cols:
         news_cols = news_cols['update']
         for col in news_cols:
@@ -101,4 +106,4 @@ def _update_cols(data, news_cols):
             for col in news_cols[n_cols_init:]:
                 data[col] = np.nan
 
-    return data
+    save_stage_file(data_input, data)

@@ -5,8 +5,10 @@ __author__ = "Lucas Miguel S Ponce"
 __email__ = "lucasmsp@gmail.com"
 
 from pycompss.api.task import task
+from pycompss.api.parameter import FILE_IN, FILE_OUT
 
-from ddf_library.utils import generate_info
+from ddf_library.utils import generate_info, \
+    create_stage_files, read_stage_file, save_stage_file
 from ddf_library.functions.etl.repartition import repartition
 
 import pandas as pd
@@ -44,23 +46,24 @@ class AddColumnsOperation(object):
             df2 = output['data']
 
         # merging two DataFrames with same shape
-        result = [[] for _ in range(nfrag1)]
+        result = create_stage_files(nfrag1)
         info = [[] for _ in range(nfrag1)]
 
         for f in range(nfrag1):
-            result[f], info[f] = _add_columns(df1[f], df2[f], suffixes, f)
+            info[f] = _add_columns(df1[f], df2[f], result[f], suffixes, f)
 
         output = {'key_data': ['data'], 'key_info': ['info'],
                   'data': result, 'info': info}
 
-        # output = {'df1': df1, 'df2': df2, 'suffixes': suffixes}
-
         return output
 
 
-@task(returns=2)
-def _add_columns(df1, df2, suffixes, frag):
+@task(returns=1, df1=FILE_IN, df2=FILE_IN, out=FILE_OUT)
+def _add_columns(df1, df2, out, suffixes, frag):
     """Perform a partial add columns."""
+
+    df1 = read_stage_file(df1)
+    df2 = read_stage_file(df2)
 
     df1.reset_index(drop=True, inplace=True)
     df2.reset_index(drop=True, inplace=True)
@@ -69,6 +72,6 @@ def _add_columns(df1, df2, suffixes, frag):
                    right_index=True, suffixes=suffixes)
     del df2
 
-    df1.reset_index(drop=True, inplace=True)
+    save_stage_file(out, df1)
     info = generate_info(df1, frag)
-    return df1, info
+    return info

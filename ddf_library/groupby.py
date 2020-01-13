@@ -36,7 +36,7 @@ class GroupedDDF(DDF):
         super(GroupedDDF, self).__init__(task_list=ddf_var.task_list.copy(),
                                          last_uuid=self.last_uuid)
 
-    def agg(self, exprs, alias=None):
+    def agg(self, **exprs):
         # noinspection PyUnresolvedReferences
         """
         Compute aggregates and returns the result as a DDF.
@@ -50,17 +50,15 @@ class GroupedDDF(DDF):
 
         :Example:
 
-        >>> ddf1.group_by(group_by=['col_1']).agg({'col_2': ['sum', 'last']})
+        >>> ddf1.group_by(['col_1']).agg(MIN=('col_2', 'min'))
         """
-        self.parameters['operation'] = exprs
-        if alias is None:
-            alias = {}
-            for col in exprs:
-                alias[col] = []
-                for f in exprs[col]:
-                    alias[col].append("{}({})".format(f, col))
 
-        self.parameters['aliases'] = alias
+        operations = []
+        for alias in exprs:
+            col, function = exprs[alias]
+            operations.append([col, function, alias])
+
+        self.parameters['operation'] = operations
         COMPSsContext.tasks_map[self.last_uuid]['function'][1] = \
             self.parameters
         COMPSsContext.tasks_map[self.last2]['function'][1] = self.parameters
@@ -219,8 +217,7 @@ class GroupedDDF(DDF):
         return self
 
     def _apply_agg(self, cols, func, new_alias):
-        exprs = self.parameters['operation']
-        aliases = self.parameters.get('aliases', {})
+        operations = self.parameters['operation']
         groupby = self.parameters['groupby'][0]
 
         if not isinstance(cols, list):
@@ -242,16 +239,9 @@ class GroupedDDF(DDF):
             if col == '*':
                 col = groupby
 
-            if col not in exprs:
-                exprs[col] = []
-            exprs[col].append(func)
+            operations.append([col, func, alias])
 
-            if col not in aliases:
-                aliases[col] = []
-            aliases[col].append(alias)
-
-        self.parameters['operation'] = exprs
-        self.parameters['aliases'] = aliases
+        self.parameters['operation'] = operations
 
         COMPSsContext.tasks_map[self.last_uuid]['function'][1] = self.parameters
         COMPSsContext.tasks_map[self.last2]['function'][1] = self.parameters

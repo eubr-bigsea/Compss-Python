@@ -1,17 +1,20 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
+from pycompss.api.parameter import FILE_IN, FILE_OUT
 from pycompss.functions.reduce import merge_reduce
 from pycompss.api.api import compss_wait_on, compss_delete_object
-from ddf_library.utils import merge_schema, _get_schema, create_stage_files, \
-    save_stage_file
+from pycompss.api.task import task
+
+from ddf_library.utils import merge_schema, _get_schema,\
+    create_stage_files, save_stage_file, read_stage_file, generate_info
 
 import pandas as pd
 import numpy as np
 import sys
 
 
-def parallelize(data, nfrag, stage_id):
+def parallelize(data, nfrag):
     """
     Method to split the data in nfrag parts. This method simplifies
     the use of chunks.
@@ -27,10 +30,9 @@ def parallelize(data, nfrag, stage_id):
 
     # sizes = _generate_distribution1(n_rows, nfrag)  # only when n >> nfrag
     sizes = _generate_distribution2(n_rows, nfrag)
-
     cols = data.columns.tolist()
     data.reset_index(drop=True, inplace=True)
-    result = create_stage_files(stage_id, nfrag)
+    result = create_stage_files(nfrag)
 
     info = {'cols': cols,
             'dtypes': data.dtypes.values,
@@ -50,7 +52,10 @@ def parallelize(data, nfrag, stage_id):
     if len(result) != nfrag:
         raise Exception("Error in parallelize function.")
 
-    return result, info
+    output = {'key_data': ['data'], 'key_info': ['info'],
+              'data': result, 'info': info}
+
+    return output
 
 
 def _generate_distribution1(n_rows, nfrag):
@@ -81,20 +86,68 @@ def _generate_distribution2(n_rows, nfrag):
     return sizes
 
 
-def import_to_ddf(df_list, schema=None):
+# def import_to_ddf(df_list, parquet=False, schema=None):
+#     """
+#     In order to import a list of DataFrames in DDF abstraction, we need to
+#     check the schema of each partition.
+#
+#     :param df_list: a List of Pandas DataFrames
+#     :param parquet: if data is saved in parquet files
+#     :param schema: A list of columns names, data types and size in each fragment
+#     :return: a List of Pandas DataFrames and a schema
+#     """
+#
+#     nfrag = len(df_list)
+#
+#     if parquet:
+#         if schema is None:
+#             schema = [_get_schema(df_list[f], f) for f in range(nfrag)]
+#     else:
+#         outs_files = create_stage_files(nfrag)
+#         schema = [0 for _ in range(nfrag)]
+#         for f in range(nfrag):
+#             schema[f] = _import_to_ddf(df_list[f], outs_files[f], f)
+#         df_list = outs_files
+#
+#     info_agg = merge_reduce(merge_schema, schema)
+#     compss_delete_object(schema)
+#
+#     info_agg = compss_wait_on(info_agg)
+#     info = _check_schema(info_agg)
+#
+#     output = {'key_data': ['data'], 'key_info': ['info'],
+#               'data': df_list, 'info': info}
+#     return output
+
+
+
+
+
+
+
+
+def import_to_ddf(df_list, parquet=False, schema=None):
     """
     In order to import a list of DataFrames in DDF abstraction, we need to
     check the schema of each partition.
 
     :param df_list: a List of Pandas DataFrames
+    :param parquet: if data is saved in parquet files
     :param schema: A list of columns names, data types and size in each fragment
     :return: a List of Pandas DataFrames and a schema
     """
 
     nfrag = len(df_list)
 
-    if schema is None:
-        schema = [_get_schema(df_list[f], f) for f in range(nfrag)]
+    if parquet:
+        if schema is None:
+            schema = [_get_schema(df_list[f], f) for f in range(nfrag)]
+    else:
+        outs_files = create_stage_files(nfrag)
+        schema = [0 for _ in range(nfrag)]
+        for f in range(nfrag):
+            schema[f] = _import_to_ddf(df_list[f], outs_files[f], f)
+        df_list = outs_files
 
     info_agg = merge_reduce(merge_schema, schema)
     compss_delete_object(schema)
@@ -102,6 +155,8 @@ def import_to_ddf(df_list, schema=None):
     info_agg = compss_wait_on(info_agg)
     info = _check_schema(info_agg)
 
+    output = {'key_data': ['data'], 'key_info': ['info'],
+              'data': df_list, 'info': info}
     return df_list, info
 
 
@@ -133,3 +188,10 @@ def _human_bytes(size):
 
     value = "{:.2f} {}".format(size, power_of_n[n])
     return value
+
+
+@task(returns=1,  data_out=FILE_OUT)
+def _import_to_ddf(df, data_out, f):
+    info = generate_info(df, f)
+    save_stage_file(data_out, df)
+    return info

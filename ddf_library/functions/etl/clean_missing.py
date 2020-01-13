@@ -4,11 +4,12 @@
 __author__ = "Lucas Miguel S Ponce"
 __email__ = "lucasmsp@gmail.com"
 
-from ddf_library.utils import generate_info
+from ddf_library.utils import generate_info, read_stage_file
 
 from pycompss.api.task import task
 from pycompss.functions.reduce import merge_reduce
 from pycompss.api.api import compss_wait_on, compss_delete_object
+from pycompss.api.parameter import FILE_IN
 
 import pandas as pd
 import numpy as np
@@ -162,10 +163,10 @@ def clean_missing_preprocessing(data, settings):
     return data, settings
 
 
-@task(returns=1)
-def _median_stage1(df, params):
-
+@task(returns=1, data_input=FILE_IN)
+def _median_stage1(data_input, params):
     subset = params['attributes']
+    df = read_stage_file(data_input, subset)
     dict_median = {}
     for att in subset:
         x = [x for x in df[att].values if ~np.isnan(x)]
@@ -192,9 +193,9 @@ def _median_stage1_merge(dict_median1, dict_median2):
     return dict_median1
 
 
-@task(returns=2)
-def _median_stage2(df, dict_median):
-
+@task(returns=2, data_input=FILE_IN)
+def _median_stage2(data_input, dict_median):
+    df = read_stage_file(data_input)
     u_l_list = {}
     info = {}
     for att in dict_median:
@@ -308,14 +309,14 @@ def _median_define(info):
     return info
 
 
-@task(returns=1)
-def _clean_missing_pre(data, params):
+@task(returns=1, data_input=FILE_IN)
+def _clean_missing_pre(data_input, params):
     """REMOVE_COLUMN, MEAN, MODE and MEDIAN needs pre-computation."""
     subset = params['attributes']
     cleaning_mode = params['cleaning_mode']
     thresh = params.get('thresh', None)
     how = params.get('how', None)
-
+    data = read_stage_file(data_input, subset)
     if cleaning_mode == "REMOVE_COLUMN":
         # list of columns of the current fragment
         # that contains a null value

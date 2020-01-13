@@ -9,30 +9,30 @@ from pycompss.api.task import task
 import pandas as pd
 
 
-def subtract(data1, data2, settings):
-    """
-    Returns a new set with containing rows in the first frame but not
-    in the second one. This is equivalent to EXCEPT DISTINCT in SQL.
-
-    :param data1: A list of pandas's DataFrame;
-    :param data2: The second list of pandas's DataFrame;
-    :param settings: A dictionary with:
-    :return: A list of pandas's DataFrame.
-    """
-    data1, data2, _ = subtract_stage_1(data1, data2, settings)
-
-    nfrag = len(data1)
-    result = [[] for _ in range(nfrag)]
-    info = result[:]
-
-    for f in range(nfrag):
-        settings['id_frag'] = f
-        result[f], info[f] = task_subtract_stage_2(data1[f], data2[f],
-                                                   settings.copy())
-
-    output = {'key_data': ['data'], 'key_info': ['info'],
-              'data': result, 'info': info}
-    return output
+# def subtract(data1, data2, settings):
+#     """
+#     Returns a new set with containing rows in the first frame but not
+#     in the second one. This is equivalent to EXCEPT DISTINCT in SQL.
+#
+#     :param data1: A list of pandas's DataFrame;
+#     :param data2: The second list of pandas's DataFrame;
+#     :param settings: A dictionary with:
+#     :return: A list of pandas's DataFrame.
+#     """
+#     data1, data2, _ = subtract_stage_1(data1, data2, settings)
+#
+#     nfrag = len(data1)
+#     result = [[] for _ in range(nfrag)]
+#     info = result[:]
+#
+#     for f in range(nfrag):
+#         settings['id_frag'] = f
+#         result[f], info[f] = task_subtract_stage_2(data1[f], data2[f],
+#                                                    settings.copy())
+#
+#     output = {'key_data': ['data'], 'key_info': ['info'],
+#               'data': result, 'info': info}
+#     return output
 
 
 def subtract_stage_1(data1, data2, settings):
@@ -64,11 +64,12 @@ def subtract_stage_2(df1, df2, settings):
             df1 = df1.loc[df1['_merge'] == 'left_only', names]
 
             df1 = df1.infer_objects()
+            print (df1)
 
     info = generate_info(df1, frag)
     return df1, info
 
 
-@task(returns=2)
-def task_subtract_stage_2(df1, df2, settings):
-    return subtract_stage_2(df1, df2, settings)
+# @task(returns=2)
+# def task_subtract_stage_2(df1, df2, settings):
+#     return subtract_stage_2(df1, df2, settings)

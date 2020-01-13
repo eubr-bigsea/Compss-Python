@@ -6,11 +6,11 @@ __email__ = "lucasmsp@gmail.com"
 
 from pycompss.api.task import task
 from pycompss.api.constraint import constraint
-from pycompss.api.parameter import FILE_OUT
+from pycompss.api.parameter import FILE_IN, FILE_OUT, COLLECTION_IN
 from pycompss.api.api import compss_wait_on, compss_delete_object
 
-from ddf_library.utils import concatenate_pandas, _get_schema, \
-    create_stage_files, save_stage_file
+from ddf_library.utils import concatenate_pandas, generate_info, \
+    create_stage_files, save_stage_file, read_stage_file
 
 import pandas as pd
 import numpy as np
@@ -72,16 +72,15 @@ def range_partition(data, settings):
                 .split_by_boundary(data[f], cols, ascending, bounds,
                                    info, nfrag_target)
 
-        result = create_stage_files(settings['stage_id'], nfrag_target)
+        result = create_stage_files(nfrag_target)
         info = [{} for _ in range(nfrag_target)]
         for f in range(nfrag_target):
             if nfrag_target == 1:
                 tmp = splits
             else:
                 tmp = [splits[t][f] for t in range(nfrag)]
-            ddf_library.functions.etl.repartition\
-                .merge_n_reduce(concat_n_pandas, tmp, nfrag, result[f])
-            info[f] = _get_schema(result[f], f)
+            tmp = [splits[t][f] for t in range(nfrag)]
+            info[f] = concat_n_pandas(result[f], f, tmp)
 
         compss_delete_object(splits)
 
@@ -115,9 +114,10 @@ def range_bounds(data, nfrag, sizes, cols, ascending, nfrag_target):
     return bounds, nfrag_target
 
 
-@task(returns=1)
-def _sample_keys(data, cols, sample_size):
-    data = data[cols]
+@task(returns=1, input_data=FILE_IN)
+def _sample_keys(input_data, cols, sample_size):
+    data = read_stage_file(input_data, cols)
+    data = data[cols] # TODO
     n = len(data)
     sample_size = sample_size if sample_size < n else n
     data.reset_index(drop=True, inplace=True)
@@ -155,10 +155,12 @@ def _determine_bounds(sample, cols, ascending, nfrag_target):
 
 
 # @constraint(ComputingUnits="2")  # approach to have more memory
-@task(data_out=FILE_OUT)
-def concat_n_pandas(data_out, *args):
+@task(data_out=FILE_OUT, args=COLLECTION_IN, returns=1)
+def concat_n_pandas(data_out, f, args):
     dfs = [df for df in args if isinstance(df, pd.DataFrame)]
     dfs = pd.concat(dfs, ignore_index=True, sort=False)
     del args
     dfs = dfs.infer_objects()
+    info = generate_info(dfs, f)
     save_stage_file(data_out, dfs)
+    return info
