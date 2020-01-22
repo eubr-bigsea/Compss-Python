@@ -6,13 +6,11 @@ __email__ = "lucasmsp@gmail.com"
 
 from pycompss.api.task import task
 from pycompss.api.parameter import FILE_IN
-from pycompss.api.constraint import constraint
 
-from ddf_library.utils import create_auxiliary_column, read_stage_file, \
-    create_stage_files, save_stage_file
+from ddf_library.utils import create_auxiliary_column, read_stage_file
 from .parallelize import _generate_distribution2
 from .balancer import _balancer
-import ddf_library.config as config
+import ddf_library.bases.config as config
 
 import numpy as np
 import pandas as pd

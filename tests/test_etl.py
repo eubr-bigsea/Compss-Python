@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-from pycompss.api.task import task
 from pycompss.api.api import compss_barrier
 from ddf_library.context import COMPSsContext
 from ddf_library.ddf import DDF
@@ -12,8 +11,23 @@ import time
 from pandas.util.testing import assert_frame_equal
 
 
+def check_result(df, size, true, msg, end=False):
+    cond = df[:size] == true
+    if not cond:
+        print(df)
+        raise Exception('Error in {}'.format(msg))
+    print('{} - ok'.format(msg))
+    if end:
+        log('{} - FINISHED'.format(msg))
+
+
+def log(msg):
+    print('-' * 50)
+    print(msg)
+
+
 def etl():
-    COMPSsContext().set_log(True)
+    # COMPSsContext().set_log(True)
     url = ('https://archive.ics.uci.edu/ml/'
            'machine-learning-databases/abalone/abalone.data')
     cols = ['sex', 'length', 'diam', 'height', 'weight', 'rings']
@@ -25,32 +39,21 @@ def etl():
     data1 = DDF().parallelize(data, 4).map(f1, 'height_nan').cache()
     data2 = data1.map(lambda row: "." + row[col('sex')], 'sex')
 
-    print('-' * 50)
-    print("etl_test_1: Multiple caches")
+    log("etl_test_1: Multiple caches")
 
-    df = data1.cache().to_df()
-    cond = df['height_nan'].values.tolist()[:5] == [-42, 0.09, -42, -42, 0.08]
-    if not cond:
-        raise Exception('Error in etl_test_1a')
-    print ('etl_test_1a - ok')
+    df1 = data1.to_df()
+    df2 = data2.to_df()
+    df3 = data1.to_df()
 
-    df = data2.cache().to_df()
-    cond = df['sex'].values.tolist()[:5] == ['.M', '.M', '.F', '.M', '.I']
-    if not cond:
-        raise Exception('Error in etl_test_1b')
-    print('etl_test_1b - ok')
-    print (data1)
-    df = data1.to_df()
-    cond = df['sex'].values.tolist()[:5] == ['M', 'M', 'F', 'M', 'I']
-    if not cond:
-        print(df)
-        raise Exception('Error in etl_test_1c')
-    print('etl_test_1c - ok')
+    check_result(df1['height_nan'].values.tolist(), 5,
+                 [-42, 0.09, -42, -42, 0.08], 'etl_test_1a')
+    check_result(df2['sex'].values.tolist(), 5, ['.M', '.M', '.F', '.M', '.I'],
+                 'etl_test_1b')
+    check_result(df3['sex'].values.tolist(), 5, ['M', 'M', 'F', 'M', 'I'],
+                 'etl_test_1c', True)
 
-    print('etl_test_1 - OK')
-    print('-' * 50)
-    print("etl_test_2: Branching: data2 and data3 are data1's children. ",
-          "Note: is this case, those transformations can not be grouped")
+    log("etl_test_2: Branching: data2 and data3 are data1's children. "
+        "Note: is this case, those transformations can not be grouped")
 
     data3 = data1.drop(['length', 'diam']).cache()
 
@@ -58,40 +61,28 @@ def etl():
     df2 = data2.to_df()
     df3 = data3.to_df()
 
-    cond = df1['sex'].values.tolist()[:5] == ['M', 'M', 'F', 'M', 'I']
-    if not cond:
-        raise Exception('Error in etl_test_2a')
-    print('etl_test_2a - ok')
+    check_result(df1['sex'].values.tolist(), 5, ['M', 'M', 'F', 'M', 'I'],
+                 'etl_test_2a')
+    check_result(df2['sex'].values.tolist(), 5, ['.M', '.M', '.F', '.M', '.I'],
+                 'etl_test_2b')
+    check_result(df3['sex'].values.tolist(), 5, ['M', 'M', 'F', 'M', 'I'],
+                 'etl_test_2c', True)
 
-    cond = df2['sex'].values.tolist()[:5] == ['.M', '.M', '.F', '.M', '.I']
-    if not cond:
-        raise Exception('Error in etl_test_2b')
-    print('etl_test_2b - ok')
+    log("etl_test_3: The operations 'drop', 'drop', and 'replace' "
+        "must be grouped in a single task")
 
-    cond = df3['sex'].values.tolist()[:5] == ['M', 'M', 'F', 'M', 'I']
-    if not cond:
-        raise Exception('Error in etl_test_2c')
-    print('etl_test_2c - ok')
-
-    print('etl_test_2 - OK')
-    print('-' * 50)
-    print("etl_test_3: The operations 'drop', 'drop', and 'replace' "
-          "must be grouped in a single task")
     data4 = data2.drop(['length']).drop(['diam'])\
         .replace({15: 42}, subset=['rings']).cache()
 
-    df = data4.to_df()[0:5]
-    cond1 = df['rings'].values.tolist()[:5] == [42, 7, 9, 10, 7]
-    cond2 = df.columns.tolist() == ['sex', 'height', 'weight', 'rings',
-                                    'height_nan']
-    if not (cond1 and cond2):
-        print(df)
-        raise Exception('Error in etl_test_3')
+    df = data4.to_df()
+    check_result(df['rings'].values.tolist(), 5,
+                 [42, 7, 9, 10, 7], 'etl_test_3')
+    check_result(df.columns.tolist(), 5,
+                 ['sex', 'height', 'weight', 'rings', 'height_nan'],
+                 'etl_test_3', True)
 
-    print('etl_test_3 - OK')
-    print('-' * 50)
-    print("etl_test_4: Check if split (and others operations that returns "
-          "more than one output) is working")
+    log("etl_test_4: Check if split (and others operations that returns "
+        "more than one output) is working")
 
     n_total = data4.count_rows()
     data5a, data5b = data4.split(0.40)
@@ -104,22 +95,17 @@ def etl():
         print('data5b:', n2)
         raise Exception('Error in etl_test_4')
 
-    print('etl_test_4 - OK')
-    print('-' * 50)
-    print("etl_test_5: Check if operations with multiple inputs are working")
+    log('etl_test_4 - OK')
+    log("etl_test_5: Check if operations with multiple inputs are working")
 
-    input()
     data6 = data5b.join(data5a, ['rings'], ['rings'])\
         .filter('(rings > 8)')\
-        .select(['sex_l', 'height_l', 'weight_l', 'rings'])
+        .select(['sex_l', 'height_l', 'weight_l', 'rings']).cache()
 
-    df = data6.cache().to_df()
-    cond = df.columns.tolist() == ['sex_l', 'height_l', 'weight_l', 'rings']
-    if not cond:
-        print(df)
-        raise Exception('Error in etl_test_5a')
+    df = data6.to_df()
+    check_result(df.columns.tolist(), 5,
+                 ['sex_l', 'height_l', 'weight_l', 'rings'], 'etl_test_5a')
 
-    print('etl_test_5a - OK')
     data7 = data6.sample(7).sort(['rings'], [True])
     data8 = data6.join(data7, ['rings'], ['rings'])
 
@@ -134,9 +120,8 @@ def etl():
     cond2 = cols == res
     if not (cond1 and cond2):
         raise Exception('Error in etl_test_5b')
-    print('etl_test_5b - OK')
-    print('-' * 50)
-    print("etl_test_76: Check if 'count_rows' and 'take' are working.")
+    log('etl_test_5b - OK')
+    log("etl_test_76: Check if 'count_rows' and 'take' are working.")
     n = 7
     v = data1.select(['rings']).count_rows()
     len_df = data1.select(['rings']).take(n).count_rows()
@@ -150,8 +135,7 @@ def etl():
     if cond:
         print(len_df)
         raise Exception('Error in etl_test_6b')
-    print("etl_test_7b - OK")
-    print('-' * 50)
+    log("etl_test_7b - OK")
 
     COMPSsContext().context_status()
 
@@ -182,11 +166,15 @@ def aggregation():
     data3 = pd.DataFrame([[i, i + 5, 'hello'] for i in range(n)],
                          columns=['a', 'b', 'c'])
 
-    express = {'a': ['count'], 'b': ['first', 'last']}
-    ddf_1 = DDF().parallelize(data3, 4).group_by(['c']).agg(express)
+    ddf_1 = DDF().parallelize(data3, 4).group_by(['c']).agg(
+            count_a=('a', 'count'),
+            first_b=('b', 'first'),
+            last_b=('b', 'last')
+    )
     df = ddf_1.to_df()
+    print (df)
     cond1 = len(df) == 1
-    cond2 = all([f == n for f in df['count(a)'].values])
+    cond2 = all([f == n for f in df['count_a'].values])
     if not (cond1 and cond2):
         print(df)
         raise Exception('Error in aggregation')
@@ -200,6 +188,12 @@ def aggregation():
         print(df)
         raise Exception('Error in aggregation')
 
+    ddf3 = DDF().parallelize(data3, 4).group_by('c').list('*')
+    print(ddf3.to_df())
+
+    ddf3 = DDF().parallelize(data3, 4).group_by(['c']).set('*')
+    print(ddf3.to_df())
+
     print("etl_test - aggregation - OK")
 
 
@@ -207,20 +201,20 @@ def balancer():
     print("\n|-------- Balance --------|\n")
 
     iterations = [[10, 0, 10, 5, 100],
-                  [100, 5, 10, 0, 10],
-                  [85, 0, 32, 0, 0],
-                  [0, 0, 0, 30, 100]
+                  # [100, 5, 10, 0, 10],
+                  # [85, 0, 32, 0, 0],
+                  # [0, 0, 0, 30, 100]
                   ]
-
+    COMPSsContext.set_log(True)
     for s in iterations:
         print('Before:', s)
         data, info = generate_data(s)
-        ddf_1 = DDF().import_data(data, info)
-        df1 = ddf_1.to_df()['a'].values
+        ddf_1 = DDF().import_data(data, info=info, parquet=False).cache()
+        df1 = ddf_1.to_df()['col0'].values
 
-        ddf_2 = ddf_1.balancer(forced=True).cache()
+        ddf_2 = ddf_1.balancer(forced=True)#.cache()
         size_a = ddf_2.count_rows(total=False)
-        df2 = ddf_1.to_df()['a'].values
+        df2 = ddf_2.to_df()['col0'].values
 
         print('After:', size_a)
         print(np.array_equal(df1, df2))
@@ -253,7 +247,7 @@ def distinct():
     data = pd.DataFrame([[i, i + 5, 0] for i in range(10)],
                         columns=['a', 'b', 'c'])
 
-    ddf_1 = DDF().parallelize(data, 4).distinct(['c'])
+    ddf_1 = DDF().parallelize(data, 4).distinct(['c'], opt=True)
     df1 = ddf_1.cache().to_df()
     print(df1)
     res_dist = pd.DataFrame([[0, 5, 0]], columns=['a', 'b', 'c'])
@@ -374,20 +368,20 @@ def fill_na():
 
 def flow_serial_only():
     print("\n|-------- Flow to test serial tasks --------|\n")
-    COMPSsContext().set_log(True)
+    # COMPSsContext().set_log(True)
     data = pd.DataFrame([[i, i + 5, 'hello', i + 7] for i in range(1, 15)],
                         columns=['a', 'b', 'c', 'd'])
     ddf1 = DDF().parallelize(data, '*') \
         .drop(['c'])\
         .select(['a', 'b', 'd'])\
         .select(['a', 'b']).to_df()
-
     print (ddf1)
+
 
 def flow_recompute_task():
     print("\n|-------- Flow to test task recomputation --------|\n")
     # COMPSsContext().set_log(True)
-    data = pd.DataFrame([[i, i + 5, 'hello', i + 7] for i in range(1, 15)],
+    data = pd.DataFrame([[i, i + 5, 'hello', i + 7] for i in range(1, 25)],
                         columns=['a', 'b', 'c', 'd'])
     ddf1 = DDF().parallelize(data, '*')\
         .drop(['c']) \
@@ -397,11 +391,13 @@ def flow_recompute_task():
         .select(['a', 'b', 'd'])\
         .select(['a', 'b']) \
         .select(['a'])\
-        .sample(5)
+        .sample(5).select(['a'])
     ddf2.show()
 
-    ddf3 = ddf1.select(['a', 'b', 'c', 'd'])
+    ddf3 = ddf1.select(['a', 'b'])
     ddf3.show()
+    COMPSsContext().context_status()
+    # COMPSsContext().stop()
 
 
 def hash_partition():
@@ -508,8 +504,8 @@ def join():
     print("\n|--------  right join --------|\n")
     data1 = pd.DataFrame([[i, i + 5, 0] for i in range(100)],
                          columns=['a', 'b', 'c'])
-    data1['b'] = data1['b'].astype('Int8')
-    data1['c'] = data1['c'].astype('Int8')
+    data1['b'] = data1['b'].astype('int8')
+    data1['c'] = data1['c'].astype('int8')
 
     data2 = data1.copy()
     data1 = data1[0:50]
@@ -553,8 +549,8 @@ def read_data_single_fs():
     dtypes = {'sepal_length': np.float64, 'sepal_width': np.float64,
               'petal_length': np.float64, 'petal_width': np.float64,
               'class': np.dtype('O')}
-    ddf_1 = DDF().load_text('./iris-dataset.csv', header=True, storage='fs',
-                            sep=',', dtype=dtypes, distributed=False)\
+    ddf_1 = DDF().load_text('file://./iris-dataset.csv', header=True,
+                            sep=',', dtypes=dtypes)\
         .select(['class', 'sepal_length'])
 
     print(ddf_1.schema())
@@ -567,8 +563,8 @@ def read_data_multi_fs():
     dtypes = {'sepal_length': np.float64, 'sepal_width': np.float64,
               'petal_length': np.float64, 'petal_width': np.float64,
               'class': np.dtype('O')}
-    ddf_1 = DDF().load_text('~/iris_dataset_folder/', header=True, storage='fs',
-                            sep=',', dtype=dtypes, distributed=True)\
+    ddf_1 = DDF().load_text('file://./iris_dataset_folder/', header=True,
+                            sep=',', dtypes=dtypes)\
         .select(['class', 'sepal_width'])
 
     print(ddf_1.schema())
@@ -578,10 +574,12 @@ def read_data_multi_fs():
 
 def read_data_single_hdfs():
     print("\n|-------- Read Data From a single file on HDFS --------|\n")
-    dtypes = {'la1el': np.dtype('O'), 'x': np.float64, 'y': np.float64}
-    ddf_1 = DDF().load_text('/test-read_data.csv', header=True, storage='hdfs',
-                            sep=',', dtype=dtypes,
-                            distributed=False).select(['x', 'y'])
+    dtypes = {'sepal_length': np.float64, 'sepal_width': np.float64,
+              'petal_length': np.float64, 'petal_width': np.float64,
+              'class': np.dtype('O')}
+    ddf_1 = DDF().load_text('hdfs://localhost:9000/iris-dataset.csv',
+                            header=True, sep=',', dtypes=dtypes)\
+        .select(['sepal_length'])
 
     print(ddf_1.schema())
     print("Number of partitions: ", ddf_1.num_of_partitions())
@@ -593,9 +591,8 @@ def read_data_multi_hdfs():
     dtypes = {'sepal_length': np.float64, 'sepal_width': np.float64,
               'petal_length': np.float64, 'petal_width': np.float64,
               'class': np.dtype('O')}
-    ddf_1 = DDF().load_text('/iris_dataset_folder/', header=True,
-                            storage='hdfs', sep=',', dtype=dtypes,
-                            distributed=True)\
+    ddf_1 = DDF().load_text('hdfs://localhost:9000/iris_dataset_folder/',
+                            header=True, sep=',', dtypes=dtypes)\
         .select(['class', 'sepal_width', 'sepal_length'])
 
     print(ddf_1.schema())
@@ -676,10 +673,11 @@ def sample():
 
 def save_data_fs():
     print("\n|-------- Save Data in FS--------|\n")
-    data = pd.DataFrame([[i, i + 5] for i in range(1000)], columns=['a', 'b'])
+    n = 1000
+    data = pd.DataFrame([[i, i + 5] for i in range(n)], columns=['a', 'b'])
 
     ddf_1 = DDF().parallelize(data, 4)\
-        .save('~/test_save_data', storage='fs').to_df('a')
+        .save('file:///tmp/test_save_data.csv').to_df('a')
     if len(ddf_1) != n:
         raise Exception("Error in save_data_fs")
     print("etl_test - Save Data - OK")
@@ -690,7 +688,8 @@ def save_data_hdfs():
     n = 10000
     data = pd.DataFrame([[i, i + 5] for i in range(n)], columns=['a', 'b'])
 
-    ddf_1 = DDF().parallelize(data, 4).save('/test_save_data').to_df('a')
+    ddf_1 = DDF().parallelize(data, 4).\
+        save('hdfs://localhost:9000/test_save_data').to_df('a')
     if len(ddf_1) != n:
         raise Exception("Error in save_data_hdfs")
     print("etl_test - Save Data - OK")
@@ -788,7 +787,7 @@ def subtract():
     ddf_1b = DDF().parallelize(s2, 4)
     ddf_2 = ddf_1a.subtract(ddf_1b)
     df1 = ddf_2.to_df()
-    print(df1)
+
     res = pd.DataFrame([("a", 2), ("c",  4)], columns=cols)
     assert_frame_equal(df1, res, check_index_type=False)
     print("etl_test - subtract - OK")
@@ -870,45 +869,67 @@ def union_by_name():
 if __name__ == '__main__':
     print("_____ETL_____")
 
-    # add_columns()
-    # aggregation()
-    # balancer()
-    # cast()
-    # cross_join()
-    # etl()
-    # except_all()
-    # explode()
-    # filter_operation()
-    # fill_na()  #TODO change dtypes
-    # flow_serial_only()
-    # flow_recompute_task()
-    # distinct()
-    # drop()
-    # drop_na()
-    # import_data()
-    # intersect()
-    # intersect_all()
-    # join()
-    # read_data_single_fs()
-    # read_data_multi_fs()
-    # read_data_single_hdfs()
-    # read_data_multi_hdfs()
-    # map()
-    # rename()
-    # repartition()
-    # hash_partition()
-    # range_partition()
-    # replace()
-    # sample()
-    # save_data_fs()
-    # save_data_hdfs()
-    # select()
-    # select_expression()
-    # show()
-    # sort()
-    split()
-    # subtract()
-    # take()
-    # union()
-    # union_by_name()
+    import argparse
+
+    parser = argparse.ArgumentParser(description="ETL operations")
+    parser.add_argument('-o', '--operation',
+                        type=str,
+                        required=True,
+                        help="""
+            add_columns, aggregation, balancer, cast, 
+            cross_join, etl, except_all, explode, filter, fill_na,
+            flow_serial_only, flow_recompute_task, distinct, drop, drop_na,
+            import_data, intersect, intersect_all, join, read_data_single_fs,
+            read_data_multi_fs, read_data_single_hdfs, read_data_multi_hdfs,
+            map, rename, repartition, hash_partition, range_partition,
+            replace, sample, save_data_fs, save_data_hdfs, select,
+            select_expression, show, sort, split, subtract, take, 
+            union, union_by_name""")
+    arg = vars(parser.parse_args())
+
+    operation = arg['operation']
+    operations = dict()
+    operations['add_columns'] = add_columns
+    operations['aggregation'] = aggregation
+    operations['balancer'] = balancer
+    operations['cast'] = cast
+    operations['cross_join'] = cross_join
+    operations['etl'] = etl
+    operations['except_all'] = except_all
+    operations['explode'] = explode
+    operations['filter'] = filter_operation
+    operations['fill_na'] = fill_na
+    operations['flow_serial_only'] = flow_serial_only
+    operations['flow_recompute_task'] = flow_recompute_task
+    operations['distinct'] = distinct
+    operations['drop'] = drop
+    operations['drop_na'] = drop_na
+    operations['hash_partition'] = hash_partition
+    operations['import_data'] = import_data
+    operations['intersect'] = intersect
+    operations['intersect_all'] = intersect_all
+    operations['join'] = join
+    operations['read_data_single_fs'] = read_data_single_fs
+    operations['read_data_multi_fs'] = read_data_multi_fs
+    operations['read_data_single_hdfs'] = read_data_single_hdfs
+    operations['read_data_multi_hdfs'] = read_data_multi_hdfs
+    operations['map'] = map
+    operations['rename'] = rename
+    operations['range_partition'] = range_partition
+    operations['repartition'] = repartition
+    operations['replace'] = replace
+    operations['sample'] = sample
+    operations['save_data_fs'] = save_data_fs
+    operations['save_data_hdfs'] = save_data_hdfs
+    operations['select'] = select
+    operations['select_expression'] = select_expression
+    operations['show'] = show
+    operations['sort'] = sort
+    operations['split'] = split
+    operations['subtract'] = subtract
+    operations['take'] = take
+    operations['union'] = union
+    operations['union_by_name'] = union_by_name
+
+    operations[operation]()
 

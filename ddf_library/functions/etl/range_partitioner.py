@@ -5,7 +5,6 @@ __author__ = "Lucas Miguel S Ponce"
 __email__ = "lucasmsp@gmail.com"
 
 from pycompss.api.task import task
-from pycompss.api.constraint import constraint
 from pycompss.api.parameter import FILE_IN, FILE_OUT, COLLECTION_IN
 from pycompss.api.api import compss_wait_on, compss_delete_object
 
@@ -57,8 +56,8 @@ def range_partition(data, settings):
         bounds, nfrag_target = range_bounds(data, nfrag, sizes, cols,
                                             ascending, nfrag_target)
 
-        import ddf_library.config
-        ddf_library.config.x = nfrag_target
+        import ddf_library.bases.config
+        ddf_library.bases.config.x = nfrag_target
 
         print("[INFO] - Number of partitions updated to: ", nfrag_target)
 

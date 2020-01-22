@@ -4,9 +4,9 @@
 __author__ = "Lucas Miguel S Ponce"
 __email__ = "lucasmsp@gmail.com"
 
-from pycompss.api.parameter import FILE_IN
+from pycompss.api.parameter import FILE_IN, COLLECTION_IN
 from pycompss.api.task import task
-from pycompss.functions.reduce import merge_reduce
+from pycompss.api.api import compss_delete_file
 
 import numpy as np
 import pandas as pd
@@ -54,7 +54,7 @@ def generate_info(df, f, info=None):
 
 def merge_info(schemas):
     if isinstance(schemas, list):
-        schemas = merge_reduce(merge_schema, schemas)
+        schemas = merge_schema(schemas)
     return schemas
 
 
@@ -66,27 +66,30 @@ def concatenate_pandas(df):
     return df
 
 
-@task(returns=1)
-def merge_schema(schema1, schema2):
+@task(returns=1, schemas=COLLECTION_IN)
+def merge_schema(schemas):
+    schema = schemas[0]
 
-    frags = np.array(schema1['frag'] + schema2['frag'])
-    sizes = schema1['size'] + schema2['size']
+    for schema2 in schemas[1:]:
 
-    idx = np.argsort(frags)
-    frags = frags[idx].tolist()
-    sizes = np.array(sizes)[idx].tolist()
+        frags = np.array(schema['frag'] + schema2['frag'])
+        sizes = schema['size'] + schema2['size']
 
-    schema = {'cols': schema1['cols'],
-              'dtypes': schema1['dtypes'],
-              'size': sizes,
-              'frag': frags}
+        idx = np.argsort(frags)
+        frags = frags[idx].tolist()
+        sizes = np.array(sizes)[idx].tolist()
 
-    if 'memory' in schema1:
-        memory = schema1['memory'] + schema2['memory']
-        schema['memory'] = np.array(memory)[idx].tolist()
+        schema = {'cols': schema['cols'],
+                  'dtypes': schema['dtypes'],
+                  'size': sizes,
+                  'frag': frags}
 
-    if set(schema1['cols']) != set(schema2['cols']):
-        schema = "Error: Partitions have different columns names."
+        if 'memory' in schema:
+            memory = schema['memory'] + schema2['memory']
+            schema['memory'] = np.array(memory)[idx].tolist()
+
+        if set(schema['cols']) != set(schema2['cols']):
+            schema = "Error: Partitions have different columns names."
 
     return schema
 
@@ -145,6 +148,9 @@ def _gen_uuid():
     return str(uuid.uuid4())
 
 
+app_code = _gen_uuid()
+
+
 def create_auxiliary_column(columns):
     condition = True
     column = "aux_column"
@@ -155,23 +161,19 @@ def create_auxiliary_column(columns):
 
 
 def col(name):
-    from ddf_library.config import columns
+    from ddf_library.bases.config import columns
     return columns.index(name)
 
 
-def clear_context():
-    from ddf_library.context import COMPSsContext, nx
-
-    COMPSsContext.adj_tasks = dict()
-    COMPSsContext.catalog = dict()
-    COMPSsContext.tasks_map = dict()
-    COMPSsContext.dag = nx.DiGraph()
+def delete_result(file_list):
+    for f in file_list:
+        compss_delete_file(f)
 
 
 def create_stage_files(nfrag, suffix=''):
-    global stage_id
-    file_names = ['/tmp/ddf_stage{}_{}block{}_{}.parquet'
-                  .format(stage_id, suffix, f, _gen_uuid())
+    global stage_id, app_code
+    file_names = ['/tmp/ddf_{}_stage{}_{}block{}.parquet'
+                  .format(app_code, stage_id, suffix, f)
                   for f in range(nfrag)]
     stage_id += 1
     return file_names

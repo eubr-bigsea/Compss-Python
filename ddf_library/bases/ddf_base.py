@@ -8,8 +8,6 @@ __email__ = "lucasmsp@gmail.com"
 
 from ddf_library.context import COMPSsContext
 from ddf_library.utils import merge_schema, _gen_uuid
-
-from pycompss.functions.reduce import merge_reduce
 from pycompss.api.api import compss_wait_on
 
 
@@ -67,7 +65,7 @@ class DDFSketch(object):
         info = COMPSsContext.catalog[self.last_uuid]
         if isinstance(info, list):
             if not isinstance(info[0], list):
-                info = merge_reduce(merge_schema, info)
+                info = merge_schema(info)
         info = compss_wait_on(info)
 
         COMPSsContext.catalog[self.last_uuid] = info
@@ -84,8 +82,7 @@ class DDFSketch(object):
             if COMPSsContext.tasks_map[self.last_uuid]['status'] in \
                 [COMPSsContext.STATUS_COMPLETED,
                  COMPSsContext.STATUS_PERSISTED,
-                 COMPSsContext.STATUS_MATERIALIZED,
-                 COMPSsContext.STATUS_TEMP_VIEW]:
+                 COMPSsContext.STATUS_MATERIALIZED]:
                 self.partitions = \
                     COMPSsContext.tasks_map[self.last_uuid]['result']
                 stored = True

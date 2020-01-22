@@ -5,7 +5,7 @@ __author__ = "Lucas Miguel S Ponce"
 __email__ = "lucasmsp@gmail.com"
 
 import _pickle as pickle
-from .ddf_base import DDFSketch
+from ddf_library.bases.ddf_base import DDFSketch
 
 
 class ModelDDF(DDFSketch):

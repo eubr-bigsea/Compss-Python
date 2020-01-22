@@ -50,7 +50,7 @@ def take_stage_1(data, settings):
 
     info, value = settings['info'][0], settings['value']
     settings['idx'] = _take_define_sample(info, value)
-
+    settings['intermediate_result'] = False
     return data, settings
 
 

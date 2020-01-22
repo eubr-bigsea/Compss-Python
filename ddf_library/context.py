@@ -9,250 +9,46 @@ __email__ = "lucasmsp@gmail.com"
 DDF is a Library for PyCOMPSs.
 """
 
-from ddf_library.utils import merge_info, check_serialization, \
-    create_stage_files, save_stage_file, read_stage_file
+from ddf_library.bases.context_base import CONTEXTBASE
+from ddf_library.utils import check_serialization, \
+    create_stage_files, save_stage_file, read_stage_file, delete_result
 
 from pycompss.api.task import task
 from pycompss.api.parameter import FILE_IN, FILE_OUT
-from pycompss.api.api import compss_wait_on, compss_delete_file, compss_wait_on_file
 
 import copy
 import networkx as nx
-from prettytable import PrettyTable
 
 DEBUG = False
 
 
-class COMPSsContext(object):
+class COMPSsContext(CONTEXTBASE):
     """
     Controls the DDF tasks executions
     """
-    adj_tasks = dict()
-    catalog = dict()
-    tasks_map = dict()
-    dag = nx.DiGraph()
-
-    OPT_SERIAL = 'serial'  # it can be grouped with others operations
-    OPT_OTHER = 'other'  # it can not be performed any kind of task optimization
-    OPT_LAST = 'last'  # it contains two or more stages,
-    # but only the last stage can be grouped
-
-    STATUS_WAIT = 'WAIT'
-    STATUS_COMPLETED = 'COMPLETED'
-    STATUS_TEMP_VIEW = 'TEMP_VIEWED'  # temporary
-
-    STATUS_PERSISTED = 'PERSISTED'
-    STATUS_MATERIALIZED = 'MATERIALIZED'  # persisted
-
-    optimization_ops = [OPT_OTHER, OPT_SERIAL, OPT_LAST]
-    """
-    task_map: a dictionary to stores all following information about a task:
-
-     - name: task name;
-     - status: WAIT, COMPLETED, TEMP_VIEWED, PERSISTED, MATERIALIZED
-     - parent: a list with its parents uuid;
-     - output: number of output;
-     - input: number of input;
-     - optimization: Currently, 'serial', 'other' or 'last'.
-     - function: a list with the function and its parameters;
-     - result: if status is COMPLETED, a dictionary with the results. The keys 
-         of this dictionary is index that represents the output (to handle with 
-         multiple outputs, like split task);
-     - n_input: a ordered list that informs the id key of its parent output
-    """
-
     def stop(self):
         """To avoid that COMPSs sends back all partial result at end."""
         for id_task in list(self.tasks_map.keys()):
             data = self.get_task_return(id_task)
 
             if check_serialization(data):
-                for f in data:
-                    compss_delete_file(f)
+                delete_result(data)
 
             self.tasks_map.pop(id_task)
             self.catalog.pop(id_task, None)
+
+        COMPSsContext.catalog = dict()
+        COMPSsContext.tasks_map = dict()
+        COMPSsContext.dag = nx.DiGraph()
 
     @staticmethod
     def set_log(enabled=True):
         global DEBUG
         DEBUG = enabled
 
-    def context_status(self):
-        n_tasks = sum([1 for k in self.tasks_map
-                       if self.get_task_name(k) != 'init'])
-        n_cached = sum([1 for k in self.tasks_map
-                        if self.get_task_status(k) == 'PERSISTED' and
-                        self.get_task_name(k) != 'init'])
-        n_materialized = sum([1 for k in self.tasks_map
-                              if self.get_task_status(k) == 'MATERIALIZED'
-                              and self.get_task_name(k) != 'init'])
-        n_output = sum([1 for k in self.tasks_map
-                        if self.tasks_map[k].get("result", False) and
-                        self.get_task_name(k) != 'init'])
-        n_tmp = sum([1 for k in self.tasks_map
-                     if self.get_task_status(k) in ['TEMP_VIEWED', 'COMPLETED']
-                     and self.get_task_name(k) != 'init'])
-
-        t = PrettyTable(['Metric', 'Value'])
-        t.add_row(['Number of tasks', n_tasks])
-        t.add_row(['Number of Persisted tasks', n_cached])
-        t.add_row(['Number of Materialized tasks', n_materialized])
-        t.add_row(['Number of temporary results saved '
-                   '(Temporary view and completed)', n_tmp])
-        t.add_row(['Number of output', n_output])
-
-        print(t)
-
-        self.plot_graph(COMPSsContext.tasks_map, COMPSsContext.dag)
-
-    @staticmethod
-    def show_workflow(tasks_map, selected_tasks):
-        """
-        Show the final workflow. Only to debug
-        :param tasks_map: Context of all tasks;
-        :param selected_tasks: list of tasks to be executed in this flow.
-        """
-
-        t = PrettyTable(['Order', 'Task name', 'uuid', 'Result is stored'])
-        for i, uuid in enumerate(selected_tasks):
-            t.add_row([i+1,
-                       tasks_map[uuid]['name'],
-                       uuid[:8],
-                       isinstance(tasks_map[uuid].get("result", None), list)
-                       ])
-        print("\nRelevant tasks:")
-        print(t)
-        print('\n')
-
-    @staticmethod
-    def show_tasks(tasks_map):
-        """
-        Show all tasks in the current code. Only to debug.
-        :return:
-        """
-        print("\nList of all tasks:")
-
-        t = PrettyTable(['uuid', 'Task name'])
-
-        for uuid in tasks_map:
-            t.add_row([uuid[:8], tasks_map[uuid]])
-        print(t)
-        print('\n')
-
-    @staticmethod
-    def plot_graph(tasks_map, dag):
-
-        for k, _ in dag.nodes(data=True):
-            status = tasks_map[k].get('status', COMPSsContext.STATUS_WAIT)
-            dag.nodes[k]['style'] = 'filled'
-            if dag.nodes[k]['label'] == 'init':
-                color = 'black'
-                dag.nodes[k]['style'] = 'solid'
-            elif status == COMPSsContext.STATUS_WAIT:
-                color = 'lightgray'
-            elif status in [COMPSsContext.STATUS_MATERIALIZED,
-                            COMPSsContext.STATUS_PERSISTED]:
-                color = 'forestgreen'
-            else:  # temp viewed or completed
-                color = 'lightblue'
-
-            dag.nodes[k]['color'] = color
-
-        from networkx.drawing.nx_agraph import write_dot
-        import time
-        t = time.localtime()
-        write_dot(dag, 'DAG_{}.dot'.format(time.strftime('%b-%d-%Y_%H%M', t)))
-
-    def create_dag(self, specials=None):
-        """
-        Create a Adjacency task list
-        Parent --> sons
-        :return:
-        """
-
-        if specials is None:
-            specials = [k for k in self.tasks_map]
-
-        for t in self.tasks_map:
-            parents = self.tasks_map[t]['parent']
-            if t in specials:
-                for p in parents:
-                    if p in specials:
-                        if p not in self.adj_tasks:
-                            self.adj_tasks[p] = []
-                        self.adj_tasks[p].append(t)
-
-        for k in self.adj_tasks:
-            # if self.tasks_map[k].get('result', False):
-
-            self.dag.add_node(k, label=self.get_task_name(k))
-            self.adj_tasks[k] = list(set(self.adj_tasks[k]))
-
-            for j in self.adj_tasks[k]:
-                self.dag.add_node(j, label=self.get_task_name(j))
-                self.dag.add_edge(k, j)
-
-    def check_action(self, uuid_task):
-        return self.tasks_map[uuid_task]['name'] in ['save', 'sync']
-
-    def get_task_name(self, uuid_task):
-        return self.tasks_map[uuid_task]['name']
-
-    def get_task_opt_type(self, uuid_task):
-        return self.tasks_map[uuid_task].get('optimization', self.OPT_OTHER)
-
-    def get_task_function(self, uuid_task):
-        return self.tasks_map[uuid_task]['function']
-
-    def get_task_return(self, uuid_task):
-        return self.tasks_map[uuid_task].get('result', [])
-
-    def set_task_function(self, uuid_task, data):
-        self.tasks_map[uuid_task]['function'] = data
-
-    def set_task_result(self, uuid_task, data):
-        self.tasks_map[uuid_task]['result'] = data
-
-    def get_task_status(self, uuid_task):
-        return self.tasks_map[uuid_task]['status']
-
-    def set_task_status(self, uuid_task, status):
-        self.tasks_map[uuid_task]['status'] = status
-
-    def get_task_parents(self, uuid_task):
-        return self.tasks_map[uuid_task]['parent']
-
-    def get_n_input(self, uuid_task):
-        return self.tasks_map[uuid_task]['input']
-
-    def get_task_sibling(self, uuid_task):
-        return self.tasks_map[uuid_task].get('sibling', [uuid_task])
-
-    def get_input_data(self, id_parents):
-        return [self.get_task_return(id_p) for id_p in id_parents]
-
-    def set_operation(self, child_task, id_parents):
-
-        # get the operation to be executed
-        task_and_operation = self.get_task_function(child_task)
-
-        # some operations need a schema information
-        if self.tasks_map[child_task].get('info', False):
-            task_and_operation[1]['info'] = []
-            for p in id_parents:
-                sc = self.catalog[p]
-                if isinstance(sc, list):
-                    sc = merge_info(sc)
-                    sc = compss_wait_on(sc)
-                    self.catalog[p] = sc
-                task_and_operation[1]['info'].append(sc)
-
-        return task_and_operation
-
     def check_pointer(self, lineage):
         """
-        Remove already computed sub-flows.
+        Generate a new lineage excluding the computed sub-flows.
 
         :param lineage: a sorted list of tasks;
         :return: a sorted list starting from previous results (if exists);
@@ -294,27 +90,26 @@ class COMPSsContext(object):
 
             if jump == 0:
                 id_parents = self.get_task_parents(current_task)
+                inputs = self.get_input_data(id_parents)
+                opt_type = self.get_task_opt_type(current_task)
 
                 if DEBUG:
-                    print("[CONTEXT] Task {} ({}) with parents {}".format(
-                            self.get_task_name(current_task),
-                            current_task[:8],
-                            id_parents))
+                    msg = "[CONTEXT] Task {} ({}) with parents {}\n"\
+                            .format(self.get_task_name(current_task),
+                                    current_task[:8], id_parents)
+                    msg += "[CONTEXT] RUNNING {} as {}"\
+                        .format(self.get_task_name(current_task), opt_type)
+                    print(msg)
 
-                # get input data from parents
-                inputs = self.get_input_data(id_parents)
+                if opt_type == self.OPT_OTHER:
+                    self.run_opt_others(current_task, id_parents, inputs)
 
-                if self.get_task_opt_type(current_task) == self.OPT_OTHER:
-                    self.run_opt_others_tasks(current_task, id_parents, inputs)
+                elif opt_type == self.OPT_SERIAL:
+                    jump = self.run_opt_serial(lineage[i_task:], inputs)
 
-                elif self.get_task_opt_type(current_task) == self.OPT_SERIAL:
-                    jump = self.run_opt_serial_tasks(current_task,
-                                                     lineage[i_task:], inputs)
-
-                elif self.get_task_opt_type(current_task) == self.OPT_LAST:
-                    jump = self.run_opt_last_tasks(current_task,
-                                                   lineage[i_task:],
-                                                   inputs, id_parents)
+                elif opt_type == self.OPT_LAST:
+                    jump = self.run_opt_last(current_task, lineage[i_task:],
+                                             inputs, id_parents)
 
                 current_task = lineage[i_task + jump]
 
@@ -323,19 +118,6 @@ class COMPSsContext(object):
 
             self.delete_old_tasks(current_task, lineage)
 
-    def check_task_childrens(self, task_opt):
-        """
-        is possible, when join lineages that a task wil have a children
-        in the future. So, its important to keep track on that.
-        :return:
-        """
-        out_edges = self.dag.out_edges(task_opt)
-        for (inv, outv) in out_edges:
-            if self.get_task_status(outv) == self.STATUS_WAIT:
-                return True
-
-        return False
-
     def delete_old_tasks(self, current_task, lineage):
         """
         We keep all tasks that is not computed yet or that have a not computed
@@ -343,60 +125,46 @@ class COMPSsContext(object):
         :param current_task:
         :return:
         """
-        # the same thing to schema
-        # print (lineage)
+
         for id_task in lineage:
             # take care to not delete data from leaf nodes
             degree = -1 if id_task not in self.dag.nodes \
                 else self.dag.out_degree(id_task)
             siblings = self.get_task_sibling(current_task)
             has_siblings = len(siblings) > 1
-            # childrens = self.check_task_childrens(id_task)
-            #print("EVALUATING"+ id_task[0:8] + " "+ self.get_task_name(id_task))
-            #print(' - childrens:', not childrens)
 
             if id_task == current_task:
                 return 1
             elif all([degree > 0,  # do not delete leaf tasks
-                    #id_task != current_task,  # if is not the current task
-                    not has_siblings,  # if is a split
-                    # not childrens,  # if it has a children that needs its data
-                    self.get_task_status(id_task) in
-                    [self.STATUS_COMPLETED, self.STATUS_TEMP_VIEW]
-                    ]):
+                      not has_siblings,  # if is a split-operation
+                      self.get_task_status(id_task) == self.STATUS_COMPLETED
+                      ]):
 
                 if DEBUG:
-                    print(" - delete_old_tasks - {} ({})"
-                          "- Degree: {} - has siblings: {}"
+                    print(" - delete_old_tasks - {} ({}) with degree {}"
                           .format(self.tasks_map[id_task]['name'],
                                   id_task[:8],
-                                  degree, len(siblings) > 1))
+                                  degree))
                 data = self.get_task_return(id_task)
 
                 if check_serialization(data):
-                    for f in data:
-                        compss_delete_file(f)
+                    delete_result(data)
 
                 self.set_task_status(id_task, self.STATUS_WAIT)
                 self.set_task_result(id_task, None)
                 self.catalog.pop(id_task, None)
 
-    def run_opt_others_tasks(self, child_task, id_parents, inputs):
+    def run_opt_others(self, child_task, id_parents, inputs):
         """
         The current operation can not be grouped with other operations, so,
         it must be executed separated.
         """
 
-        if DEBUG:
-            print("[CONTEXT] RUNNING {} - run_opt_others_tasks".format(
-                    self.tasks_map[child_task]['name']))
-
         operation = self.set_operation(child_task, id_parents)
         # execute this operation that returns a dictionary
         output_dict = self._execute_task(operation, inputs)
 
-        if self.tasks_map[child_task]['name'] == 'save':
-
+        if self.get_task_name(child_task) == 'save':
             self.catalog[child_task] = \
                 self.catalog.get(id_parents[0], None)
             self.set_task_result(child_task, inputs[0])
@@ -405,7 +173,7 @@ class COMPSsContext(object):
         else:
             self.save_opt_others_tasks(output_dict, child_task)
 
-    def run_opt_serial_tasks(self, child_task, lineage, inputs):
+    def run_opt_serial(self, lineage, inputs):
         """
         The current operation can be grouped with other operations. This method
         check if the next operations share this behavior. If it does, group
@@ -413,15 +181,11 @@ class COMPSsContext(object):
         """
         group_uuids, group_func = list(), list()
 
-        if DEBUG:
-            print("[CONTEXT] RUNNING {} - run_opt_serial_tasks".format(
-                    self.tasks_map[child_task]['name']))
-
         for id_j, task_opt in enumerate(lineage):
             if DEBUG:
-                print(' - Checking optimization type for {} ({})'.format(
-                        self.tasks_map[task_opt]['name'],
-                        task_opt[:8]))
+                msg = ' - Checking optimization type for {} ({})'\
+                    .format(self.get_task_name(task_opt), task_opt[:8])
+                print(msg)
 
             group_uuids.append(task_opt)
             group_func.append(self.get_task_function(task_opt))
@@ -442,8 +206,11 @@ class COMPSsContext(object):
                     break
 
         if DEBUG:
-            print(" - Stages (optimized): {}".format(group_uuids))
-            print(" - opt_functions", group_func)
+            names = [self.get_task_name(i) for i in group_uuids]
+            ids = [i[0:8] for i in group_uuids]
+            msg = " - Stages (optimized): {}" \
+                  " - opt_functions: {}".format(ids, names)
+            print(msg)
 
         file_serial_function = 0
         if any(['load_text-file_in' in self.get_task_name(uid)
@@ -459,18 +226,13 @@ class COMPSsContext(object):
         jump = len(group_func)-1
         return jump
 
-    def run_opt_last_tasks(self, child_task, lineage,
-                           inputs, id_parents):
+    def run_opt_last(self, child_task, lineage, inputs, id_parents):
         """
         The current operation can be grouped with other operations. This method
         check if the next operations share this behavior. If it does, group
         them to execute together, otherwise, execute it as a single task.
         """
         group_uuids, group_func = list(), list()
-
-        if DEBUG:
-            print("[CONTEXT] RUNNING {} - run_opt_last_tasks".format(
-                    self.tasks_map[child_task]['name']))
 
         n_input = self.get_n_input(child_task)
         group_uuids.append(child_task)
@@ -503,8 +265,11 @@ class COMPSsContext(object):
                     break
 
         if DEBUG:
-            print(" - Stages (optimized): {}".format(group_uuids))
-            print(" - opt_functions", group_func)
+            names = [self.get_task_name(i) for i in group_uuids]
+            ids = [i[0:8] for i in group_uuids]
+            msg = " - Stages (optimized): {}" \
+                  " - opt_functions: {}".format(ids, names)
+            print(msg)
 
         result, info = self._execute_opt_last_tasks(group_func, inputs,
                                                     n_input)
@@ -517,7 +282,7 @@ class COMPSsContext(object):
 
         keys_r, keys_i = output_dict['key_data'], output_dict['key_info']
 
-        siblings = self.get_task_sibling(child_task)
+        siblings = self.get_task_sibling(child_task)    #TODO: ENTENDER
 
         for f, (id_t, key_r, key_i) in enumerate(zip(siblings, keys_r, keys_i)):
             result, info = output_dict[key_r], output_dict[key_i]
@@ -559,8 +324,9 @@ class COMPSsContext(object):
             input_data = input_data[0]
 
         if DEBUG:
-            print(' - running task by _execute_task')
-            print('   * input file {}'.format(input_data))
+            msg = ' - running task by _execute_task\n' \
+                  '   * input file {}'.format(input_data)
+            print(msg)
 
         output = function(input_data, settings)
         return output
@@ -597,9 +363,11 @@ class COMPSsContext(object):
             raise Exception("[CONTEXT] - ERROR in _execute_serial_tasks")
 
         if DEBUG:
-            print(' - running task by _execute_serial_tasks - nfrag:', nfrag)
-            print('   * input file {}\n   * output file {}'.format(input_data,
-                                                                   out_files))
+            msg = ' - running task by _execute_serial_tasks\n' \
+                  '   * input file {}\n' \
+                  '   * output file {}'.format(input_data,out_files)
+            print(msg)
+
         for f, (in_file, out_file) in enumerate(zip(input_data, out_files)):
             info[f] = function(in_file, tasks_list, f, out_file)
 
@@ -617,12 +385,14 @@ class COMPSsContext(object):
         :return:
         """
 
-        fist_task, opt = opt[0], opt[1:]
+        first_task, opt = opt[0], opt[1:]
         out_tmp2 = None
         if n_input == 1:
-            out_tmp, settings = self._execute_task(fist_task, data)
+            out_tmp, settings = self._execute_task(first_task, data)
         else:
-            out_tmp, out_tmp2, settings = self._execute_task(fist_task, data)
+            out_tmp, out_tmp2, settings = self._execute_task(first_task, data)
+
+        intermediate_result = settings.get('intermediate_result', False)
         nfrag = len(out_tmp)
 
         opt[0][1] = settings
@@ -641,12 +411,12 @@ class COMPSsContext(object):
                 info[f] = task_bundle_2parquet_1parquet(in_file1, in_file2,
                                                         opt, f, out_file)
             # removing temporary tasks
-            for f in out_tmp2:
-                compss_delete_file(f)
+            if intermediate_result:
+                delete_result(out_tmp2)
 
         # removing temporary tasks
-        for f in out_tmp:
-            compss_delete_file(f)
+        if intermediate_result:
+            delete_result(out_tmp)
 
         return out_files, info
 
@@ -663,6 +433,8 @@ def task_bundle_1parquet_1parquet(input_file, stage, id_frag, output_file):
     :param output_file: Output filepath;
     :return:
     """
+
+    # by using parquet, we can specify each column we want to read
     columns = None
     if stage[0][0].__name__ == 'task_select':
         columns = stage[0][1]['columns']

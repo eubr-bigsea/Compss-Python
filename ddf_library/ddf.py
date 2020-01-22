@@ -13,11 +13,11 @@ Public classes:
       Distributed DataFrame (DDF), the abstraction of this library.
 """
 
-from pycompss.api.api import compss_wait_on, compss_wait_on_file, compss_open, compss_delete_file
+from pycompss.api.api import compss_open, compss_delete_file
 
-from ddf_library.ddf_base import DDFSketch
+from ddf_library.bases.ddf_base import DDFSketch
 from ddf_library.context import COMPSsContext
-from ddf_library.utils import concatenate_pandas, check_serialization
+from ddf_library.utils import concatenate_pandas
 
 import pandas as pd
 
@@ -502,7 +502,7 @@ class DDF(DDFSketch):
         >>> ddf1.group_by(group_by=['col_1']).mean(['col_2']).first(['col_2'])
         """
         settings = {'groupby': group_by, 'operation': []}
-        from .groupby import GroupedDDF
+        from ddf_library.bases.groupby import GroupedDDF
         from .functions.etl.aggregation import aggregation_stage_1, \
             aggregation_stage_2
 
@@ -1556,7 +1556,6 @@ class DDF(DDFSketch):
 
         >>> ddf1.map(lambda row: row['col_0'].split(','), 'col_0_new')
         """
-        from ddf_library.utils import col
         settings = {'function': f, 'alias': alias}
 
         from .functions.etl.map import map as task
@@ -1593,13 +1592,9 @@ class DDF(DDFSketch):
         if status == COMPSsContext.STATUS_WAIT:
             self._run_compss_context()
 
-        if status in [COMPSsContext.STATUS_COMPLETED,
-                      COMPSsContext.STATUS_WAIT]:
+        if status == COMPSsContext.STATUS_COMPLETED:
             COMPSsContext.tasks_map[self.last_uuid]['status'] = \
                 COMPSsContext.STATUS_PERSISTED
-        elif status == COMPSsContext.STATUS_TEMP_VIEW:
-            COMPSsContext.tasks_map[self.last_uuid]['status'] = \
-                COMPSsContext.STATUS_MATERIALIZED
 
         return self
 
@@ -2188,18 +2183,9 @@ class DDF(DDFSketch):
 
         self._check_stored()
 
-        if not check_serialization(self.partitions):
-            print('Retrieving blocks')
-            res = [compss_open(f, mode='rb') for f in self.partitions]
-            # COMPSsContext.tasks_map[self.last_uuid]['result'] = res #TODO
-            status = COMPSsContext.STATUS_TEMP_VIEW
-            if COMPSsContext.tasks_map[self.last_uuid]['status'] == \
-                    COMPSsContext.STATUS_PERSISTED:
-                status = COMPSsContext.STATUS_MATERIALIZED
-            COMPSsContext.tasks_map[self.last_uuid]['status'] = status
-        else:
-            # res = self.partitions
-            res = [compss_open(f, mode='rb') for f in self.partitions]
+        res = [compss_open(f, mode='rb') for f in self.partitions]
+        COMPSsContext.tasks_map[self.last_uuid]['status'] \
+            = COMPSsContext.STATUS_PERSISTED
 
         if isinstance(columns, str):
             columns = [columns]
@@ -2209,14 +2195,15 @@ class DDF(DDFSketch):
             df = concatenate_pandas([pd.read_parquet(f, columns=columns)
                                      for f in res])
             df.reset_index(drop=True, inplace=True)
+
         return df
 
     def unpersist(self):
         status = COMPSsContext.tasks_map[self.last_uuid]['status']
         if status == COMPSsContext.STATUS_PERSISTED:
             status = COMPSsContext.STATUS_COMPLETED
-        elif status == COMPSsContext.STATUS_MATERIALIZED:
-            status = COMPSsContext.STATUS_TEMP_VIEW
+        # elif status == COMPSsContext.STATUS_MATERIALIZED:
+        #     status = COMPSsContext.STATUS_TEMP_VIEW
         COMPSsContext.tasks_map[self.last_uuid]['status'] = status
 
         return self

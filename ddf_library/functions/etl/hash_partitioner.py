@@ -8,7 +8,6 @@ from ddf_library.utils import generate_info, save_stage_file, create_stage_files
 
 from pycompss.api.parameter import FILE_OUT, COLLECTION_IN
 from pycompss.api.task import task
-from pycompss.api.constraint import constraint
 from pycompss.api.api import compss_delete_object
 
 import pandas as pd
@@ -42,8 +41,8 @@ def hash_partition(data, settings):
 
     elif nfrag_target > 1:
 
-        import ddf_library.config
-        ddf_library.config.x = nfrag_target
+        import ddf_library.bases.config
+        ddf_library.bases.config.x = nfrag_target
 
         splits = [[0 for _ in range(nfrag_target)] for _ in range(nfrag)]
 

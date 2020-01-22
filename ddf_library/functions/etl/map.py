@@ -4,7 +4,7 @@
 __author__ = "Lucas Miguel S Ponce"
 __email__ = "lucasmsp@gmail.com"
 
-import ddf_library.config as config
+import ddf_library.bases.config as config
 from ddf_library.utils import generate_info
 import numpy as np
 import datetime

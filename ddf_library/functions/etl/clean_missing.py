@@ -160,6 +160,8 @@ def clean_missing_preprocessing(data, settings):
         medians_info = compss_wait_on(medians_info)
         settings['values'] = _median_define(medians_info)
 
+    settings['intermediate_result'] = False
+
     return data, settings
 
 
