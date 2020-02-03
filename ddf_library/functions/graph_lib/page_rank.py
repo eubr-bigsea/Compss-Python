@@ -5,7 +5,7 @@ __author__ = "Lucas Miguel S Ponce"
 __email__ = "lucasmsp@gmail.com"
 
 from ddf_library.ddf import DDF
-from ddf_library.ddf_base import DDFSketch
+from ddf_library.bases.ddf_model import ModelDDF
 
 from pycompss.api.api import compss_wait_on
 from pycompss.api.task import task
@@ -17,7 +17,9 @@ import numpy as np
 __all__ = ['PageRank']
 
 
-class PageRank(DDFSketch):
+# TODO: Adaptar para parquet
+
+class PageRank(ModelDDF):
     # noinspection PyUnresolvedReferences
     """
     PageRank is one of the methods Google uses to determine a page's
@@ -37,38 +39,33 @@ class PageRank(DDFSketch):
     >>> ddf2 = pr.transform(ddf1, inlink_col='col1', outlink_col='col2')
     """
 
-    def __init__(self, outlink_col, inlink_col, damping_factor=0.85,
-                 max_iters=100):
+    def __init__(self, damping_factor=0.85, max_iters=100):
         """
-        :param outlink_col: Out-link vertex;
-        :param inlink_col: In-link vertex;
         :param damping_factor: Default damping factor is 0.85;
         :param max_iters: Maximum number of iterations (default is 100).
         """
         super(PageRank, self).__init__()
 
-        self.settings = dict()
-        self.settings['inlink_col'] = inlink_col
-        self.settings['outlink_col'] = outlink_col
-        self.settings['max_iters'] = max_iters
-        self.settings['damping_factor'] = damping_factor
+        self.inlink_col = None
+        self.outlink_col = None
+        self.max_iters = max_iters
+        self.damping_factor = damping_factor
 
-        self.name = 'PageRank'
-
-    def transform(self, data):
+    def transform(self, data, outlink_col, inlink_col):
         """
         Generates the PageRank's result.
 
         :param data: DDF
+        :param outlink_col: Out-link vertex;
+        :param inlink_col: In-link vertex;
         :return: DDF with Vertex and Rank columns
         """
 
         df, nfrag, tmp = self._ddf_initial_setup(data)
 
-        inlink = self.settings['inlink_col']
-        outlink = self.settings['outlink_col']
-        factor = self.settings.get('damping_factor', 0.85)
-        max_iterations = self.settings.get('max_iters', 100)
+        self.inlink_col = inlink_col
+        self.outlink_col = outlink_col
+
         col1 = 'Vertex'
         col2 = 'Rank'
 
@@ -82,7 +79,7 @@ class PageRank(DDFSketch):
 
         for i in range(nfrag):
             adj_list[i], rank_list[i], counts_in[i] = \
-                _pr_create_adjlist(df[i], inlink, outlink)
+                _pr_create_adjlist(df[i], inlink_col, outlink_col)
 
         counts_in = merge_reduce(_merge_counts, counts_in)
         for i in range(nfrag):
@@ -90,7 +87,7 @@ class PageRank(DDFSketch):
 
         del counts_in
 
-        for iteration in range(max_iterations):
+        for iteration in range(self.max_iters):
             """Calculate the partial contribution of each vertex."""
             contributions = [_calc_contribuitions(adj_list[i], rank_list[i])
                              for i in range(nfrag)]
@@ -98,7 +95,8 @@ class PageRank(DDFSketch):
             merged_c = merge_reduce(_merge_contribs, contributions)
 
             """Update each vertex rank in the fragment."""
-            rank_list = [_update_rank(rank_list[i], merged_c, factor)
+            rank_list = [_update_rank(rank_list[i], merged_c,
+                                      self.damping_factor)
                          for i in range(nfrag)]
 
         table = [_print_result(rank_list[i], col1, col2) for i in range(nfrag)]
@@ -106,7 +104,7 @@ class PageRank(DDFSketch):
         merged_table = merge_reduce(_merge_ranks, table)
         result, info = _pagerank_split(merged_table, nfrag)
 
-        uuid_key = self._ddf_add_task(task_name='task_transform_pagerank',
+        uuid_key = self._ddf_add_task(task_name=self.name,
                                       status='MATERIALIZED',
                                       opt=self.OPT_OTHER,
                                       function=[self.transform, data],

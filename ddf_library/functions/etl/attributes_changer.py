@@ -50,6 +50,26 @@ def with_column_cast(data, settings):
     attributes = settings['attributes']
     new_data_type = settings['cast']
     frag = settings['id_frag']
+    alias = settings.get('alias', None)
+
+    if not isinstance(attributes, list):
+        attributes = [attributes]
+
+    if not isinstance(new_data_type, list):
+        new_data_type = [new_data_type for _ in range(len(attributes))]
+
+    if alias is None:
+        alias = attributes
+
+    if len(alias) != len(attributes):
+        raise Exception('Alias and Attributes must have same length.')
+
+    # TODO: optimize
+    diff = len(new_data_type) - len(attributes)
+    if diff > 0:
+        cast = new_data_type[:len(attributes)]
+    elif diff < 0:
+        cast = new_data_type + ['keep' for _ in range(diff + 1)]
 
     cols = data.columns
     for col in attributes:
@@ -57,20 +77,21 @@ def with_column_cast(data, settings):
             raise Exception("The column `{}` don't exists!.".format(col))
 
     # first, change the data types.
-    for att, dtype in zip(attributes, new_data_type):
+    for att, new_col, dtype in zip(attributes, alias, new_data_type):
         dtype = dtype.lower()
         if dtype == 'integer':
-            data[att] = data[att].astype(int)
+            data[new_col] = data[att].astype(int)
         elif dtype == 'string':
-            data[att] = data[att].astype(str)
+            data[new_col] = data[att].astype(str)
         elif dtype == "decimal":
-            data[att] = \
+            data[new_col] = \
                 pd.to_numeric(data[att], downcast='float', errors='coerce')
         elif dtype == "date":
-            tmp = pd.to_datetime(data[att])
-            data[att] = tmp.apply(convert_to_date)
+            data[new_col] = pd.to_datetime(data[att],
+                                           infer_datetime_format=True).dt.date
         elif dtype == "date/time":
-            data[att] = pd.to_datetime(data[att], infer_datetime_format=True)
+            data[new_col] = pd.to_datetime(data[att],
+                                           infer_datetime_format=True)
 
     info = generate_info(data, frag)
 

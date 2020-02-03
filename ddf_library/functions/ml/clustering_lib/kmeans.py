@@ -6,9 +6,10 @@ __author__ = "Lucas Miguel S Ponce"
 __email__ = "lucasmsp@gmail.com"
 
 from ddf_library.ddf import DDF
-from ddf_library.utils import generate_info
-from ddf_library.ddf_model import ModelDDF
+from ddf_library.utils import generate_info, read_stage_file
+from ddf_library.bases.ddf_model import ModelDDF
 
+from pycompss.api.parameter import FILE_IN
 from pycompss.api.task import task
 from pycompss.api.api import compss_wait_on
 from pycompss.functions.reduce import merge_reduce
@@ -45,7 +46,7 @@ class Kmeans(ModelDDF):
     """
 
     def __init__(self, n_clusters=3, max_iter=100,
-                 epsilon=0.01, init_mode='k-means||'):
+                 epsilon=1e-2, init_mode='k-means||'):
         """
 
         :param n_clusters: Number of clusters;
@@ -59,15 +60,14 @@ class Kmeans(ModelDDF):
             raise Exception("This implementation only supports 'random' and "
                             "k-means|| as a initialization mode. ")
 
-        self.settings = dict()
-        self.settings['max_iter'] = max_iter
-        self.settings['init_mode'] = init_mode
-        self.settings['k'] = n_clusters
-        self.settings['epsilon'] = epsilon
-
-        self.model = {}
-        self.name = 'Kmeans'
-        self.cost = np.inf
+        self.max_iter = int(max_iter)
+        self.init_mode = init_mode
+        self.n_clusters = int(n_clusters)
+        self.epsilon = epsilon
+        self.feature_col = None
+        self.pred_col = None
+        self.iterations = 0
+        self.cost = None
 
     def fit(self, data, feature_col):
         """
@@ -75,41 +75,37 @@ class Kmeans(ModelDDF):
         :param feature_col: Features column names;
         :return: trained model
         """
-        self.settings['feature_col'] = feature_col
+        self.feature_col = feature_col
 
         df, nfrag, tmp = self._ddf_initial_setup(data)
-
-        k = int(self.settings['k'])
-        max_iterations = int(self.settings.get('max_iter', 100))
-        epsilon = float(self.settings.get('epsilon', 0.001))
-        init_mode = self.settings.get('init_mode', 'k-means||')
-        features_col = self.settings['feature_col']
 
         # counting rows in each fragment
         size = [[] for _ in range(nfrag)]
         xp = [[] for _ in range(nfrag)]
         for f in range(nfrag):
-            xp[f], size[f] = _kmeans_project_fields(df[f], features_col)
+            xp[f], size[f] = _kmeans_project_fields(df[f], self.feature_col)
         info = merge_reduce(_kmeans_merge_centroids, size)
         info = compss_wait_on(info)
         size, n_list = info
 
-        if size < k:
+        if size < self.n_clusters:
             raise Exception("Number of Clusters K is greater "
                             "than number of rows.")
 
-        if init_mode == "random":
-            centroids = _kmeans_init_random(xp, k, size, n_list)
+        if self.init_mode == "random":
+            centroids = _kmeans_init_random(xp, self.n_clusters, size, n_list)
 
-        elif init_mode == "k-means||":
-            centroids = _kmeans_init_parallel(xp, k, n_list, nfrag)
+        elif self.init_mode == "k-means||":
+            centroids = _kmeans_init_parallel(xp, self.n_clusters,
+                                              n_list, nfrag)
         else:
             raise Exception("Inform a valid initMode.")
 
         it = 0
         cost = np.inf
 
-        while not self._kmeans_has_converged(cost, epsilon, it, max_iterations):
+        while not self._kmeans_has_converged(cost, self.epsilon, it,
+                                             self.max_iter):
             idx = [_kmeans_find_closest(xp[f], centroids) for f in range(nfrag)]
             idx = merge_reduce(_kmeans_merge_keys, idx)
             centroids, cost = _kmeans_compute_centroids(idx)
@@ -117,6 +113,7 @@ class Kmeans(ModelDDF):
             it += 1
             print('[INFO] - KMeans - it {} cost: {}'.format(it, cost))
 
+        self.iterations = it
         self.model['algorithm'] = self.name
         self.model['model'] = centroids
         return self
@@ -136,31 +133,33 @@ class Kmeans(ModelDDF):
 
         return ddf
 
-    def transform(self, data, pred_col='prediction_kmeans'):
+    def transform(self, data, feature_col=None, pred_col='prediction_kmeans'):
         """
 
         :param data: DDF
+        :param feature_col: Optional, features;
         :param pred_col: Output prediction column;
         :return: trained model
         """
 
         self.check_fitted_model()
+        if feature_col:
+            self.feature_col = feature_col
+        self.pred_col = pred_col
 
-        task_list = data.task_list
-        settings = self.settings.copy()
-        settings['pred_col'] = pred_col
-        settings['model'] = self.model['model'].copy()
+        settings = self.__dict__.copy()
+        settings['model'] = settings['model']['model']
 
         def task_transform_kmeans(df, params):
             return _kmeans_predict(df, params)
 
-        uuid_key = self._ddf_add_task(task_name='task_transform_kmeans',
+        uuid_key = self._ddf_add_task(task_name=self.name,
                                       opt=self.OPT_SERIAL,
                                       function=[task_transform_kmeans,
                                                 settings],
                                       parent=[data.last_uuid])
 
-        return DDF(task_list=task_list, last_uuid=uuid_key)
+        return DDF(task_list=data.task_list, last_uuid=uuid_key)
 
     def compute_cost(self):
         """
@@ -184,20 +183,17 @@ class Kmeans(ModelDDF):
         :return:
         """
 
-        old_cost = self.cost
+        old_cost = self.cost if self.cost else np.inf
         self.cost = cost
         if it < max_iter:
-            if np.abs(self.cost - old_cost) < epsilon:
-                return True
-            else:
-                return False
+            return np.abs(self.cost - old_cost) < epsilon
         else:
             return True
 
 
-@task(returns=2)
-def _kmeans_project_fields(data, columns):
-
+@task(returns=2, data_input=FILE_IN)
+def _kmeans_project_fields(data_input, columns):
+    data = read_stage_file(data_input, columns)
     xp = data[columns].dropna().values
     n = len(xp)
     size = [n, [n]]

@@ -6,9 +6,10 @@ __author__ = "Lucas Miguel S Ponce"
 __email__ = "lucasmsp@gmail.com"
 
 from ddf_library.ddf import DDF
-from ddf_library.ddf_model import ModelDDF
-from ddf_library.utils import generate_info
+from ddf_library.bases.ddf_model import ModelDDF
+from ddf_library.utils import generate_info, read_stage_file
 
+from pycompss.api.parameter import FILE_IN
 from pycompss.api.task import task
 from pycompss.functions.reduce import merge_reduce
 from pycompss.api.api import compss_wait_on
@@ -34,38 +35,34 @@ class OrdinaryLeastSquares(ModelDDF):
 
     :Example:
 
-    >>> model = OrdinaryLeastSquares('features', 'y').fit(ddf1)
+    >>> model = OrdinaryLeastSquares().fit(ddf1, feature='features', label='y')
     >>> ddf2 = model.transform(ddf1)
     """
 
-    def __init__(self, feature_col, label_col):
+    def __init__(self):
         """
-        :param feature_col: Feature column name;
-        :param label_col: Label column name;
         """
         super(OrdinaryLeastSquares, self).__init__()
+        self.feature_col = None
+        self.label_col = None
+        self.pred_col = None
 
-        self.settings = dict()
-        self.settings['feature_col'] = feature_col
-        self.settings['label_col'] = label_col
-
-        self.model = {}
-        self.name = 'OrdinaryLeastSquares'
-
-    def fit(self, data):
+    def fit(self, data, feature_col, label_col):
         """
         Fit the model.
 
         :param data: DDF
+        :param feature_col: Feature column name;
+        :param label_col: Label column name;
         :return: trained model
         """
 
         df, nfrag, tmp = self._ddf_initial_setup(data)
 
-        features = self.settings['feature_col']
-        label = self.settings['label_col']
+        self.feature_col = feature_col
+        self.label_col = label_col
 
-        cols = [features, label]
+        cols = [feature_col, label_col]
 
         partial_calculation = [[] for _ in range(nfrag)]
         for f in range(nfrag):
@@ -79,49 +76,55 @@ class OrdinaryLeastSquares(ModelDDF):
         self.model['algorithm'] = self.name
         return self
 
-    def fit_transform(self, data, pred_col='pred_LinearReg'):
+    def fit_transform(self, data, feature_col, label_col,
+                      pred_col='pred_LinearReg'):
         """
         Fit the model and transform.
 
         :param data: DDF
+        :param feature_col: Feature column name;
+        :param label_col: Label column name;
         :param pred_col: Output prediction column (default, *'pred_LinearReg'*);
         :return: DDF
         """
 
-        self.fit(data)
-        ddf = self.transform(data, pred_col)
+        self.fit(data, feature_col, label_col)
+        ddf = self.transform(data, feature_col, pred_col)
 
         return ddf
 
-    def transform(self, data, pred_col='pred_LinearReg'):
+    def transform(self, data, feature_col=None, pred_col='pred_LinearReg'):
         """
         :param data: DDF
+        :param feature_col: Feature column name;
         :param pred_col: Output prediction column (default, *'pred_LinearReg'*);
         :return: DDF
         """
 
         self.check_fitted_model()
+        if feature_col:
+            self.feature_col = feature_col
+        self.pred_col = pred_col
 
-        task_list = data.task_list
-        settings = self.settings.copy()
-        settings['pred_col'] = pred_col
-        settings['model'] = self.model['model'].copy()
+        settings = self.__dict__.copy()
+        settings['model'] = settings['model']['model']
 
         def task_ols_regressor(df, params):
             return _predict(df, params)
 
-        uuid_key = self._ddf_add_task(task_name='task_ols_regressor',
+        uuid_key = self._ddf_add_task(task_name=self.name,
                                       opt=self.OPT_SERIAL,
                                       function=[task_ols_regressor, settings],
                                       parent=[data.last_uuid])
 
-        return DDF(task_list=task_list, last_uuid=uuid_key)
+        return DDF(task_list=data.task_list, last_uuid=uuid_key)
 
 
-@task(returns=1)
-def _lr_computation_xs(data, cols):
+@task(returns=1, data_input=FILE_IN)
+def _lr_computation_xs(data_input, cols):
     """Partial calculation."""
     feature, label = cols
+    data = read_stage_file(data_input, cols)
     data = data[cols].dropna()
 
     x = data[feature].values

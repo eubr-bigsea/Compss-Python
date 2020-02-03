@@ -10,14 +10,14 @@ DDF is a Library for PyCOMPSs.
 """
 
 from ddf_library.bases.context_base import CONTEXTBASE
+from ddf_library.bases.tasks import *
 from ddf_library.utils import check_serialization, \
-    create_stage_files, save_stage_file, read_stage_file, delete_result
-
-from pycompss.api.task import task
-from pycompss.api.parameter import FILE_IN, FILE_OUT
+    create_stage_files, delete_result
 
 import copy
 import networkx as nx
+from prettytable import PrettyTable
+
 
 DEBUG = False
 
@@ -26,16 +26,15 @@ class COMPSsContext(CONTEXTBASE):
     """
     Controls the DDF tasks executions
     """
-    def stop(self):
+
+    @staticmethod
+    def stop():
         """To avoid that COMPSs sends back all partial result at end."""
-        for id_task in list(self.tasks_map.keys()):
-            data = self.get_task_return(id_task)
+        for id_task in list(COMPSsContext.tasks_map.keys()):
+            data = COMPSsContext.tasks_map[id_task].get('result', [])
 
             if check_serialization(data):
                 delete_result(data)
-
-            self.tasks_map.pop(id_task)
-            self.catalog.pop(id_task, None)
 
         COMPSsContext.catalog = dict()
         COMPSsContext.tasks_map = dict()
@@ -45,6 +44,29 @@ class COMPSsContext(CONTEXTBASE):
     def set_log(enabled=True):
         global DEBUG
         DEBUG = enabled
+
+    def context_status(self):
+        n_tasks = sum([1 for k in self.tasks_map
+                       if self.get_task_name(k) != 'init'])
+        n_cached = sum([1 for k in self.tasks_map
+                        if self.get_task_status(k) == 'PERSISTED' and
+                        self.get_task_name(k) != 'init'])
+        n_output = sum([1 for k in self.tasks_map
+                        if self.tasks_map[k].get("result", False) and
+                        self.get_task_name(k) != 'init'])
+        n_tmp = sum([1 for k in self.tasks_map
+                     if self.get_task_status(k) == 'COMPLETED'
+                     and self.get_task_name(k) != 'init'])
+
+        t = PrettyTable(['Metric', 'Value'])
+        t.add_row(['Number of tasks', n_tasks])
+        t.add_row(['Number of Persisted tasks', n_cached])
+        t.add_row(['Number of temporary stages', n_tmp])
+        t.add_row(['Number of output', n_output])
+
+        print(t)
+
+        self.plot_graph(COMPSsContext.tasks_map, COMPSsContext.dag)
 
     def check_pointer(self, lineage):
         """
@@ -177,7 +199,7 @@ class COMPSsContext(CONTEXTBASE):
 
         operation = self.set_operation(child_task, id_parents)
         # execute this operation that returns a dictionary
-        output_dict = self._execute_task(operation, inputs)
+        output_dict = self._execute_other_task(operation, inputs)
 
         if self.get_task_name(child_task) == 'save':
             self.catalog[child_task] = \
@@ -324,7 +346,7 @@ class COMPSsContext(CONTEXTBASE):
             self.set_task_status(o, self.STATUS_COMPLETED)
 
     @staticmethod
-    def _execute_task(env, input_data):
+    def _execute_other_task(env, input_data):
         """
         Used to execute all non-lazy functions.
 
@@ -333,13 +355,13 @@ class COMPSsContext(CONTEXTBASE):
         :return:
         """
         function, settings = env
-
         nfrag = len(input_data)
+
         if nfrag == 1:
             input_data = input_data[0]
 
         if DEBUG:
-            msg = ' - running task by _execute_task\n' \
+            msg = ' - running task by _execute_other_task\n' \
                   '   * input file {}'.format(input_data)
             print(msg)
 
@@ -353,8 +375,8 @@ class COMPSsContext(CONTEXTBASE):
         Used to execute a group of lazy tasks. This method submit
         multiple 'context.task_bundle', one for each data fragment.
 
-        :param tasks_list: sequence of functions and parameters to be executed in
-            each fragment
+        :param tasks_list: sequence of functions and parameters to be executed
+         in each fragment
         :param input_data: A list of DataFrame as input data
         :param type_function: if False, use task_bundle otherwise
          task_bundle_file
@@ -369,6 +391,7 @@ class COMPSsContext(CONTEXTBASE):
         out_files = create_stage_files(nfrag)
 
         if type_function == 0:
+            # main function #TODO doc this
             function = task_bundle_1parquet_1parquet
         elif type_function == 1:
             function = task_bundle_1csv_1parquet
@@ -403,14 +426,15 @@ class COMPSsContext(CONTEXTBASE):
         first_task, opt = opt[0], opt[1:]
         out_tmp2 = None
         if n_input == 1:
-            out_tmp, settings = self._execute_task(first_task, data)
+            out_tmp, settings = self._execute_other_task(first_task, data)
         else:
-            out_tmp, out_tmp2, settings = self._execute_task(first_task, data)
+            out_tmp, out_tmp2, settings = \
+                self._execute_other_task(first_task, data)
             if out_tmp2 is None:
                 # some operations, like geo_within does not return 2 data
                 n_input = 1
 
-        intermediate_result = settings.get('intermediate_result', False)
+        intermediate_result = settings.get('intermediate_result', True)
         nfrag = len(out_tmp)
 
         opt[0][1] = settings
@@ -437,100 +461,3 @@ class COMPSsContext(CONTEXTBASE):
             delete_result(out_tmp)
 
         return out_files, info
-
-
-@task(input_file=FILE_IN, output_file=FILE_OUT, returns=1)
-def task_bundle_1parquet_1parquet(input_file, stage, id_frag, output_file):
-    """
-    Will perform most functions with the serial tag. Task has 1 data input
-    and return 1 data output with its schema
-
-    :param input_file: Input filepath;
-    :param stage: a list with functions and its parameters;
-    :param id_frag: Block index
-    :param output_file: Output filepath;
-    :return:
-    """
-
-    # by using parquet, we can specify each column we want to read
-    columns = None
-    if stage[0][0].__name__ == 'task_select':
-        columns = stage[0][1]['columns']
-
-    data = read_stage_file(input_file, columns)
-    data, info = _bundle(data, stage, id_frag)
-    save_stage_file(output_file, data)
-    return info
-
-
-@task(input_file1=FILE_IN, input_file2=FILE_IN, output_file=FILE_OUT, returns=1)
-def task_bundle_2parquet_1parquet(input_file1, input_file2, stage,
-                                  id_frag, output_file):
-    """
-    Executed when the first task has two inputs.
-
-    :param input_file1: Input filepath 1;
-    :param input_file2: Input filepath 2;
-    :param stage: a list with functions and its parameters;
-    :param id_frag: Block index
-    :param output_file: Output filepath;
-    :return:
-    """
-    data1 = read_stage_file(input_file1)
-    data2 = read_stage_file(input_file2)
-    data = [data1, data2]
-    data, info = _bundle(data, stage, id_frag)
-    save_stage_file(output_file, data)
-    return info
-
-
-@task(returns=1, data_input=FILE_IN, data_output=FILE_OUT)   # TODO: Test!
-def task_bundle_1csv_1parquet(data_input, stage, id_frag, data_output):
-    """
-    Used to read a folder from common file system.
-
-    :param data_input:
-    :param stage:
-    :param id_frag:
-    :param data_output:
-    :return:
-    """
-
-    data, info = _bundle(data_input, stage, id_frag)
-    save_stage_file(data_output, data)
-    return info
-
-
-@task(returns=1,  data_output=FILE_OUT)   # TODO: Test!
-def task_bundle_0in_1parquet(data, stage, id_frag, data_output):
-    """
-    Used to read files from HDFS.
-
-    :param data:
-    :param stage:
-    :param id_frag:
-    :param data_output:
-    :return:
-    """
-    data, info = _bundle(data, stage, id_frag)
-    save_stage_file(data_output, data)
-    return info
-
-
-def _bundle(data, stage, id_frag):
-    """
-    Base method to process each stage.
-
-    :param data: The input data;
-    :param stage: a list with functions and its parameters;
-    :param id_frag: Block index
-    :return: An output data and a schema information
-    """
-    info = None
-    for f, current_task in enumerate(stage):
-        function, parameters = current_task
-        if isinstance(parameters, dict):
-            parameters['id_frag'] = id_frag
-        data, info = function(data, parameters)
-
-    return data, info

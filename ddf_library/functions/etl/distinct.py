@@ -10,6 +10,8 @@ from ddf_library.utils import generate_info, create_stage_files, \
 from pycompss.api.parameter import FILE_IN, FILE_OUT
 from pycompss.api.task import task
 
+import time
+
 
 def distinct(data, settings):
     """
@@ -71,7 +73,12 @@ def distinct_stage_2(data, settings):
 
 @task(returns=1, data_input=FILE_IN, data_output=FILE_OUT)
 def task_distinct_stage_2(data_input, settings, data_output):
+    t_start = time.time()
     data = read_stage_file(data_input)
     result, info = distinct_stage_2(data, settings)
     save_stage_file(data_output, result)
+
+    t_end = time.time()
+    print("[INFO] - Time to process task '{}': {:.0f} seconds"
+          .format('_balancer_get_rows', t_end - t_start))
     return info

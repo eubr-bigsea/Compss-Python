@@ -5,11 +5,9 @@
 __author__ = "Lucas Miguel S Ponce"
 __email__ = "lucasmsp@gmail.com"
 
-from ddf_library.ddf import DDF, generate_info
-from ddf_library.ddf_model import ModelDDF
+from ddf_library.ddf import DDF
 
 from pycompss.api.task import task
-from pycompss.api.api import compss_wait_on
 from pycompss.functions.reduce import merge_reduce
 
 import numpy as np

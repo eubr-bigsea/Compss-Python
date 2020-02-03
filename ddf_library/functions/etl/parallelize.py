@@ -6,7 +6,7 @@ from pycompss.functions.reduce import merge_reduce
 from pycompss.api.api import compss_wait_on, compss_delete_object
 from pycompss.api.task import task
 
-from ddf_library.utils import merge_schema, _get_schema,\
+from ddf_library.utils import merge_schema,\
     create_stage_files, save_stage_file, read_stage_file, generate_info
 
 import pandas as pd
@@ -194,4 +194,11 @@ def _human_bytes(size):
 def _import_to_ddf(df, data_out, f):
     info = generate_info(df, f)
     save_stage_file(data_out, df)
+    return info
+
+
+@task(data_input=FILE_IN, returns=1)
+def _get_schema(data_input, f):
+    df = read_stage_file(data_input)
+    info = generate_info(df, f)
     return info

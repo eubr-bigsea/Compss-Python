@@ -21,7 +21,7 @@ def aggregation_stage_1(data, settings):
     hash_params = {'columns': settings['groupby'],
                    'nfrag': nfrag, 'info': [info1]}
     output = hash_partition(data, hash_params)['data']
-
+    settings['intermediate_result'] = True
     return output, settings
 
 
@@ -50,10 +50,6 @@ def aggregation_stage_2(data1, params):
     operations = _generate_agg_operations(operation_list, columns, True)
     data1 = data1.groupby(columns).agg(**operations).reset_index()\
         .reset_index(drop=True)
-
-    # sequence = columns + [c for c in data1.columns.tolist()
-    #                       if c not in columns]
-    # data1 = data1[sequence]
 
     info = generate_info(data1, frag)
     return data1, info
@@ -89,8 +85,8 @@ def _generate_agg_operations(operations_list, groupby, replace=False):
 
 
 def _merge_list(series):
-    return functools.reduce(lambda x, y: list(x) + list(y),
-                            series.tolist())
+    return functools\
+        .reduce(lambda x, y: list(x) + list(y), series.tolist())
 
 
 def _collect_set(x):
@@ -100,5 +96,5 @@ def _collect_set(x):
 
 def _merge_set(series):
     """Merge set list."""
-    return functools.reduce(lambda x, y: list(set(list(x) + list(y))),
-                            series.tolist())
+    return functools\
+        .reduce(lambda x, y: list(set(list(x) + list(y))), series.tolist())

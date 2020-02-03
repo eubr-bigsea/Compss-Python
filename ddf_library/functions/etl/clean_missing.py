@@ -13,13 +13,19 @@ from pycompss.api.parameter import FILE_IN
 
 import pandas as pd
 import numpy as np
-
+import time
 
 def drop_nan_rows(data, settings):
-    subset = settings['attributes']
+
     thresh = settings['thresh']
     how = settings['how']
     frag = settings['id_frag']
+    subset = settings['attributes']
+
+    if subset is None or len(subset) == 0:
+        subset = data.columns.tolist()
+    else:
+        subset = [att for att in subset if att in data.columns]
 
     data.dropna(how=how, subset=subset, thresh=thresh, inplace=True)
     data.reset_index(drop=True, inplace=True)
@@ -314,6 +320,7 @@ def _median_define(info):
 @task(returns=1, data_input=FILE_IN)
 def _clean_missing_pre(data_input, params):
     """REMOVE_COLUMN, MEAN, MODE and MEDIAN needs pre-computation."""
+    t_start = time.time()
     subset = params['attributes']
     cleaning_mode = params['cleaning_mode']
     thresh = params.get('thresh', None)
@@ -347,6 +354,9 @@ def _clean_missing_pre(data_input, params):
             dict_mode[att] = data[att].value_counts()
         params['dict_mode'] = dict_mode
 
+    t_end = time.time()
+    print("[INFO] - Time to process task '{}': {:.0f} seconds"
+          .format('_clean_missing_pre', t_end - t_start))
     return params
 
 

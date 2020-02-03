@@ -6,9 +6,11 @@ __author__ = "Lucas Miguel S Ponce"
 __email__ = "lucasmsp@gmail.com"
 
 from ddf_library.ddf import DDF
-from ddf_library.utils import generate_info
-from ddf_library.ddf_base import DDFSketch
+from ddf_library.utils import generate_info, read_stage_file, \
+    create_stage_files, save_stage_file
+from ddf_library.bases.ddf_model import ModelDDF
 
+from pycompss.api.parameter import FILE_IN
 from pycompss.api.task import task
 from pycompss.functions.reduce import merge_reduce
 from pycompss.api.api import compss_wait_on
@@ -21,7 +23,7 @@ import pandas as pd
 import importlib
 
 
-class FPGrowth(DDFSketch):
+class FPGrowth(ModelDDF):
     # noinspection PyUnresolvedReferences
     # noinspection SpellCheckingInspection
     """
@@ -48,45 +50,40 @@ class FPGrowth(DDFSketch):
         :param min_support: minimum support value.
         """
         super(FPGrowth, self).__init__()
+        self.min_support = min_support
 
-        self.settings = {'min_support': min_support}
-
-        self.model = {}
-        self.name = 'FPGrowth'
-
-    def fit_transform(self, data, column):
+    def fit_transform(self, data, input_col):
         """
         Fit the model and transform the data.
 
         :param data: DDF;
-        :param column: Transactions feature name;
+        :param input_col: Transactions feature name;
         :return: DDF
         """
-        min_support = self.settings.get('min_support', 0.5)
 
         df, nfrag, new_data = self._ddf_initial_setup(data)
-
+        self.input_col = input_col
         # stage 1 and 2: Parallel Counting and Grouping Items
-        info = [step2_mapper(df_p, column, min_support, nfrag) for df_p in df]
+        info = [step2_mapper(df_p, input_col,
+                             self.min_support, nfrag) for df_p in df]
         g_list = merge_reduce(step2_reduce, info)
 
         # stage 3 and 4: Parallel FP-Growth
         splits = [[[] for _ in range(nfrag)] for _ in range(nfrag)]
         df_group = [[] for _ in range(nfrag)]
 
-        import ddf_library.config
-        ddf_library.config.x = nfrag
+        import ddf_library.bases.config
+        ddf_library.bases.config.x = nfrag
 
-        import ddf_library.functions.ml.fim_lib.fp_growth_aux
-        importlib.reload(ddf_library.functions.ml.fim_lib.fp_growth_aux)
+        importlib.reload(ddf.functions.etl.functions.ml.fim_lib.fp_growth_aux)
 
         for f in range(nfrag):
-            splits[f] = ddf_library.functions.ml.fim_lib.\
-                fp_growth_aux.step4_pfg(df[f], column, g_list, nfrag)
+            splits[f] = ddf.functions.etl.functions.ml.fim_lib.\
+                fp_growth_aux.step4_pfg(df[f], input_col, g_list, nfrag)
 
         for f in range(nfrag):
             tmp = [splits[f2][f] for f2 in range(nfrag)]
-            df_group[f] = ddf_library.functions.ml.fim_lib.\
+            df_group[f] = ddf.functions.etl.functions.ml.fim_lib.\
                 fp_growth_aux.merge_n_reduce(step4_merge, tmp, nfrag)
 
             df_group[f] = step5_mapper(df_group[f], g_list)
@@ -95,7 +92,7 @@ class FPGrowth(DDFSketch):
         # split the result in nfrag to keep compatibility with others algorithms
         result, info = step6(df_group, nfrag)
 
-        uuid_key = self._ddf_add_task(task_name='task_fp_growth',
+        uuid_key = self._ddf_add_task(task_name=self.name,
                                       status='MATERIALIZED',
                                       opt=self.OPT_OTHER,
                                       function=self.fit_transform,
@@ -106,17 +103,16 @@ class FPGrowth(DDFSketch):
         return DDF(task_list=new_data.task_list, last_uuid=uuid_key)
 
 
-@task(returns=1)
-def step2_mapper(data, col, min_support, nfrag):
+@task(returns=1, data_input=FILE_IN)
+def step2_mapper(data_input, col, min_support, nfrag):
     """
     Parallel Counting
     """
-
     if isinstance(col, list):
         col = col[0]
-
-    n = len(data)
-    item_set = list(chain.from_iterable(data[col].values))
+    df = read_stage_file(data_input)
+    n = len(df)
+    item_set = list(chain.from_iterable(df[col].values.tolist()))
     item_set = Counter(item_set)
 
     return [item_set, n, 0, nfrag, min_support]
@@ -205,7 +201,9 @@ def step6(patterns, nfrag):
 
     patterns = patterns.sort_values(by=['support'], ascending=[False])
 
+    data_out = create_stage_files(nfrag)
     patterns = np.array_split(patterns, nfrag)
-
     info = [generate_info(patterns[f], f) for f in range(nfrag)]
-    return patterns, info
+    for (out, df) in zip(data_out, patterns):
+        save_stage_file(out, df)
+    return data_out, info

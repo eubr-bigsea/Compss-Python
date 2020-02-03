@@ -11,41 +11,6 @@ from pycompss.api.task import task
 import pandas as pd
 
 
-# def join(data1, data2, settings):
-#     """
-#     Joins with another DataFrame, using the given join expression.
-#
-#     :param data1: A list of pandas's DataFrame;
-#     :param data2: Other list of pandas's DataFrame;
-#     :param settings: A dictionary that contains:
-#         - 'option': 'inner' to InnerJoin, 'left' to left join and
-#                     'right' to right join.
-#         - 'key1': A list of keys of the first DataFrame;
-#         - 'key2': A list of keys of the second DataFrame;
-#         - 'case': True to case-sensitive (default, True);
-#         - 'keep_keys': True to keep the keys of the second data set,
-#                        (default, False).
-#         - 'suffixes': Suffixes for attributes, a list with 2 values
-#                       (default, [_l,_r]);
-#     :return: Returns a list of pandas's DataFrame.
-#     """
-#
-#     data1, data2, settings = join_stage_1(data1, data2, settings)
-#     nfrag = len(data1)
-#     # second, pair-wise join
-#     result = create_stage_files(nfrag)
-#     info = result[:]
-#
-#     for f in range(nfrag):
-#         settings['id_frag'] = f
-#         result[f], info[f] = task_join_stage_2(data1[f], data2[f],
-#                                                settings.copy())
-#
-#     output = {'key_data': ['data'], 'key_info': ['info'],
-#               'data': result, 'info': info}
-#     return output
-
-
 def preprocessing(params):
     key1 = params.get('key1', [])
     key2 = params.get('key2', [])
@@ -72,7 +37,7 @@ def join_stage_1(data1, data2, settings):
     nfrag = max([nfrag1, nfrag2])
 
     info1 = clean_info(info1)
-    info2 = clean_info(info2)
+    info2 = clean_info(info2) # TODO: check others tasks
     # first, perform a hash partition to shuffle both data
     from .hash_partitioner import hash_partition
     hash_params1 = {'columns': key1, 'nfrag': nfrag, 'info': [info1]}

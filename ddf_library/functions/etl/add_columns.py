@@ -12,6 +12,7 @@ from ddf_library.utils import generate_info, \
 from ddf_library.functions.etl.repartition import repartition
 
 import pandas as pd
+import time
 
 
 class AddColumnsOperation(object):
@@ -61,7 +62,7 @@ class AddColumnsOperation(object):
 @task(returns=1, df1=FILE_IN, df2=FILE_IN, out=FILE_OUT)
 def _add_columns(df1, df2, out, suffixes, frag):
     """Perform a partial add columns."""
-
+    t_start = time.time()
     df1 = read_stage_file(df1)
     df2 = read_stage_file(df2)
 
@@ -74,4 +75,7 @@ def _add_columns(df1, df2, out, suffixes, frag):
 
     save_stage_file(out, df1)
     info = generate_info(df1, frag)
+    t_end = time.time()
+    print("[INFO] - Time to process task '{}': {:.0f} seconds"
+          .format('_add_columns', t_end - t_start))
     return info

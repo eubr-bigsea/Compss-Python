@@ -64,10 +64,10 @@ def range_partition(data, settings):
         splits = [[0 for _ in range(nfrag_target)] for _ in range(nfrag)]
 
         import ddf_library.functions.etl.repartition
-        importlib.reload(ddf_library.functions.etl.repartition)
+        importlib.reload(ddf.functions.etl.functions.etl.repartition)
 
         for f in range(nfrag):
-            splits[f] = ddf_library.functions.etl.repartition\
+            splits[f] = ddf.functions.etl.functions.etl.repartition\
                 .split_by_boundary(data[f], cols, ascending, bounds,
                                    info, nfrag_target)
 

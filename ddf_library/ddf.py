@@ -14,8 +14,9 @@ Public classes:
 """
 
 from pycompss.api.api import compss_open, compss_delete_file
-
 from ddf_library.bases.ddf_base import DDFSketch
+import ddf_library.bases.data_reader as dr
+
 from ddf_library.context import COMPSsContext
 from ddf_library.utils import concatenate_pandas
 
@@ -70,123 +71,12 @@ class DDF(DDFSketch):
             self.task_list.append(last_uuid)
 
         self.last_uuid = last_uuid
+        self.read = dr.DataReader()
+        dr.task_list = self.task_list
+        dr.last_uuid = self.last_uuid
 
     def __str__(self):
         return "DDF object."
-
-    def load_text(self, path, num_of_parts='*',
-                  header=True, sep=',', dtypes=None, na_values=None,
-                  encoding=None, parse_dates=None, converters=None):
-        """
-        Create a DDF from a common file system or from HDFS.
-
-        :param path: Input file path, e.g.: file:///tmp/filename;
-        :param num_of_parts: number of partitions (default, '*' meaning all
-         cores available in master CPU);
-        :param header: Use the first line as DataFrame header (default, True);
-        :param dtypes: Type name or dict of column (default, 'str'). Data type
-         for data or columns. E.g. {‘a’: np.float64, ‘b’: np.int32, ‘c’:
-         ‘Int64’} Use str or object together with suitable na_values settings
-         to preserve and not interpret dtype;
-        :param sep: separator delimiter (default, ',');
-        :param na_values: A list with the all nan characters. Default list:
-         ['', '#N/A', '#N/A N/A', '#NA', '-1.#IND', '-1.#QNAN', '-NaN',
-         '-nan', '1.#IND', '1.#QNAN', 'N/A', 'NA', 'NULL', 'NaN', 'nan'];
-        :param encoding=Encoding to use for UTF when reading (ex. ‘utf-8’);
-        :param parse_dates: bool or list of int or names or list of lists or
-         dict, default False
-        :param converters: Dict of functions for converting values in certain
-         columns. Keys can either be integers or column labels.
-        :return: DDF.
-
-        ..see also: Visit this `link <https://docs.scipy.org/doc/numpy-1.15
-        .0/reference/arrays.dtypes.html>`__ to more information about dtype.
-
-        :Example:
-
-        >>> ddf1 = DDF().load_text('file:///tmp/titanic.csv', num_of_parts='*')
-        """
-        host, port = None, None
-        import re
-        if re.match(r"hdfs:\/\/+", path):
-            storage = 'hdfs'
-            host, filename = path[7:].split(':')
-            port, filename = filename.split('/', 1)
-            filename = '/' + filename
-        elif re.match(r"file:\/\/+", path):
-            storage = 'file'
-            filename = path[7:]
-        else:
-            raise Exception('`hdfs://` and `file://` storage are supported.')
-
-        from .functions.etl.read_data import DataReader
-        if na_values:
-            na_values = na_values if len(na_values) else None
-        data_reader = DataReader(filename, nfrag=num_of_parts,
-                                 format='csv', storage=storage,
-                                 dtype=dtypes, separator=sep, header=header,
-                                 na_values=na_values, host=host, port=int(port),
-                                 encoding=encoding, parse_dates=parse_dates,
-                                 converters=converters)
-
-        if storage is 'file':
-
-            if data_reader.distributed:
-                # setting the last task's input (init)
-                blocks = data_reader.get_blocks()
-                COMPSsContext.tasks_map[self.last_uuid]['result'] = blocks
-
-                def reader(block, params):
-                    return data_reader.transform_fs_distributed(block, params)
-
-                new_state_uuid = self._generate_uuid()
-                COMPSsContext.tasks_map[new_state_uuid] = \
-                    {'name': 'load_text-file_in',
-                     'status': self.STATUS_WAIT,
-                     'optimization': self.OPT_SERIAL,
-                     'function': [reader, {}],
-                     'output': 1,
-                     'input': 0,
-                     'parent': [self.last_uuid]
-                     }
-
-            else:
-
-                result, info = data_reader.transform_fs_single()
-
-                new_state_uuid = self._generate_uuid()
-                COMPSsContext.tasks_map[new_state_uuid] = \
-                    {'name': 'load_text',
-                     'status': self.STATUS_COMPLETED,
-                     'optimization': self.OPT_OTHER,
-                     'function': None,
-                     'result': result,
-                     'output': 1,
-                     'input': 0,
-                     'parent': [self.last_uuid]
-                     }
-
-                COMPSsContext.catalog[new_state_uuid] = info
-        else:
-            blocks = data_reader.get_blocks()
-
-            COMPSsContext.tasks_map[self.last_uuid]['result'] = blocks
-
-            def reader(block, params):
-                return data_reader.transform_hdfs(block, params)
-
-            new_state_uuid = self._generate_uuid()
-            COMPSsContext.tasks_map[new_state_uuid] = \
-                {'name': 'load_text-0in',
-                 'status': self.STATUS_WAIT,
-                 'optimization': self.OPT_SERIAL,
-                 'function': [reader, {}],
-                 'output': 1,
-                 'input': 0,
-                 'parent': [self.last_uuid]
-                 }
-
-        return DDF(task_list=self.task_list, last_uuid=new_state_uuid)
 
     def parallelize(self, df, num_of_parts='*'):
         """
@@ -219,74 +109,6 @@ class DDF(DDFSketch):
              'status': self.STATUS_WAIT,
              'optimization': self.OPT_OTHER,
              'function': [task_parallelize, {}],
-             'output': 1, 'input': 0,
-             'parent': [self.last_uuid]
-             }
-
-        return DDF(task_list=self.task_list, last_uuid=new_state_uuid)
-
-    def load_shapefile(self, shp_path, dbf_path, polygon='points',
-                       attributes=None, num_of_parts='*'):
-        """
-        Reads a shapefile using the shp and dbf file.
-
-        :param shp_path: Path to the shapefile (.shp)
-        :param dbf_path: Path to the shapefile (.dbf)
-        :param polygon: Alias to the new column to store the
-                polygon coordinates (default, 'points');
-        :param attributes: List of attributes to keep in the DataFrame,
-                empty to use all fields;
-        :param num_of_parts: number of partitions (default, '*' meaning all
-         cores available in master CPU);
-        :return: DDF
-
-        :Example:
-
-        >>> ddf1 = DDF().load_shapefile(shp_path='/shapefile.shp',
-        >>>                             dbf_path='/shapefile.dbf')
-        """
-
-        host, port = 'localhost', 9000
-        import re
-        if re.match(r"hdfs:\/\/+", shp_path):
-            storage = 'hdfs'
-            host, shp_path = shp_path[7:].split(':')
-            port, shp_path = shp_path.split('/', 1)
-            shp_path = '/' + shp_path
-        elif re.match(r"file:\/\/+", shp_path):
-            storage = 'file'
-            shp_path = shp_path[7:]
-        else:
-            raise Exception('`hdfs://` and `file://` storage are supported.')
-
-        if attributes is None:
-            attributes = []
-
-        if isinstance(num_of_parts, str):
-            import multiprocessing
-            num_of_parts = multiprocessing.cpu_count()
-
-        settings = dict()
-        settings['shp_path'] = shp_path
-        settings['dbf_path'] = dbf_path
-        settings['polygon'] = polygon
-        settings['attributes'] = attributes
-        settings['host'] = host
-        settings['port'] = int(port)
-        settings['storage'] = storage
-
-        from .functions.geo import read_shapefile
-
-        results, info = read_shapefile(settings, num_of_parts)
-
-        new_state_uuid = self._generate_uuid()
-        COMPSsContext.catalog[new_state_uuid] = info
-        COMPSsContext.tasks_map[new_state_uuid] = \
-            {'name': 'load_shapefile',
-             'status': self.STATUS_COMPLETED,
-             'optimization': self.OPT_OTHER,
-             'function': None,
-             'result': results,
              'output': 1, 'input': 0,
              'parent': [self.last_uuid]
              }
@@ -423,23 +245,11 @@ class DDF(DDFSketch):
 
         :param column: String or list of strings with columns to cast;
         :param cast: String or list of string with the supported types:
-         'integer', 'string', 'double', 'date', 'date/time';
+         'integer', 'string', 'decimal', 'date', 'date/time';
         :return: DDF
         """
 
         from .functions.etl.attributes_changer import with_column_cast
-
-        if not isinstance(column, list):
-            column = [column]
-
-        if not isinstance(cast, list):
-            cast = [cast for _ in range(len(column))]
-
-        diff = len(cast) - len(column)
-        if diff > 0:
-            cast = cast[:len(column)]
-        elif diff < 0:
-            cast = cast + ['keep' for _ in range(diff+1)]
 
         settings = dict()
         settings['attributes'] = column
@@ -1226,19 +1036,17 @@ class DDF(DDFSketch):
         >>> ddf2.geo_within(ddf1, 'LATITUDE', 'LONGITUDE', 'points')
         """
 
-        from .functions.geo import GeoWithin
+        from .functions.geo import geo_within_stage_1, geo_within_stage_2
 
         settings = {'lat_col': lat_col, 'lon_col': lon_col,
-                    'polygon': polygon, 'alias': suffix}
-
-        if attributes is not None:
-            settings['attributes'] = attributes
+                    'polygon': polygon, 'alias': suffix,
+                    'attributes': attributes}
 
         def task_geo_within_stage_1(df, params):
-            return GeoWithin().geo_within_stage_1(df[0], df[1], params)
+            return geo_within_stage_1(df[0], df[1], params)
 
         def task_geo_within_stage_2(df, params):
-            return GeoWithin().geo_within_stage_2(df, params)
+            return geo_within_stage_2(df, params)
 
         new_state_uuid = self._generate_uuid()
         COMPSsContext.tasks_map[new_state_uuid] = \
@@ -1813,8 +1621,6 @@ class DDF(DDFSketch):
         """
         Save the data in the storage.
 
-        Is it a Lazy function: Yes
-
         :param filepath: output file path;
         :param format: format file, csv, json or a pickle;
         :param header: save with the columns header;
@@ -1849,6 +1655,9 @@ class DDF(DDFSketch):
 
         def task_save(df, params):
             return SaveOperation().transform(df, params)
+
+        # TODO: save operation has a 'OPT_OTHER" flag.
+        #  The problem is related to OUT_FILE tag for compss task.
 
         new_state_uuid = self._generate_uuid()
         COMPSsContext.tasks_map[new_state_uuid] = \

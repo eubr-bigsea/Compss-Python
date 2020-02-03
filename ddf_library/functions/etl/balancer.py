@@ -12,7 +12,7 @@ from ddf_library.utils import generate_info,\
 
 import numpy as np
 import pandas as pd
-
+import time
 
 class WorkloadBalancer(object):
     """
@@ -123,7 +123,7 @@ def _balancer(data, target_sizes, old_sizes, cols):
 
 @task(returns=1, result=FILE_INOUT, data=FILE_IN)
 def _balancer_get_rows(result, data, head, size, f):
-
+    t_start = time.time()
     df = read_stage_file(result)
 
     data = read_stage_file(data)
@@ -145,4 +145,7 @@ def _balancer_get_rows(result, data, head, size, f):
     info = generate_info(df, f)
     save_stage_file(result, df)
 
+    t_end = time.time()
+    print("[INFO] - Time to process task '{}': {:.0f} seconds"
+          .format('_balancer_get_rows', t_end - t_start))
     return info

@@ -6,10 +6,12 @@ __author__ = "Lucas Miguel S Ponce"
 __email__ = "lucasmsp@gmail.com"
 
 from ddf_library.ddf import DDF
-from ddf_library.utils import generate_info, merge_info
-from ddf_library.ddf_base import DDFSketch
+from ddf_library.utils import generate_info, merge_info, read_stage_file, \
+    save_stage_file, create_stage_files
+from ddf_library.bases.ddf_model import ModelDDF
 from ddf_library.functions.etl.hash_partitioner import hash_partition
 
+from pycompss.api.parameter import FILE_IN, FILE_OUT
 from pycompss.api.api import compss_wait_on, compss_delete_object
 from pycompss.api.task import task
 
@@ -17,7 +19,7 @@ from itertools import chain, combinations
 import pandas as pd
 
 
-class AssociationRules(DDFSketch):
+class AssociationRules(ModelDDF): # TODO
     # noinspection PyUnresolvedReferences
     """
     Association rule learning is a rule-based machine learning method for
@@ -39,21 +41,19 @@ class AssociationRules(DDFSketch):
         """
         super(AssociationRules, self).__init__()
 
-        self.settings = dict()
-
         if not (0.0 <= confidence <= 1.0):
             raise Exception('Minimal confidence must be in '
                             'range [0, 1] but got {}'.format(confidence))
-        self.settings['confidence'] = confidence
-        self.settings['max_rules'] = max_rules
-
-        self.name = 'AssociationRules'
+        self.confidence = confidence
+        self.max_rules = max_rules
+        self.col_item = None
+        self.col_freq = None
 
     def set_min_confidence(self, confidence):
-        self.settings['confidence'] = confidence
+        self.confidence = confidence
 
     def set_max_rules(self, count):
-        self.settings['max_rules'] = count
+        self.max_rules = count
 
     def fit_transform(self, data, col_item='items', col_freq='support'):
         """
@@ -65,37 +65,41 @@ class AssociationRules(DDFSketch):
         :return: DDF with 'Pre-Rule', 'Post-Rule' and 'confidence' columns.
         """
 
-        settings = self.settings.copy()
         col_aux = 'auxiliary'
+        self.col_item = col_item
+        self.col_freq = col_freq
         # noinspection PyTypeChecker
-        settings['col_item'], settings['col_freq'] = col_item, col_freq
 
         df, nfrag, tmp = self._ddf_initial_setup(data)
 
-        result = [[] for _ in range(nfrag)]
-        aux1, aux2 = result[:], result[:]
-        info1, info2, info = result[:], result[:], result[:]
+        info1 = [[] for _ in range(nfrag)]
+        aux1, aux2 = info1[:], info1[:]
+        info2, info = info1[:], info1[:]
 
+        # TODO: save result in file
         for f in range(nfrag):
             aux1[f], info1[f], aux2[f], info2[f] = \
-                _ar_flat_map_consequent(df[f], settings, f)
+                _ar_flat_map_consequent(df[f], col_item, col_freq, f)
 
         info1, info2 = merge_info(info1), merge_info(info2)
         info1, info2 = compss_wait_on(info1), compss_wait_on(info2)
 
         # first, perform a hash partition to shuffle both data
-        hash_params1 = {'columns': [col_aux], 'nfrag': nfrag, 'info': [info1]}
-        hash_params2 = {'columns': [col_aux], 'nfrag': nfrag, 'info': [info2]}
+        hash_params1 = {'columns': [col_aux], 'nfrag': nfrag, 'info': [info1],
+                        'stage_id': -1}  # TODO
+        hash_params2 = {'columns': [col_aux], 'nfrag': nfrag, 'info': [info2],
+                        'stage_id': -1}
         output1 = hash_partition(aux1, hash_params1)
         output2 = hash_partition(aux2, hash_params2)
         out1, out2 = output1['data'], output2['data']
 
+        result = create_stage_files(nfrag)
         for f in range(nfrag):
-            result[f], info[f] = _ar_calculate_conf(out1[f], out2[f],
-                                                    settings, f)
+            info[f] = _ar_calculate_conf(out1[f], out2[f], result[f],
+                                         self.confidence, f)
 
         # TODO: sort by confidence, sample, rebase ?
-        if settings['max_rules'] > 0:
+        if self.max_rules > 0:
             pass
 
         compss_delete_object(out1)
@@ -111,11 +115,10 @@ class AssociationRules(DDFSketch):
         return DDF(task_list=tmp.task_list, last_uuid=uuid_key)
 
 
-@task(returns=4)
-def _ar_flat_map_consequent(df, settings, f):
+@task(returns=4, data_input=FILE_IN)
+def _ar_flat_map_consequent(data_input, col_item, col_freq, f):
     """Perform a partial rules generation."""
-    col_item = settings['col_item']
-    col_freq = settings['col_freq']
+    df = read_stage_file(data_input, [col_freq, col_item])
 
     flat_map = []
 
@@ -151,17 +154,21 @@ def _ar_flat_map_consequent(df, settings, f):
     return rules, info1, df, info2
 
 
-@task(returns=2)
-def _ar_calculate_conf(data1, data2, settings, f):
-    min_confidence = settings['confidence']
+@task(returns=1, data_input1=FILE_IN, data_input2=FILE_IN, data_output=FILE_OUT)
+def _ar_calculate_conf(data_input1, data_input2, data_output,
+                       confidence, f):
+    data1 = read_stage_file(data_input1)
+    data2 = read_stage_file(data_input2)
+
     data1 = data1.merge(data2, on='auxiliary', how='inner', copy=False)
     data1['confidence'] = data1['num'] / data1['den']
 
-    data1.query('confidence >= {}'.format(min_confidence), inplace=True)
+    data1.query('confidence >= {}'.format(confidence), inplace=True)
     data1 = data1[['Pre-Rule', 'Post-Rule', 'confidence']]
 
     info = generate_info(data1, f)
-    return data1, info
+    save_stage_file(data1, data_output)
+    return info
 
 
 def _ar_subsets(arr):

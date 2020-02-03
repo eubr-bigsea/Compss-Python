@@ -94,12 +94,12 @@ def geo_within_stage_2(data_input, settings):
     polygon_col_idx = shp_object.columns.get_loc(polygon_col)
 
     data_input.reset_index(drop=True, inplace=True)
-    sector_position = []
+    sector_position = [-1] * len(data_input)
 
     if len(data_input) > 0:
-        for i, point in enumerate(data_input[col_lon_lat].to_numpy()):
-            x, y = point
+        points = data_input[col_lon_lat].to_numpy().tolist()
 
+        def get_first_polygon(y, x):
             # first, find the squares where point is inside (coarse-grained)
             # (xmin,ymin,xmax,ymax)
             matches = spindex.intersect([x, y, x, y])
@@ -110,43 +110,31 @@ def geo_within_stage_2(data_input, settings):
                 row = shp_object.iat[shp_inx, polygon_col_idx].tolist()
                 polygon = Path(row)
                 if polygon.contains_point([y, x]):
-                    sector_position.append([i, shp_inx])
+                    return shp_inx
+            return None
 
-    if len(sector_position) > 0:
-        cols = data_input.columns.tolist()
-        col_tmp1 = create_auxiliary_column(cols)
-        col_tmp2 = create_auxiliary_column(cols + [col_tmp1])
-        df = pd.DataFrame(sector_position, columns=[col_tmp1, col_tmp2])
+        for i, point in enumerate(points):
+            x, y = point
+            sector_position[i] = get_first_polygon(y, x)
 
-        # filter rows in data_input and shp_object
-        data_input = data_input[data_input.index.isin(df[col_tmp1].values)]
+    cols = data_input.columns.tolist()
+    col_tmp1 = create_auxiliary_column(cols)
+    data_input[col_tmp1] = sector_position
 
-        if polygon_col not in attributes:
-            shp_object = shp_object.drop([polygon_col], axis=1)
+    if polygon_col not in attributes:
+        shp_object = shp_object.drop([polygon_col], axis=1)
 
-        shp_object.columns = ["{}{}".format(c, alias) for c in attributes]
-        shp_object = shp_object[shp_object.index.isin(df[col_tmp2].values)]
+    shp_object.columns = ["{}{}".format(c, alias) for c in attributes]
 
-        # merge with idx of each point
-        data_input = data_input.merge(df, how='inner',
-                                      left_index=True, right_on=col_tmp1,
-                                      copy=False)
-        del df
+    # merge with idx of each point
+    data_input = data_input.merge(shp_object, how='left',
+                                  left_on=col_tmp1, right_index=True,
+                                  copy=False)
 
-        # merge with each sector
-        data_input = data_input.merge(shp_object, how='inner',
-                                      left_on=col_tmp2, right_index=True,
-                                      copy=False)
-        del shp_object
+    del shp_object
 
-        data_input = data_input.drop([col_tmp1, col_tmp2], axis=1)
-    else:
-
-        data_input = data_input[0:0]
-        for a in [a + alias for a in attributes]:
-            data_input[a] = np.nan
-
-    data_input.reset_index(drop=True, inplace=True)
+    data_input = data_input.drop([col_tmp1], axis=1)\
+        .reset_index(drop=True)
     info = generate_info(data_input, frag)
     return data_input, info
 

@@ -4,7 +4,7 @@
 __author__ = "Lucas Miguel S Ponce"
 __email__ = "lucasmsp@gmail.com"
 
-from ddf_library.ddf_base import DDFSketch
+from ddf_library.bases.ddf_base import DDFSketch
 from ddf_library.utils import read_stage_file
 
 from pycompss.api.parameter import FILE_IN

@@ -8,11 +8,11 @@ from ddf_library.utils import generate_info, save_stage_file, create_stage_files
 
 from pycompss.api.parameter import FILE_OUT, COLLECTION_IN
 from pycompss.api.task import task
-from pycompss.api.api import compss_delete_object, compss_wait_on
+from pycompss.api.api import compss_delete_object
 
 import pandas as pd
 import importlib
-
+import time
 
 def hash_partition(data, settings):
     """
@@ -47,13 +47,13 @@ def hash_partition(data, settings):
         splits = [[0 for _ in range(nfrag_target)] for _ in range(nfrag)]
 
         import ddf_library.functions.etl.repartition
-        importlib.reload(ddf_library.functions.etl.repartition)
+        importlib.reload(ddf.functions.etl.functions.etl.repartition)
 
         for f in range(nfrag):
-            splits[f] = ddf_library.functions.etl.repartition\
+            splits[f] = ddf.functions.etl.functions.etl.repartition\
                 .split_by_hash(data[f], cols, info, nfrag_target)
 
-        result = create_stage_files(nfrag_target)
+        result = create_stage_files(nfrag_target, 'hash_partition_')
         info = [{} for _ in range(nfrag_target)]
         for f in range(nfrag_target):
             tmp = [splits[t][f] for t in range(nfrag)]
@@ -72,11 +72,16 @@ def hash_partition(data, settings):
 # @constraint(ComputingUnits="2")  # approach to have more memory
 @task(data_out=FILE_OUT, args=COLLECTION_IN, returns=1)
 def concat_n_pandas(data_out, f, args):
+    t_start = time.time()
     dfs = [df for df in args if isinstance(df, pd.DataFrame)]
+
     dfs = pd.concat(dfs, ignore_index=True, sort=False)
     del args
     dfs = dfs.infer_objects()
     info = generate_info(dfs, f)
     save_stage_file(data_out, dfs)
+    t_end = time.time()
+    print("[INFO] - Time to process task '{}': {:.0f} seconds"
+          .format('concat_n_pandas', t_end - t_start))
     return info
 

@@ -13,6 +13,8 @@ import pandas as pd
 import uuid
 import sys
 
+
+
 stage_id = 0
 
 
@@ -89,33 +91,30 @@ def merge_schema(schemas):
             schema_new['memory'] = np.array(memory)[idx].tolist()
 
         if set(schema['cols']) != set(schema2['cols']):
-            schema = "Error: Partitions have different columns names."
+            raise Exception("Error: Partitions have different columns names.")
+
         schema = schema_new
 
     return schema
 
 
-@task(data_input=FILE_IN, returns=1)
-def _get_schema(data_input, f):
-    df = read_stage_file(data_input)
-    info = generate_info(df, f)
-    return info
-
-
 def check_serialization(data):
     """
-    Check if output is a Future file object or is data in-memory.
+    Check if output is a str file object (Future) or is a BufferIO.
     :param data:
     :return:
     """
 
-    if isinstance(data, list):
-        if len(data) > 0:
-            return isinstance(data[0], str)
-        else:
-            return False
-
-    return isinstance(data, str)
+    try:
+        if isinstance(data, list):
+            if len(data) > 0:
+                return isinstance(data[0], str)
+            else:
+                return False #TODO
+    except Exception as e:
+        print(str(e))
+        raise Exception('[ERROR] check_serialization - '
+                        'Expected a list of strings')
 
 
 def divide_idx_in_frags(ids, n_list):
@@ -160,10 +159,13 @@ def create_auxiliary_column(columns):
         condition = column in columns
     return column
 
+from ddf_library.bases.config import columns
 
 def col(name):
     from ddf_library.bases.config import columns
     return columns.index(name)
+
+# map ('alias', col('t').cast('type'))
 
 
 def delete_result(file_list):
@@ -183,11 +185,12 @@ def create_stage_files(nfrag, suffix=''):
 def read_stage_file(filepath, cols=None):
     if isinstance(cols, str):
         cols = [cols]
-    return pd.read_parquet(filepath, columns=cols)
+    return pd.read_parquet(filepath, columns=cols, engine='pyarrow')
 
 
 def save_stage_file(filepath, df):
-    return df.to_parquet(filepath)
+    return df.to_parquet(filepath, engine='pyarrow', index=False,
+                         compression='snappy')
 
 
 def clean_info(info):

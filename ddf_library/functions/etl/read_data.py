@@ -13,87 +13,142 @@ class DataReader(object):
     in a list of n fragments of pandas DataFrame.
     """
 
-    def __init__(self, filepath, nfrag=None, format='csv', storage='hdfs',
-                 dtype=None, separator=',',
-                 error_bad_lines=True, header=True, na_values=None,
-                 host='default', port=0, encoding=None, parse_dates=None,
-                 converters=None):
-        """
-        :param filepath: The absolute path where the data set is stored;
-        :param nfrag: Number of partitions to split the loaded data,
-         if distributed option is False (default, number of cpu);
-        :param format: File format, csv, json or txt;
-        :param storage: Where the file is, `fs` to common file system or
-         `hdfs`. Default is `hdfs`;
-        :param distributed: if the absolute path represents a unique file or
-         a folder with multiple files;
-        :param dtype: Type name or dict of column (default, 'str'). Data type
-         for data or columns. E.g. {‘a’: np.float64, ‘b’: np.int32, ‘c’:
-         ‘np.int64’} Use str or object together with suitable na_values settings
-         to preserve and not interpret dtype;
-        :param separator: Value used to separate fields (default, ',');
-        :param error_bad_lines: Lines with too many fields (e.g. a csv line
-         with too many commas) will by default cause an exception to be raised,
-         and no DataFrame will be returned. If False, then these “bad lines”
-         will dropped from the DataFrame that is returned.
-        :param header:  True (default) if the first line is a header;
-        :param na_values: A list with the all nan characters. Default list:
-         ['', '#N/A', '#N/A N/A', '#NA', '-1.#IND', '-1.#QNAN', '-NaN',
-         '-nan', '1.#IND', '1.#QNAN', 'N/A', 'NA', 'NULL', 'NaN', 'nan']
-        :param host: Namenode host if storage is `hdfs` (default, 'default');
-        :param port: Port to Namenode host if storage is `hdfs` (default, 0);
-        :param encoding=Encoding to use for UTF when reading (ex. ‘utf-8’);
-        :param parse_dates: bool or list of int or names or list of lists or
-         dict, default False
-        :param converters: Dict of functions for converting values in certain
-         columns. Keys can either be integers or column labels.
+    def __init__(self):
+        self.filepath = None
+        self.nfrag = None
+        self.storage = None
+        self.dtype = None
+        self.host = None
+        self.port = None
+        self.distributed = None
+        self.kwargs = None
+        self.distributed = None
+        self.blocks = None
+        self.format = None
+        self.header = None
 
-        :return A list with length N.
+    #TODO: infer
+    def csv(self, filepath, num_of_parts='*', storage='hdfs', host='default',
+            port=0, schema=None, sep=',', delimiter=None, na_filter=True,
+            usecols=None, prefix=None, engine=None, converters=None,
+            true_values=None, false_values=None, skipinitialspace=False,
+            na_values=None, keep_default_na=True, skip_blank_lines=True,
+            parse_dates=False, decimal='.', dayfirst=False, header=True,
+            thousands=None, quotechar='"', doublequote=True, escapechar=None,
+            comment=None, encoding=None,  error_bad_lines=True,
+            warn_bad_lines=True, delim_whitespace=False, float_precision=None):
 
-
-        ..see also: `Dtype information <https://docs.scipy.org/doc/numpy-1.15
-         .0/reference/arrays.dtypes.html>`_.
-        """
-
-        if format not in ['csv', 'json', 'txt']:
-            raise Exception("Only `csv`, `json` and `txt` are supported.")
-
-        if storage not in ['file', 'hdfs']:
-            raise Exception("Only `fs` and `hdfs` are supported.")
-
-        if nfrag in [None, '*']:
+        if num_of_parts == '*':
             import multiprocessing
-            nfrag = multiprocessing.cpu_count()
+            num_of_parts = multiprocessing.cpu_count()
 
-        if dtype is None:
-            dtype = 'str'
+        if schema is None:
+            schema = 'str'
 
         self.filepath = filepath
-        self.nfrag = nfrag
-        self.format = format
+        self.nfrag = num_of_parts
+        self.format = 'csv'
         self.storage = storage
-        self.dtype = [dtype]
-        self.na_values = na_values
-        self.error_bad_lines = error_bad_lines
+        self.dtype = [schema]
         self.host = host
         self.port = port
         self.distributed = self.check_file_or_folder(filepath)
-        self.encoding = encoding
-        self.converters = converters
-        self.parse_dates = parse_dates
+        self.header = header
 
-        if self.format == 'txt':
-            separator = '\n'
-            header = None
-
-        # if format file are `csv` or `txt`
-        self.separator = [separator]
-        self.header = header if header else None
+        kwargs = dict()
+        kwargs['float_precision'] = float_precision
+        kwargs['dayfirst'] = dayfirst
+        kwargs['encoding'] = encoding
+        kwargs['converters'] = converters
+        kwargs['escapechar'] = escapechar
+        kwargs['parse_dates'] = parse_dates
+        kwargs['na_values'] = na_values
+        kwargs['quotechar'] = quotechar
+        kwargs['doublequote'] = doublequote
+        kwargs['error_bad_lines'] = error_bad_lines
+        kwargs['warn_bad_lines'] = warn_bad_lines
+        kwargs['sep'] = sep
+        kwargs['prefix'] = prefix  # TODO
+        kwargs['comment'] = comment
+        kwargs['thousands'] = thousands
+        kwargs['delim_whitespace'] = delim_whitespace
+        kwargs['na_filter'] = na_filter
+        kwargs['decimal'] = decimal
+        kwargs['true_values'] = true_values
+        kwargs['false_values'] = false_values
+        kwargs['skipinitialspace'] = skipinitialspace
+        kwargs['engine'] = engine
+        kwargs['delimiter'] = delimiter
+        kwargs['usecols'] = usecols
+        kwargs['keep_default_na'] = keep_default_na
+        kwargs['error_bad_lines'] = error_bad_lines
+        kwargs['skip_blank_lines'] = skip_blank_lines
+        self.kwargs = kwargs
 
         if self.storage == 'hdfs':
             self.blocks = self.preprocessing_hdfs()
         else:
             self.blocks = self.preprocessing_fs()
+
+        return self
+
+    def json(self, filepath, num_of_parts='*', storage='hdfs', host='default',
+             port=0, schema=None, precise_float=False, encoding=None):
+
+        if num_of_parts == '*':
+            import multiprocessing
+            num_of_parts = multiprocessing.cpu_count()
+
+        if schema is None:
+            schema = 'str'
+
+        self.filepath = filepath
+        self.nfrag = num_of_parts
+        self.storage = storage
+        self.dtype = [schema]
+        self.host = host
+        self.format = 'json'
+        self.port = port
+        self.distributed = self.check_file_or_folder(filepath)
+
+        kwargs = dict()
+        kwargs['precise_float'] = precise_float
+        kwargs['encoding'] = encoding
+        self.kwargs = kwargs
+
+        if self.storage == 'hdfs':
+            self.blocks = self.preprocessing_hdfs()
+        else:
+            self.blocks = self.preprocessing_fs()
+
+        return self
+
+    # TODO:
+    def parquet(self, filepath, num_of_parts='*', storage='hdfs',
+                host='default', port=0, columns=None):
+
+        if num_of_parts == '*':
+            import multiprocessing
+            num_of_parts = multiprocessing.cpu_count()
+
+        self.filepath = filepath
+        self.nfrag = num_of_parts
+        self.storage = storage
+        self.host = host
+        self.format = 'parquet'
+        self.port = port
+        self.distributed = self.check_file_or_folder(filepath)
+
+        kwargs = dict()
+        kwargs['columns'] = columns
+        self.kwargs = kwargs
+
+        if self.storage == 'hdfs':
+            self.blocks = self.preprocessing_hdfs()
+        else:
+            self.blocks = self.preprocessing_fs()
+
+        return self
 
     def check_file_or_folder(self, fpath):
         if self.storage == 'hdfs':
@@ -167,11 +222,9 @@ class DataReader(object):
     def transform_hdfs(self, block, params):
 
         frag = params['id_frag']
-        result, info = _read_hdfs(block, self.format, self.separator,
-                                  self.header, self.na_values,
-                                  self.dtype, self.error_bad_lines,
-                                  self.encoding, self.converters,
-                                  self.parse_dates, frag)
+        result, info = _read_hdfs(block, format_type=self.format,
+                                  header=self.header, dtype=self.dtype,
+                                  args=self.kwargs, frag=frag)
 
         return result, info
 
@@ -204,20 +257,13 @@ def _read_fs(filename, format_type, separator, header, na_values,
     return df, info
 
 
-def _read_hdfs(blk, format_type, separator, header, na_values, dtype,
-               error_bad_lines, encoding, converters, parse_dates, frag):
+def _read_hdfs(blk, format_type, header, dtype, args, frag):
     """Load a DataFrame from a HDFS file."""
     print("[INFO - ReadOperationHDFS] - ", blk)
     from hdfspycompss.block import Block
-    separator = separator[0]
 
-    df = Block(blk).read_dataframe(format_file=format_type, infer=False,
-                                   separator=separator, dtype=dtype[0],
-                                   header=header, na_values=na_values,
-                                   error_bad_lines=error_bad_lines,
-                                   encoding=encoding,
-                                   converters=converters,
-                                   parse_dates=parse_dates)
+    df = Block(blk).read_dataframe(format_file=format_type, header=header,
+                                   dtype=dtype[0], args=args)
 
     info = generate_info(df, frag)
     return df, info

@@ -10,8 +10,6 @@ from pycompss.api.api import compss_open
 
 from ddf_library.utils import read_stage_file
 
-import pandas as pd
-
 
 class SaveOperation(object):
     """Save DataFrame as json or csv format in HDFS or common file system."""
@@ -35,14 +33,25 @@ class SaveOperation(object):
         host = settings.get('host', 'default')
         port = settings.get('port', 0)
 
+        if storage == 'hdfs':
+            from hdfspycompss.hdfs import HDFS
+            dfs = HDFS(host=host, port=port)
+            path = "hdfs://"+host+":"+str(port)+"/"+filename
+            dfs.mkdir(path)
+        else:
+            #TODO
+            pass
+
         nfrag = len(data)
         for f in range(nfrag):
             # TODO: create a folder, and then each file
-            output = "{}_part_{}".format(filename, f)
+
+            output = "{}_part_{:05d}".format(filename, f)
 
             if storage == 'hdfs':
                 """Store the DataFrame in CSV, JSON, PICLKE and PARQUET
                  format in HDFS."""
+                output = path+"/"+output
                 options = [host, port, output, mode, header]
                 _save_hdfs_(data[f], options, format_file=format_file)
 
@@ -87,7 +96,7 @@ def _save_hdfs_(data_input, settings, format_file='csv'):
     elif format_file == 'json':
         success = dfs.write_json(filename, data, overwrite=over, append=append)
     elif format_file == 'parquet':
-        raise Exception("NOT IMPLEMENTED")  # TODO
+        success = dfs.write_parquet(filename, data, overwrite=over)
 
     if not success:
         raise Exception('Error in SaveHDFSOperation.')

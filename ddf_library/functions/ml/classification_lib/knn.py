@@ -6,9 +6,10 @@ __author__ = "Lucas Miguel S Ponce"
 __email__ = "lucasmsp@gmail.com"
 
 from ddf_library.ddf import DDF
-from ddf_library.utils import generate_info
-from ddf_library.ddf_model import ModelDDF
+from ddf_library.utils import generate_info, read_stage_file
+from ddf_library.bases.ddf_model import ModelDDF
 
+from pycompss.api.parameter import FILE_IN
 from pycompss.api.task import task
 from pycompss.functions.reduce import merge_reduce
 from pycompss.api.api import compss_wait_on
@@ -32,58 +33,57 @@ class KNearestNeighbors(ModelDDF):
     >>> ddf2 = knn.transform(ddf1)
     """
 
-    def __init__(self, feature_col, label_col, k=3):
+    def __init__(self, k=3):
         """
-        :param feature_col: Feature column name;
-        :param label_col: Label column name;
         :param k: Number of nearest neighbors to majority vote;
         """
         super(KNearestNeighbors, self).__init__()
 
-        if not isinstance(feature_col, list):
-            feature_col = [feature_col]
+        self.k = k
+        self.feature_col = None
+        self.label_col = None
+        self.pred_col = None
 
-        self.settings = dict()
-        self.settings['feature_col'] = feature_col
-        self.settings['label_col'] = label_col
-        self.settings['k'] = k
-
-        self.model = []
-        self.name = 'KNearestNeighbors'
-
-    def fit(self, data):
+    def fit(self, data, feature_col, label_col):
         """
         Fit the model.
 
         :param data: DDF
+        :param feature_col: Feature column name;
+        :param label_col: Label column name;
         :return: trained model
         """
+        if not isinstance(feature_col, list):
+            feature_col = [feature_col]
+
+        self.feature_col = feature_col
+        self.label_col = label_col
 
         df, nfrag, tmp = self._ddf_initial_setup(data)
 
-        col_label = self.settings['label_col']
-        col_feature = self.settings['feature_col']
-        k = self.settings['k']
-
-        train_data = [[] for _ in range(nfrag)]
+        train_data = [[]] * nfrag
         for f in range(nfrag):
-            train_data[f] = _knn_create_model(df[f], col_label,
-                                              col_feature, nfrag, k)
+            train_data[f] = _knn_create_model(df[f], self.label_col,
+                                              self.feature_col, nfrag, self.k)
         model = merge_reduce(merge_lists, train_data)
 
-        self.model = [compss_wait_on(model)]
+        self.model = {'model': compss_wait_on(model),
+                      'algorithm': self.name}
         return self
 
-    def fit_transform(self, data, pred_col='prediction_kNN'):
+    def fit_transform(self, data, feature_col, label_col,
+                      pred_col='prediction_kNN'):
         """
         Fit the model and transform.
 
         :param data: DDF
+        :param feature_col: Feature column name;
+        :param label_col: Label column name;
         :param pred_col: Output prediction name (default, *'prediction_kNN'*);
         :return: DDF
         """
 
-        self.fit(data)
+        self.fit(data, feature_col, label_col)
         ddf = self.transform(data, pred_col=pred_col)
         return ddf
 
@@ -96,31 +96,30 @@ class KNearestNeighbors(ModelDDF):
         :return: DDF
         """
 
-        if len(self.model) == 0:
-            raise Exception("Model is not fitted.")
+        self.check_fitted_model()
+        if feature_col:
+            self.feature_col = feature_col
+        self.pred_col = pred_col
 
-        task_list = data.task_list
-        settings = self.settings.copy()
-        settings['pred_col'] = pred_col
-        settings['model'] = self.model[0].copy()
-        if feature_col is not None:
-            settings['feature_col'] = feature_col
+        settings = self.__dict__.copy()
+        settings['model'] = settings['model']['model']
 
         def task_transform_knn(df, params):
             return _knn_classify_block(df, params)
 
-        uuid_key = self._ddf_add_task(task_name='task_transform_nb',
+        uuid_key = self._ddf_add_task(task_name=self.name,
                                       opt=self.OPT_SERIAL,
                                       function=[task_transform_knn,
                                                 settings],
                                       parent=[data.last_uuid])
 
-        return DDF(task_list=task_list, last_uuid=uuid_key)
+        return DDF(task_list=data.task_list, last_uuid=uuid_key)
 
 
-@task(returns=1)
-def _knn_create_model(df, label, features, nfrag, k):
+@task(returns=1, data_input=FILE_IN)
+def _knn_create_model(data_input, label, features, nfrag, k):
     """Create a partial model based in the selected columns."""
+    df = read_stage_file(data_input, features + [label])
     labels = df[label].values
     feature = df[features].values
     return [[labels], [feature], 0, nfrag, k]
