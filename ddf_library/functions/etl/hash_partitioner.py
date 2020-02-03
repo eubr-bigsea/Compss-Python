@@ -8,7 +8,7 @@ from ddf_library.utils import generate_info, save_stage_file, create_stage_files
 
 from pycompss.api.parameter import FILE_OUT, COLLECTION_IN
 from pycompss.api.task import task
-from pycompss.api.api import compss_delete_object
+from pycompss.api.api import compss_delete_object, compss_wait_on
 
 import pandas as pd
 import importlib
@@ -53,7 +53,6 @@ def hash_partition(data, settings):
             splits[f] = ddf_library.functions.etl.repartition\
                 .split_by_hash(data[f], cols, info, nfrag_target)
 
-        # n_concat = nfrag // 2 if nfrag > 10 else nfrag
         result = create_stage_files(nfrag_target)
         info = [{} for _ in range(nfrag_target)]
         for f in range(nfrag_target):
@@ -62,6 +61,7 @@ def hash_partition(data, settings):
 
         compss_delete_object(splits)
     else:
+        # TODO: intermediate_result ou pode ignorar?
         result = data
 
     output = {'key_data': ['data'], 'key_info': ['info'],

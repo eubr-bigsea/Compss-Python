@@ -7,7 +7,6 @@ __email__ = "lucasmsp@gmail.com"
 import ddf_library.bases.config as config
 from ddf_library.utils import generate_info
 import numpy as np
-import datetime
 import importlib
 
 
@@ -47,11 +46,3 @@ def map(data, settings):
 
     info = generate_info(data, frag)
     return data, info
-
-
-def group_datetime(d, interval):
-    """Group datetime in bins."""
-    seconds = d.second + d.hour*3600 + d.minute*60 + d.microsecond/1000
-    k = d - datetime.timedelta(seconds=seconds % interval)
-    return datetime.datetime(k.year, k.month, k.day,
-                             k.hour, k.minute, k.second)

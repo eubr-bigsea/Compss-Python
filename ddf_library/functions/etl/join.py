@@ -4,8 +4,7 @@
 __author__ = "Lucas Miguel S Ponce"
 __email__ = "lucasmsp@gmail.com"
 
-from ddf_library.utils import generate_info, create_auxiliary_column, \
-    create_stage_files, read_stage_file, save_stage_file
+from ddf_library.utils import generate_info, create_auxiliary_column, clean_info
 from pycompss.api.parameter import FILE_IN, FILE_OUT
 from pycompss.api.task import task
 
@@ -72,6 +71,8 @@ def join_stage_1(data1, data2, settings):
     info1, info2 = settings['info'][0], settings['info'][1]
     nfrag = max([nfrag1, nfrag2])
 
+    info1 = clean_info(info1)
+    info2 = clean_info(info2)
     # first, perform a hash partition to shuffle both data
     from .hash_partitioner import hash_partition
     hash_params1 = {'columns': key1, 'nfrag': nfrag, 'info': [info1]}

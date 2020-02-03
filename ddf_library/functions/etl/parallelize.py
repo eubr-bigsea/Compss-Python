@@ -149,7 +149,7 @@ def import_to_ddf(df_list, parquet=False, schema=None):
             schema[f] = _import_to_ddf(df_list[f], outs_files[f], f)
         df_list = outs_files
 
-    info_agg = merge_reduce(merge_schema, schema)
+    info_agg = merge_schema(schema)
     compss_delete_object(schema)
 
     info_agg = compss_wait_on(info_agg)

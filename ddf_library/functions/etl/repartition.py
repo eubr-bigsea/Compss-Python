@@ -61,7 +61,6 @@ def repartition(data, settings):
 def split_by_hash(input_data, cols, info, nfrag):
 
     df = read_stage_file(input_data)
-
     # Apply a reduction function. Currently, it works only when hash partitioner
     # is performed by distinct and aggregation operations.
     associated_function, settings_f = info.get('function', [-1, -1])

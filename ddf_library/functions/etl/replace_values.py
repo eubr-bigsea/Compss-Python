@@ -33,7 +33,6 @@ def replace_value(data, settings):
     regex = settings.get('regex', False)  # only if is string
 
     data.replace(to_replace=to_replace, regex=regex, inplace=True)
-
     info = generate_info(data, frag)
 
     return data, info

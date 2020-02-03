@@ -51,29 +51,6 @@ class CONTEXTBASE(object):
      - n_input: a ordered list that informs the id key of its parent output
     """
 
-    def context_status(self):
-        n_tasks = sum([1 for k in self.tasks_map
-                       if self.get_task_name(k) != 'init'])
-        n_cached = sum([1 for k in self.tasks_map
-                        if self.get_task_status(k) == 'PERSISTED' and
-                        self.get_task_name(k) != 'init'])
-        n_output = sum([1 for k in self.tasks_map
-                        if self.tasks_map[k].get("result", False) and
-                        self.get_task_name(k) != 'init'])
-        n_tmp = sum([1 for k in self.tasks_map
-                     if self.get_task_status(k) == 'COMPLETED'
-                     and self.get_task_name(k) != 'init'])
-
-        t = PrettyTable(['Metric', 'Value'])
-        t.add_row(['Number of tasks', n_tasks])
-        t.add_row(['Number of Persisted tasks', n_cached])
-        t.add_row(['Number of temporary stages', n_tmp])
-        t.add_row(['Number of output', n_output])
-
-        print(t)
-
-        self.plot_graph(CONTEXTBASE.tasks_map, CONTEXTBASE.dag)
-
     @staticmethod
     def show_workflow(tasks_map, selected_tasks):
         """
@@ -82,13 +59,9 @@ class CONTEXTBASE(object):
         :param selected_tasks: list of tasks to be executed in this flow.
         """
 
-        t = PrettyTable(['Order', 'Task name', 'uuid', 'Stored result'])
+        t = PrettyTable(['Order', 'Task name', 'uuid'])
         for i, uuid in enumerate(selected_tasks):
-            t.add_row([i+1,
-                       tasks_map[uuid]['name'],
-                       uuid[:8],
-                       tasks_map[uuid].get("result", '')[0:53]
-                       ])
+            t.add_row([i+1, tasks_map[uuid]['name'], uuid[:8]])
         print("\nRelevant tasks:")
         print(t)
         print('\n')
@@ -115,7 +88,7 @@ class CONTEXTBASE(object):
         :return:
         """
         print("\nList of all tasks:")
-
+        # TODO: each one ?
         t = PrettyTable(['uuid', 'Task name', 'STATUS', 'Result'])
 
         for uuid in CONTEXTBASE.tasks_map:

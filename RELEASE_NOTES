@@ -5,18 +5,11 @@
 The Distributed DataFrame Library (DDF Library) provides distributed algorithms and operations ready to use as a
 library implemented over PyCOMPSs programming model.
 
-Release number: 0.4
-Release date: September-2019
+Release number: 0.5
+Release date: X-2020
 -------------------------------
-New features:
-
- - Besides the generation of DAG provided by COMPSs at the level of tasks, it is now possible to generate a DAG by
- DDF at the level of submitted operations;
- - COMPSsContext is capable of analyzing the current workflow to remove some obsolete data (serialized data) and
- to recompute if needed in the future;
-
 
 Improvements:
 
- - Some algorithms and operations were improved, for instance, operations like join, sort, and aggregation use a
- re-partitioning approach to reduce the number of tasks;
+ - Improvements in operations like partitioning methods and merge schema by using COLLECTION COMPSs feature.
+ - The data output of a COMPSs's task is a parquet file to speedup the des/serialization process.

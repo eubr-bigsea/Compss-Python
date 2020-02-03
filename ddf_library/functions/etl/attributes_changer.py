@@ -42,7 +42,7 @@ def with_column_cast(data, settings):
     :param settings: A dictionary that contains:
         - attributes: A list of column(s) to cast;
         - cast: A list of strings with the supported types: 'integer', 'string',
-         'double', 'date', 'date/time';
+         'decimal', 'date', 'date/time';
 
     :return: A pandas's DataFrame.
     """
@@ -58,11 +58,12 @@ def with_column_cast(data, settings):
 
     # first, change the data types.
     for att, dtype in zip(attributes, new_data_type):
+        dtype = dtype.lower()
         if dtype == 'integer':
             data[att] = data[att].astype(int)
         elif dtype == 'string':
             data[att] = data[att].astype(str)
-        elif dtype == "double":
+        elif dtype == "decimal":
             data[att] = \
                 pd.to_numeric(data[att], downcast='float', errors='coerce')
         elif dtype == "date":

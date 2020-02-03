@@ -144,8 +144,8 @@ def use_case2():
     The others 30% is used to test the fitted model.
     """
 
-    logr = LogisticRegression(feature_col=features, label_col='Survived',
-                              max_iter=10).fit(ddf_train)
+    logr = LogisticRegression(max_iter=10)\
+        .fit(ddf_train, feature_col=features, label_col='Survived')
 
     ddf_test = logr.transform(ddf_test, pred_col='out_logr')\
         .select(['Survived', 'out_logr'])

@@ -117,7 +117,7 @@ class DDF(DDFSketch):
             storage = 'file'
             filename = path[7:]
         else:
-            raise Exception('`hdfs:` and `file:` storage are supported.')
+            raise Exception('`hdfs://` and `file://` storage are supported.')
 
         from .functions.etl.read_data import DataReader
         if na_values:
@@ -246,6 +246,19 @@ class DDF(DDFSketch):
         >>>                             dbf_path='/shapefile.dbf')
         """
 
+        host, port = 'localhost', 9000
+        import re
+        if re.match(r"hdfs:\/\/+", shp_path):
+            storage = 'hdfs'
+            host, shp_path = shp_path[7:].split(':')
+            port, shp_path = shp_path.split('/', 1)
+            shp_path = '/' + shp_path
+        elif re.match(r"file:\/\/+", shp_path):
+            storage = 'file'
+            shp_path = shp_path[7:]
+        else:
+            raise Exception('`hdfs://` and `file://` storage are supported.')
+
         if attributes is None:
             attributes = []
 
@@ -258,10 +271,13 @@ class DDF(DDFSketch):
         settings['dbf_path'] = dbf_path
         settings['polygon'] = polygon
         settings['attributes'] = attributes
+        settings['host'] = host
+        settings['port'] = int(port)
+        settings['storage'] = storage
 
         from .functions.geo import read_shapefile
 
-        result, info = read_shapefile(settings, num_of_parts)
+        results, info = read_shapefile(settings, num_of_parts)
 
         new_state_uuid = self._generate_uuid()
         COMPSsContext.catalog[new_state_uuid] = info
@@ -270,7 +286,7 @@ class DDF(DDFSketch):
              'status': self.STATUS_COMPLETED,
              'optimization': self.OPT_OTHER,
              'function': None,
-             'result': result,
+             'result': results,
              'output': 1, 'input': 0,
              'parent': [self.last_uuid]
              }
@@ -1222,7 +1238,7 @@ class DDF(DDFSketch):
             return GeoWithin().geo_within_stage_1(df[0], df[1], params)
 
         def task_geo_within_stage_2(df, params):
-            return GeoWithin().geo_within_stage_2(df[0], df[1], params)
+            return GeoWithin().geo_within_stage_2(df, params)
 
         new_state_uuid = self._generate_uuid()
         COMPSsContext.tasks_map[new_state_uuid] = \
@@ -1686,7 +1702,7 @@ class DDF(DDFSketch):
 
         return DDF(task_list=self.task_list, last_uuid=new_state_uuid)
 
-    def replace(self, replaces, subset=None):
+    def replace(self, replaces, subset=None, regex=False):
         # noinspection PyUnresolvedReferences
         """
         Replace one or more values to new ones.
@@ -1700,12 +1716,12 @@ class DDF(DDFSketch):
 
         :Example:
 
-        >>> ddf1.replace({0: 'No', 1: 'Yes'}, subset='col_1')
+        >>> ddf1.replace({0: 'No', 1: 'Yes'}, subset=['col_1'])
         """
 
         from .functions.etl.replace_values import replace_value, preprocessing
 
-        settings = {'replaces': replaces}
+        settings = {'replaces': replaces, 'regex': regex}
         if subset is not None:
             settings['subset'] = subset
 

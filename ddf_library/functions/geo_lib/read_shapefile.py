@@ -5,7 +5,7 @@ __author__ = "Lucas Miguel S Ponce"
 __email__ = "lucasmsp@gmail.com"
 
 
-from ddf_library.utils import generate_info
+from ddf_library.utils import generate_info, create_stage_files, save_stage_file
 
 import shapefile
 from io import BytesIO
@@ -33,25 +33,34 @@ def read_shapefile(settings, nfrag):
     .. note:: pip install pyshp
     """
 
-    from hdfspycompss.block import Block
-    from hdfspycompss.hdfs import HDFS
-    host = settings.get('host', 'localhost')
-    port = settings.get('port', 9000)
-    dfs = HDFS(host=host, port=port)
+    storage = settings.get('storage', 'file')
+    shp_path = settings['shp_path']
+    dbf_path = settings['dbf_path']
 
     polygon = settings.get('polygon', 'points')
     lat_long = settings.get('lat_long', True)
     header = settings.get('attributes', [])
 
-    # reading shapefile as a binary file in HDFS
-    filename = settings['shp_path']
-    blocks = dfs.find_n_blocks(filename, 1)
-    shp_path = Block(blocks[0]).read_binary()
-    filename = settings['dbf_path']
-    blocks = dfs.find_n_blocks(filename, 1)
-    dbf_path = Block(blocks[0]).read_binary()
-    shp_io = BytesIO(shp_path)
-    dbf_io = BytesIO(dbf_path)
+    if storage == 'hdfs':
+
+        from hdfspycompss.block import Block
+        from hdfspycompss.hdfs import HDFS
+        host = settings.get('host', 'localhost')
+        port = settings.get('port', 9000)
+        dfs = HDFS(host=host, port=port)
+
+        blocks = dfs.find_n_blocks(shp_path, 1)
+        shp_path = Block(blocks[0]).read_binary()
+
+        blocks = dfs.find_n_blocks(dbf_path, 1)
+        dbf_path = Block(blocks[0]).read_binary()
+
+        # reading shapefile as a binary file
+        shp_io = BytesIO(shp_path)
+        dbf_io = BytesIO(dbf_path)
+    else:
+        shp_io = shp_path
+        dbf_io = dbf_path
 
     # importing to shapefile object
     shp_object = shapefile.Reader(shp=shp_io, dbf=dbf_io)
@@ -89,13 +98,16 @@ def read_shapefile(settings, nfrag):
 
     geo_data = pd.DataFrame(data, columns=header)
 
-    # forcing pandas to infer the dtype (before pandas 0.23)
+    # forcing pandas to infer dtype
     geo_data = geo_data.infer_objects()
     geo_data[polygon] = data_points
 
     info = []
     geo_data = np.array_split(geo_data, nfrag)
-    for f, df in enumerate(geo_data):
-        info.append(generate_info(df, f))
+    output_files = create_stage_files(nfrag)
 
-    return geo_data, info
+    for f, (out, df) in enumerate(zip(output_files, geo_data)):
+        info.append(generate_info(df, f))
+        save_stage_file(out, df)
+
+    return output_files, info

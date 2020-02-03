@@ -118,35 +118,50 @@ class COMPSsContext(CONTEXTBASE):
 
             self.delete_old_tasks(current_task, lineage)
 
+    def is_removable(self, id_task, current_task):
+
+        cond = False
+
+        if self.get_task_status(id_task) == self.STATUS_COMPLETED:
+            # take care to not delete data from leaf nodes
+            degree = -1 if id_task not in self.dag.nodes \
+                else self.dag.out_degree(id_task)
+            if degree > 0:
+                siblings = self.get_task_sibling(current_task)
+                has_siblings = len(siblings) > 1
+                # to not delete a split-operation #TODO
+                if not has_siblings:
+                    out_edges = self.dag.out_edges(id_task)
+                    cond = True
+                    for (inv, outv) in out_edges:
+                        if self.get_task_status(outv) == self.STATUS_WAIT:
+                            return False
+        return cond
+
     def delete_old_tasks(self, current_task, lineage):
         """
         We keep all tasks that is not computed yet or that have a not computed
         children.
         :param current_task:
+        :param lineage:
         :return:
+
+        o degree tem que ser maior que 0, mas tbm tem q saber se o filho já foi
+        computado para casos como join (em que uma tarefa pode esperar )
         """
 
         for id_task in lineage:
-            # take care to not delete data from leaf nodes
-            degree = -1 if id_task not in self.dag.nodes \
-                else self.dag.out_degree(id_task)
-            siblings = self.get_task_sibling(current_task)
-            has_siblings = len(siblings) > 1
 
             if id_task == current_task:
                 return 1
-            elif all([degree > 0,  # do not delete leaf tasks
-                      not has_siblings,  # if is a split-operation
-                      self.get_task_status(id_task) == self.STATUS_COMPLETED
-                      ]):
+            elif self.is_removable(id_task, current_task):
 
                 if DEBUG:
-                    print(" - delete_old_tasks - {} ({}) with degree {}"
+                    print(" - delete_old_tasks - {} ({})"
                           .format(self.tasks_map[id_task]['name'],
-                                  id_task[:8],
-                                  degree))
-                data = self.get_task_return(id_task)
+                                  id_task[:8]))
 
+                data = self.get_task_return(id_task)
                 if check_serialization(data):
                     delete_result(data)
 
@@ -391,6 +406,9 @@ class COMPSsContext(CONTEXTBASE):
             out_tmp, settings = self._execute_task(first_task, data)
         else:
             out_tmp, out_tmp2, settings = self._execute_task(first_task, data)
+            if out_tmp2 is None:
+                # some operations, like geo_within does not return 2 data
+                n_input = 1
 
         intermediate_result = settings.get('intermediate_result', False)
         nfrag = len(out_tmp)

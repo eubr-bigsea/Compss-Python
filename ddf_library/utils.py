@@ -79,17 +79,18 @@ def merge_schema(schemas):
         frags = frags[idx].tolist()
         sizes = np.array(sizes)[idx].tolist()
 
-        schema = {'cols': schema['cols'],
-                  'dtypes': schema['dtypes'],
-                  'size': sizes,
-                  'frag': frags}
+        schema_new = {'cols': schema['cols'],
+                      'dtypes': schema['dtypes'],
+                      'size': sizes,
+                      'frag': frags}
 
         if 'memory' in schema:
             memory = schema['memory'] + schema2['memory']
-            schema['memory'] = np.array(memory)[idx].tolist()
+            schema_new['memory'] = np.array(memory)[idx].tolist()
 
         if set(schema['cols']) != set(schema2['cols']):
             schema = "Error: Partitions have different columns names."
+        schema = schema_new
 
     return schema
 
@@ -187,3 +188,16 @@ def read_stage_file(filepath, cols=None):
 
 def save_stage_file(filepath, df):
     return df.to_parquet(filepath)
+
+
+def clean_info(info):
+    new_info = dict()
+    new_info['cols'] = info['cols'].copy()
+    new_info['dtypes'] = info['dtypes'].copy()
+    new_info['size'] = info['size'].copy()
+    new_info['frag'] = info['frag'].copy()
+
+    if 'memory' in info:
+        new_info['memory'] = info['memory'].copy()
+    return new_info
+
