@@ -92,7 +92,8 @@ def task_bundle_1csv_1parquet(data_input, stage, id_frag, data_output):
     data, info = _bundle(data_input, stage, id_frag)
     save_stage_file(data_output, data)
     t2 = time.time()
-    print('[INFO] - Time to process the complete stage: {:.0f}'.format(t2 - t1))
+    print('[INFO] - Time to process the complete stage: {:.0f} seconds'
+          .format(t2 - t1))
     return info
 
 
