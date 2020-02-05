@@ -5,8 +5,6 @@ __author__ = "Lucas Miguel S Ponce"
 __email__ = "lucasmsp@gmail.com"
 
 from ddf_library.utils import generate_info, create_auxiliary_column, clean_info
-from pycompss.api.parameter import FILE_IN, FILE_OUT
-from pycompss.api.task import task
 
 import pandas as pd
 
@@ -141,8 +139,3 @@ def rename_cols(data, cols1, cols2, key, suf, keep, op):
 
     data = data.rename(columns=convert)
     return data, key
-
-
-@task(returns=2)
-def task_join_stage_2(data1, data2, params):
-    return join_stage_2(data1, data2, params)

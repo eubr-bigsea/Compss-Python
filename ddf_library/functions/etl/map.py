@@ -9,6 +9,8 @@ from ddf_library.utils import generate_info
 import numpy as np
 import importlib
 
+from ddf_library.columns import Column, udf
+
 
 def map(data, settings):
     """
@@ -24,23 +26,54 @@ def map(data, settings):
     https://engineering.upside.com/a-beginners-guide-to-optimizing-pandas-
     code-for-speed-c09ef2c6a4d6
     """
-    config.columns = data.columns.tolist()
+    config.columns = data.columns.tolist()  # todo: remove
     function = settings['function']
     new_column = settings['alias']
     frag = settings['id_frag']
-
     size = len(data)
+
     if size > 0:
-        # data[new_column] = data.apply(function, axis=1)
-        output = [0] * size
 
-        import ddf_library.utils
-        importlib.reload(ddf_library.utils)
+        if isinstance(function, Column):
+            # if is passed only col('oi')
+            func, settings_intern = function.function
+            settings_intern['alias'] = [new_column]
+            settings_intern['id_frag'] = frag
+            data, _ = func(data, settings_intern)
 
-        for i, row in enumerate(data.values):
-            output[i] = function(row)
+        elif isinstance(function, udf):
+            func = function.function
+            args = function.args
+            dtype = function.type
 
-        data[new_column] = output
+            # index where arg is a Column object
+            idx, mapper = list(), dict()
+            for i, a in enumerate(args):
+                if isinstance(a, Column):
+                    idx.append(i)
+                    mapper[a] = a._get_index(data)
+
+            output = np.zeros(size, dtype=dtype)
+            for i, row in enumerate(data.values):
+                # row = [row[f._get_index(data)]
+                #        if isinstance(f, Column) else f for f in args]
+
+                current_args = [row[mapper[a]]
+                                if i in idx else a
+                                for i, a in enumerate(args)]
+                output[i] = func(*current_args)
+
+            data[new_column] = output
+        else:
+            #TODO OLD. NEED TO BE REMOVED
+            output = [0] * size
+            import ddf_library.utils
+            importlib.reload(ddf_library.utils)
+
+            for i, row in enumerate(data.values):
+                output[i] = function(row)
+
+            data[new_column] = output
     else:
         data[new_column] = np.nan
 

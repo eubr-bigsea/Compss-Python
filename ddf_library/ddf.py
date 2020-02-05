@@ -136,6 +136,7 @@ class DDF(DDFSketch):
 
         def task_import_to_ddf(x, y):
             return import_to_ddf(df_list, parquet=parquet, schema=info)
+
         result, info = import_to_ddf(df_list, parquet=parquet, schema=info)
 
         new_state_uuid = self._generate_uuid()
@@ -249,11 +250,10 @@ class DDF(DDFSketch):
         :return: DDF
         """
 
-        from .functions.etl.attributes_changer import with_column_cast
+        from .functions.etl.attributes_changer import create_settings_cast, \
+            with_column_cast
 
-        settings = dict()
-        settings['attributes'] = column
-        settings['cast'] = cast
+        settings = create_settings_cast(attributes=column, cast=cast)
 
         def task_cast(df, params):
             return with_column_cast(df, params)

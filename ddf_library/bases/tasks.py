@@ -1,9 +1,29 @@
 from pycompss.api.task import task
-from pycompss.api.parameter import FILE_IN, FILE_OUT
+from pycompss.api.parameter import FILE_IN, FILE_OUT, COLLECTION_IN
 
+import pandas as pd
 import time
 
-from ddf_library.utils import save_stage_file, read_stage_file
+from ddf_library.utils import save_stage_file, read_stage_file, generate_info, \
+    concatenate_pandas
+
+"""
+ - task_bundle_1parquet_1parquet: Used in 'serial' functions. 
+    Task has 1 data input and return 1 data output with its schema.
+ - task_bundle_2parquet_1parquet: Executed when the first task has two inputs 
+   (like, stage2 of join).
+ - task_bundle_1csv_1parquet: Used to read a folder from common file system.
+ - task_bundle_0in_1parquet: Used to read files from HDFS.
+ 
+"""
+# TODO: test generical task
+
+
+@task()
+def generic_task(**kwargs):
+    info = None
+
+    return info
 
 
 @task(input_file=FILE_IN, output_file=FILE_OUT, returns=1)
@@ -96,6 +116,20 @@ def task_bundle_0in_1parquet(data, stage, id_frag, data_output):
     return info
 
 
+# @constraint(ComputingUnits="2")  # approach to have more memory
+@task(data_out=FILE_OUT, args=COLLECTION_IN, returns=1)
+def concat_n_pandas(data_out, f, args):
+    t_start = time.time()
+    dfs = [df for df in args if isinstance(df, pd.DataFrame)]
+    dfs = concatenate_pandas(dfs)
+    info = generate_info(dfs, f)
+    save_stage_file(data_out, dfs)
+    t_end = time.time()
+    print("[INFO] - Time to process task '{}': {:.0f} seconds"
+          .format('concat_n_pandas', t_end - t_start))
+    return info
+
+
 def _bundle(data, stage, id_frag):
     """
     Base method to process each stage.
@@ -118,3 +152,5 @@ def _bundle(data, stage, id_frag):
               .format(function.__name__, t_end-t_start))
 
     return data, info
+
+

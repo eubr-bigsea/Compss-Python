@@ -5,13 +5,13 @@ __author__ = "Lucas Miguel S Ponce"
 __email__ = "lucasmsp@gmail.com"
 
 from pycompss.api.task import task
-from pycompss.api.parameter import FILE_IN, FILE_OUT, COLLECTION_IN
+from pycompss.api.parameter import FILE_IN
 from pycompss.api.api import compss_wait_on, compss_delete_object
 
-from ddf_library.utils import concatenate_pandas, generate_info, \
-    create_stage_files, save_stage_file, read_stage_file
+from ddf_library.utils import concatenate_pandas, create_stage_files, \
+    read_stage_file
+from ddf_library.bases.tasks import concat_n_pandas
 
-import pandas as pd
 import numpy as np
 import importlib
 
@@ -64,10 +64,10 @@ def range_partition(data, settings):
         splits = [[0 for _ in range(nfrag_target)] for _ in range(nfrag)]
 
         import ddf_library.functions.etl.repartition
-        importlib.reload(ddf.functions.etl.functions.etl.repartition)
+        importlib.reload(ddf_library.functions.etl.repartition)
 
         for f in range(nfrag):
-            splits[f] = ddf.functions.etl.functions.etl.repartition\
+            splits[f] = ddf_library.functions.etl.repartition\
                 .split_by_boundary(data[f], cols, ascending, bounds,
                                    info, nfrag_target)
 
@@ -78,7 +78,7 @@ def range_partition(data, settings):
                 tmp = splits
             else:
                 tmp = [splits[t][f] for t in range(nfrag)]
-            tmp = [splits[t][f] for t in range(nfrag)]
+            # tmp = [splits[t][f] for t in range(nfrag)]
             info[f] = concat_n_pandas(result[f], f, tmp)
 
         compss_delete_object(splits)
@@ -116,11 +116,11 @@ def range_bounds(data, nfrag, sizes, cols, ascending, nfrag_target):
 @task(returns=1, input_data=FILE_IN)
 def _sample_keys(input_data, cols, sample_size):
     data = read_stage_file(input_data, cols)
-    data = data[cols] # TODO
     n = len(data)
     sample_size = sample_size if sample_size < n else n
-    data.reset_index(drop=True, inplace=True)
-    data = data.sample(n=sample_size, replace=False)
+    data = data\
+        .reset_index(drop=True)\
+        .sample(n=sample_size, replace=False)
     return data
 
 
@@ -152,14 +152,3 @@ def _determine_bounds(sample, cols, ascending, nfrag_target):
 
     return bounds
 
-
-# @constraint(ComputingUnits="2")  # approach to have more memory
-@task(data_out=FILE_OUT, args=COLLECTION_IN, returns=1)
-def concat_n_pandas(data_out, f, args):
-    dfs = [df for df in args if isinstance(df, pd.DataFrame)]
-    dfs = pd.concat(dfs, ignore_index=True, sort=False)
-    del args
-    dfs = dfs.infer_objects()
-    info = generate_info(dfs, f)
-    save_stage_file(data_out, dfs)
-    return info

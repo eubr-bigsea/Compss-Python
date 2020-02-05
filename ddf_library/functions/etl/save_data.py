@@ -11,6 +11,8 @@ from pycompss.api.api import compss_open
 from ddf_library.utils import read_stage_file
 
 
+ # TODO: fazer save ser opt_serial
+
 class SaveOperation(object):
     """Save DataFrame as json or csv format in HDFS or common file system."""
 

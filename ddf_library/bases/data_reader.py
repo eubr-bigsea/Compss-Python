@@ -45,7 +45,7 @@ class DataReader(object):
 
     @staticmethod
     def shapefile(shp_path, dbf_path, polygon='points', attributes=None,
-                  num_of_parts='*'):
+                  num_of_parts='*', schema='infer'):
         """
         Reads a shapefile using the shp and dbf file.
 
@@ -55,6 +55,7 @@ class DataReader(object):
                 polygon coordinates (default, 'points');
         :param attributes: List of attributes to keep in the DataFrame,
                 empty to use all fields;
+        :param schema: 'infer' to infer schema, otherwise, provide the dtype
         :param num_of_parts: number of partitions (default, '*' meaning all
          cores available in master CPU);
         :return: DDF
@@ -93,6 +94,7 @@ class DataReader(object):
         settings['host'] = host
         settings['port'] = int(port)
         settings['storage'] = storage
+        settings['schema'] = schema
 
         from ddf_library.functions.geo import read_shapefile
 

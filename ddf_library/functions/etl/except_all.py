@@ -5,7 +5,6 @@ __author__ = "Lucas Miguel S Ponce"
 __email__ = "lucasmsp@gmail.com"
 
 from ddf_library.utils import generate_info, create_auxiliary_column
-from pycompss.api.task import task
 
 
 def except_all(data1, data2, settings):

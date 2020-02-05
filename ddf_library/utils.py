@@ -60,10 +60,15 @@ def merge_info(schemas):
     return schemas
 
 
-def concatenate_pandas(df):
-    if any([True for r in df if len(r) > 0]):
-        df = [r for r in df if len(r) > 0]  # to avoid change dtypes
-    df = pd.concat(df, sort=False, ignore_index=True)
+def concatenate_pandas(dfs):
+    # issue: https://pandas.pydata.org/pandas-docs/version/1.0.0/user_guide
+    # /integer_na.html
+
+    if any([True for r in dfs if len(r) > 0]):
+        dfs = [r for r in dfs if len(r) > 0]  # to avoid change dtypes
+
+    df = pd.concat(dfs, sort=False, ignore_index=True)
+    del dfs
     df.reset_index(drop=True, inplace=True)
     return df
 
@@ -159,13 +164,17 @@ def create_auxiliary_column(columns):
         condition = column in columns
     return column
 
-from ddf_library.bases.config import columns
 
-def col(name):
-    from ddf_library.bases.config import columns
-    return columns.index(name)
+# def col(name):
+#     from ddf_library.bases.config import columns
+#     return columns.index(name)
 
-# map ('alias', col('t').cast('type'))
+
+def convert_int64_columns(df):
+    for col in df.column:
+        if 'int' in df[col].dtype:
+            df[col] = df[col].astype('Int64')
+    return df
 
 
 def delete_result(file_list):

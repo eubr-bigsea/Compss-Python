@@ -5,12 +5,14 @@ __author__ = "Lucas Miguel S Ponce"
 __email__ = "lucasmsp@gmail.com"
 
 
-from ddf_library.utils import generate_info, create_stage_files, save_stage_file
+from ddf_library.utils import generate_info, create_stage_files, \
+    save_stage_file
 
 import shapefile
 from io import BytesIO
 import pandas as pd
 import numpy as np
+import time
 
 
 def read_shapefile(settings, nfrag):
@@ -32,7 +34,7 @@ def read_shapefile(settings, nfrag):
 
     .. note:: pip install pyshp
     """
-
+    t1 = time.time()
     storage = settings.get('storage', 'file')
     shp_path = settings['shp_path']
     dbf_path = settings['dbf_path']
@@ -74,17 +76,18 @@ def read_shapefile(settings, nfrag):
 
     if len(header) == 0:
         header = [f for f in fields]
+    header.remove(polygon)
 
     # position of each selected field
-    num_fields = [fields[f] for f in header]
+    fields_idx = [fields[f] for f in header]
 
     data = []
     data_points = []
     for i, sector in enumerate(sectors):
         attributes = []
         r = records[i]
-        for t in num_fields:
-            attributes.append(r[t-1])
+        for t in fields_idx:
+             attributes.append(r[t-1])
         data.append(attributes)
 
         points = []
@@ -97,9 +100,10 @@ def read_shapefile(settings, nfrag):
         data_points.append(points)
 
     geo_data = pd.DataFrame(data, columns=header)
-
-    # forcing pandas to infer dtype
     geo_data = geo_data.infer_objects()
+    # forcing pandas to infer dtype
+    # geo_data = convert_int64_columns(geo_data)
+
     geo_data[polygon] = data_points
 
     info = []
@@ -110,4 +114,8 @@ def read_shapefile(settings, nfrag):
         info.append(generate_info(df, f))
         save_stage_file(out, df)
 
+    t2 = time.time()
+    print('[INFO] - Time to process `read_shapefile`: {:.0f} seconds'
+          .format(t2 - t1))
     return output_files, info
+

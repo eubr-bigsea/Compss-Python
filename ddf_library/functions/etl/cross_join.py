@@ -8,7 +8,9 @@ from ddf_library.utils import generate_info, create_auxiliary_column, \
     create_stage_files, read_stage_file, save_stage_file
 from pycompss.api.task import task
 from pycompss.api.parameter import FILE_IN, FILE_INOUT
+
 import pandas as pd
+import time
 
 
 def cross_join(data1, data2):
@@ -38,7 +40,7 @@ def cross_join(data1, data2):
 
 @task(returns=1, result=FILE_INOUT, df1=FILE_IN, df2=FILE_IN)
 def _cross_join(result, df1, df2, frag):
-
+    t1 = time.time()
     df = read_stage_file(result)
     df1 = read_stage_file(df1)
     df2 = read_stage_file(df2)
@@ -56,4 +58,6 @@ def _cross_join(result, df1, df2, frag):
 
     info = generate_info(df, frag)
     save_stage_file(result, df)
+    t2 = time.time()
+    print('[INFO] - Time to process the complete stage: {:.0f}'.format(t2 - t1))
     return info

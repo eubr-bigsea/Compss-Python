@@ -45,28 +45,9 @@ class COMPSsContext(CONTEXTBASE):
         global DEBUG
         DEBUG = enabled
 
-    def context_status(self):
-        n_tasks = sum([1 for k in self.tasks_map
-                       if self.get_task_name(k) != 'init'])
-        n_cached = sum([1 for k in self.tasks_map
-                        if self.get_task_status(k) == 'PERSISTED' and
-                        self.get_task_name(k) != 'init'])
-        n_output = sum([1 for k in self.tasks_map
-                        if self.tasks_map[k].get("result", False) and
-                        self.get_task_name(k) != 'init'])
-        n_tmp = sum([1 for k in self.tasks_map
-                     if self.get_task_status(k) == 'COMPLETED'
-                     and self.get_task_name(k) != 'init'])
-
-        t = PrettyTable(['Metric', 'Value'])
-        t.add_row(['Number of tasks', n_tasks])
-        t.add_row(['Number of Persisted tasks', n_cached])
-        t.add_row(['Number of temporary stages', n_tmp])
-        t.add_row(['Number of output', n_output])
-
-        print(t)
-
-        self.plot_graph(COMPSsContext.tasks_map, COMPSsContext.dag)
+    @staticmethod
+    def context_status():
+        COMPSsContext.plot_graph(COMPSsContext.tasks_map, COMPSsContext.dag)
 
     def check_pointer(self, lineage):
         """
@@ -157,6 +138,9 @@ class COMPSsContext(CONTEXTBASE):
                     cond = True
                     for (inv, outv) in out_edges:
                         if self.get_task_status(outv) == self.STATUS_WAIT:
+                            return False
+                        elif 'save' in self.get_task_name(outv) \
+                                and len(out_edges) == 1:
                             return False
         return cond
 

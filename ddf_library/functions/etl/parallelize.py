@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 from pycompss.api.parameter import FILE_IN, FILE_OUT
-from pycompss.functions.reduce import merge_reduce
+
 from pycompss.api.api import compss_wait_on, compss_delete_object
 from pycompss.api.task import task
 
@@ -118,12 +118,6 @@ def _generate_distribution2(n_rows, nfrag):
 #     output = {'key_data': ['data'], 'key_info': ['info'],
 #               'data': df_list, 'info': info}
 #     return output
-
-
-
-
-
-
 
 
 def import_to_ddf(df_list, parquet=False, schema=None):
