@@ -5,8 +5,8 @@ __author__ = "Lucas Miguel S Ponce"
 __email__ = "lucasmsp@gmail.com"
 
 from ddf_library.utils import generate_info, read_stage_file, \
-    create_stage_files, save_stage_file
-
+    create_stage_files, save_stage_file, merge_info, delete_result
+from ddf_library.functions.etl.balancer import WorkloadBalancer
 from pycompss.api.task import task
 from pycompss.api.api import compss_wait_on
 from pycompss.api.parameter import FILE_IN, FILE_OUT
@@ -26,11 +26,9 @@ def take(data, settings):
 
     .. note: This operations contains two stages: the first one is to define
      the distribution; and the second is to create the sample itself.
-
-    TODO: re-balance the list, group the second stage
-    TODO: Use schema to avoid submit empty tasks
     """
 
+    balancer = settings.get('balancer', True)
     data, settings = take_stage_1(data, settings)
 
     nfrag = len(data)
@@ -43,6 +41,13 @@ def take(data, settings):
 
     output = {'key_data': ['data'], 'key_info': ['info'],
               'data': result, 'info': info}
+
+    if balancer:
+        info = merge_info(info)
+        conf = {'forced': True, 'info': [info]}
+        output = WorkloadBalancer(conf).transform(result)
+        delete_result(result)
+
     return output
 
 

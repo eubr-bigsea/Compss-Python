@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-from pycompss.api.api import compss_barrier
 from ddf_library.context import COMPSsContext
 from ddf_library.ddf import DDF
 from ddf_library.utils import generate_data
@@ -34,10 +33,21 @@ def etl():
     n_dataset = 20
     data = pd.read_csv(url, usecols=[0, 1, 2, 3, 4, 8], names=cols)[:n_dataset]
 
-    from ddf_library.utils import col
-    f1 = lambda row: -42 if row[col('height')] > 0.090 else row[col('height')]
-    data1 = DDF().parallelize(data, 4).map(f1, 'height_nan').cache()
-    data2 = data1.map(lambda row: "." + row[col('sex')], 'sex')
+    from ddf_library.columns import col, udf
+    from ddf_library.types import DecimalType, StringType
+
+    def f1(x):
+        return -42 if x > 0.09 else x
+    f1_udf = udf(f1, DecimalType, col('height'))
+
+    data1 = DDF().parallelize(data, 4).map(f1_udf, 'height_nan').cache()
+
+    def f2(x):
+        t = '.{}'.format(x)
+        return t
+
+    f2_udf = udf(f2, StringType, col('sex'))
+    data2 = data1.map(f2_udf, 'sex')
 
     log("etl_test_1: Multiple caches")
 
@@ -138,6 +148,7 @@ def etl():
     log("etl_test_7b - OK")
 
     COMPSsContext().context_status()
+    COMPSsContext().stop()
 
 
 def add_columns():
@@ -380,7 +391,7 @@ def flow_serial_only():
 
 def flow_recompute_task():
     print("\n|-------- Flow to test task recomputation --------|\n")
-    # COMPSsContext().set_log(True)
+    COMPSsContext().set_log(True)
     data = pd.DataFrame([[i, i + 5, 'hello', i + 7] for i in range(1, 25)],
                         columns=['a', 'b', 'c', 'd'])
     ddf1 = DDF().parallelize(data, '*')\
@@ -526,17 +537,25 @@ def map():
     print("\n|-------- Map operation --------|\n")
     data = pd.DataFrame([[i, i + 5, 0] for i in range(10)],
                         columns=['a', 'b', 'c'])
-    from ddf_library.utils import col
+    data['date'] = ['30/04/17 1{}:46:5{}.000000'.format(i, i)
+                    for i in range(10)]
 
-    def f(row):
-        from ddf_library.utils import col
-        return 7 if row[col('a')] > 5 else row[col('a')]
+    from ddf_library.types import DecimalType, IntegerType
+    from ddf_library.columns import Column, udf
 
-    f2 = lambda row: row[col('a')] - 9999
+    def f3(x):
+        return 7 if x > 5 else x
 
-    ddf_1 = DDF().parallelize(data, 4).map(f2, 'a')
+    cat = udf(f3, IntegerType, Column('a'))
+
+    ddf_1 = DDF().parallelize(data, 4) \
+        .map(Column('b').cast(DecimalType), 'd')\
+        .map(cat, 'a')\
+        .map(Column('date').to_datetime('dd/MM/yy HH:mm:ss.SSSSSS'), 'e')
+
     df1 = ddf_1.to_df()
-    print (df1)
+    print(df1.dtypes)
+    print(df1)
     res_tra = pd.DataFrame([[0, 5, 0], [1, 6, 0], [2, 7, 0], [3, 8, 0],
                             [4, 9, 0], [5, 10, 0], [7, 11, 0], [7, 12, 0],
                             [7, 13, 0], [7, 14, 0]], columns=['a', 'b', 'c'])
@@ -546,12 +565,15 @@ def map():
 
 def read_data_single_fs():
     print("\n|-------- Read Data from a single file on FS --------|\n")
-    dtypes = {'sepal_length': np.float64, 'sepal_width': np.float64,
-              'petal_length': np.float64, 'petal_width': np.float64,
-              'class': np.dtype('O')}
-    ddf_1 = DDF().load_text('file://./iris-dataset.csv', header=True,
-                            sep=',', dtypes=dtypes)\
-        .select(['class', 'sepal_length'])
+    from ddf_library.types import DecimalType, StringType
+
+    dtypes = {'sepal_length': DecimalType, 'sepal_width': DecimalType,
+              'petal_length': DecimalType, 'petal_width': DecimalType,
+              'class': StringType}
+    ddf_1 = DDF().read.csv('file://./iris-dataset.csv', header=True,
+                           sep=',', schema=dtypes)\
+        .select(['class', 'sepal_length'])\
+        #.save.csv('file:///tmp/read_data_single_fs')
 
     print(ddf_1.schema())
     print("Number of partitions: ", ddf_1.num_of_partitions())
@@ -560,12 +582,14 @@ def read_data_single_fs():
 
 def read_data_multi_fs():
     print("\n|-------- Read Data from files in a folder on FS --------|\n")
-    dtypes = {'sepal_length': np.float64, 'sepal_width': np.float64,
-              'petal_length': np.float64, 'petal_width': np.float64,
-              'class': np.dtype('O')}
-    ddf_1 = DDF().load_text('file://./iris_dataset_folder/', header=True,
-                            sep=',', dtypes=dtypes)\
-        .select(['class', 'sepal_width'])
+    from ddf_library.types import DecimalType, StringType
+    dtypes = {'sepal_length': DecimalType, 'sepal_width': DecimalType,
+              'petal_length': DecimalType, 'petal_width': DecimalType,
+              'class': StringType}
+    ddf_1 = DDF().read.csv('file://./iris_dataset_folder/', header=True,
+                           sep=',', schema=dtypes)\
+        .select(['class', 'sepal_width'])\
+        # .save.csv('file:///tmp/read_data_multi_fs')
 
     print(ddf_1.schema())
     print("Number of partitions: ", ddf_1.num_of_partitions())
@@ -574,25 +598,28 @@ def read_data_multi_fs():
 
 def read_data_single_hdfs():
     print("\n|-------- Read Data From a single file on HDFS --------|\n")
-    dtypes = {'sepal_length': np.float64, 'sepal_width': np.float64,
-              'petal_length': np.float64, 'petal_width': np.float64,
-              'class': np.dtype('O')}
-    ddf_1 = DDF().load_text('hdfs://localhost:9000/iris-dataset.csv',
-                            header=True, sep=',', dtypes=dtypes)\
+    from ddf_library.types import DecimalType, StringType
+    dtypes = {'sepal_length': DecimalType, 'sepal_width': DecimalType,
+              'petal_length': DecimalType, 'petal_width': DecimalType,
+              'class': StringType}
+    ddf_1 = DDF().read.csv('hdfs://localhost:9000/iris-dataset.csv',
+                           header=True, sep=',', schema=dtypes)\
         .select(['sepal_length'])
 
     print(ddf_1.schema())
+    print(ddf_1.count_rows())
     print("Number of partitions: ", ddf_1.num_of_partitions())
     print("Number of rows: ", ddf_1.count_rows())
 
 
 def read_data_multi_hdfs():
     print("\n|-------- Read Data from files in a folder on HDFS --------|\n")
-    dtypes = {'sepal_length': np.float64, 'sepal_width': np.float64,
-              'petal_length': np.float64, 'petal_width': np.float64,
-              'class': np.dtype('O')}
-    ddf_1 = DDF().load_text('hdfs://localhost:9000/iris_dataset_folder/',
-                            header=True, sep=',', dtypes=dtypes)\
+    from ddf_library.types import DecimalType, StringType
+    dtypes = {'sepal_length': DecimalType, 'sepal_width': DecimalType,
+              'petal_length': DecimalType, 'petal_width': DecimalType,
+              'class': StringType}
+    ddf_1 = DDF().read.csv('hdfs://localhost:9000/iris_dataset_folder/',
+                           header=True, sep=',', schema=dtypes)\
         .select(['class', 'sepal_width', 'sepal_length'])
 
     print(ddf_1.schema())
@@ -676,11 +703,14 @@ def save_data_fs():
     n = 1000
     data = pd.DataFrame([[i, i + 5] for i in range(n)], columns=['a', 'b'])
 
+    path = 'file:///tmp/test_save_data'
     ddf_1 = DDF().parallelize(data, 4)\
-        .save('file:///tmp/test_save_data.csv').to_df('a')
-    if len(ddf_1) != n:
+        .save.csv(path)
+
+    import os
+    if not os.path.isdir(path.replace('file://', '')):
         raise Exception("Error in save_data_fs")
-    print("etl_test - Save Data - OK")
+    log("etl_test - Save Data - OK")
 
 
 def save_data_hdfs():
@@ -688,11 +718,20 @@ def save_data_hdfs():
     n = 10000
     data = pd.DataFrame([[i, i + 5] for i in range(n)], columns=['a', 'b'])
 
-    ddf_1 = DDF().parallelize(data, 4).\
-        save('hdfs://localhost:9000/test_save_data').to_df('a')
-    if len(ddf_1) != n:
+    path = 'hdfs://localhost:9000/test_save_data'
+
+    from hdfspycompss.hdfs import HDFS
+    dfs = HDFS(host='localhost', port=9000)
+    if dfs.exist('/test_save_data'):
+        dfs.rm('/test_save_data', recursive=True)
+
+    ddf_1 = DDF().parallelize(data, 4)\
+        .select(['a', 'b'])\
+        .save.csv(path)
+
+    if not dfs.exist(path):
         raise Exception("Error in save_data_hdfs")
-    print("etl_test - Save Data - OK")
+    log("etl_test - Save Data - OK")
 
 
 def select():
@@ -813,12 +852,13 @@ def split():
 def take():
     print("\n|-------- Take --------|\n")
     data = pd.DataFrame([[i, i + 5] for i in range(100)], columns=['a', 'b'])
-    ddf_1 = DDF().parallelize(data, 4).take(3)
+    ddf_1 = DDF().parallelize(data, 4).take(40)
 
-    df1 = ddf_1.to_df()
-    res_tak = pd.DataFrame([[0, 5], [1, 6], [2, 7]], columns=['a', 'b'])
-    assert_frame_equal(df1, res_tak, check_index_type=False)
-    print("etl_test - take - OK")
+    dfs = ddf_1.to_df(split=True)
+    for df in dfs:
+        if len(df) != 10:
+            raise Exception("Error in take()")
+    log("etl_test - take - OK")
 
 
 def union():

@@ -14,6 +14,7 @@ import numpy as np
 import pandas as pd
 import time
 
+
 class WorkloadBalancer(object):
     """
     Redistribute the data in equal parts if it's unbalanced.

@@ -1764,8 +1764,11 @@ class DDF(DDFSketch):
         n_rows_frags = self.count_rows(False)
 
         from .functions.etl.take import take
-        res = take(self.partitions, {'value': n,
-                                     'info': [{'size': n_rows_frags}]})['data']
+        conf = {'value': n,
+                'balancer': False,
+                'info': [{'size': n_rows_frags}]
+                }
+        res = take(self.partitions, conf)['data']
 
         df = [0 for _ in range(len(res))]
         for i, f in enumerate(res):
@@ -1902,7 +1905,7 @@ class DDF(DDFSketch):
         """
 
         from .functions.etl.take import take_stage_1, take_stage_2
-        settings = {'value': num}
+        settings = {'value': num, 'balancer': True}
 
         def task_take_stage_1(df, params):
             return take_stage_1(df, params)
@@ -1937,7 +1940,10 @@ class DDF(DDFSketch):
              'input': 1
              }
 
-        return DDF(task_list=task_list, last_uuid=new_state_uuid)
+        result = DDF(task_list=task_list, last_uuid=new_state_uuid)
+        if settings['balancer']:
+            result = result.balancer(True)
+        return result
 
     def to_df(self, columns=None, split=False):
         # noinspection PyUnresolvedReferences
