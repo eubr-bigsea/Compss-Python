@@ -103,6 +103,24 @@ def merge_schema(schemas):
     return schema
 
 
+def parser_filepath(filepath):
+    import re
+    host, port = 'default', 0
+
+    if re.match(r"hdfs:\/\/+", filepath):
+        storage = 'hdfs'
+        host, filename = filepath[7:].split(':')
+        port, filename = filename.split('/', 1)
+        filename = '/' + filename
+        port = int(port)
+    elif re.match(r"file:\/\/+", filepath):
+        storage = 'file'
+        filename = filepath[7:]
+    else:
+        raise Exception('`hdfs://` and `file://` storage are supported.')
+    return host, port, filename, storage
+
+
 def check_serialization(data):
     """
     Check if output is a str file object (Future) or is a BufferIO.
@@ -153,7 +171,16 @@ def _gen_uuid():
     return str(uuid.uuid4())
 
 
-app_code = _gen_uuid()
+def gen_app_folder():
+    import os
+    folder = '/tmp/ddf_' + _gen_uuid()
+    while os.path.isdir(folder):
+        folder = '/tmp/ddf_' + _gen_uuid()
+    os.mkdir(folder)
+    return folder
+
+
+app_folder = gen_app_folder()
 
 
 def create_auxiliary_column(columns):
@@ -183,9 +210,9 @@ def delete_result(file_list):
 
 
 def create_stage_files(nfrag, suffix=''):
-    global stage_id, app_code
-    file_names = ['/tmp/ddf_{}_stage{}_{}block{}.parquet'
-                  .format(app_code, stage_id, suffix, f)
+    global stage_id, app_folder
+    file_names = ['{}/stage{}_{}block{}.parquet'
+                  .format(app_folder, stage_id, suffix, f)
                   for f in range(nfrag)]
     stage_id += 1
     return file_names

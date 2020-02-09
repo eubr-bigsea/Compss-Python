@@ -4,129 +4,176 @@
 __author__ = "Lucas Miguel S Ponce"
 __email__ = "lucasmsp@gmail.com"
 
-from pycompss.api.task import task
-from pycompss.api.parameter import FILE_IN, FILE_OUT
-from pycompss.api.api import compss_open
-
-from ddf_library.utils import read_stage_file
+from ddf_library.utils import generate_info
 
 
- # TODO: fazer save ser opt_serial
+class DataSaver(object):
+    MODE_OVERWRITE = 'overwrite'
+    MODE_IGNORE = 'ignore'
+    MODE_ERROR = 'error'
 
-class SaveOperation(object):
-    """Save DataFrame as json or csv format in HDFS or common file system."""
+    FORMAT_CSV = 'csv'
+    FORMAT_JSON = 'json'
+    FORMAT_PARQUET = 'parquet'
+    FORMAT_PICKLE = 'pickle'
 
-    @staticmethod
-    def preprocessing(settings):
-        if any(['format' not in settings,
-                'filename' not in settings]):
-            raise \
-                Exception('SaveOperation: Please inform filename and format.')
+    STORAGE_HDFS = 'hdfs'
+    STORAGE_FS = 'file'
 
-    @staticmethod
-    def transform(data, settings):
+    def __init__(self):
+        self.format = None
+        self.storage = None
+        self.mode = None
+        self.host = None
+        self.port = None
+        self.filepath = None
+        self.kwargs = None
 
-        format_file = settings['format']
-        filename = settings['filename']
-        mode = settings['mode']
-        header = settings['header']
+    def prepare_csv(self, filepath, mode=MODE_OVERWRITE, storage=STORAGE_HDFS,
+                    host='default', port=0, header=True, sep=',', na_rep='',
+                    float_format=None, columns=None, encoding=None,
+                    quoting=None, quotechar='"', date_format=None,
+                    doublequote=True, escapechar=None, decimal='.'):
 
-        storage = settings.get('storage', 'hdfs')
-        host = settings.get('host', 'default')
-        port = settings.get('port', 0)
+        self.filepath = filepath
+        self.mode = mode
+        self.storage = storage
+        self.host = host
+        self.port = int(port)
+        self.format = self.FORMAT_CSV
 
-        if storage == 'hdfs':
+        kwargs = dict()
+        kwargs['header'] = header
+        kwargs['sep'] = sep
+        kwargs['na_rep'] = na_rep
+        kwargs['float_format'] = float_format
+        kwargs['columns'] = columns
+        kwargs['encoding'] = encoding
+        kwargs['quoting'] = quoting
+        kwargs['quotechar'] = quotechar
+        kwargs['date_format'] = date_format
+        kwargs['doublequote'] = doublequote
+        kwargs['escapechar'] = escapechar
+        kwargs['decimal'] = decimal
+        self.kwargs = kwargs
+        return self
+
+    def prepare_json(self, filepath, mode=MODE_OVERWRITE, storage='fs',
+                     host='default', port=0, date_format=None,
+                     double_precision=10, force_ascii=True, date_unit='ms'):
+
+        self.filepath = filepath
+        self.mode = mode
+        self.storage = storage
+        self.host = host
+        self.port = int(port)
+        self.format = self.FORMAT_JSON
+
+        kwargs = dict()
+        kwargs['double_precision'] = double_precision
+        kwargs['date_format'] = date_format
+        kwargs['force_ascii'] = force_ascii
+        kwargs['date_unit'] = date_unit
+        self.kwargs = kwargs
+        return self
+
+    def prepare_parquet(self, filepath, mode=MODE_OVERWRITE, storage='fs',
+                        host='default', port=0, compression='snappy'):
+
+        self.filepath = filepath
+        self.mode = mode
+        self.storage = storage
+        self.host = host
+        self.port = int(port)
+        self.format = self.FORMAT_PARQUET
+
+        self.kwargs = {'compression': compression}
+        return self
+
+    def prepare_pickle(self, filepath, mode=MODE_OVERWRITE, storage='fs',
+                       host='default', port=0, compression='infer',
+                       protocol=-1):
+
+        self.filepath = filepath
+        self.mode = mode
+        self.storage = storage
+        self.host = host
+        self.port = int(port)
+        self.format = self.FORMAT_PARQUET
+
+        self.kwargs = {'compression': compression, 'protocol': protocol}
+        return self
+
+    def check_path(self):
+
+        if self.storage == self.STORAGE_HDFS:
             from hdfspycompss.hdfs import HDFS
-            dfs = HDFS(host=host, port=port)
-            path = "hdfs://"+host+":"+str(port)+"/"+filename
-            dfs.mkdir(path)
+            dfs = HDFS(host=self.host, port=self.port)
+            path = 'hdfs://{}:{}{}'.format(self.host, self.port, self.filepath)
+            if dfs.exist(self.filepath):
+                if self.mode == self.MODE_ERROR:
+                    raise Exception('Filepath {} already exists.'.format(path))
+                elif self.mode == self.MODE_IGNORE:
+                    return 'ignored'
+                else:
+                    dfs.rm(self.filepath, recursive=True)
+            dfs.mkdir(self.filepath)
+
+        elif self.storage == self.STORAGE_FS:
+            import os
+            from pathlib import Path
+            path = 'file://{}'.format(self.filepath)
+            if os.path.exists(self.filepath):
+                if self.mode == self.MODE_ERROR:
+                    raise Exception('Filepath {} already exists.'.format(path))
+                elif self.mode == self.MODE_IGNORE:
+                    return 'ignored'
+                else:
+                    if os.path.isfile(self.filepath):
+                        os.remove(self.filepath)
+            Path(self.filepath).mkdir(parents=True, exist_ok=True)
         else:
-            #TODO
-            pass
+            raise Exception('Storage not supported.')
+        return 'ok'
 
-        nfrag = len(data)
-        for f in range(nfrag):
-            # TODO: create a folder, and then each file
-
-            output = "{}_part_{:05d}".format(filename, f)
-
-            if storage == 'hdfs':
-                """Store the DataFrame in CSV, JSON, PICLKE and PARQUET
-                 format in HDFS."""
-                output = path+"/"+output
-                options = [host, port, output, mode, header]
-                _save_hdfs_(data[f], options, format_file=format_file)
-
-            elif storage == 'file':
-                """Store the DataFrame in CSV, JSON, PICLKE and PARQUET
-                 format in common FS."""
-                _save_fs_(output, data[f], header, format_file=format_file)
-                compss_open(output).close()
-
-        output = {'key_data': ['data'], 'key_info': ['info'],
-                  'data': [], 'info': []}
+    def generate_names(self, nfrag):
+        output = ['{}/output_part_{:05d}.{}'.format(self.filepath, i,
+                                                    self.format)
+                  for i in range(nfrag)]
         return output
 
+    def save(self, df, settings):
+        output = settings['output']
 
-@task(returns=1, data_input=FILE_IN)
-def _save_hdfs_(data_input, settings, format_file='csv'):
+        if self.storage == self.STORAGE_HDFS:
+            """Store the DataFrame in CSV, JSON, PICLKE and PARQUET
+             format in HDFS."""
+            from hdfspycompss.hdfs import HDFS
+            dfs = HDFS(host=self.host, port=self.port)
 
-    data = read_stage_file(data_input)
-    host, port, filename, mode, header = settings
-    from hdfspycompss.hdfs import HDFS
-    dfs = HDFS(host=host, port=port)
-    over, append = False,  False
+            if self.format == self.FORMAT_CSV:
+                self.kwargs['index'] = False
+                dfs.write_pandas_to_csv(output, df, **self.kwargs)
+            elif self.format == self.FORMAT_JSON:
+                dfs.write_pandas_to_json(output, df, **self.kwargs)
+            elif self.format == self.FORMAT_PARQUET:
+                dfs.write_pandas_to_parquet(output, df, **self.kwargs)
+            elif self.format == self.FORMAT_PICKLE:
+                dfs.write_pandas_to_pickle(output, df, **self.kwargs)
 
-    if mode == 'overwrite':
-        over = True
-    elif mode == 'append':
-        append = True
-    elif dfs.exist(filename):
-        if mode == 'ignore':
-            return None
-        elif mode == 'error':
-            raise Exception('SaveOperation: File already exists.')
+        elif self.storage == self.STORAGE_FS:
+            """Store the DataFrame in CSV, JSON, PICLKE and PARQUET
+             format in common FS."""
+            if self.format == self.FORMAT_CSV:
+                df.to_csv(output, index=False, **self.kwargs)
+            elif self.format == self.FORMAT_JSON:
+                df.to_json(output, orient='records', **self.kwargs)
+            elif self.format == self.FORMAT_PARQUET:
+                df.to_paquet(output, **self.kwargs)
+            elif self.format == self.FORMAT_PICKLE:
+                df.to_picke(output, **self.kwargs)
+            else:
+                raise Exception("FORMAT NOT SUPPORTED!")
 
-    success = None
-    if format_file == 'csv':
-        # 'float_format': '%.6f',
-        params_pandas = {'header': header,
-                         'index': False, 'sep': ','}
-        success = dfs.write_dataframe(filename, data, append=append,
-                                      overwrite=over,
-                                      params_pandas=params_pandas)
-    elif format_file == 'json':
-        success = dfs.write_json(filename, data, overwrite=over, append=append)
-    elif format_file == 'parquet':
-        success = dfs.write_parquet(filename, data, overwrite=over)
-
-    if not success:
-        raise Exception('Error in SaveHDFSOperation.')
-    return []
-
-
-@task(filename=FILE_OUT, data_input=FILE_IN)
-def _save_fs_(filename, data_input, header, format_file):
-    """
-    Method used to save a DataFrame into a file.
-
-    :param filename: The name used in the output.
-    :param data: The pandas DataFrame which you want to save.
-    """
-    data = read_stage_file(data_input)
-    mode = 'w'
-    if format_file == 'csv':
-        if header:
-            data.to_csv(filename, sep=',', mode=mode, header=True, index=False)
-        else:
-            data.to_csv(filename, sep=',', mode=mode, header=False, index=False)
-    elif format_file == 'json':
-        data.to_json(filename, orient='records')
-    elif format_file == 'pickle':
-        import _pickle as pickle
-        with open(filename, 'wb') as output:
-            pickle.dump(data, output, pickle.HIGHEST_PROTOCOL)
-    elif format_file == 'parquet':
-        data.to_parquet(filename)
-    else:
-        raise Exception("FORMAT NOT SUPPORTED!")
+        info = generate_info(df, settings['id_frag'])
+        return df, info

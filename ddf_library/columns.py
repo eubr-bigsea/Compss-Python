@@ -5,11 +5,11 @@ __author__ = "Lucas Miguel S Ponce"
 __email__ = "lucasmsp@gmail.com"
 
 
-__all__ = ['Column']
+__all__ = ['col', 'udf']
 
 import datetime
 
-from ddf_library.types import *
+from ddf_library.types import _converted_types
 
 
 class udf(object):
@@ -17,16 +17,7 @@ class udf(object):
     def __init__(self, function, type, *args):
         self.function = function
         self.args = args
-        if type == IntegerType:
-            self.type = int
-        elif type == StringType:
-            self.type = str
-        elif type == DecimalType:
-            self.type = float
-        elif type == TimestampType:
-            self.type = datetime.datetime
-        elif type == DateType:
-            self.type = datetime.date
+        self.type = _converted_types(type)
 
 
 class Column(object):
@@ -35,10 +26,6 @@ class Column(object):
         self.column = col
         self.function = None
         self.index = None
-
-    def alias(self, alias):
-        #TODO
-        pass
 
     def cast(self, cast):
         from ddf_library.functions.etl.attributes_changer import \

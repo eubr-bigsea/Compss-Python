@@ -77,7 +77,6 @@ class DDFSketch(object):
         :return: Check if ddf variable is currently executed.
         """
         stored = False
-
         for _ in range(2):
             if COMPSsContext.tasks_map[self.last_uuid]['status'] in \
                 [COMPSsContext.STATUS_COMPLETED,

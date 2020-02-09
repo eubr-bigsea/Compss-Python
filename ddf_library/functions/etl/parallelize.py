@@ -9,7 +9,6 @@ from pycompss.api.task import task
 from ddf_library.utils import merge_schema,\
     create_stage_files, save_stage_file, read_stage_file, generate_info
 
-import pandas as pd
 import numpy as np
 import sys
 
@@ -35,7 +34,7 @@ def parallelize(data, nfrag):
     result = create_stage_files(nfrag)
 
     info = {'cols': cols,
-            'dtypes': data.dtypes.values,
+            'dtypes': data.dtypes.to_numpy().tolist(),
             'size': [],
             'memory': []
             }

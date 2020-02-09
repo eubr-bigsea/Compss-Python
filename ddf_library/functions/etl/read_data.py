@@ -35,7 +35,7 @@ class DataReader(object):
             na_values=None, keep_default_na=True, skip_blank_lines=True,
             parse_dates=False, decimal='.', dayfirst=False, header=True,
             thousands=None, quotechar='"', doublequote=True, escapechar=None,
-            comment=None, encoding=None,  error_bad_lines=True,
+            comment=None, encoding='utf-8',  error_bad_lines=True,
             warn_bad_lines=True, delim_whitespace=False, float_precision=None):
 
         if num_of_parts == '*':
@@ -93,7 +93,7 @@ class DataReader(object):
         return self
 
     def json(self, filepath, num_of_parts='*', storage='hdfs', host='default',
-             port=0, schema=None, precise_float=False, encoding=None):
+             port=0, schema=None, precise_float=False, encoding='utf-8'):
 
         if num_of_parts == '*':
             import multiprocessing
@@ -153,7 +153,10 @@ class DataReader(object):
     def check_file_or_folder(self, fpath):
         if self.storage == 'hdfs':
             from hdfspycompss.hdfs import HDFS
-            distributed = HDFS(host=self.host, port=self.port).isdir(fpath)
+            dfs = HDFS(host=self.host, port=self.port)
+            if not dfs.exist(fpath):
+                raise Exception("File or folder do not exists in HDFS.")
+            distributed = dfs.isdir(fpath)
         else:
             import os
             distributed = os.path.isdir(fpath)
@@ -199,23 +202,18 @@ class DataReader(object):
     def transform_fs_single(self):
 
         block = self.blocks[0]
-        result, _ = _read_fs(block, self.format,
-                             self.separator,
-                             self.header, self.na_values,
-                             self.dtype, self.error_bad_lines,
-                             self.encoding, self.converters,
-                             self.parse_dates, 0)
-        result, info = parallelize(result, self.nfrag)
-
+        result, _ = _read_fs(block, self.format, self.header, self.dtype,
+                             self.kwargs, 0)
+        output = parallelize(result, self.nfrag)
+        result = output['data']
+        info = output['info']
         return result, info
 
     def transform_fs_distributed(self, block, params):
 
         frag = params['id_frag']
-        result, info = _read_fs(block, self.format, self.separator,
-                                self.header, self.na_values, self.dtype,
-                                self.error_bad_lines, self.encoding,
-                                self.converters, self.parse_dates, frag)
+        result, info = _read_fs(block, self.format, self.header, self.dtype,
+                                self.kwargs, frag)
 
         return result, info
 
@@ -229,29 +227,29 @@ class DataReader(object):
         return result, info
 
 
-def _read_fs(filename, format_type, separator, header, na_values,
-             dtype, error_bad_lines, encoding, converters, parse_dates, frag):
+def _read_fs(filename, format_type, header, dtype, args, frag):
     """Load a fragment of a csv or json file in a pandas DataFrame."""
 
     if format_type in ['csv', 'txt']:
-        separator = separator[0]
         if header:
             header = 'infer'
 
-        df = pd.read_csv(filename, sep=separator, na_values=na_values,
-                         header=header, dtype=dtype[0],
-                         error_bad_lines=error_bad_lines, encoding=encoding,
-                         converters=converters, parse_dates=parse_dates)
+        df = pd.read_csv(filename, header=header, dtype=dtype[0], **args)
 
         if not header:
             n_cols = len(df.columns)
             new_columns = ['col_{}'.format(i) for i in range(n_cols)]
             df.columns = new_columns
 
-    else:
-
+    elif format_type == 'json':
         df = pd.read_json(filename, orient='records', dtype=dtype[0],
-                          lines=True)
+                          lines=True, **args)
+    elif format_type == 'parquet':
+        df = pd.read_parquet(filename, **args)
+    elif format_type == 'pickle':
+        df = pd.read_pickle(filename, **args)
+    else:
+        raise Exception("Format file is not supported.")
 
     info = generate_info(df, frag)
     return df, info
@@ -262,8 +260,21 @@ def _read_hdfs(blk, format_type, header, dtype, args, frag):
     print("[INFO - ReadOperationHDFS] - ", blk)
     from hdfspycompss.block import Block
 
-    df = Block(blk).read_dataframe(format_file=format_type, header=header,
-                                   dtype=dtype[0], args=args)
+    if format_type in ['csv', 'txt']:
+        if header:
+            header = 'infer'
+
+        df = Block(blk).read_pandas_from_csv(header=header, dtype=dtype[0],
+                                             **args)
+
+    elif format_type == 'json':
+        df = Block(blk).read_pandas_from_json(dtype=dtype[0], **args)
+    elif format_type == 'parquet':
+        df = Block(blk).read_pandas_from_parquet(**args)
+    elif format_type == 'pickle':
+        df = Block(blk).read_pandas_from_pickle(**args)
+    else:
+        raise Exception("Format file is not supported.")
 
     info = generate_info(df, frag)
     return df, info

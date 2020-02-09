@@ -16,6 +16,7 @@ Public classes:
 from pycompss.api.api import compss_open, compss_delete_file
 from ddf_library.bases.ddf_base import DDFSketch
 import ddf_library.bases.data_reader as dr
+import ddf_library.bases.data_saver as ds
 
 from ddf_library.context import COMPSsContext
 from ddf_library.utils import concatenate_pandas
@@ -71,9 +72,14 @@ class DDF(DDFSketch):
             self.task_list.append(last_uuid)
 
         self.last_uuid = last_uuid
+
         self.read = dr.DataReader()
         dr.task_list = self.task_list
         dr.last_uuid = self.last_uuid
+
+        self.save = ds.Save()
+        ds.task_list = self.task_list
+        ds.last_uuid = self.last_uuid
 
     def __str__(self):
         return "DDF object."
@@ -1615,65 +1621,6 @@ class DDF(DDFSketch):
              }
 
         return DDF(task_list=task_list, last_uuid=new_state_uuid)
-
-    def save(self, filepath, format='csv', header=True, mode='overwrite'):
-        # noinspection PyUnresolvedReferences
-        """
-        Save the data in the storage.
-
-        :param filepath: output file path;
-        :param format: format file, csv, json or a pickle;
-        :param header: save with the columns header;
-        :param mode: 'overwrite' (default) if file exists, 'ignore' or 'error'.
-         Only used when storage is 'hdfs'.
-        :return: Return the same input data to perform others operations;
-        """
-        host, port = 'default', 0
-        import re
-        if re.match(r"hdfs:\/\/+", filepath):
-            storage = 'hdfs'
-            host, filename = filepath[7:].split(':')
-            port, filename = filename.split('/', 1)
-            filename = '/' + filename
-        elif re.match(r"file:\/\/+", filepath):
-            storage = 'file'
-            filename = filepath[7:]
-        else:
-            raise Exception('`hdfs:` and `file:` storage are supported.')
-
-        from ddf_library.functions.etl.save_data import SaveOperation
-
-        settings = {'filename': filename,
-                    'format': format,
-                    'storage': storage,
-                    'header': header,
-                    'mode': mode,
-                    'host': host,
-                    'port': int(port)}
-
-        SaveOperation().preprocessing(settings)
-
-        def task_save(df, params):
-            return SaveOperation().transform(df, params)
-
-        # TODO: save operation has a 'OPT_OTHER" flag.
-        #  The problem is related to OUT_FILE tag for compss task.
-
-        new_state_uuid = self._generate_uuid()
-        COMPSsContext.tasks_map[new_state_uuid] = \
-            {'name': 'save',
-             'status': self.STATUS_WAIT,
-             'optimization': self.OPT_OTHER,
-             'function': [task_save, settings],
-             'parent': [self.last_uuid],
-             'output': 1,
-             'input': 1
-             }
-
-        res = DDF(task_list=self.task_list,
-                  last_uuid=new_state_uuid)._run_compss_context()
-
-        return res
 
     def schema(self):
         # noinspection PyUnresolvedReferences

@@ -12,12 +12,10 @@ DDF is a Library for PyCOMPSs.
 from ddf_library.bases.context_base import CONTEXTBASE
 from ddf_library.bases.tasks import *
 from ddf_library.utils import check_serialization, \
-    create_stage_files, delete_result
+    create_stage_files, delete_result, app_folder
 
 import copy
 import networkx as nx
-from prettytable import PrettyTable
-
 
 DEBUG = False
 
@@ -39,6 +37,19 @@ class COMPSsContext(CONTEXTBASE):
         COMPSsContext.catalog = dict()
         COMPSsContext.tasks_map = dict()
         COMPSsContext.dag = nx.DiGraph()
+
+        import shutil
+        shutil.rmtree(app_folder)
+
+    # def __del__(self):
+    #     """
+    #     Removes Future COMPSs files to avoid transfer them back to master at
+    #     end of an execution and them, remove the temporary DDF folder
+    #     """
+    #     print(">>>> __del__")
+    #     COMPSsContext.stop()
+    #     import shutil
+    #     shutil.rmtree(app_folder)
 
     @staticmethod
     def set_log(enabled=True):
@@ -124,7 +135,6 @@ class COMPSsContext(CONTEXTBASE):
     def is_removable(self, id_task, current_task):
 
         cond = False
-
         if self.get_task_status(id_task) == self.STATUS_COMPLETED:
             # take care to not delete data from leaf nodes
             degree = -1 if id_task not in self.dag.nodes \
@@ -184,15 +194,7 @@ class COMPSsContext(CONTEXTBASE):
         operation = self.set_operation(child_task, id_parents)
         # execute this operation that returns a dictionary
         output_dict = self._execute_other_task(operation, inputs)
-
-        if self.get_task_name(child_task) == 'save':
-            self.catalog[child_task] = \
-                self.catalog.get(id_parents[0], None)
-            self.set_task_result(child_task, inputs[0])
-            self.set_task_status(child_task, self.STATUS_COMPLETED)
-
-        else:
-            self.save_opt_others_tasks(output_dict, child_task)
+        self.save_opt_others_tasks(output_dict, child_task)
 
     def run_opt_serial(self, lineage, inputs):
         """
@@ -233,17 +235,9 @@ class COMPSsContext(CONTEXTBASE):
                   " - opt_functions: {}".format(ids, names)
             print(msg)
 
-        file_serial_function = 0
-        if any(['load_text-file_in' in self.get_task_name(uid)
-                for uid in group_uuids]):
-            file_serial_function = 1
-        elif any(['load_text-0in' in self.get_task_name(uid)
-                  for uid in group_uuids]):
-            file_serial_function = 2
-
-        result, info = self._execute_serial_tasks(group_func, inputs,
-                                                  file_serial_function)
-        self.save_lazy_states(result, info, group_uuids)
+        result, info = self._execute_serial_tasks(group_uuids, group_func,
+                                                  inputs)
+        self.save_serial_states(result, info, group_uuids)
         jump = len(group_func)-1
         return jump
 
@@ -294,7 +288,7 @@ class COMPSsContext(CONTEXTBASE):
 
         result, info = self._execute_opt_last_tasks(group_func, inputs,
                                                     n_input)
-        self.save_lazy_states(result, info, group_uuids)
+        self.save_serial_states(result, info, group_uuids)
         jump = len(group_func)-1
         return jump
 
@@ -303,7 +297,7 @@ class COMPSsContext(CONTEXTBASE):
 
         keys_r, keys_i = output_dict['key_data'], output_dict['key_info']
 
-        siblings = self.get_task_sibling(child_task)    #TODO: ENTENDER
+        siblings = self.get_task_sibling(child_task)  #TODO: ENTENDER
 
         for f, (id_t, key_r, key_i) in enumerate(zip(siblings, keys_r, keys_i)):
             result, info = output_dict[key_r], output_dict[key_i]
@@ -313,9 +307,10 @@ class COMPSsContext(CONTEXTBASE):
             self.set_task_result(id_t, result)
             self.set_task_status(id_t, self.STATUS_COMPLETED)
 
-    def save_lazy_states(self, result, info, opt_uuids):
+    def save_serial_states(self, result, info, opt_uuids):
         """
-        All list must be updated in order to remove obsolete tasks in the future
+        All tasks in stage must be updated in order to remove obsolete tasks
+        in the future.
 
         :param result:
         :param info:
@@ -323,8 +318,9 @@ class COMPSsContext(CONTEXTBASE):
         :return:
         """
         last_uuid = opt_uuids[-1]
-        self.set_task_result(last_uuid, result)
-        self.catalog[last_uuid] = info
+        if 'task_save' != self.get_task_name(last_uuid):
+            self.set_task_result(last_uuid, result)
+            self.catalog[last_uuid] = info
 
         for o in opt_uuids:
             self.set_task_status(o, self.STATUS_COMPLETED)
@@ -352,8 +348,7 @@ class COMPSsContext(CONTEXTBASE):
         output = function(input_data, settings)
         return output
 
-    @staticmethod
-    def _execute_serial_tasks(tasks_list, input_data, type_function):
+    def _execute_serial_tasks(self, uuid_list, tasks_list, input_data):
 
         """
         Used to execute a group of lazy tasks. This method submit
@@ -362,8 +357,6 @@ class COMPSsContext(CONTEXTBASE):
         :param tasks_list: sequence of functions and parameters to be executed
          in each fragment
         :param input_data: A list of DataFrame as input data
-        :param type_function: if False, use task_bundle otherwise
-         task_bundle_file
         :return:
         """
 
@@ -372,27 +365,43 @@ class COMPSsContext(CONTEXTBASE):
 
         nfrag = len(input_data)
         info = [[] for _ in range(nfrag)]
-        out_files = create_stage_files(nfrag)
 
-        if type_function == 0:
-            # main function #TODO doc this
-            function = task_bundle_1parquet_1parquet
-        elif type_function == 1:
-            function = task_bundle_1csv_1parquet
-        elif type_function == 2:
-            function = task_bundle_0in_1parquet
+        first_task_name = self.get_task_name(uuid_list[0])
+        last_task_name = self.get_task_name(uuid_list[-1])
+
+        if 'read-many-fs' == first_task_name:
+            if 'save-hdfs' == last_task_name:
+                function = stage_1in_0out
+            else:
+                function = stage_1in_1out
+
+        elif 'read-hdfs' == first_task_name:
+            if 'save-hdfs' == last_task_name:
+                function = stage_0in_0out
+            else:
+                function = stage_0in_1out
+
+        elif 'save-hdfs' == last_task_name:
+            function = stage_1in_0out
         else:
-            raise Exception("[CONTEXT] - ERROR in _execute_serial_tasks")
+            function = stage_1in_1out
+
+        if 'save' in last_task_name:
+            out_files = tasks_list[-1][1]['output'](nfrag)
+            tasks_list[-1][1]['output'] = out_files
+        else:
+            out_files = create_stage_files(nfrag)
 
         if DEBUG:
             msg = ' - running task by _execute_serial_tasks\n' \
                   '   * input file {}\n' \
-                  '   * output file {}'.format(input_data,out_files)
+                  '   * output file {}'.format(input_data, out_files)
             print(msg)
 
         for f, (in_file, out_file) in enumerate(zip(input_data, out_files)):
             info[f] = function(in_file, tasks_list, f, out_file)
 
+        # TODO: compss_open(output).close()
         return out_files, info
 
     def _execute_opt_last_tasks(self, opt, data, n_input):
@@ -428,14 +437,14 @@ class COMPSsContext(CONTEXTBASE):
 
         if n_input == 1:
             for f, (in_file, out_file) in enumerate(zip(out_tmp, out_files)):
-                info[f] = task_bundle_1parquet_1parquet(in_file, opt, f,
-                                                        out_file)
+                info[f] = stage_1in_1out(in_file, opt, f,
+                                         out_file)
 
         else:
             for f, (in_file1, in_file2, out_file) in \
                     enumerate(zip(out_tmp, out_tmp2, out_files)):
-                info[f] = task_bundle_2parquet_1parquet(in_file1, in_file2,
-                                                        opt, f, out_file)
+                info[f] = stage_2in_1out(in_file1, in_file2,
+                                         opt, f, out_file)
             # removing temporary tasks
             if intermediate_result:
                 delete_result(out_tmp2)

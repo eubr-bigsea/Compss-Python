@@ -5,6 +5,7 @@ __author__ = "Lucas Miguel S Ponce"
 __email__ = "lucasmsp@gmail.com"
 
 from ddf_library.context import COMPSsContext
+from ddf_library.utils import parser_filepath
 
 task_list = None
 last_uuid = None
@@ -14,25 +15,28 @@ class DataReader(object):
 
     @staticmethod
     def csv(filepath,
-            num_of_parts='*', schema=None, sep=',', header=True, delimiter=None,
-            na_filter=True, usecols=None, prefix=None, engine=None,
-            converters=None, true_values=None, false_values=None,
+            num_of_parts='*', schema='infer', sep=',', header=True,
+            delimiter=None, na_filter=True, usecols=None, prefix=None,
+            engine=None, converters=None, true_values=None, false_values=None,
             skipinitialspace=False, na_values=None, keep_default_na=True,
             skip_blank_lines=True, parse_dates=False, decimal='.',
             dayfirst=False, thousands=None, quotechar='"', doublequote=True,
-            escapechar=None, comment=None, encoding=None, error_bad_lines=True,
-            warn_bad_lines=True, delim_whitespace=False, float_precision=None,):
+            escapechar=None, comment=None, encoding='utf-8',
+            error_bad_lines=True, warn_bad_lines=True, delim_whitespace=False,
+            float_precision=None):
 
         format_file = 'csv'
         kwargs = locals()
+        kwargs['schema'] = _check_schema(kwargs['schema'])
         tmp = _apply_datareader(format_file, kwargs, task_list, last_uuid)
         return tmp
 
     @staticmethod
-    def json(filepath,  num_of_parts='*', schema=None, precise_float=False,
-             encoding=None):
+    def json(filepath,  num_of_parts='*', schema='infer', precise_float=False,
+             encoding='utf-8'):
         format_file = 'json'
         kwargs = locals()
+        kwargs['schema'] = _check_schema(kwargs['schema'])
         tmp = _apply_datareader(format_file, kwargs, task_list, last_uuid)
         return tmp
 
@@ -66,18 +70,8 @@ class DataReader(object):
         >>>                             dbf_path='/shapefile.dbf')
         """
 
-        host, port = 'localhost', 9000
-        import re
-        if re.match(r"hdfs:\/\/+", shp_path):
-            storage = 'hdfs'
-            host, shp_path = shp_path[7:].split(':')
-            port, shp_path = shp_path.split('/', 1)
-            shp_path = '/' + shp_path
-        elif re.match(r"file:\/\/+", shp_path):
-            storage = 'file'
-            shp_path = shp_path[7:]
-        else:
-            raise Exception('`hdfs://` and `file://` storage are supported.')
+        host, port, shp_path, storage = parser_filepath(shp_path)
+        _, _, dbf_path, _ = parser_filepath(dbf_path)
 
         if attributes is None:
             attributes = []
@@ -94,7 +88,7 @@ class DataReader(object):
         settings['host'] = host
         settings['port'] = int(port)
         settings['storage'] = storage
-        settings['schema'] = schema
+        settings['schema'] = _check_schema(schema)
 
         from ddf_library.functions.geo import read_shapefile
 
@@ -102,6 +96,27 @@ class DataReader(object):
 
         return _submit('load_shapefile', 'other',
                        'COMPLETED', results, info=info)
+
+
+def _check_schema(schema):
+    from ddf_library.types import _converted_types
+    if isinstance(schema, dict):
+        for key in schema:
+            t = schema[key]
+            if t not in _converted_types:
+                raise Exception("Type is not supported.")
+            else:
+                schema[key] = _converted_types[t]
+    elif isinstance(schema, str):
+        if schema == 'infer':
+            schema = 'infer'
+        elif schema not in _converted_types:
+            raise Exception("Type is not supported.")
+        else:
+            schema = _converted_types[schema]
+    else:
+        raise Exception("schema must be a string or a dictionary.")
+    return schema
 
 
 def _submit(name_task, optimization, status, results, info=False):
@@ -124,24 +139,13 @@ def _submit(name_task, optimization, status, results, info=False):
 
 def _apply_datareader(format_file, kwargs, task_list, last_uuid):
     from ddf_library.ddf import DDF
-    filepath = kwargs['filepath']
-    host, port = 'default', 0
-    import re
-    if re.match(r"hdfs:\/\/+", filepath):
-        storage = 'hdfs'
-        host, filename = filepath[7:].split(':')
-        port, filename = filename.split('/', 1)
-        filename = '/' + filename
-        port = int(port)
-    elif re.match(r"file:\/\/+", filepath):
-        storage = 'file'
-        filename = filepath[7:]
-    else:
-        raise Exception('`hdfs://` and `file://` storage are supported.')
+
+    host, port, filename, storage = parser_filepath(kwargs['filepath'])
 
     kwargs['filepath'] = filename
     kwargs['port'] = port
     kwargs['host'] = host
+    kwargs['storage'] = storage
     kwargs.pop('format_file', None)
 
     from ddf_library.functions.etl.read_data import DataReader
@@ -160,14 +164,14 @@ def _apply_datareader(format_file, kwargs, task_list, last_uuid):
             blocks = data_reader.get_blocks()
             COMPSsContext.tasks_map[last_uuid]['result'] = blocks
 
-            def reader(block, params):
+            def task_read_many_fs(block, params):
                 return data_reader.transform_fs_distributed(block, params)
 
             COMPSsContext.tasks_map[new_state_uuid] = \
-                {'name': 'load_text-file_in',
+                {'name': 'read-many-fs',
                  'status': DDF.STATUS_WAIT,
                  'optimization': DDF.OPT_SERIAL,
-                 'function': [reader, {}],
+                 'function': [task_read_many_fs, {}],
                  'output': 1,
                  'input': 0,
                  'parent': [last_uuid]
@@ -178,7 +182,7 @@ def _apply_datareader(format_file, kwargs, task_list, last_uuid):
             result, info = data_reader.transform_fs_single()
 
             COMPSsContext.tasks_map[new_state_uuid] = \
-                {'name': 'load_text',
+                {'name': 'read-one-fs',
                  'status': DDF.STATUS_COMPLETED,
                  'optimization': DDF.OPT_OTHER,
                  'function': None,
@@ -194,14 +198,14 @@ def _apply_datareader(format_file, kwargs, task_list, last_uuid):
 
         COMPSsContext.tasks_map[last_uuid]['result'] = blocks
 
-        def reader(block, params):
+        def task_read_hdfs(block, params):
             return data_reader.transform_hdfs(block, params)
 
         COMPSsContext.tasks_map[new_state_uuid] = \
-            {'name': 'load_text-0in',
+            {'name': 'read-hdfs',
              'status': DDF.STATUS_WAIT,
              'optimization': DDF.OPT_SERIAL,
-             'function': [reader, {}],
+             'function': [task_read_hdfs, {}],
              'output': 1,
              'input': 0,
              'parent': [last_uuid]
