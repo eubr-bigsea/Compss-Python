@@ -30,16 +30,7 @@ __all__ = ['DDF']
 class DDF(DDFSketch):
     """
     Distributed DataFrame Handler.
-
-    Should distribute the data and run tasks for each partition.
     """
-
-    STATUS_WAIT = 'WAIT'
-    STATUS_COMPLETED = 'COMPLETED'
-    STATUS_TEMP_VIEW = 'TEMP_VIEWED'  # temporary
-
-    STATUS_PERSISTED = 'PERSISTED'
-    STATUS_MATERIALIZED = 'MATERIALIZED'  # persisted
 
     def __init__(self, **kwargs):
         super(DDF, self).__init__()
@@ -1384,7 +1375,9 @@ class DDF(DDFSketch):
 
         :Example:
 
-        >>> ddf1.map(lambda row: row['col_0'].split(','), 'col_0_new')
+        >>> from ddf_library.columns import col
+        >>> from ddf_library.types import IntegerType
+        >>> ddf1.map(col('col_0').cast(IntegerType), 'col_0_new')
         """
         settings = {'function': f, 'alias': alias}
 
@@ -1418,13 +1411,13 @@ class DDF(DDFSketch):
         """
 
         status = COMPSsContext.tasks_map[self.last_uuid]\
-            .get('status', COMPSsContext.STATUS_WAIT)
-        if status == COMPSsContext.STATUS_WAIT:
+            .get('status', self.STATUS_WAIT)
+        if status == self.STATUS_WAIT:
             self._run_compss_context()
 
-        if status == COMPSsContext.STATUS_COMPLETED:
+        if status == self.STATUS_COMPLETED:
             COMPSsContext.tasks_map[self.last_uuid]['status'] = \
-                COMPSsContext.STATUS_PERSISTED
+                self.STATUS_PERSISTED
 
         return self
 
@@ -1526,6 +1519,8 @@ class DDF(DDFSketch):
         :param replaces: dict-like `to_replace`;
         :param subset: A list of columns to be applied (default is
          None to applies in all columns);
+        :param regex: Whether to interpret to_replace and/or value as regular
+         expressions. If this is True then replaces must be a dictionary.
         :return: DDF
 
         :Example:
@@ -1963,7 +1958,7 @@ class DDF(DDFSketch):
 
         res = [compss_open(f, mode='rb') for f in self.partitions]
         COMPSsContext.tasks_map[self.last_uuid]['status'] \
-            = COMPSsContext.STATUS_PERSISTED
+            = self.STATUS_PERSISTED
 
         if isinstance(columns, str):
             columns = [columns]
@@ -1978,10 +1973,8 @@ class DDF(DDFSketch):
 
     def unpersist(self):
         status = COMPSsContext.tasks_map[self.last_uuid]['status']
-        if status == COMPSsContext.STATUS_PERSISTED:
-            status = COMPSsContext.STATUS_COMPLETED
-        # elif status == COMPSsContext.STATUS_MATERIALIZED:
-        #     status = COMPSsContext.STATUS_TEMP_VIEW
+        if status == self.STATUS_PERSISTED:
+            status = self.STATUS_COMPLETED
         COMPSsContext.tasks_map[self.last_uuid]['status'] = status
 
         return self

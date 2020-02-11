@@ -10,7 +10,7 @@ from ddf_library.utils import generate_info, read_stage_file, \
     create_stage_files, save_stage_file
 from ddf_library.bases.ddf_model import ModelDDF
 
-from pycompss.api.parameter import FILE_IN
+from pycompss.api.parameter import FILE_IN, COLLECTION_IN
 from pycompss.api.task import task
 from pycompss.functions.reduce import merge_reduce
 from pycompss.api.api import compss_wait_on
@@ -63,10 +63,11 @@ class FPGrowth(ModelDDF):
 
         df, nfrag, new_data = self._ddf_initial_setup(data)
         self.input_col = input_col
+
         # stage 1 and 2: Parallel Counting and Grouping Items
         info = [step2_mapper(df_p, input_col,
                              self.min_support, nfrag) for df_p in df]
-        g_list = merge_reduce(step2_reduce, info)
+        g_list = step2_reduce(info)
 
         # stage 3 and 4: Parallel FP-Growth
         splits = [[[] for _ in range(nfrag)] for _ in range(nfrag)]
@@ -75,25 +76,23 @@ class FPGrowth(ModelDDF):
         import ddf_library.bases.config
         ddf_library.bases.config.x = nfrag
 
-        importlib.reload(ddf.functions.etl.functions.ml.fim_lib.fp_growth_aux)
+        import ddf_library.functions.ml.fim_lib.fp_growth_aux
+        importlib.reload(ddf_library.functions.ml.fim_lib.fp_growth_aux)
 
         for f in range(nfrag):
-            splits[f] = ddf.functions.etl.functions.ml.fim_lib.\
+            splits[f] = ddf_library.functions.ml.fim_lib.\
                 fp_growth_aux.step4_pfg(df[f], input_col, g_list, nfrag)
 
         for f in range(nfrag):
             tmp = [splits[f2][f] for f2 in range(nfrag)]
-            df_group[f] = ddf.functions.etl.functions.ml.fim_lib.\
-                fp_growth_aux.merge_n_reduce(step4_merge, tmp, nfrag)
+            df_group[f] = step4_merge_and_step5(tmp, g_list)
 
-            df_group[f] = step5_mapper(df_group[f], g_list)
-
-        df_group = merge_reduce(step5_reducer, df_group)
+        df_group = step5_reducer(df_group)
         # split the result in nfrag to keep compatibility with others algorithms
         result, info = step6(df_group, nfrag)
 
         uuid_key = self._ddf_add_task(task_name=self.name,
-                                      status='MATERIALIZED',
+                                      status=self.STATUS_MATERIALIZED,
                                       opt=self.OPT_OTHER,
                                       function=self.fit_transform,
                                       result=result,
@@ -110,58 +109,48 @@ def step2_mapper(data_input, col, min_support, nfrag):
     """
     if isinstance(col, list):
         col = col[0]
-    df = read_stage_file(data_input)
+    df = read_stage_file(data_input, cols=[col])
     n = len(df)
-    item_set = list(chain.from_iterable(df[col].values.tolist()))
+    item_set = list(chain.from_iterable(df[col].to_numpy().tolist()))
     item_set = Counter(item_set)
 
-    return [item_set, n, 0, nfrag, min_support]
+    return [item_set, n, nfrag, min_support]
 
 
-@task(returns=1)
-def step2_reduce(info1, info2):
+@task(returns=1, partial_counts=COLLECTION_IN)
+def step2_reduce(partial_counts):
     """
     Grouping Items
     """
-    item_set1, n1, i1, nfrag, min_support = info1
-    item_set2, n2, i2, _, _ = info2
+    item_set, n, nfrag, min_support = partial_counts[0]
+    for pc in partial_counts[1:]:
+        item_set_tmp, n_tmp, _, _ = pc
+        item_set += item_set_tmp
+        n += n_tmp
 
-    n = n1+n2
-    i = i1+i2 + 1
-    item_set = item_set1 + item_set2
+    min_support = round(min_support * n)
+    group_list = {}
+    group_count = namedtuple('group_count', ['group', 'count'])
 
-    if i == (nfrag - 1):
+    for item, count in item_set.items():
+        group_id = random.randint(0, nfrag - 1)
 
-        min_support = round(min_support * n)
-        group_list = {}
-        group_count = namedtuple('group_count', ['group', 'count'])
+        if count >= min_support:
+            group_list[item] = group_count(group_id, count)
 
-        for item, count in item_set.items():
-            group_id = random.randint(0, nfrag - 1)
-
-            if count >= min_support:
-                group_list[item] = group_count(group_id, count)
-
-        item_set = group_list
-
-    return [item_set, n, i, nfrag, min_support]
+    return [group_list, min_support]
 
 
-@task(returns=1)
-def step4_merge(*results):
-    output = []
+@task(returns=1, results=COLLECTION_IN)
+def step4_merge_and_step5(results, g_list_info):
+    transactions = []
     for r in results:
         if r != 0:
-            output.extend(r)
-
-    return output
-
-
-@task(returns=1)
-def step5_mapper(transactions, g_list):
+            transactions.extend(r)
+    del results
 
     from .fp_growth_aux import build_fp_tree, fp_growth
-    g_list, _, _, _, min_support = g_list
+    g_list, min_support = g_list_info
     patterns = {}
 
     keys = list(g_list.keys())  # list of items
@@ -180,17 +169,20 @@ def step5_mapper(transactions, g_list):
     return patterns
 
 
-@task(returns=1)
-def step5_reducer(patterns1, patterns2):
+@task(returns=1, patterns=COLLECTION_IN)
+def step5_reducer(patterns):
 
-    for key in list(patterns2.keys()):
-        if key in patterns1:
-            patterns1[key] = max([patterns1[key], patterns2[key]])
-        else:
-            patterns1[key] = patterns2[key]
-        del patterns2[key]
+    pattern = patterns[0]
+    patterns = patterns[1:]
+    for pattern_tmp in patterns:
+        for key in list(pattern_tmp.keys()):
+            if key in pattern:
+                pattern[key] = max([pattern[key], pattern_tmp[key]])
+            else:
+                pattern[key] = pattern_tmp[key]
+            del pattern_tmp[key]
 
-    return patterns1
+    return pattern
 
 
 def step6(patterns, nfrag):

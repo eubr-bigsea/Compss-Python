@@ -27,7 +27,6 @@ class DataReader(object):
         self.format = None
         self.header = None
 
-    #TODO: infer
     def csv(self, filepath, num_of_parts='*', storage='hdfs', host='default',
             port=0, schema=None, sep=',', delimiter=None, na_filter=True,
             usecols=None, prefix=None, engine=None, converters=None,

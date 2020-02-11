@@ -168,7 +168,7 @@ def _apply_datareader(format_file, kwargs, task_list, last_uuid):
                 return data_reader.transform_fs_distributed(block, params)
 
             COMPSsContext.tasks_map[new_state_uuid] = \
-                {'name': 'read-many-fs',
+                {'name': 'read-many-file',
                  'status': DDF.STATUS_WAIT,
                  'optimization': DDF.OPT_SERIAL,
                  'function': [task_read_many_fs, {}],
@@ -182,7 +182,7 @@ def _apply_datareader(format_file, kwargs, task_list, last_uuid):
             result, info = data_reader.transform_fs_single()
 
             COMPSsContext.tasks_map[new_state_uuid] = \
-                {'name': 'read-one-fs',
+                {'name': 'read-one-file',
                  'status': DDF.STATUS_COMPLETED,
                  'optimization': DDF.OPT_OTHER,
                  'function': None,

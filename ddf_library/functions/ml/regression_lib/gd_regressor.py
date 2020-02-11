@@ -25,7 +25,8 @@ class GDRegressor(ModelDDF):
 
     :Example:
 
-    >>> model = GDRegressor('features', 'y').fit(ddf1)
+    >>> model = GDRegressor()\
+    >>>         .fit(ddf1, feature_col=['col1', 'col2'], label_col='label')
     >>> ddf2 = model.transform(ddf1)
     """
 

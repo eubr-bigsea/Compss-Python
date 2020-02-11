@@ -21,6 +21,13 @@ class DDFSketch(object):
     OPT_LAST = 'last'  # it contains two or more stages,
     # but only the last stage can be grouped
 
+    STATUS_WAIT = 'WAIT'
+    STATUS_COMPLETED = 'COMPLETED'
+    STATUS_TEMP_VIEW = 'TEMP_VIEWED'  # temporary
+
+    STATUS_PERSISTED = 'PERSISTED'
+    STATUS_MATERIALIZED = 'MATERIALIZED'  # persisted
+
     optimization_ops = [OPT_OTHER, OPT_SERIAL, OPT_LAST]
 
     def __init__(self):

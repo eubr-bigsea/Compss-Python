@@ -541,17 +541,18 @@ def map():
                     for i in range(10)]
 
     from ddf_library.types import DecimalType, IntegerType
-    from ddf_library.columns import Column, udf
+    from ddf_library.columns import col, udf
 
     def f3(x):
         return 7 if x > 5 else x
 
-    cat = udf(f3, IntegerType, Column('a'))
+    cat = udf(f3, IntegerType, col('a'))
 
     ddf_1 = DDF().parallelize(data, 4) \
-        .map(Column('b').cast(DecimalType), 'd')\
+        .map(col('b').cast(DecimalType), 'd')\
         .map(cat, 'a')\
-        .map(Column('date').to_datetime('dd/MM/yy HH:mm:ss.SSSSSS'), 'e')
+        .map(col('date').to_datetime('dd/MM/yy HH:mm:ss.SSSSSS'), 'e')\
+        .map(col('e').year(), 'f')
 
     df1 = ddf_1.to_df()
     print(df1.dtypes)

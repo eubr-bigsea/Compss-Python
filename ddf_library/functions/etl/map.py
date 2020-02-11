@@ -7,7 +7,6 @@ __email__ = "lucasmsp@gmail.com"
 import ddf_library.bases.config as config
 from ddf_library.utils import generate_info
 import numpy as np
-import importlib
 
 from ddf_library.columns import Column, udf
 
@@ -53,8 +52,12 @@ def map(data, settings):
                     idx.append(i)
                     mapper[a] = a._get_index(data)
 
-            output = np.zeros(size, dtype=dtype)
-            for i, row in enumerate(data.values):
+            if isinstance(dtype, list):
+                output = [0] * size
+            else:
+                output = np.zeros(size, dtype=dtype)
+
+            for i, row in enumerate(data.to_numpy()):
                 # row = [row[f._get_index(data)]
                 #        if isinstance(f, Column) else f for f in args]
 
@@ -65,15 +68,8 @@ def map(data, settings):
 
             data[new_column] = output
         else:
-            #TODO OLD. NEED TO BE REMOVED
-            output = [0] * size
-            import ddf_library.utils
-            importlib.reload(ddf_library.utils)
+            raise Exception('You must inform a column or a udf operation.')
 
-            for i, row in enumerate(data.values):
-                output[i] = function(row)
-
-            data[new_column] = output
     else:
         data[new_column] = np.nan
 

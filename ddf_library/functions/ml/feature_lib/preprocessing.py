@@ -282,8 +282,8 @@ class PolynomialExpansion(ModelDDF):
 
         :Example:
 
-        >>> dff = PolynomialExpansion(input_col=['x', 'y'],
-        >>>                           degree=2).transform(ddf)
+        >>> dff = PolynomialExpansion(degree=2)\
+        >>>         .transform(ddf, input_col=['x', 'y'],)
        """
         super(PolynomialExpansion, self).__init__()
 
@@ -377,7 +377,7 @@ class StringIndexer(ModelDDF):
     StringIndexer indexes a feature by encoding a string column as a
     column containing indexes.
     :Example:
-    >>> model = StringIndexer(input_col='category').fit(ddf1)
+    >>> model = StringIndexer().fit(ddf1, input_col='category')
     >>> ddf2 = model.transform(ddf1)
     """
 
@@ -493,8 +493,8 @@ class IndexToString(ModelDDF):
     Symmetrically to StringIndexer, IndexToString maps a column of
     label indices back to a column containing the original labels as strings.
     :Example:
-    >>> ddf2 = IndexToString(input_col='category_indexed',
-    >>>                      model=model).transform(ddf1)
+    >>> ddf2 = IndexToString(model=model)\
+    >>>         .transform(ddf1, input_col='category_indexed')
     """
 
     def __init__(self, model):

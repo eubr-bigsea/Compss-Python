@@ -28,9 +28,9 @@ class KNearestNeighbors(ModelDDF):
 
     :Example:
 
-    >>> knn = KNearestNeighbors(feature_col='features',
-    >>>                         label_col='label', k=1).fit(ddf1)
-    >>> ddf2 = knn.transform(ddf1)
+    >>> knn = KNearestNeighbors(k=1).fit(ddf1, feature_col=['col1', 'col2'],
+    >>>                                  label_col='label')
+    >>> ddf2 = knn.transform(ddf1, pred_col='prediction')
     """
 
     def __init__(self, k=3):

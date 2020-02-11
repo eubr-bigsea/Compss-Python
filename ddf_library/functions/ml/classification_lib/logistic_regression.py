@@ -38,8 +38,8 @@ class LogisticRegression(ModelDDF):
     :Example:
 
     >>> cls = LogisticRegression()\
-    >>>            .fit(ddf1, feature_col='features', label_col='label')
-    >>> ddf2 = cls.transform(ddf1)
+    >>>            .fit(ddf1, feature_col=['col1', 'col2'], label_col='label')
+    >>> ddf2 = cls.transform(ddf1, pred_col='prediction')
     """
 
     def __init__(self, alpha=0.1, regularization=0.1, max_iter=100,

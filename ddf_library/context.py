@@ -8,6 +8,7 @@ __email__ = "lucasmsp@gmail.com"
 """
 DDF is a Library for PyCOMPSs.
 """
+from pycompss.api.api import compss_open
 
 from ddf_library.bases.context_base import CONTEXTBASE
 from ddf_library.bases.tasks import *
@@ -286,8 +287,8 @@ class COMPSsContext(CONTEXTBASE):
                   " - opt_functions: {}".format(ids, names)
             print(msg)
 
-        result, info = self._execute_opt_last_tasks(group_func, inputs,
-                                                    n_input)
+        result, info = self._execute_opt_last_tasks(group_func, group_uuids,
+                                                    inputs, n_input)
         self.save_serial_states(result, info, group_uuids)
         jump = len(group_func)-1
         return jump
@@ -369,7 +370,7 @@ class COMPSsContext(CONTEXTBASE):
         first_task_name = self.get_task_name(uuid_list[0])
         last_task_name = self.get_task_name(uuid_list[-1])
 
-        if 'read-many-fs' == first_task_name:
+        if 'read-many-file' == first_task_name:
             if 'save-hdfs' == last_task_name:
                 function = stage_1in_0out
             else:
@@ -401,22 +402,25 @@ class COMPSsContext(CONTEXTBASE):
         for f, (in_file, out_file) in enumerate(zip(input_data, out_files)):
             info[f] = function(in_file, tasks_list, f, out_file)
 
-        # TODO: compss_open(output).close()
+        if 'save-file' == last_task_name:
+            for out_file in out_files:
+                compss_open(out_file).close()
+
         return out_files, info
 
-    def _execute_opt_last_tasks(self, opt, data, n_input):
+    def _execute_opt_last_tasks(self, tasks_list, uuid_list, data, n_input):
 
         """
         Used to execute a group of lazy tasks. This method submit
         multiple 'context.task_bundle', one for each data fragment.
 
-        :param opt: sequence of functions and parameters to be executed in
-            each fragment
+        :param tasks_list: sequence of functions and parameters to be executed
+         in each fragment
         :param data: input data
         :return:
         """
 
-        first_task, opt = opt[0], opt[1:]
+        first_task, tasks_list = tasks_list[0], tasks_list[1:]
         out_tmp2 = None
         if n_input == 1:
             out_tmp, settings = self._execute_other_task(first_task, data)
@@ -430,21 +434,36 @@ class COMPSsContext(CONTEXTBASE):
         intermediate_result = settings.get('intermediate_result', True)
         nfrag = len(out_tmp)
 
-        opt[0][1] = settings
-
+        tasks_list[0][1] = settings
         info = [[] for _ in range(nfrag)]
-        out_files = create_stage_files(nfrag)
+
+        last_task_name = self.get_task_name(uuid_list[-1])
+
+        if 'save' in last_task_name:
+            out_files = tasks_list[-1][1]['output'](nfrag)
+            tasks_list[-1][1]['output'] = out_files
+        else:
+            out_files = create_stage_files(nfrag)
 
         if n_input == 1:
+
+            if 'save-hdfs' == last_task_name:
+                function = stage_1in_0out
+            else:
+                function = stage_1in_1out
+
             for f, (in_file, out_file) in enumerate(zip(out_tmp, out_files)):
-                info[f] = stage_1in_1out(in_file, opt, f,
-                                         out_file)
+                info[f] = function(in_file, tasks_list, f, out_file)
 
         else:
+            if 'save-hdfs' == last_task_name:
+                function = stage_2in_0out
+            else:
+                function = stage_2in_1out
+
             for f, (in_file1, in_file2, out_file) in \
                     enumerate(zip(out_tmp, out_tmp2, out_files)):
-                info[f] = stage_2in_1out(in_file1, in_file2,
-                                         opt, f, out_file)
+                info[f] = function(in_file1, in_file2, tasks_list, f, out_file)
             # removing temporary tasks
             if intermediate_result:
                 delete_result(out_tmp2)

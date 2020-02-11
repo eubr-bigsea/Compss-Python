@@ -35,7 +35,8 @@ class OrdinaryLeastSquares(ModelDDF):
 
     :Example:
 
-    >>> model = OrdinaryLeastSquares().fit(ddf1, feature='features', label='y')
+    >>> model = OrdinaryLeastSquares()\
+    >>>         .fit(ddf1, feature=['col1', 'col2'], label='y')
     >>> ddf2 = model.transform(ddf1)
     """
 

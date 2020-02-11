@@ -39,8 +39,9 @@ class GaussianNB(ModelDDF):
 
     :Example:
 
-    >>> cls = GaussianNB(feature_col='features', label_col='label').fit(ddf1)
-    >>> ddf2 = cls.transform(ddf1)
+    >>> cls = GaussianNB().fit(ddf1, feature_col=['col1', 'col2'],
+    >>>                        label_col='label')
+    >>> ddf2 = cls.transform(ddf1, pred_col='prediction')
     """
 
     def __init__(self):

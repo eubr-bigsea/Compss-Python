@@ -123,7 +123,7 @@ def stage_1in_1out(input_file, stage, id_frag, output_file):
     :return:
     """
     t1 = time.time()
-
+    print(stage)
     # by using parquet, we can specify columns to read
     if stage[0][0].__name__ == 'task_select':
         columns = stage[0][1]['columns']

@@ -39,9 +39,9 @@ class SVM(ModelDDF):
 
     :Example:
 
-    >>> cls = SVM(feature_col='features', label_col='label',
-    >>>           max_iter=10).fit(ddf1)
-    >>> ddf2 = cls.transform(ddf1)
+    >>> cls = SVM(max_iter=10).fit(ddf1, feature_col=['col1', 'col2'],
+    >>>                            label_col='label')
+    >>> ddf2 = cls.transform(ddf1, pred_col='prediction')
     """
 
     def __init__(self, coef_lambda=0.1, coef_lr=0.01, threshold=0.001,
