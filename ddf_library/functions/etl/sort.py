@@ -36,18 +36,23 @@ def sort(data, settings):
     return output
 
 
-def sort_stage_1(data, settings, return_info=False):
+def sort_stage_1(data, settings):
 
     nfrag = len(data)
     settings = preprocessing(settings)
     info = settings['info'][0]
+    # used by kolmogorov_smirnov
+    return_info = settings.get('return_info', False)
+    # used by kolmogorov_smirnov to return a dataframe with only the keys
+    only_key_columns = settings.get('only_key_columns', False)
 
     if nfrag > 1:
         from .range_partitioner import range_partition
         params = {'nfrag': nfrag,
                   'columns': settings['columns'],
                   'ascending': settings['ascending'],
-                  'info': [info]}
+                  'info': [info],
+                  'only_key_columns': only_key_columns}
         output_range = range_partition(data, params)
         data, info = output_range['data'], output_range['info']
 

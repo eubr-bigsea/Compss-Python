@@ -38,6 +38,7 @@ def range_partition(data, settings):
     cols = settings['columns']
     nfrag_target = settings.get('nfrag', nfrag)
     ascending = settings.get('ascending', True)
+    only_key_columns = settings.get('only_key_columns', False)
 
     if not isinstance(cols, list):
         cols = [cols]
@@ -59,7 +60,8 @@ def range_partition(data, settings):
         import ddf_library.bases.config
         ddf_library.bases.config.x = nfrag_target
 
-        print("[INFO] - Number of partitions updated to: ", nfrag_target)
+        if nfrag_target != nfrag:
+            print("[INFO] - Number of partitions updated to: ", nfrag_target)
 
         splits = [[0 for _ in range(nfrag_target)] for _ in range(nfrag)]
 
@@ -69,7 +71,7 @@ def range_partition(data, settings):
         for f in range(nfrag):
             splits[f] = ddf_library.functions.etl.repartition\
                 .split_by_boundary(data[f], cols, ascending, bounds,
-                                   info, nfrag_target)
+                                   info, nfrag_target, only_key_columns)
 
         result = create_stage_files(nfrag_target)
         info = [{} for _ in range(nfrag_target)]
@@ -78,7 +80,7 @@ def range_partition(data, settings):
                 tmp = splits
             else:
                 tmp = [splits[t][f] for t in range(nfrag)]
-            # tmp = [splits[t][f] for t in range(nfrag)]
+
             info[f] = concat_n_pandas(result[f], f, tmp)
 
         compss_delete_object(splits)

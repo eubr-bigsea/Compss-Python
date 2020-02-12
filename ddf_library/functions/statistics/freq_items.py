@@ -5,10 +5,13 @@ __author__ = "Lucas Miguel S Ponce"
 __email__ = "lucasmsp@gmail.com"
 
 
+from pycompss.api.parameter import FILE_IN
 from pycompss.api.task import task
 from pycompss.functions.reduce import merge_reduce
 # from pycompss.api.local import local # guppy module isnt available in python3
 from pycompss.api.api import compss_delete_object, compss_wait_on
+
+from ddf_library.utils import read_stage_file
 
 import numpy as np
 import pandas as pd
@@ -49,11 +52,13 @@ def freq_items(data, settings):
     return frequent_items
 
 
-@task(returns=1)
-def _freq_items(df, settings):
+@task(returns=1, data_input=FILE_IN)
+def _freq_items(data_input, settings):
     col = settings['col']
     support = settings['support']
     freq = {}
+
+    df = read_stage_file(data_input, col)
 
     for c in col:
         base_map = {}

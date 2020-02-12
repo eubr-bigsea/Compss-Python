@@ -4,10 +4,12 @@
 __author__ = "Lucas Miguel S Ponce"
 __email__ = "lucasmsp@gmail.com"
 
-
+from pycompss.api.parameter import FILE_IN
 from pycompss.api.task import task
 from pycompss.functions.reduce import merge_reduce
 from pycompss.api.api import compss_wait_on, compss_delete_object
+
+from ddf_library.utils import read_stage_file
 
 import pandas as pd
 import numpy as np
@@ -44,10 +46,13 @@ def describe(data, columns):
     return result
 
 
-@task(returns=1)
-def _describe_stage1(df, columns):
+@task(returns=1, data_input=FILE_IN)
+def _describe_stage1(data_input, columns):
     if len(columns) == 0:
+        df = read_stage_file(data_input)
         columns = df.columns.values
+    else:
+        df = read_stage_file(data_input, columns)
 
     # count, mean, stddev, min, and max
     count = len(df)
@@ -87,11 +92,12 @@ def _describe_stage2(info1, info2):
 
 
 @task(returns=1)
-def _describe_stage3(df, info_agg):
+def _describe_stage3(data_input, info_agg):
     # generate error
 
-    mean = [m/info_agg['count'] for m in info_agg['mean']]
     columns = info_agg['columns']
+    df = read_stage_file(data_input, columns)
+    mean = [m/info_agg['count'] for m in info_agg['mean']]
 
     sse = []
     for i, att in enumerate(columns):

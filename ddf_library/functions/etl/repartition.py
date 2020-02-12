@@ -94,11 +94,15 @@ def hashcode(x):
 
 # @constraint(ComputingUnits="2")  # approach to have more available memory
 @task(input_data=FILE_IN, returns=config.x)
-def split_by_boundary(input_data, cols, ascending, bounds, info, nfrag):
-    splits = [pd.DataFrame(columns=info['cols'], dtype=info['dtypes'])
-              for _ in range(nfrag)]
+def split_by_boundary(input_data, cols, ascending, bounds, info, nfrag,
+                      only_key_columns):
 
-    data = read_stage_file(input_data)
+    splits = [[] for _ in range(nfrag)]
+
+    columns_to_read = None
+    if only_key_columns:
+        columns_to_read = cols
+    data = read_stage_file(input_data, columns_to_read)
     if len(data) > 0:
         aux_col = create_auxiliary_column(info['cols'])
         data.reset_index(drop=True, inplace=True)

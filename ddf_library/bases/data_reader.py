@@ -15,7 +15,7 @@ class DataReader(object):
 
     @staticmethod
     def csv(filepath,
-            num_of_parts='*', schema='infer', sep=',', header=True,
+            num_of_parts='*', schema='str', sep=',', header=True,
             delimiter=None, na_filter=True, usecols=None, prefix=None,
             engine=None, converters=None, true_values=None, false_values=None,
             skipinitialspace=False, na_values=None, keep_default_na=True,
@@ -32,7 +32,7 @@ class DataReader(object):
         return tmp
 
     @staticmethod
-    def json(filepath,  num_of_parts='*', schema='infer', precise_float=False,
+    def json(filepath,  num_of_parts='*', schema='str', precise_float=False,
              encoding='utf-8'):
         format_file = 'json'
         kwargs = locals()
@@ -49,7 +49,7 @@ class DataReader(object):
 
     @staticmethod
     def shapefile(shp_path, dbf_path, polygon='points', attributes=None,
-                  num_of_parts='*', schema='infer'):
+                  num_of_parts='*', schema='str'):
         """
         Reads a shapefile using the shp and dbf file.
 
@@ -107,9 +107,10 @@ def _check_schema(schema):
                 raise Exception("Type is not supported.")
             else:
                 schema[key] = _converted_types[t]
+
     elif isinstance(schema, str):
-        if schema == 'infer':
-            schema = 'infer'
+        if schema == 'str':
+            schema = 'str'
         elif schema not in _converted_types:
             raise Exception("Type is not supported.")
         else:

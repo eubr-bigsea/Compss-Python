@@ -5,10 +5,12 @@ __author__ = "Lucas Miguel S Ponce"
 __email__ = "lucasmsp@gmail.com"
 
 
+from pycompss.api.parameter import FILE_IN
 from pycompss.api.task import task
 from pycompss.functions.reduce import merge_reduce
 from pycompss.api.api import compss_delete_object, compss_wait_on
 
+from ddf_library.utils import read_stage_file
 
 import numpy as np
 
@@ -38,11 +40,12 @@ def correlation(data, settings):
     return result
 
 
-@task(returns=1)
-def _covariance_stage1(df, settings):
+@task(returns=1, data_input=FILE_IN)
+def _covariance_stage1(data_input, settings):
     col1, col2 = settings['col1'], settings['col2']
     columns = [col1, col2]
 
+    df = read_stage_file(data_input, columns)
     sums = df[columns].sum(skipna=True, numeric_only=True).values
     count = len(df)
     if len(sums) == 0:
@@ -64,12 +67,13 @@ def _covariance_stage2(info1, info2):
     return info
 
 
-@task(returns=1)
-def _covariance_stage3(df, info_agg):
+@task(returns=1, data_input=FILE_IN)
+def _covariance_stage3(data_input, info_agg):
     # generate error
 
     mean = [np.divide(float(m), info_agg['count']) for m in info_agg['sum']]
     col1, col2 = info_agg['columns']
+    df = read_stage_file(data_input, info_agg['columns'])
 
     error1 = df[col1].values - mean[0]
     error2 = df[col2].values - mean[1]

@@ -559,6 +559,9 @@ class DDF(DDFSketch):
         >>> ddf1.cross_tab(col1='col_1', col2='col_2')
         """
         from ddf_library.functions.statistics.cross_tab import cross_tab
+        if any([not isinstance(col1, str), not isinstance(col2, str)]):
+            raise Exception('Columns must be a string (column names).')
+
         settings = {'col1': col1, 'col2': col2}
 
         def task_cross_tab(df, params):
@@ -1351,11 +1354,14 @@ class DDF(DDFSketch):
         from ddf_library.functions.statistics.kolmogorov_smirnov \
             import kolmogorov_smirnov_one_sample
 
-        settings = {'col': col, 'distribution': distribution, 'mode': mode}
+        if not isinstance(col, str):
+            raise Exception('Column name (col) must be a string.')
+
+        df, nfrag, tmp, info = self._ddf_initial_setup(self, info=True)
+        settings = {'col': col, 'distribution': distribution, 'mode': mode,
+                    'info': [info]}
         if args is not None:
             settings['args'] = args
-
-        df, nfrag, tmp = self._ddf_initial_setup(self)
 
         result = kolmogorov_smirnov_one_sample(df, settings)
 
