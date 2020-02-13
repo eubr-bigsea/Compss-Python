@@ -48,51 +48,54 @@ def use_case2():
     """
     df = pd.read_csv('./titanic.csv', sep='\t')
 
-    titles = {"Mr": 1, "Miss": 2, "Mrs": 3, "Master": 4, "Rare": 5}
+    from ddf_library.columns import col, udf
+    from ddf_library.types import IntegerType
 
-    def title_checker(row):
-        from ddf_library.utils import col
+    def title_checker(name):
         titles = {"Mr.": 1, "Miss": 2, "Mrs.": 3, "Master": 4, "Rare": 5}
         for title in titles:
-            if title in row[col('Name')]:
+            if title in name:
                 return titles[title]
         return -1
 
-    def age_categorizer(row):
-        from ddf_library.utils import col
-        category = 7
+    title_checker_udf = udf(title_checker, IntegerType, col('Name'))
 
-        if row[col('Age')] <= 11:
+    def age_categorizer(age):
+        category = 7
+        if age <= 11:
             category = 0
-        elif (row[col('Age')] > 11) and (row[col('Age')] <= 18):
+        elif (age > 11) and (age <= 18):
             category = 1
-        elif (row[col('Age')] > 18) and (row[col('Age')] <= 22):
+        elif (age > 18) and (age <= 22):
             category = 2
-        elif (row[col('Age')] > 22) and (row[col('Age')] <= 27):
+        elif (age > 22) and (age <= 27):
             category = 3
-        elif (row[col('Age')] > 27) and (row[col('Age')] <= 33):
+        elif (age > 27) and (age <= 33):
             category = 4
-        elif (row[col('Age')] > 33) and (row[col('Age')] <= 40):
+        elif (age > 33) and (age <= 40):
             category = 5
-        elif (row[col('Age')] > 40) and (row[col('Age')] <= 66):
+        elif (age > 40) and (age <= 66):
             category = 6
 
         return category
 
-    def fare_categorizer(row):
-        from ddf_library.utils import col
+    age_categorizer_udf = udf(age_categorizer, IntegerType, col('Age'))
+
+    def fare_categorizer(fare):
         category = 5
-        if row[col('Fare')] <= 7.91:
+        if fare <= 7.91:
             category = 0
-        elif (row[col('Fare')] > 7.91) and (row[col('Fare')] <= 14.454):
+        elif (fare > 7.91) and (fare <= 14.454):
             category = 1
-        elif (row[col('Fare')] > 14.454) and (row[col('Fare')] <= 31):
+        elif (fare > 14.454) and (fare <= 31):
             category = 2
-        elif (row[col('Fare')] > 31) and (row[col('Fare')] <= 99):
+        elif (fare > 31) and (fare <= 99):
             category = 3
-        elif (row[col('Fare')] > 99) and (row[col('Fare')] <= 250):
+        elif (fare > 99) and (fare <= 250):
             category = 4
         return category
+
+    fare_categorizer_udf = udf(fare_categorizer, IntegerType, col('Fare'))
 
     """
     First of all, we need to remove some columns (Passenger id, Cabin number 
@@ -107,13 +110,13 @@ def use_case2():
     features = ['Pclass', 'Sex', 'Age', 'SibSp', 'Parch', 'Fare', 'Embarked']
     all_columns = features + ['Survived']
 
-    ddf1 = DDF().parallelize(df, num_of_parts=4)\
+    ddf1 = DDF().parallelize(df, num_of_parts='*')\
         .drop(['PassengerId', 'Cabin', 'Ticket'])\
         .dropna(all_columns, how='any')\
         .replace({'male': 1, 'female': 0}, subset=['Sex'])\
-        .map(title_checker, 'Name')\
-        .map(age_categorizer, 'Age')\
-        .map(fare_categorizer, 'Fare')
+        .map(title_checker_udf, 'Name')\
+        .map(age_categorizer_udf, 'Age')\
+        .map(fare_categorizer_udf, 'Fare')
 
     ddf1 = StringIndexer()\
         .fit_transform(ddf1, input_col='Embarked', output_col='Embarked')

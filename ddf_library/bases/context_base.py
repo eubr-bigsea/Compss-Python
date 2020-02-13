@@ -21,8 +21,8 @@ class CONTEXTBASE(object):
     """
     Controls the DDF tasks executions
     """
-    catalog = dict()
-    tasks_map = dict()
+    catalog_schemas = dict()
+    catalog_tasks = dict()
     dag = nx.DiGraph()
 
     OPT_SERIAL = 'serial'  # it can be grouped with others operations
@@ -91,11 +91,11 @@ class CONTEXTBASE(object):
         # TODO: each one ?
         t = PrettyTable(['uuid', 'Task name', 'STATUS', 'Result'])
 
-        for uuid in CONTEXTBASE.tasks_map:
+        for uuid in CONTEXTBASE.catalog_tasks:
             t.add_row([uuid[:8],
-                       CONTEXTBASE.tasks_map[uuid]['name'],
-                       CONTEXTBASE.tasks_map[uuid]['status'],
-                       CONTEXTBASE.tasks_map[uuid].get('result', '')])
+                       CONTEXTBASE.catalog_tasks[uuid]['name'],
+                       CONTEXTBASE.catalog_tasks[uuid]['status'],
+                       CONTEXTBASE.catalog_tasks[uuid].get('result', '')])
         print(t)
         print('\n')
 
@@ -128,10 +128,10 @@ class CONTEXTBASE(object):
         """
 
         if specials is None:
-            specials = [k for k in self.tasks_map]
+            specials = [k for k in self.catalog_tasks]
 
-        for t in self.tasks_map:
-            parents = self.tasks_map[t]['parent']
+        for t in self.catalog_tasks:
+            parents = self.catalog_tasks[t]['parent']
             if t in specials:
                 self.dag.add_node(t, label=self.get_task_name(t))
                 for p in parents:
@@ -140,40 +140,40 @@ class CONTEXTBASE(object):
                         self.dag.add_edge(p, t)
 
     def check_action(self, uuid_task):
-        return self.tasks_map[uuid_task]['name'] in ['save', 'sync']
+        return self.catalog_tasks[uuid_task]['name'] in ['save', 'sync']
 
     def get_task_name(self, uuid_task):
-        return self.tasks_map[uuid_task]['name']
+        return self.catalog_tasks[uuid_task]['name']
 
     def get_task_opt_type(self, uuid_task):
-        return self.tasks_map[uuid_task].get('optimization', self.OPT_OTHER)
+        return self.catalog_tasks[uuid_task].get('optimization', self.OPT_OTHER)
 
     def get_task_function(self, uuid_task):
-        return self.tasks_map[uuid_task]['function']
+        return self.catalog_tasks[uuid_task]['function']
 
     def get_task_return(self, uuid_task):
-        return self.tasks_map[uuid_task].get('result', [])
+        return self.catalog_tasks[uuid_task].get('result', [])
 
     def set_task_function(self, uuid_task, data):
-        self.tasks_map[uuid_task]['function'] = data
+        self.catalog_tasks[uuid_task]['function'] = data
 
     def set_task_result(self, uuid_task, data):
-        self.tasks_map[uuid_task]['result'] = data
+        self.catalog_tasks[uuid_task]['result'] = data
 
     def get_task_status(self, uuid_task):
-        return self.tasks_map[uuid_task]['status']
+        return self.catalog_tasks[uuid_task]['status']
 
     def set_task_status(self, uuid_task, status):
-        self.tasks_map[uuid_task]['status'] = status
+        self.catalog_tasks[uuid_task]['status'] = status
 
     def get_task_parents(self, uuid_task):
-        return self.tasks_map[uuid_task]['parent']
+        return self.catalog_tasks[uuid_task]['parent']
 
     def get_n_input(self, uuid_task):
-        return self.tasks_map[uuid_task]['input']
+        return self.catalog_tasks[uuid_task]['input']
 
     def get_task_sibling(self, uuid_task):
-        return self.tasks_map[uuid_task].get('sibling', [uuid_task])
+        return self.catalog_tasks[uuid_task].get('sibling', [uuid_task])
 
     def get_input_data(self, id_parents):
         return [self.get_task_return(id_p) for id_p in id_parents]
@@ -184,14 +184,14 @@ class CONTEXTBASE(object):
         task_and_operation = self.get_task_function(child_task)
 
         # some operations need a schema information
-        if self.tasks_map[child_task].get('info', False):
+        if self.catalog_tasks[child_task].get('info', False):
             task_and_operation[1]['info'] = []
             for p in id_parents:
-                sc = self.catalog[p]
+                sc = self.catalog_schemas[p]
                 if isinstance(sc, list):
                     sc = merge_info(sc)
                     sc = compss_wait_on(sc)
-                    self.catalog[p] = sc
+                    self.catalog_schemas[p] = sc
                 task_and_operation[1]['info'].append(sc)
 
         return task_and_operation

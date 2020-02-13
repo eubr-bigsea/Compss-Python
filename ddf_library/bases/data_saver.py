@@ -88,7 +88,7 @@ def _apply_datasaver(format_file, kwargs, task_list, last_uuid):
             return data_saver.save(df, params)
 
         new_state_uuid = DDF._generate_uuid()
-        COMPSsContext.tasks_map[new_state_uuid] = \
+        COMPSsContext.catalog_tasks[new_state_uuid] = \
             {'name': 'save-{}'.format(storage),
              'status': DDF.STATUS_WAIT,
              'optimization': DDF.OPT_SERIAL,

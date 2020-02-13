@@ -127,16 +127,10 @@ def check_serialization(data):
     :return:
     """
 
-    try:
-        if isinstance(data, list):
-            if len(data) > 0:
-                return isinstance(data[0], str)
-            else:
-                return False #TODO
-    except Exception as e:
-        print(str(e))
-        raise Exception('[ERROR] check_serialization - '
-                        'Expected a list of strings')
+    if isinstance(data, list):
+        if len(data) > 0:
+            return isinstance(data[0], str)
+        return False
 
 
 def divide_idx_in_frags(ids, n_list):

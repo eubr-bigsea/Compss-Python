@@ -59,12 +59,8 @@ def create_settings_cast(**settings):
         raise Exception('alias {} and attributes '
                         '{} must have same length.'.format(alias, attributes))
 
-    # TODO: optimize
-    diff = len(new_data_type) - len(attributes)
-    if diff > 0:
-        new_data_type = new_data_type[:len(attributes)]
-    elif diff < 0:
-        new_data_type = new_data_type + ['keep' for _ in range(diff + 1)]
+    attributes, new_data_type = attributes_in_pairwise(attributes,
+                                                       new_data_type, 'keep')
 
     for t in new_data_type:
         if t not in allowed:
@@ -74,6 +70,16 @@ def create_settings_cast(**settings):
     settings['cast'] = new_data_type
     settings['alias'] = alias
     return settings
+
+
+def attributes_in_pairwise(list_att1, list_att2, completion):
+    n1 = len(list_att1)
+    diff = len(list_att2) - n1
+    if diff > 0:
+        list_att2 = list_att2[:n1]
+    elif diff < 0:
+        list_att2 = list_att2 + [completion for _ in range(diff + 1)]
+    return list_att1, list_att2
 
 
 def with_column_cast(data, settings):

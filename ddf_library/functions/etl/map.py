@@ -4,11 +4,10 @@
 __author__ = "Lucas Miguel S Ponce"
 __email__ = "lucasmsp@gmail.com"
 
-import ddf_library.bases.config as config
 from ddf_library.utils import generate_info
 import numpy as np
 
-from ddf_library.columns import Column, udf
+from ddf_library.columns import col, udf
 
 
 def map(data, settings):
@@ -25,7 +24,7 @@ def map(data, settings):
     https://engineering.upside.com/a-beginners-guide-to-optimizing-pandas-
     code-for-speed-c09ef2c6a4d6
     """
-    config.columns = data.columns.tolist()  # todo: remove
+
     function = settings['function']
     new_column = settings['alias']
     frag = settings['id_frag']
@@ -33,8 +32,7 @@ def map(data, settings):
 
     if size > 0:
 
-        if isinstance(function, Column):
-            # if is passed only col('oi')
+        if isinstance(function, col):
             func, settings_intern = function.function
             settings_intern['alias'] = [new_column]
             settings_intern['id_frag'] = frag
@@ -48,7 +46,7 @@ def map(data, settings):
             # index where arg is a Column object
             idx, mapper = list(), dict()
             for i, a in enumerate(args):
-                if isinstance(a, Column):
+                if isinstance(a, col):
                     idx.append(i)
                     mapper[a] = a._get_index(data)
 
@@ -58,9 +56,6 @@ def map(data, settings):
                 output = np.zeros(size, dtype=dtype)
 
             for i, row in enumerate(data.to_numpy()):
-                # row = [row[f._get_index(data)]
-                #        if isinstance(f, Column) else f for f in args]
-
                 current_args = [row[mapper[a]]
                                 if i in idx else a
                                 for i, a in enumerate(args)]

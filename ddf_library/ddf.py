@@ -100,8 +100,8 @@ class DDF(DDFSketch):
         # result, info = parallelize(df, num_of_parts)
 
         new_state_uuid = self._generate_uuid()
-        # COMPSsContext.catalog[new_state_uuid] = info
-        COMPSsContext.tasks_map[new_state_uuid] = \
+        # COMPSsContext.catalog_schemas[new_state_uuid] = info
+        COMPSsContext.catalog_tasks[new_state_uuid] = \
             {'name': 'parallelize',
              'status': self.STATUS_WAIT,
              'optimization': self.OPT_OTHER,
@@ -137,10 +137,10 @@ class DDF(DDFSketch):
         result, info = import_to_ddf(df_list, parquet=parquet, schema=info)
 
         new_state_uuid = self._generate_uuid()
-        COMPSsContext.catalog[new_state_uuid] = info
+        COMPSsContext.catalog_schemas[new_state_uuid] = info
 
         tmp = DDF()
-        COMPSsContext.tasks_map[new_state_uuid] = \
+        COMPSsContext.catalog_tasks[new_state_uuid] = \
             {'name': 'import_data',
              'status': self.STATUS_COMPLETED,
              'optimization': self.OPT_OTHER,
@@ -200,7 +200,7 @@ class DDF(DDFSketch):
             return WorkloadBalancer(params).transform(df)
 
         new_state_uuid = self._generate_uuid()
-        COMPSsContext.tasks_map[new_state_uuid] = \
+        COMPSsContext.catalog_tasks[new_state_uuid] = \
             {'name': 'balancer',
              'status': self.STATUS_WAIT,
              'optimization': self.OPT_OTHER,
@@ -256,7 +256,7 @@ class DDF(DDFSketch):
             return with_column_cast(df, params)
 
         new_state_uuid = self._generate_uuid()
-        COMPSsContext.tasks_map[new_state_uuid] = \
+        COMPSsContext.catalog_tasks[new_state_uuid] = \
             {'name': 'cast',
              'status': self.STATUS_WAIT,
              'optimization': self.OPT_SERIAL,
@@ -296,7 +296,7 @@ class DDF(DDFSketch):
             return AddColumnsOperation().transform(df[0], df[1], params)
 
         new_state_uuid = self._generate_uuid()
-        COMPSsContext.tasks_map[new_state_uuid] = \
+        COMPSsContext.catalog_tasks[new_state_uuid] = \
             {'name': 'add_column',
              'status': self.STATUS_WAIT,
              'optimization': self.OPT_OTHER,
@@ -336,7 +336,7 @@ class DDF(DDFSketch):
             return aggregation_stage_2(df, params)
 
         new_state_uuid = self._generate_uuid()
-        COMPSsContext.tasks_map[new_state_uuid] = \
+        COMPSsContext.catalog_tasks[new_state_uuid] = \
             {'name': 'task_aggregation_stage_1',
              'status': self.STATUS_WAIT,
              'optimization': self.OPT_LAST,
@@ -352,7 +352,7 @@ class DDF(DDFSketch):
         task_list.append(last_uuid)
 
         new_state_uuid = self._generate_uuid()
-        COMPSsContext.tasks_map[new_state_uuid] = \
+        COMPSsContext.catalog_tasks[new_state_uuid] = \
             {'name': 'task_aggregation_stage_2',
              'status': self.STATUS_WAIT,
              'optimization': self.OPT_SERIAL,
@@ -398,7 +398,7 @@ class DDF(DDFSketch):
                 return fill_by_value(df, params)
 
             new_state_uuid = self._generate_uuid()
-            COMPSsContext.tasks_map[new_state_uuid] = \
+            COMPSsContext.catalog_tasks[new_state_uuid] = \
                 {'name': 'fill_na',
                  'status': self.STATUS_WAIT,
                  'optimization': self.OPT_SERIAL,
@@ -421,7 +421,7 @@ class DDF(DDFSketch):
                 return fill_nan_stage_2(df, params)
 
             new_state_uuid = self._generate_uuid()
-            COMPSsContext.tasks_map[new_state_uuid] = \
+            COMPSsContext.catalog_tasks[new_state_uuid] = \
                 {'name': 'task_fill_nan_stage_1',
                  'status': self.STATUS_WAIT,
                  'optimization': self.OPT_LAST,
@@ -437,7 +437,7 @@ class DDF(DDFSketch):
             task_list.append(last_uuid)
 
             new_state_uuid = self._generate_uuid()
-            COMPSsContext.tasks_map[new_state_uuid] = \
+            COMPSsContext.catalog_tasks[new_state_uuid] = \
                 {'name': 'task_fill_nan_stage_2',
                  'status': self.STATUS_WAIT,
                  'optimization': self.OPT_SERIAL,
@@ -527,7 +527,7 @@ class DDF(DDFSketch):
             return cross_join(df[0], df[1])
 
         new_state_uuid = self._generate_uuid()
-        COMPSsContext.tasks_map[new_state_uuid] = \
+        COMPSsContext.catalog_tasks[new_state_uuid] = \
             {'name': 'cross_join',
              'status': self.STATUS_WAIT,
              'optimization': self.OPT_OTHER,
@@ -568,7 +568,7 @@ class DDF(DDFSketch):
             return cross_tab(df, params)
 
         new_state_uuid = self._generate_uuid()
-        COMPSsContext.tasks_map[new_state_uuid] = \
+        COMPSsContext.catalog_tasks[new_state_uuid] = \
             {'name': 'cross_tab',
              'status': self.STATUS_WAIT,
              'optimization': self.OPT_OTHER,
@@ -672,7 +672,7 @@ class DDF(DDFSketch):
             return subtract_stage_2(df[0], df[1], params)
 
         new_state_uuid = self._generate_uuid()
-        COMPSsContext.tasks_map[new_state_uuid] = \
+        COMPSsContext.catalog_tasks[new_state_uuid] = \
             {'name': 'task_subtract_stage_1',
              'status': self.STATUS_WAIT,
              'optimization': self.OPT_LAST,
@@ -689,7 +689,7 @@ class DDF(DDFSketch):
         task_list.append(last_uuid)
 
         new_state_uuid = self._generate_uuid()
-        COMPSsContext.tasks_map[new_state_uuid] = \
+        COMPSsContext.catalog_tasks[new_state_uuid] = \
             {'name': 'task_subtract_stage_2',
              'status': self.STATUS_WAIT,
              'optimization': self.OPT_SERIAL,
@@ -729,7 +729,7 @@ class DDF(DDFSketch):
             return except_all_stage_2(df[0], df[1], params)
 
         new_state_uuid = self._generate_uuid()
-        COMPSsContext.tasks_map[new_state_uuid] = \
+        COMPSsContext.catalog_tasks[new_state_uuid] = \
             {'name': 'task_except_all_stage_1',
              'status': self.STATUS_WAIT,
              'optimization': self.OPT_LAST,
@@ -746,7 +746,7 @@ class DDF(DDFSketch):
         task_list.append(last_uuid)
 
         new_state_uuid = self._generate_uuid()
-        COMPSsContext.tasks_map[new_state_uuid] = \
+        COMPSsContext.catalog_tasks[new_state_uuid] = \
             {'name': 'task_except_all_stage_2',
              'status': self.STATUS_WAIT,
              'optimization': self.OPT_SERIAL,
@@ -781,7 +781,7 @@ class DDF(DDFSketch):
             return distinct_stage_1(df, params)
 
         new_state_uuid = self._generate_uuid()
-        COMPSsContext.tasks_map[new_state_uuid] = \
+        COMPSsContext.catalog_tasks[new_state_uuid] = \
             {'name': 'distinct_stage_1',
              'status': self.STATUS_WAIT,
              'optimization': self.OPT_LAST,
@@ -800,7 +800,7 @@ class DDF(DDFSketch):
             return distinct_stage_2(df, params)
 
         new_state_uuid = self._generate_uuid()
-        COMPSsContext.tasks_map[new_state_uuid] = \
+        COMPSsContext.catalog_tasks[new_state_uuid] = \
             {'name': 'distinct_stage_2',
              'status': self.STATUS_WAIT,
              'optimization': self.OPT_SERIAL,
@@ -835,7 +835,7 @@ class DDF(DDFSketch):
             return drop(df, params)
 
         new_state_uuid = self._generate_uuid()
-        COMPSsContext.tasks_map[new_state_uuid] = \
+        COMPSsContext.catalog_tasks[new_state_uuid] = \
             {'name': 'drop',
              'status': self.STATUS_WAIT,
              'optimization': self.OPT_SERIAL,
@@ -889,7 +889,7 @@ class DDF(DDFSketch):
                 return drop_nan_rows(df, params)
 
             new_state_uuid = self._generate_uuid()
-            COMPSsContext.tasks_map[new_state_uuid] = \
+            COMPSsContext.catalog_tasks[new_state_uuid] = \
                 {'name': 'task_dropna',
                  'status': self.STATUS_WAIT,
                  'optimization': self.OPT_SERIAL,
@@ -912,7 +912,7 @@ class DDF(DDFSketch):
                 return drop_nan_columns_stage_2(df, params)
 
             new_state_uuid = self._generate_uuid()
-            COMPSsContext.tasks_map[new_state_uuid] = \
+            COMPSsContext.catalog_tasks[new_state_uuid] = \
                 {'name': 'task_drop_nan_columns_stage_1',
                  'status': self.STATUS_WAIT,
                  'optimization': self.OPT_LAST,
@@ -928,7 +928,7 @@ class DDF(DDFSketch):
             task_list.append(last_uuid)
 
             new_state_uuid = self._generate_uuid()
-            COMPSsContext.tasks_map[new_state_uuid] = \
+            COMPSsContext.catalog_tasks[new_state_uuid] = \
                 {'name': 'task_drop_nan_columns_stage_2',
                  'status': self.STATUS_WAIT,
                  'optimization': self.OPT_SERIAL,
@@ -963,7 +963,7 @@ class DDF(DDFSketch):
             return explode(df, params)
 
         new_state_uuid = self._generate_uuid()
-        COMPSsContext.tasks_map[new_state_uuid] = \
+        COMPSsContext.catalog_tasks[new_state_uuid] = \
             {'name': 'explode',
              'status': self.STATUS_WAIT,
              'optimization': self.OPT_SERIAL,
@@ -1001,7 +1001,7 @@ class DDF(DDFSketch):
             return filter_rows(df, params)
 
         new_state_uuid = self._generate_uuid()
-        COMPSsContext.tasks_map[new_state_uuid] = \
+        COMPSsContext.catalog_tasks[new_state_uuid] = \
             {'name': 'filter',
              'status': self.STATUS_WAIT,
              'optimization': self.OPT_SERIAL,
@@ -1049,7 +1049,7 @@ class DDF(DDFSketch):
             return geo_within_stage_2(df, params)
 
         new_state_uuid = self._generate_uuid()
-        COMPSsContext.tasks_map[new_state_uuid] = \
+        COMPSsContext.catalog_tasks[new_state_uuid] = \
             {'name': 'task_geo_within_stage_1',
              'status': self.STATUS_WAIT,
              'optimization': self.OPT_LAST,
@@ -1066,7 +1066,7 @@ class DDF(DDFSketch):
         task_list.append(last_uuid)
 
         new_state_uuid = self._generate_uuid()
-        COMPSsContext.tasks_map[new_state_uuid] = \
+        COMPSsContext.catalog_tasks[new_state_uuid] = \
             {'name': 'task_geo_within_stage_2',
              'status': self.STATUS_WAIT,
              'optimization': self.OPT_SERIAL,
@@ -1108,7 +1108,7 @@ class DDF(DDFSketch):
             return hash_partition(df, params)
 
         new_state_uuid = self._generate_uuid()
-        COMPSsContext.tasks_map[new_state_uuid] = \
+        COMPSsContext.catalog_tasks[new_state_uuid] = \
             {'name': 'hash_partition',
              'status': self.STATUS_WAIT,
              'optimization': self.OPT_OTHER,
@@ -1149,7 +1149,7 @@ class DDF(DDFSketch):
             return intersect_stage_2(df[0], df[1], params)
 
         new_state_uuid = self._generate_uuid()
-        COMPSsContext.tasks_map[new_state_uuid] = \
+        COMPSsContext.catalog_tasks[new_state_uuid] = \
             {'name': 'task_intersect_stage_1',
              'status': self.STATUS_WAIT,
              'optimization': self.OPT_LAST,
@@ -1166,7 +1166,7 @@ class DDF(DDFSketch):
         task_list.append(last_uuid)
 
         new_state_uuid = self._generate_uuid()
-        COMPSsContext.tasks_map[new_state_uuid] = \
+        COMPSsContext.catalog_tasks[new_state_uuid] = \
             {'name': 'task_intersect_stage_2',
              'status': self.STATUS_WAIT,
              'optimization': self.OPT_SERIAL,
@@ -1206,7 +1206,7 @@ class DDF(DDFSketch):
             return intersect_stage_2(df[0], df[1], params)
 
         new_state_uuid = self._generate_uuid()
-        COMPSsContext.tasks_map[new_state_uuid] = \
+        COMPSsContext.catalog_tasks[new_state_uuid] = \
             {'name': 'task_intersect_stage_1',
              'status': self.STATUS_WAIT,
              'optimization': self.OPT_LAST,
@@ -1223,7 +1223,7 @@ class DDF(DDFSketch):
         task_list.append(last_uuid)
 
         new_state_uuid = self._generate_uuid()
-        COMPSsContext.tasks_map[new_state_uuid] = \
+        COMPSsContext.catalog_tasks[new_state_uuid] = \
             {'name': 'task_intersect_stage_2',
              'status': self.STATUS_WAIT,
              'optimization': self.OPT_SERIAL,
@@ -1284,7 +1284,7 @@ class DDF(DDFSketch):
             return join_stage_2(df[0], df[1], params)
 
         new_state_uuid = self._generate_uuid()
-        COMPSsContext.tasks_map[new_state_uuid] = \
+        COMPSsContext.catalog_tasks[new_state_uuid] = \
             {'name': 'task_join_stage_1',
              'status': self.STATUS_WAIT,
              'optimization': self.OPT_LAST,
@@ -1301,7 +1301,7 @@ class DDF(DDFSketch):
         task_list.append(last_uuid)
 
         new_state_uuid = self._generate_uuid()
-        COMPSsContext.tasks_map[new_state_uuid] = \
+        COMPSsContext.catalog_tasks[new_state_uuid] = \
             {'name': 'task_join_stage_2',
              'status': self.STATUS_WAIT,
              'optimization': self.OPT_SERIAL,
@@ -1393,7 +1393,7 @@ class DDF(DDFSketch):
             return task(df, params)
 
         new_state_uuid = self._generate_uuid()
-        COMPSsContext.tasks_map[new_state_uuid] = \
+        COMPSsContext.catalog_tasks[new_state_uuid] = \
             {'name': 'map',
              'status': self.STATUS_WAIT,
              'optimization': self.OPT_SERIAL,
@@ -1416,13 +1416,13 @@ class DDF(DDFSketch):
         >>> ddf1.persist()
         """
 
-        status = COMPSsContext.tasks_map[self.last_uuid]\
+        status = COMPSsContext.catalog_tasks[self.last_uuid]\
             .get('status', self.STATUS_WAIT)
         if status == self.STATUS_WAIT:
             self._run_compss_context()
 
         if status == self.STATUS_COMPLETED:
-            COMPSsContext.tasks_map[self.last_uuid]['status'] = \
+            COMPSsContext.catalog_tasks[self.last_uuid]['status'] = \
                 self.STATUS_PERSISTED
 
         return self
@@ -1465,7 +1465,7 @@ class DDF(DDFSketch):
             return range_partition(df, params)
 
         new_state_uuid = self._generate_uuid()
-        COMPSsContext.tasks_map[new_state_uuid] = \
+        COMPSsContext.catalog_tasks[new_state_uuid] = \
             {'name': 'range_partition',
              'status': self.STATUS_WAIT,
              'optimization': self.OPT_OTHER,
@@ -1502,7 +1502,7 @@ class DDF(DDFSketch):
             return repartition(df, params)
 
         new_state_uuid = self._generate_uuid()
-        COMPSsContext.tasks_map[new_state_uuid] = \
+        COMPSsContext.catalog_tasks[new_state_uuid] = \
             {'name': 'repartition',
              'status': self.STATUS_WAIT,
              'optimization': self.OPT_OTHER,
@@ -1546,7 +1546,7 @@ class DDF(DDFSketch):
             return replace_value(df, params)
 
         new_state_uuid = self._generate_uuid()
-        COMPSsContext.tasks_map[new_state_uuid] = \
+        COMPSsContext.catalog_tasks[new_state_uuid] = \
             {'name': 'replace',
              'status': self.STATUS_WAIT,
              'optimization': self.OPT_SERIAL,
@@ -1595,7 +1595,7 @@ class DDF(DDFSketch):
             return sample_stage_2(df, params)
 
         new_state_uuid = self._generate_uuid()
-        COMPSsContext.tasks_map[new_state_uuid] = \
+        COMPSsContext.catalog_tasks[new_state_uuid] = \
             {'name': 'task_sample_stage_1',
              'status': self.STATUS_WAIT,
              'optimization': self.OPT_LAST,
@@ -1611,7 +1611,7 @@ class DDF(DDFSketch):
         task_list.append(last_uuid)
 
         new_state_uuid = self._generate_uuid()
-        COMPSsContext.tasks_map[new_state_uuid] = \
+        COMPSsContext.catalog_tasks[new_state_uuid] = \
             {'name': 'task_sample_stage_2',
              'status': self.STATUS_WAIT,
              'optimization': self.OPT_SERIAL,
@@ -1671,7 +1671,7 @@ class DDF(DDFSketch):
             return select(df, params)
 
         new_state_uuid = self._generate_uuid()
-        COMPSsContext.tasks_map[new_state_uuid] = \
+        COMPSsContext.catalog_tasks[new_state_uuid] = \
             {'name': 'select',
              'status': self.STATUS_WAIT,
              'optimization': self.OPT_SERIAL,
@@ -1735,7 +1735,7 @@ class DDF(DDFSketch):
             return select_exprs(df, params)
 
         new_state_uuid = self._generate_uuid()
-        COMPSsContext.tasks_map[new_state_uuid] = \
+        COMPSsContext.catalog_tasks[new_state_uuid] = \
             {'name': 'select_exprs',
              'status': self.STATUS_WAIT,
              'optimization': self.OPT_SERIAL,
@@ -1804,7 +1804,7 @@ class DDF(DDFSketch):
             return sort_stage_1(df, params)
 
         new_state_uuid = self._generate_uuid()
-        COMPSsContext.tasks_map[new_state_uuid] = \
+        COMPSsContext.catalog_tasks[new_state_uuid] = \
             {'name': 'sort_stage_1',
              'status': self.STATUS_WAIT,
              'optimization': self.OPT_LAST,
@@ -1823,7 +1823,7 @@ class DDF(DDFSketch):
             return sort_stage_2(df, params)
 
         new_state_uuid = self._generate_uuid()
-        COMPSsContext.tasks_map[new_state_uuid] = \
+        COMPSsContext.catalog_tasks[new_state_uuid] = \
             {'name': 'sort_stage_2',
              'status': self.STATUS_WAIT,
              'optimization': self.OPT_SERIAL,
@@ -1861,7 +1861,7 @@ class DDF(DDFSketch):
         split_out1_uuid = self._generate_uuid()
         split_out2_uuid = self._generate_uuid()
 
-        COMPSsContext.tasks_map[split_out1_uuid] = \
+        COMPSsContext.catalog_tasks[split_out1_uuid] = \
             {'name': 'split-out1',
              'status': self.STATUS_WAIT,
              'optimization': self.OPT_OTHER,
@@ -1875,7 +1875,7 @@ class DDF(DDFSketch):
 
         out1 = DDF(task_list=self.task_list, last_uuid=split_out1_uuid)
 
-        COMPSsContext.tasks_map[split_out2_uuid] = \
+        COMPSsContext.catalog_tasks[split_out2_uuid] = \
             {'name': 'split-out2',
              'status': self.STATUS_WAIT,
              'optimization': self.OPT_OTHER,
@@ -1912,7 +1912,7 @@ class DDF(DDFSketch):
             return take_stage_1(df, params)
 
         new_state_uuid = self._generate_uuid()
-        COMPSsContext.tasks_map[new_state_uuid] = \
+        COMPSsContext.catalog_tasks[new_state_uuid] = \
             {'name': 'task_take_stage_1',
              'status': self.STATUS_WAIT,
              'optimization': self.OPT_LAST,
@@ -1931,7 +1931,7 @@ class DDF(DDFSketch):
             return take_stage_2(df, params)
 
         new_state_uuid = self._generate_uuid()
-        COMPSsContext.tasks_map[new_state_uuid] = \
+        COMPSsContext.catalog_tasks[new_state_uuid] = \
             {'name': 'task_take_stage_2',
              'status': self.STATUS_WAIT,
              'optimization': self.OPT_SERIAL,
@@ -1963,7 +1963,7 @@ class DDF(DDFSketch):
         self._check_stored()
 
         res = [compss_open(f, mode='rb') for f in self.partitions]
-        COMPSsContext.tasks_map[self.last_uuid]['status'] \
+        COMPSsContext.catalog_tasks[self.last_uuid]['status'] \
             = self.STATUS_PERSISTED
 
         if isinstance(columns, str):
@@ -1978,10 +1978,10 @@ class DDF(DDFSketch):
         return df
 
     def unpersist(self):
-        status = COMPSsContext.tasks_map[self.last_uuid]['status']
+        status = COMPSsContext.catalog_tasks[self.last_uuid]['status']
         if status == self.STATUS_PERSISTED:
             status = self.STATUS_COMPLETED
-        COMPSsContext.tasks_map[self.last_uuid]['status'] = status
+        COMPSsContext.catalog_tasks[self.last_uuid]['status'] = status
 
         return self
 
@@ -2010,7 +2010,7 @@ class DDF(DDFSketch):
             return union(df[0], df[1], params)
 
         new_state_uuid = self._generate_uuid()
-        COMPSsContext.tasks_map[new_state_uuid] = \
+        COMPSsContext.catalog_tasks[new_state_uuid] = \
             {'name': 'union',
              'status': self.STATUS_WAIT,
              'optimization': self.OPT_OTHER,
@@ -2048,7 +2048,7 @@ class DDF(DDFSketch):
             return union(df[0], df[1], params)
 
         new_state_uuid = self._generate_uuid()
-        COMPSsContext.tasks_map[new_state_uuid] = \
+        COMPSsContext.catalog_tasks[new_state_uuid] = \
             {'name': 'union',
              'status': self.STATUS_WAIT,
              'optimization': self.OPT_OTHER,
@@ -2090,7 +2090,7 @@ class DDF(DDFSketch):
             return with_column_renamed(df, params)
 
         new_state_uuid = self._generate_uuid()
-        COMPSsContext.tasks_map[new_state_uuid] = \
+        COMPSsContext.catalog_tasks[new_state_uuid] = \
             {'name': 'rename',
              'status': self.STATUS_WAIT,
              'optimization': self.OPT_SERIAL,

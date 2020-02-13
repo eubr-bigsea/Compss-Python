@@ -29,14 +29,14 @@ class COMPSsContext(CONTEXTBASE):
     @staticmethod
     def stop():
         """To avoid that COMPSs sends back all partial result at end."""
-        for id_task in list(COMPSsContext.tasks_map.keys()):
-            data = COMPSsContext.tasks_map[id_task].get('result', [])
+        for id_task in list(COMPSsContext.catalog_tasks.keys()):
+            data = COMPSsContext.catalog_tasks[id_task].get('result', [])
 
             if check_serialization(data):
                 delete_result(data)
 
-        COMPSsContext.catalog = dict()
-        COMPSsContext.tasks_map = dict()
+        COMPSsContext.catalog_schemas = dict()
+        COMPSsContext.catalog_tasks = dict()
         COMPSsContext.dag = nx.DiGraph()
 
         import shutil
@@ -59,7 +59,7 @@ class COMPSsContext(CONTEXTBASE):
 
     @staticmethod
     def context_status():
-        COMPSsContext.plot_graph(COMPSsContext.tasks_map, COMPSsContext.dag)
+        COMPSsContext.plot_graph(COMPSsContext.catalog_tasks, COMPSsContext.dag)
 
     def check_pointer(self, lineage):
         """
@@ -68,14 +68,18 @@ class COMPSsContext(CONTEXTBASE):
         :param lineage: a sorted list of tasks;
         :return: a sorted list starting from previous results (if exists);
         """
+        # check tasks with status different from WAIT
         check_computed = [t for t in lineage
                           if self.get_task_status(t) != self.STATUS_WAIT]
 
+        # remove those tasks from the current dag
         dag = copy.deepcopy(self.dag)
         if len(check_computed) > 0:
             for n in check_computed:
                 dag.remove_node(n)
 
+        # retrieve all connected components where the
+        # last task (action) is inside
         last_node = lineage[-1]
         cc = list(nx.connected_components(dag.to_undirected()))
         sub_graph = [c for c in cc if last_node in c][0]
@@ -85,10 +89,10 @@ class COMPSsContext(CONTEXTBASE):
 
     def run_workflow(self, lineage):
         """
-        #!TODO
-        Find flow of tasks non executed with an action (show, save, cache, etc)
-        and execute each flow until a 'sync' is found. Action tasks represents
-        operations which its results will be saw by the user.
+        Find the flow of non executed tasks. This method is executed only when
+        an action (show, save, cache, etc) is submitted. DDF have lazy
+        evaluation system which means that tasks are not executed until a
+        result is required (by an action task).
 
         :param lineage: the current DDF state to be executed
         """
@@ -97,7 +101,7 @@ class COMPSsContext(CONTEXTBASE):
         lineage = self.check_pointer(lineage)
 
         if DEBUG:
-            self.show_workflow(self.tasks_map, lineage)
+            self.show_workflow(self.catalog_tasks, lineage)
 
         jump = 0
         # iterate over all sorted tasks
@@ -109,11 +113,11 @@ class COMPSsContext(CONTEXTBASE):
                 opt_type = self.get_task_opt_type(current_task)
 
                 if DEBUG:
-                    msg = "[CONTEXT] Task {} ({}) with parents {}\n"\
+                    msg = "[CONTEXT] Task {} ({}) with parents {}\n" \
+                          "[CONTEXT] RUNNING {} as {}"\
                             .format(self.get_task_name(current_task),
-                                    current_task[:8], id_parents)
-                    msg += "[CONTEXT] RUNNING {} as {}"\
-                        .format(self.get_task_name(current_task), opt_type)
+                                    current_task[:8], id_parents,
+                                    self.get_task_name(current_task), opt_type)
                     print(msg)
 
                 if opt_type == self.OPT_OTHER:
@@ -131,9 +135,18 @@ class COMPSsContext(CONTEXTBASE):
             elif jump > 0:
                 jump -= 1
 
-            self.delete_old_tasks(current_task, lineage)
+            self.delete_computed_results(current_task, lineage)
 
     def is_removable(self, id_task, current_task):
+        """
+        We keep all non computed tasks or tasks that have a non computed
+        children. In other words, in order to delete a task, its degree
+        need be more than zero and its children need to be already computed.
+
+        :param id_task:
+        :param current_task:
+        :return:
+        """
 
         cond = False
         if self.get_task_status(id_task) == self.STATUS_COMPLETED:
@@ -155,28 +168,25 @@ class COMPSsContext(CONTEXTBASE):
                             return False
         return cond
 
-    def delete_old_tasks(self, current_task, lineage):
+    def delete_computed_results(self, current_task, lineage):
         """
-        We keep all tasks that is not computed yet or that have a not computed
-        children.
+        Delete results from computed tasks in order to free up disk space.
+
         :param current_task:
         :param lineage:
         :return:
-
-        o degree tem que ser maior que 0, mas tbm tem q saber se o filho já foi
-        computado para casos como join (em que uma tarefa pode esperar )
         """
 
         for id_task in lineage:
 
             if id_task == current_task:
                 return 1
+
             elif self.is_removable(id_task, current_task):
 
                 if DEBUG:
-                    print(" - delete_old_tasks - {} ({})"
-                          .format(self.tasks_map[id_task]['name'],
-                                  id_task[:8]))
+                    print(" - delete_computed_results - {} ({})"
+                          .format(self.get_task_name(id_task), id_task[:8]))
 
                 data = self.get_task_return(id_task)
                 if check_serialization(data):
@@ -184,12 +194,12 @@ class COMPSsContext(CONTEXTBASE):
 
                 self.set_task_status(id_task, self.STATUS_WAIT)
                 self.set_task_result(id_task, None)
-                self.catalog.pop(id_task, None)
+                self.catalog_schemas.pop(id_task, None)
 
     def run_opt_others(self, child_task, id_parents, inputs):
         """
-        The current operation can not be grouped with other operations, so,
-        it must be executed separated.
+        Run operations that currently can not be grouped with other operations,
+        so, it must be executed separated.
         """
 
         operation = self.set_operation(child_task, id_parents)
@@ -202,6 +212,8 @@ class COMPSsContext(CONTEXTBASE):
         The current operation can be grouped with other operations. This method
         check if the next operations share this behavior. If it does, group
         them to execute together, otherwise, execute it as a single task.
+        In order to group two tasks in a stage: both need to be 'serial'; and
+        can not have a branch in the flow between them.
         """
         group_uuids, group_func = list(), list()
 
@@ -259,7 +271,7 @@ class COMPSsContext(CONTEXTBASE):
         for id_j, task_opt in enumerate(lineage):
             if DEBUG:
                 print(' - Checking optimization type for {} ({})'.format(
-                        self.tasks_map[task_opt]['name'],
+                        self.catalog_tasks[task_opt]['name'],
                         task_opt[:8]))
 
             group_uuids.append(task_opt)
@@ -296,15 +308,22 @@ class COMPSsContext(CONTEXTBASE):
     def save_opt_others_tasks(self, output_dict, child_task):
         # Results in non 'optimization-other' tasks are in dictionary format
 
+        # get the keys where data and info are stored in the dictionary
         keys_r, keys_i = output_dict['key_data'], output_dict['key_info']
 
-        siblings = self.get_task_sibling(child_task)  #TODO: ENTENDER
+        # Get siblings uuids. Some operations (currently, only 'split'
+        # operation is supported) have more than one output (called siblings).
+        # In this case, those operations create a branch starting of them.
+        # However, internally, both outputs must be generated together
+        # (to performance), and because of that, when a task generates siblings,
+        # they are update together.
+        siblings = self.get_task_sibling(child_task)
 
         for f, (id_t, key_r, key_i) in enumerate(zip(siblings, keys_r, keys_i)):
             result, info = output_dict[key_r], output_dict[key_i]
 
-            # save results in task_map and catalog
-            self.catalog[id_t] = info
+            # save results in task_map and catalog_schemas
+            self.catalog_schemas[id_t] = info
             self.set_task_result(id_t, result)
             self.set_task_status(id_t, self.STATUS_COMPLETED)
 
@@ -321,7 +340,7 @@ class COMPSsContext(CONTEXTBASE):
         last_uuid = opt_uuids[-1]
         if 'task_save' != self.get_task_name(last_uuid):
             self.set_task_result(last_uuid, result)
-            self.catalog[last_uuid] = info
+            self.catalog_schemas[last_uuid] = info
 
         for o in opt_uuids:
             self.set_task_status(o, self.STATUS_COMPLETED)
@@ -329,7 +348,7 @@ class COMPSsContext(CONTEXTBASE):
     @staticmethod
     def _execute_other_task(env, input_data):
         """
-        Used to execute all non-lazy functions.
+        Execute all tasks that cannot be grouped.
 
         :param env: a list that contains the current task and its parameters.
         :param input_data: A list of DataFrame as input data
@@ -352,9 +371,10 @@ class COMPSsContext(CONTEXTBASE):
     def _execute_serial_tasks(self, uuid_list, tasks_list, input_data):
 
         """
-        Used to execute a group of lazy tasks. This method submit
-        multiple 'context.task_bundle', one for each data fragment.
+        Execute a group of 'serial' tasks. This method submit
+        multiple COMPSs tasks `stage_*in_*out`, one for each data fragment.
 
+        :param uuid_list: sequence of tasks uuid to be executed
         :param tasks_list: sequence of functions and parameters to be executed
          in each fragment
         :param input_data: A list of DataFrame as input data
@@ -363,7 +383,6 @@ class COMPSsContext(CONTEXTBASE):
 
         if len(input_data) == 1:
             input_data = input_data[0]
-
         nfrag = len(input_data)
         info = [[] for _ in range(nfrag)]
 
@@ -403,6 +422,9 @@ class COMPSsContext(CONTEXTBASE):
             info[f] = function(in_file, tasks_list, f, out_file)
 
         if 'save-file' == last_task_name:
+            # Currently, we need to `compss_open` each output file generated by
+            # `save-file` operation in order to COMPSs retrieve this output
+            # in master node before the end of the `runcompss`.
             for out_file in out_files:
                 compss_open(out_file).close()
 
@@ -411,11 +433,16 @@ class COMPSsContext(CONTEXTBASE):
     def _execute_opt_last_tasks(self, tasks_list, uuid_list, data, n_input):
 
         """
-        Used to execute a group of lazy tasks. This method submit
-        multiple 'context.task_bundle', one for each data fragment.
+        Execute a group of tasks starting by a 'last' tasks. Some operations
+        have more than one processing stage (e.g., sort), some of them, can be
+        organized in two stages: the first is called `last` and  `second` is
+        called `serial`. In this case, the operations in `last` means that can
+        not be grouped with the current flow of tasks (ending the current
+        stage), but them, starting from `serial` part, will start a new stage.
 
         :param tasks_list: sequence of functions and parameters to be executed
          in each fragment
+        :param uuid_list: sequence of tasks uuid to be executed
         :param data: input data
         :return:
         """
@@ -431,9 +458,12 @@ class COMPSsContext(CONTEXTBASE):
                 # some operations, like geo_within does not return 2 data
                 n_input = 1
 
+        # some `last` stages do not change the input data, so we cannot delete
+        # them at end.
         intermediate_result = settings.get('intermediate_result', True)
         nfrag = len(out_tmp)
 
+        # after executed the first stage, we update the next task settings
         tasks_list[0][1] = settings
         info = [[] for _ in range(nfrag)]
 

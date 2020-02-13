@@ -54,28 +54,31 @@ class DDFSketch(object):
         :return: uuid
         """
         new_state_uuid = _gen_uuid()
-        while new_state_uuid in COMPSsContext.tasks_map:
+        while new_state_uuid in COMPSsContext.catalog_tasks:
             new_state_uuid = _gen_uuid()
         return new_state_uuid
 
-    @staticmethod
-    def _ddf_initial_setup(data):
+    def _ddf_initial_setup(self, data, info=False):
         tmp = data.cache()
         data.task_list, data.last_uuid = tmp.task_list, tmp.last_uuid
-        df = COMPSsContext.tasks_map[data.last_uuid]['result'].copy()
+        df = COMPSsContext.catalog_tasks[data.last_uuid]['result'].copy()
         nfrag = len(df)
-        return df, nfrag, data
+        if info:
+            info = self._get_info()
+            return df, nfrag, data, info
+        else:
+            return df, nfrag, data
 
     def _get_info(self):
 
         self._check_stored()
-        info = COMPSsContext.catalog[self.last_uuid]
+        info = COMPSsContext.catalog_schemas[self.last_uuid]
         if isinstance(info, list):
             if not isinstance(info[0], list):
                 info = merge_schema(info)
         info = compss_wait_on(info)
 
-        COMPSsContext.catalog[self.last_uuid] = info
+        COMPSsContext.catalog_schemas[self.last_uuid] = info
         return info
 
     def _check_stored(self):
@@ -85,12 +88,12 @@ class DDFSketch(object):
         """
         stored = False
         for _ in range(2):
-            if COMPSsContext.tasks_map[self.last_uuid]['status'] in \
+            if COMPSsContext.catalog_tasks[self.last_uuid]['status'] in \
                 [COMPSsContext.STATUS_COMPLETED,
                  COMPSsContext.STATUS_PERSISTED,
                  COMPSsContext.STATUS_MATERIALIZED]:
                 self.partitions = \
-                    COMPSsContext.tasks_map[self.last_uuid]['result']
+                    COMPSsContext.catalog_tasks[self.last_uuid]['result']
                 stored = True
                 break
             else:
@@ -103,7 +106,7 @@ class DDFSketch(object):
                       n_input=1, status='WAIT', info=None, result=None):
 
         uuid_key = self._generate_uuid()
-        COMPSsContext.tasks_map[uuid_key] = {
+        COMPSsContext.catalog_tasks[uuid_key] = {
             'name': task_name,
             'status': status,
             'optimization': opt,
@@ -114,9 +117,9 @@ class DDFSketch(object):
         }
 
         if info:
-            COMPSsContext.catalog[uuid_key] = info
+            COMPSsContext.catalog_schemas[uuid_key] = info
         if result:
-            COMPSsContext.tasks_map[uuid_key]['result'] = result
+            COMPSsContext.catalog_tasks[uuid_key]['result'] = result
         return uuid_key
 
     def _run_compss_context(self):

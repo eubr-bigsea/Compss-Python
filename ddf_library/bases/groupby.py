@@ -59,9 +59,9 @@ class GroupedDDF(DDF):
             operations.append([col, function, alias])
 
         self.parameters['operation'] = operations
-        COMPSsContext.tasks_map[self.last_uuid]['function'][1] = \
+        COMPSsContext.catalog_tasks[self.last_uuid]['function'][1] = \
             self.parameters
-        COMPSsContext.tasks_map[self.last2]['function'][1] = self.parameters
+        COMPSsContext.catalog_tasks[self.last2]['function'][1] = self.parameters
 
         return self.ddf_var
 
@@ -243,5 +243,5 @@ class GroupedDDF(DDF):
 
         self.parameters['operation'] = operations
 
-        COMPSsContext.tasks_map[self.last_uuid]['function'][1] = self.parameters
-        COMPSsContext.tasks_map[self.last2]['function'][1] = self.parameters
+        COMPSsContext.catalog_tasks[self.last_uuid]['function'][1] = self.parameters
+        COMPSsContext.catalog_tasks[self.last2]['function'][1] = self.parameters

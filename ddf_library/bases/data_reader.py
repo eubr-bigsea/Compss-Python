@@ -124,8 +124,8 @@ def _submit(name_task, optimization, status, results, info=False):
     from ddf_library.ddf import DDF
     new_state_uuid = DDF._generate_uuid()
     if info:
-        COMPSsContext.catalog[new_state_uuid] = info
-    COMPSsContext.tasks_map[new_state_uuid] = \
+        COMPSsContext.catalog_schemas[new_state_uuid] = info
+    COMPSsContext.catalog_tasks[new_state_uuid] = \
         {'name': name_task,
          'status': status,
          'optimization': optimization,
@@ -163,12 +163,12 @@ def _apply_datareader(format_file, kwargs, task_list, last_uuid):
         if data_reader.distributed:
             # setting the last task's input (init)
             blocks = data_reader.get_blocks()
-            COMPSsContext.tasks_map[last_uuid]['result'] = blocks
+            COMPSsContext.catalog_tasks[last_uuid]['result'] = blocks
 
             def task_read_many_fs(block, params):
                 return data_reader.transform_fs_distributed(block, params)
 
-            COMPSsContext.tasks_map[new_state_uuid] = \
+            COMPSsContext.catalog_tasks[new_state_uuid] = \
                 {'name': 'read-many-file',
                  'status': DDF.STATUS_WAIT,
                  'optimization': DDF.OPT_SERIAL,
@@ -182,7 +182,7 @@ def _apply_datareader(format_file, kwargs, task_list, last_uuid):
 
             result, info = data_reader.transform_fs_single()
 
-            COMPSsContext.tasks_map[new_state_uuid] = \
+            COMPSsContext.catalog_tasks[new_state_uuid] = \
                 {'name': 'read-one-file',
                  'status': DDF.STATUS_COMPLETED,
                  'optimization': DDF.OPT_OTHER,
@@ -193,16 +193,16 @@ def _apply_datareader(format_file, kwargs, task_list, last_uuid):
                  'parent': [last_uuid]
                  }
 
-            COMPSsContext.catalog[new_state_uuid] = info
+            COMPSsContext.catalog_schemas[new_state_uuid] = info
     else:
         blocks = data_reader.get_blocks()
 
-        COMPSsContext.tasks_map[last_uuid]['result'] = blocks
+        COMPSsContext.catalog_tasks[last_uuid]['result'] = blocks
 
         def task_read_hdfs(block, params):
             return data_reader.transform_hdfs(block, params)
 
-        COMPSsContext.tasks_map[new_state_uuid] = \
+        COMPSsContext.catalog_tasks[new_state_uuid] = \
             {'name': 'read-hdfs',
              'status': DDF.STATUS_WAIT,
              'optimization': DDF.OPT_SERIAL,

@@ -156,15 +156,19 @@ you need to install [hdfspycompss](https://github.com/eubr-bigsea/compss-hdfs/tr
 dependencies will be installed automatically from PyPI or can be manually installed by using the command `$ pip install -r requirements.txt` 
 
 ```
-pandas>=0.23.4
-scikit-learn>=0.20.3
-numpy>=1.16.0
-scipy>=1.2.1
-Pyqtree>=0.24
+pandas>=0.25.3
+scikit-learn>=0.21.3
+numpy>=1.17.4
+scipy>=1.3.3
+Pyqtree>=1.0.0
 matplotlib>=1.5.1
-networkx>=1.11
-pyshp>=1.2.11
-nltk>=3.4
+networkx>=2.4
+pyshp>=2.1.0
+nltk>=3.4.5
+graphviz>=0.13.2
+prettytable>=0.7.2
+guppy3>=3.0.9
+dill>=0.3.1.1
 ```
 
 
@@ -172,11 +176,19 @@ nltk>=3.4
 ## Publications
 
 ```
-PONCE, Lucas M.; SANTOS, Walter dos; MEIRA JR., Wagner; GUEDES, Dorgival. 
+Ponce, L. M., Lezzi, D., Badia, R. M., Guedes, D. (2019).
+Extension of a Task-Based Model to Functional Programming. 
+Proceedings of the 31st International Symposium on Computer Architecture and High Performance Computing (SBAC-PAD). 
+Campo Grande, Brazil, 2019, pages 64-71.
+
+Ponce, L. M., dos Santos, W., Meira Jr., W., Guedes, D., Lezzi, D., Badia, R. M. (2019). 
+Upgrading a high performance computing environment for massive data processing. 
+Journal of Internet Services and Applications, 10(1), 19.
+
+Ponce, L. M., Santos, W., Meira Jr., W., Guedes, D. (2018). 
 Extensão de um ambiente de computação de alto desempenho para o processamento de dados massivos. 
-In: BRAZILIAN SYMPOSIUM ON COMPUTER NETWORKS AND DISTRIBUTED SYSTEMS (SBRC), 2018 
-Proceedings of the 36th Brazilian Symposium on Computer Networks and Distributed Systems. 
-Porto Alegre: Sociedade Brasileira de Computação, may 2018. ISSN 2177-9384.
+Proceedings of the XXXVI Simpósio Brasileiro de Redes de Computadores e Sistemas Distribuídos (SBRC). 
+Campos do Jordão, Brazil, 2018. 
 ```
 ## License
 
