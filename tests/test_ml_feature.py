@@ -1,23 +1,24 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 
-from ddf_library.ddf import DDF
+from ddf_library.context import COMPSsContext
 import pandas as pd
 import numpy as np
 
 
-def binarizer():
+def binarizer(cc):
     print("\n_____Testing Binarizer_____\n")
 
     columns = ['x', 'y', 'z']
     df = pd.DataFrame([[1., -1., 2.], [2., 0., 0.], [0., 1., -1.]],
                       columns=columns)
-    ddf = DDF().parallelize(df, 4)
+    ddf = cc.parallelize(df, 4)
 
     from ddf_library.functions.ml.feature import Binarizer
 
-    res = Binarizer(input_col=columns, threshold=0, remove=True)\
-        .transform(ddf, output_col=columns).to_df().values.tolist()
+    res = Binarizer(threshold=0)\
+        .transform(ddf, output_col=columns,
+                   input_col=columns, remove=True).to_df().values.tolist()
 
     sol = [[1., 0., 1.], [1., 0., 0.], [0., 1., 0.]]
     if not np.allclose(res, sol):
@@ -25,7 +26,7 @@ def binarizer():
     print("Ok")
 
 
-def maxabs_scaler():
+def maxabs_scaler(cc):
     print("_____Testing MaxAbsScaler _____")
 
     cols = ['x', 'y', 'z']
@@ -33,7 +34,7 @@ def maxabs_scaler():
                              columns=cols)
 
     # Creating DDF from DataFrame
-    ddf_maxabs = DDF().parallelize(df_maxabs, 4)
+    ddf_maxabs = COMPSsContext().parallelize(df_maxabs, 4)
 
     from ddf_library.functions.ml.feature import MaxAbsScaler
     ddf_maxabs = MaxAbsScaler() \
@@ -47,14 +48,14 @@ def maxabs_scaler():
     print("Ok")
 
 
-def minmax_scaler():
+def minmax_scaler(cc):
     print("_____Testing MinMaxScaler _____")
 
     cols = ['x', 'y']
     df_minmax = pd.DataFrame([[-1, 2], [-0.5, 6], [0, 10], [1, 18]],
                              columns=cols)
 
-    ddf_minmax = DDF().parallelize(df_minmax, 4)
+    ddf_minmax = COMPSsContext().parallelize(df_minmax, 4)
 
     from ddf_library.functions.ml.feature import MinMaxScaler
     ddf_minmax = MinMaxScaler()\
@@ -68,12 +69,12 @@ def minmax_scaler():
     print("Ok")
 
 
-def std_scaler():
+def std_scaler(cc):
     print("_____Testing StandardScaler _____")
     cols = ['x', 'y']
     df_std = pd.DataFrame([[0, 0], [0, 0], [1, 1], [1, 1]],
                           columns=cols)
-    ddf_std = DDF().parallelize(df_std, 4)
+    ddf_std = COMPSsContext().parallelize(df_std, 4)
 
     from ddf_library.functions.ml.feature import StandardScaler
     scaler = StandardScaler(with_mean=True,
@@ -87,7 +88,7 @@ def std_scaler():
     print("Ok")
 
 
-def pca_workflow():
+def pca_workflow(cc):
 
     print("\n_____Testing PCA_____\n")
 
@@ -95,7 +96,7 @@ def pca_workflow():
     df.dropna(how="all", inplace=True)
     columns = df.columns.tolist()
     columns.remove('class')
-    ddf = DDF().parallelize(df, 4)
+    ddf = COMPSsContext().parallelize(df, 4)
 
     from ddf_library.functions.ml.feature import StandardScaler
     ddf_std = StandardScaler().fit_transform(ddf, input_col=columns)
@@ -103,8 +104,8 @@ def pca_workflow():
     n_components = 2
     new_columns = ['col{}'.format(i) for i in range(n_components)]
     from ddf_library.functions.ml.feature import PCA
-    pca = PCA(input_col=columns, n_components=n_components)
-    res = pca.fit_transform(ddf_std, output_col=new_columns)\
+    pca = PCA(n_components=n_components)
+    res = pca.fit_transform(ddf_std, input_col=columns, output_col=new_columns)\
              .to_df(new_columns).values.tolist()[0:10]
 
     sol = [[-2.26454173, -0.505703903],
@@ -126,17 +127,17 @@ def pca_workflow():
     print("Ok")
 
 
-def poly_expansion():
+def poly_expansion(cc):
     print("\n_____Testing PolynomialExpansion_____\n")
 
     columns = ["x", "y"]
     df = pd.DataFrame([[0, 1], [2, 3], [4, 5]], columns=columns)
-    ddf = DDF().parallelize(df, 4)
+    ddf = COMPSsContext().parallelize(df, 4)
 
     from ddf_library.functions.ml.feature import PolynomialExpansion
 
-    res = PolynomialExpansion(input_col=columns, degree=2, remove=True)\
-        .transform(ddf).to_df().values.tolist()
+    res = PolynomialExpansion(degree=2)\
+        .transform(ddf, input_col=columns, remove=True).to_df().values.tolist()
 
     sol = [[1.0, 0.0, 1.0, 0.0, 0.0, 1.0],
            [1.0, 2.0, 3.0, 4.0, 6.0, 9.0],
@@ -146,17 +147,17 @@ def poly_expansion():
     print("Ok")
 
 
-def onehot_encoder():
+def onehot_encoder(cc):
     print("\n_____Testing OneHotEncoder_____\n")
 
     columns = ['x', 'y']
     from ddf_library.functions.ml.feature import OneHotEncoder
     df = pd.DataFrame([['Male', 1], ['Female', 3],
                        ['Female', 2]], columns=columns)
-    ddf = DDF().parallelize(df, 4)
+    ddf = COMPSsContext().parallelize(df, 4)
 
-    res = OneHotEncoder(input_col=columns, remove=True)\
-        .fit_transform(ddf, output_col='_1hot')\
+    res = OneHotEncoder()\
+        .fit_transform(ddf, output_col='_1hot', input_col=columns, remove=True)\
         .to_df().values.tolist()
 
     sol = [[0.0, 1.0, 1.0, 0.0, 0.0],
@@ -189,4 +190,6 @@ if __name__ == '__main__':
     list_operations = [binarizer, pca_workflow,
                        poly_expansion, onehot_encoder,
                        maxabs_scaler, minmax_scaler, std_scaler]
-    list_operations[operation-1]()
+    cc = COMPSsContext()
+    list_operations[operation-1](cc)
+    cc.stop()

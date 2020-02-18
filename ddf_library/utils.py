@@ -164,18 +164,6 @@ def _gen_uuid():
     return str(uuid.uuid4())
 
 
-def gen_app_folder():
-    import os
-    folder = '/tmp/ddf_' + _gen_uuid()
-    while os.path.isdir(folder):
-        folder = '/tmp/ddf_' + _gen_uuid()
-    os.mkdir(folder)
-    return folder
-
-
-app_folder = gen_app_folder()
-
-
 def create_auxiliary_column(columns):
     condition = True
     column = "aux_column"
@@ -203,7 +191,10 @@ def delete_result(file_list):
 
 
 def create_stage_files(nfrag, suffix=''):
-    global stage_id, app_folder
+    global stage_id
+    from ddf_library.bases.context_base import ContextBase
+    app_folder = ContextBase.app_folder
+
     file_names = ['{}/stage{}_{}block{}.parquet'
                   .format(app_folder, stage_id, suffix, f)
                   for f in range(nfrag)]

@@ -1,23 +1,33 @@
 
-<!DOCTYPE html>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
 
 <html xmlns="http://www.w3.org/1999/xhtml">
   <head>
-    <meta charset="utf-8" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     <title>ML.Evaluation &#8212; DDF</title>
     <link rel="stylesheet" href="_static/nature.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
-    <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    './',
+        VERSION:     '0.3.1',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true,
+        SOURCELINK_SUFFIX: '.txt'
+      };
+    </script>
     <script type="text/javascript" src="_static/jquery.js"></script>
     <script type="text/javascript" src="_static/underscore.js"></script>
     <script type="text/javascript" src="_static/doctools.js"></script>
-    <script type="text/javascript" src="_static/language_data.js"></script>
     <link rel="shortcut icon" href="_static/favicon.ico"/>
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
     <link rel="next" title="ML.Feature" href="ddf_library.functions.ml.feature.html" />
     <link rel="prev" title="ML.Clustering" href="ddf_library.functions.ml.clustering.html" /> 
-  </head><body>
+  </head>
+  <body>
     <div class="related" role="navigation" aria-label="related navigation">
       <h3>Navigation</h3>
       <ul>
@@ -48,30 +58,35 @@
 <span id="ml-evaluation"></span><h1>ML.Evaluation<a class="headerlink" href="#module-ddf_library.functions.ml.evaluation" title="Permalink to this headline">¶</a></h1>
 <dl class="class">
 <dt id="ddf_library.functions.ml.evaluation.BinaryClassificationMetrics">
-<em class="property">class </em><code class="sig-prename descclassname">ddf_library.functions.ml.evaluation.</code><code class="sig-name descname">BinaryClassificationMetrics</code><span class="sig-paren">(</span><em class="sig-param">label_col</em>, <em class="sig-param">pred_col</em>, <em class="sig-param">ddf_var</em>, <em class="sig-param">true_label=1</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.functions.ml.evaluation.BinaryClassificationMetrics" title="Permalink to this definition">¶</a></dt>
-<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">ddf_library.ddf_base.DDFSketch</span></code></p>
+<em class="property">class </em><code class="descclassname">ddf_library.functions.ml.evaluation.</code><code class="descname">BinaryClassificationMetrics</code><span class="sig-paren">(</span><em>label_col</em>, <em>pred_col</em>, <em>ddf_var</em>, <em>true_label=1</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.functions.ml.evaluation.BinaryClassificationMetrics" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal"><span class="pre">ddf_library.bases.ddf_base.DDFSketch</span></code></p>
 <p>Evaluator for binary classification.</p>
 <ul class="simple">
-<li><p>True Positive (TP) - label is positive and prediction is also positive</p></li>
-<li><p>True Negative (TN) - label is negative and prediction is also negative</p></li>
-<li><p>False Positive (FP) - label is negative but prediction is positive</p></li>
-<li><p>False Negative (FN) - label is positive but prediction is negative</p></li>
+<li>True Positive (TP) - label is positive and prediction is also positive</li>
+<li>True Negative (TN) - label is negative and prediction is also negative</li>
+<li>False Positive (FP) - label is negative but prediction is positive</li>
+<li>False Negative (FN) - label is positive but prediction is negative</li>
 </ul>
-<dl class="simple">
-<dt>Metrics:</dt><dd><ul class="simple">
-<li><p>Accuracy</p></li>
-<li><p>Precision (Positive Predictive Value) = tp / (tp + fp)</p></li>
-<li><p>Recall (True Positive Rate) = tp / (tp + fn)</p></li>
-<li><p>F-measure = F1 = 2 * (precision * recall) / (precision + recall)</p></li>
-<li><p>Confusion matrix</p></li>
+<dl class="docutils">
+<dt>Metrics:</dt>
+<dd><ul class="first last simple">
+<li>Accuracy</li>
+<li>Precision (Positive Predictive Value) = tp / (tp + fp)</li>
+<li>Recall (True Positive Rate) = tp / (tp + fn)</li>
+<li>F-measure = F1 = 2 * (precision * recall) / (precision + recall)</li>
+<li>Confusion matrix</li>
 </ul>
 </dd>
 </dl>
-<dl class="field-list simple">
-<dt class="field-odd">Example</dt>
-<dd class="field-odd"><p></p></dd>
-</dl>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">bin_metrics</span> <span class="o">=</span> <span class="n">BinaryClassificationMetrics</span><span class="p">(</span><span class="n">label_col</span><span class="o">=</span><span class="s1">&#39;label&#39;</span><span class="p">,</span>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Example:</th><td class="field-body"></td>
+</tr>
+</tbody>
+</table>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">bin_metrics</span> <span class="o">=</span> <span class="n">BinaryClassificationMetrics</span><span class="p">(</span><span class="n">label_col</span><span class="o">=</span><span class="s1">&#39;label&#39;</span><span class="p">,</span>
 <span class="gp">&gt;&gt;&gt; </span>                                          <span class="n">pred_col</span><span class="o">=</span><span class="s1">&#39;pred&#39;</span><span class="p">,</span> <span class="n">data</span><span class="o">=</span><span class="n">ddf1</span><span class="p">)</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="nb">print</span><span class="p">(</span><span class="n">bin_metrics</span><span class="o">.</span><span class="n">get_metrics</span><span class="p">())</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="c1"># or using:</span>
@@ -82,55 +97,67 @@
 <span class="gp">&gt;&gt;&gt; </span><span class="nb">print</span><span class="p">(</span><span class="n">bin_metrics</span><span class="o">.</span><span class="n">f1</span><span class="p">)</span>
 </pre></div>
 </div>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>label_col</strong> – Column name of true label values;</p></li>
-<li><p><strong>pred_col</strong> – Column name of predicted label values;</p></li>
-<li><p><strong>ddf_var</strong> – DDF;</p></li>
-<li><p><strong>true_label</strong> – Value of True label (default is 1).</p></li>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>label_col</strong> – Column name of true label values;</li>
+<li><strong>pred_col</strong> – Column name of predicted label values;</li>
+<li><strong>ddf_var</strong> – DDF;</li>
+<li><strong>true_label</strong> – Value of True label (default is 1).</li>
 </ul>
-</dd>
-</dl>
+</td>
+</tr>
+</tbody>
+</table>
 <dl class="method">
 <dt id="ddf_library.functions.ml.evaluation.BinaryClassificationMetrics.get_metrics">
-<code class="sig-name descname">get_metrics</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.functions.ml.evaluation.BinaryClassificationMetrics.get_metrics" title="Permalink to this definition">¶</a></dt>
-<dd><dl class="field-list simple">
-<dt class="field-odd">Returns</dt>
-<dd class="field-odd"><p>A pandas DataFrame with metrics.</p>
-</dd>
-</dl>
+<code class="descname">get_metrics</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.functions.ml.evaluation.BinaryClassificationMetrics.get_metrics" title="Permalink to this definition">¶</a></dt>
+<dd><table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">A pandas DataFrame with metrics.</td>
+</tr>
+</tbody>
+</table>
 </dd></dl>
 
 </dd></dl>
 
 <dl class="class">
 <dt id="ddf_library.functions.ml.evaluation.MultilabelMetrics">
-<em class="property">class </em><code class="sig-prename descclassname">ddf_library.functions.ml.evaluation.</code><code class="sig-name descname">MultilabelMetrics</code><span class="sig-paren">(</span><em class="sig-param">label_col</em>, <em class="sig-param">pred_col</em>, <em class="sig-param">ddf_var</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.functions.ml.evaluation.MultilabelMetrics" title="Permalink to this definition">¶</a></dt>
-<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">ddf_library.ddf_base.DDFSketch</span></code></p>
+<em class="property">class </em><code class="descclassname">ddf_library.functions.ml.evaluation.</code><code class="descname">MultilabelMetrics</code><span class="sig-paren">(</span><em>label_col</em>, <em>pred_col</em>, <em>ddf_var</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.functions.ml.evaluation.MultilabelMetrics" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal"><span class="pre">ddf_library.bases.ddf_base.DDFSketch</span></code></p>
 <p>Evaluator for multilabel classification.</p>
 <ul class="simple">
-<li><p>True Positive (TP) - label is positive and prediction is also positive</p></li>
-<li><p>True Negative (TN) - label is negative and prediction is also negative</p></li>
-<li><p>False Positive (FP) - label is negative but prediction is positive</p></li>
-<li><p>False Negative (FN) - label is positive but prediction is negative</p></li>
+<li>True Positive (TP) - label is positive and prediction is also positive</li>
+<li>True Negative (TN) - label is negative and prediction is also negative</li>
+<li>False Positive (FP) - label is negative but prediction is positive</li>
+<li>False Negative (FN) - label is positive but prediction is negative</li>
 </ul>
-<dl class="simple">
-<dt>Metrics:</dt><dd><ul class="simple">
-<li><p>Accuracy</p></li>
-<li><p>Precision (Positive Predictive Value) = tp / (tp + fp)</p></li>
-<li><p>Recall (True Positive Rate) = tp / (tp + fn)</p></li>
-<li><p>F-measure = F1 = 2 * (precision * recall) / (precision + recall)</p></li>
-<li><p>Confusion matrix</p></li>
-<li><p>Precision_recall table</p></li>
+<dl class="docutils">
+<dt>Metrics:</dt>
+<dd><ul class="first last simple">
+<li>Accuracy</li>
+<li>Precision (Positive Predictive Value) = tp / (tp + fp)</li>
+<li>Recall (True Positive Rate) = tp / (tp + fn)</li>
+<li>F-measure = F1 = 2 * (precision * recall) / (precision + recall)</li>
+<li>Confusion matrix</li>
+<li>Precision_recall table</li>
 </ul>
 </dd>
 </dl>
-<dl class="field-list simple">
-<dt class="field-odd">Example</dt>
-<dd class="field-odd"><p></p></dd>
-</dl>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">metrics_multi</span> <span class="o">=</span> <span class="n">MultilabelMetrics</span><span class="p">(</span><span class="n">label_col</span><span class="o">=</span><span class="s1">&#39;label&#39;</span><span class="p">,</span>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Example:</th><td class="field-body"></td>
+</tr>
+</tbody>
+</table>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">metrics_multi</span> <span class="o">=</span> <span class="n">MultilabelMetrics</span><span class="p">(</span><span class="n">label_col</span><span class="o">=</span><span class="s1">&#39;label&#39;</span><span class="p">,</span>
 <span class="gp">&gt;&gt;&gt; </span>                                  <span class="n">pred_col</span><span class="o">=</span><span class="s1">&#39;prediction&#39;</span><span class="p">,</span> <span class="n">data</span><span class="o">=</span><span class="n">ddf1</span><span class="p">)</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="nb">print</span><span class="p">(</span><span class="n">metrics_multi</span><span class="o">.</span><span class="n">get_metrics</span><span class="p">())</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="c1"># or using:</span>
@@ -142,62 +169,73 @@
 <span class="gp">&gt;&gt;&gt; </span><span class="nb">print</span><span class="p">(</span><span class="n">metrics_multi</span><span class="o">.</span><span class="n">f1</span><span class="p">)</span>
 </pre></div>
 </div>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>label_col</strong> – Column name of true label values;</p></li>
-<li><p><strong>pred_col</strong> – Column name of predicted label values;</p></li>
-<li><p><strong>ddf_var</strong> – DDF.</p></li>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>label_col</strong> – Column name of true label values;</li>
+<li><strong>pred_col</strong> – Column name of predicted label values;</li>
+<li><strong>ddf_var</strong> – DDF.</li>
 </ul>
-</dd>
-</dl>
+</td>
+</tr>
+</tbody>
+</table>
 <dl class="method">
 <dt id="ddf_library.functions.ml.evaluation.MultilabelMetrics.get_metrics">
-<code class="sig-name descname">get_metrics</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.functions.ml.evaluation.MultilabelMetrics.get_metrics" title="Permalink to this definition">¶</a></dt>
-<dd><dl class="field-list simple">
-<dt class="field-odd">Returns</dt>
-<dd class="field-odd"><p>A pandas DataFrame with metrics.</p>
-</dd>
-</dl>
+<code class="descname">get_metrics</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.functions.ml.evaluation.MultilabelMetrics.get_metrics" title="Permalink to this definition">¶</a></dt>
+<dd><table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">A pandas DataFrame with metrics.</td>
+</tr>
+</tbody>
+</table>
 </dd></dl>
 
 </dd></dl>
 
 <dl class="class">
 <dt id="ddf_library.functions.ml.evaluation.RegressionMetrics">
-<em class="property">class </em><code class="sig-prename descclassname">ddf_library.functions.ml.evaluation.</code><code class="sig-name descname">RegressionMetrics</code><span class="sig-paren">(</span><em class="sig-param">col_features</em>, <em class="sig-param">label_col</em>, <em class="sig-param">pred_col</em>, <em class="sig-param">data</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.functions.ml.evaluation.RegressionMetrics" title="Permalink to this definition">¶</a></dt>
-<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">ddf_library.ddf_base.DDFSketch</span></code></p>
+<em class="property">class </em><code class="descclassname">ddf_library.functions.ml.evaluation.</code><code class="descname">RegressionMetrics</code><span class="sig-paren">(</span><em>col_features</em>, <em>label_col</em>, <em>pred_col</em>, <em>data</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.functions.ml.evaluation.RegressionMetrics" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal"><span class="pre">ddf_library.bases.ddf_base.DDFSketch</span></code></p>
 <p>RegressionModelEvaluation’s methods.</p>
 <ul class="simple">
-<li><p><strong>Mean Squared Error (MSE):</strong> Is an estimator measures the average of the
+<li><strong>Mean Squared Error (MSE):</strong> Is an estimator measures the average of the
 squares of the errors or deviations, that is, the difference between the
 estimator and what is estimated. MSE is a risk function, corresponding
 to the expected value of the squared error loss or quadratic loss. In
 other words, MSE tells you how close a regression line is to a set of
-points.</p></li>
-<li><p><strong>Root Mean Squared Error (RMSE):</strong> Is a frequently used measure of the
+points.</li>
+<li><strong>Root Mean Squared Error (RMSE):</strong> Is a frequently used measure of the
 differences between values (sample and population values) predicted by a
 model or an estimator and the values actually observed. The RMSE
 represents the sample standard deviation of the differences between
-predicted values and observed values.</p></li>
-<li><p><strong>Mean Absolute Error (MAE):</strong> Is a measure of difference between two
+predicted values and observed values.</li>
+<li><strong>Mean Absolute Error (MAE):</strong> Is a measure of difference between two
 continuous variables. Assume X and Y are variables of paired
 observations that express the same phenomenon. Is a quantity used to
-measure how close forecasts or predictions are to the eventual outcomes.</p></li>
-<li><p><strong>Coefficient of Determination (R2):</strong> Iis the proportion of the
+measure how close forecasts or predictions are to the eventual outcomes.</li>
+<li><strong>Coefficient of Determination (R2):</strong> Iis the proportion of the
 variance in the dependent variable that is predictable from the
 independent variable(s). Best possible score is 1.0 and it can be
 negative (because the model can be arbitrarily worse). A constant model
 that always predicts the expected value of y, disregarding the input
-features, would get a R^2 score of 0.0.</p></li>
-<li><p><strong>Explained Variance:</strong> Measures the proportion to which a mathematical
-model accounts for the variation (dispersion) of a given data set.</p></li>
+features, would get a R^2 score of 0.0.</li>
+<li><strong>Explained Variance:</strong> Measures the proportion to which a mathematical
+model accounts for the variation (dispersion) of a given data set.</li>
 </ul>
-<dl class="field-list simple">
-<dt class="field-odd">Example</dt>
-<dd class="field-odd"><p></p></dd>
-</dl>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">reg_metrics</span> <span class="o">=</span> <span class="n">RegressionMetrics</span><span class="p">(</span><span class="n">col_features</span><span class="o">=</span><span class="s1">&#39;features&#39;</span><span class="p">,</span>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Example:</th><td class="field-body"></td>
+</tr>
+</tbody>
+</table>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">reg_metrics</span> <span class="o">=</span> <span class="n">RegressionMetrics</span><span class="p">(</span><span class="n">col_features</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;x1&#39;</span><span class="p">,</span> <span class="s1">&#39;x2&#39;</span><span class="p">],</span>
 <span class="gp">&gt;&gt;&gt; </span>                                <span class="n">label_col</span><span class="o">=</span><span class="s1">&#39;label&#39;</span><span class="p">,</span> <span class="n">pred_col</span><span class="o">=</span><span class="s1">&#39;pred&#39;</span><span class="p">,</span>
 <span class="gp">&gt;&gt;&gt; </span>                                <span class="n">data</span><span class="o">=</span><span class="n">data</span><span class="p">)</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="nb">print</span> <span class="n">reg_metrics</span><span class="o">.</span><span class="n">get_metrics</span><span class="p">()</span>
@@ -209,24 +247,31 @@ model accounts for the variation (dispersion) of a given data set.</p></li>
 <span class="gp">&gt;&gt;&gt; </span><span class="nb">print</span> <span class="n">reg_metrics</span><span class="o">.</span><span class="n">msr</span>
 </pre></div>
 </div>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>col_features</strong> – Column name of features values;</p></li>
-<li><p><strong>label_col</strong> – Column name of true label values;</p></li>
-<li><p><strong>pred_col</strong> – Column name of predicted label values;</p></li>
-<li><p><strong>data</strong> – DDF.</p></li>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>col_features</strong> – Column name of features values;</li>
+<li><strong>label_col</strong> – Column name of true label values;</li>
+<li><strong>pred_col</strong> – Column name of predicted label values;</li>
+<li><strong>data</strong> – DDF.</li>
 </ul>
-</dd>
-</dl>
+</td>
+</tr>
+</tbody>
+</table>
 <dl class="method">
 <dt id="ddf_library.functions.ml.evaluation.RegressionMetrics.get_metrics">
-<code class="sig-name descname">get_metrics</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.functions.ml.evaluation.RegressionMetrics.get_metrics" title="Permalink to this definition">¶</a></dt>
-<dd><dl class="field-list simple">
-<dt class="field-odd">Returns</dt>
-<dd class="field-odd"><p>A pandas DataFrame with metrics.</p>
-</dd>
-</dl>
+<code class="descname">get_metrics</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.functions.ml.evaluation.RegressionMetrics.get_metrics" title="Permalink to this definition">¶</a></dt>
+<dd><table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">A pandas DataFrame with metrics.</td>
+</tr>
+</tbody>
+</table>
 </dd></dl>
 
 </dd></dl>
@@ -246,13 +291,13 @@ model accounts for the variation (dispersion) of a given data set.</p></li>
   <p class="topless"><a href="ddf_library.functions.ml.feature.html"
                         title="next chapter">ML.Feature</a></p>
 <div id="searchbox" style="display: none" role="search">
-  <h3 id="searchlabel">Quick search</h3>
-    <div class="searchformwrapper">
+  <h3>Quick search</h3>
     <form class="search" action="search.html" method="get">
-      <input type="text" name="q" aria-labelledby="searchlabel" />
-      <input type="submit" value="Go" />
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
     </form>
-    </div>
 </div>
 <script type="text/javascript">$('#searchbox').show(0);</script>
         </div>
@@ -281,7 +326,7 @@ model accounts for the variation (dispersion) of a given data set.</p></li>
     </div>
     <div class="footer" role="contentinfo">
         &#169; Copyright 2019, Lucas M Ponce.
-      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 2.1.0.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.6.7.
     </div>
   </body>
 </html>

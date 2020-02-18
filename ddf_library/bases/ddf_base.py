@@ -6,7 +6,7 @@ __author__ = "Lucas Miguel S Ponce"
 __email__ = "lucasmsp@gmail.com"
 
 
-from ddf_library.context import COMPSsContext
+from ddf_library.bases.context_base import ContextBase
 from ddf_library.utils import merge_schema, _gen_uuid
 from pycompss.api.api import compss_wait_on
 
@@ -23,10 +23,7 @@ class DDFSketch(object):
 
     STATUS_WAIT = 'WAIT'
     STATUS_COMPLETED = 'COMPLETED'
-    STATUS_TEMP_VIEW = 'TEMP_VIEWED'  # temporary
-
     STATUS_PERSISTED = 'PERSISTED'
-    STATUS_MATERIALIZED = 'MATERIALIZED'  # persisted
 
     optimization_ops = [OPT_OTHER, OPT_SERIAL, OPT_LAST]
 
@@ -34,6 +31,7 @@ class DDFSketch(object):
 
         self.last_uuid = 'not_defined'
         self.settings = dict()
+        self.task_list = []
         pass
 
     @staticmethod
@@ -47,21 +45,10 @@ class DDFSketch(object):
         seen = set()
         return [x for x in seq if x not in seen and not seen.add(x)]
 
-    @staticmethod
-    def _generate_uuid():
-        """
-        Generate a unique id
-        :return: uuid
-        """
-        new_state_uuid = _gen_uuid()
-        while new_state_uuid in COMPSsContext.catalog_tasks:
-            new_state_uuid = _gen_uuid()
-        return new_state_uuid
-
     def _ddf_initial_setup(self, data, info=False):
         tmp = data.cache()
         data.task_list, data.last_uuid = tmp.task_list, tmp.last_uuid
-        df = COMPSsContext.catalog_tasks[data.last_uuid]['result'].copy()
+        df = ContextBase.catalog_tasks[data.last_uuid]['result'].copy()
         nfrag = len(df)
         if info:
             info = self._get_info()
@@ -72,13 +59,13 @@ class DDFSketch(object):
     def _get_info(self):
 
         self._check_stored()
-        info = COMPSsContext.catalog_schemas[self.last_uuid]
+        info = ContextBase.catalog_schemas[self.last_uuid]
         if isinstance(info, list):
             if not isinstance(info[0], list):
                 info = merge_schema(info)
         info = compss_wait_on(info)
 
-        COMPSsContext.catalog_schemas[self.last_uuid] = info
+        ContextBase.catalog_schemas[self.last_uuid] = info
         return info
 
     def _check_stored(self):
@@ -88,12 +75,10 @@ class DDFSketch(object):
         """
         stored = False
         for _ in range(2):
-            if COMPSsContext.catalog_tasks[self.last_uuid]['status'] in \
-                [COMPSsContext.STATUS_COMPLETED,
-                 COMPSsContext.STATUS_PERSISTED,
-                 COMPSsContext.STATUS_MATERIALIZED]:
+            if ContextBase.catalog_tasks[self.last_uuid]['status'] != \
+                    ContextBase.STATUS_WAIT:
                 self.partitions = \
-                    COMPSsContext.catalog_tasks[self.last_uuid]['result']
+                    ContextBase.catalog_tasks[self.last_uuid]['result']
                 stored = True
                 break
             else:
@@ -102,26 +87,6 @@ class DDFSketch(object):
         if not stored:
             raise Exception("[ERROR] - _check_stored - cache cant be done")
 
-    def _ddf_add_task(self, task_name, opt, function, parent, n_output=1,
-                      n_input=1, status='WAIT', info=None, result=None):
-
-        uuid_key = self._generate_uuid()
-        COMPSsContext.catalog_tasks[uuid_key] = {
-            'name': task_name,
-            'status': status,
-            'optimization': opt,
-            'function': function,
-            'parent': parent,
-            'output': n_output,
-            'input': n_input
-        }
-
-        if info:
-            COMPSsContext.catalog_schemas[uuid_key] = info
-        if result:
-            COMPSsContext.catalog_tasks[uuid_key]['result'] = result
-        return uuid_key
-
     def _run_compss_context(self):
-        COMPSsContext().run_workflow(self.task_list)
+        ContextBase().run_workflow(self.task_list)
         return self

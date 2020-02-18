@@ -4,6 +4,7 @@
 __author__ = "Lucas Miguel S Ponce"
 __email__ = "lucasmsp@gmail.com"
 
+from ddf_library.bases.context_base import ContextBase
 from ddf_library.ddf import DDF
 from ddf_library.bases.ddf_model import ModelDDF
 from ddf_library.utils import generate_info,  read_stage_file
@@ -114,11 +115,10 @@ class MaxAbsScaler(ModelDDF):
         def task_maxabs_scaler(df, params):
             return _maxabs_scaler(df, params)
 
-        uuid_key = self._ddf_add_task(task_name=self.name,
-                                      opt=self.OPT_SERIAL,
-                                      function=[task_maxabs_scaler,
-                                                settings],
-                                      parent=[data.last_uuid])
+        uuid_key = ContextBase\
+            .ddf_add_task(self.name, opt=self.OPT_SERIAL,
+                          function=[task_maxabs_scaler, settings],
+                          parent=[data.last_uuid])
 
         return DDF(task_list=data.task_list, last_uuid=uuid_key)
 
@@ -267,11 +267,10 @@ class MinMaxScaler(ModelDDF):
         def task_minmax_scaler(df, params):
             return _minmax_scaler(df, params)
 
-        uuid_key = self._ddf_add_task(task_name=self.name,
-                                      opt=self.OPT_SERIAL,
-                                      function=[task_minmax_scaler,
-                                                settings],
-                                      parent=[data.last_uuid])
+        uuid_key = ContextBase \
+            .ddf_add_task(self.name, opt=self.OPT_SERIAL,
+                          function=[task_minmax_scaler, settings],
+                          parent=[data.last_uuid])
 
         return DDF(task_list=data.task_list, last_uuid=uuid_key)
 
@@ -465,11 +464,10 @@ class StandardScaler(ModelDDF):
         def task_standard_scaler(df, params):
             return _standard_scaler(df, params)
 
-        uuid_key = self._ddf_add_task(task_name=self.name,
-                                      opt=self.OPT_SERIAL,
-                                      function=[task_standard_scaler,
-                                                settings],
-                                      parent=[data.last_uuid])
+        uuid_key = ContextBase\
+            .ddf_add_task(self.name, opt=self.OPT_SERIAL,
+                          function=[task_standard_scaler, settings],
+                          parent=[data.last_uuid])
 
         return DDF(task_list=data.task_list, last_uuid=uuid_key)
 

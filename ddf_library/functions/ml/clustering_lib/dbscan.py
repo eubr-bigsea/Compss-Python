@@ -361,8 +361,7 @@ def _update_clusters(partial, to_update, grids):
     if len(df) > 0:
         tmp = df.apply(lambda row: _inblock(row, column, init, end2), axis=1)
         df = df.loc[tmp]
-        df.drop_duplicates([primary_key], inplace=False)
-        df = df.reset_index(drop=True)
+        df.drop_duplicates([primary_key], inplace=False, ignore_index=True)
 
         for key in to_update:
             if key in clusters:

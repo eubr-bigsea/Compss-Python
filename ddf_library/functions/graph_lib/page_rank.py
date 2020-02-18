@@ -4,20 +4,24 @@
 __author__ = "Lucas Miguel S Ponce"
 __email__ = "lucasmsp@gmail.com"
 
+from ddf_library.bases.context_base import ContextBase
 from ddf_library.ddf import DDF
 from ddf_library.bases.ddf_model import ModelDDF
+from ddf_library.utils import generate_info, read_stage_file, \
+    create_stage_files, save_stage_file
 
-from pycompss.api.api import compss_wait_on
+from pycompss.api.api import compss_wait_on, compss_delete_object
 from pycompss.api.task import task
 from pycompss.functions.reduce import merge_reduce
+from pycompss.api.parameter import FILE_IN, COLLECTION_IN
 
 import pandas as pd
 import numpy as np
 
 __all__ = ['PageRank']
 
+# TODO: this algorithm can be optimized
 
-# TODO: Adaptar para parquet
 
 class PageRank(ModelDDF):
     # noinspection PyUnresolvedReferences
@@ -85,45 +89,44 @@ class PageRank(ModelDDF):
         for i in range(nfrag):
             adj_list[i] = _pr_update_adjlist(adj_list[i], counts_in)
 
-        del counts_in
+        compss_delete_object(counts_in)
 
         for iteration in range(self.max_iters):
             """Calculate the partial contribution of each vertex."""
             contributions = [_calc_contribuitions(adj_list[i], rank_list[i])
                              for i in range(nfrag)]
 
-            merged_c = merge_reduce(_merge_contribs, contributions)
+            merged_c = merge_reduce(_merge_counts, contributions)
 
             """Update each vertex rank in the fragment."""
             rank_list = [_update_rank(rank_list[i], merged_c,
                                       self.damping_factor)
                          for i in range(nfrag)]
 
-        table = [_print_result(rank_list[i], col1, col2) for i in range(nfrag)]
-
-        merged_table = merge_reduce(_merge_ranks, table)
+        merged_table = merge_ranks(rank_list, col1, col2)
         result, info = _pagerank_split(merged_table, nfrag)
 
-        uuid_key = self._ddf_add_task(task_name=self.name,
-                                      status='MATERIALIZED',
-                                      opt=self.OPT_OTHER,
-                                      function=[self.transform, data],
-                                      result=result,
-                                      parent=[tmp.last_uuid],
-                                      n_output=1, n_input=1, info=info)
+        new_state_uuid = ContextBase\
+            .ddf_add_task(self.name,
+                          status=ContextBase.STATUS_COMPLETED,
+                          opt=ContextBase.OPT_OTHER,
+                          info_data=info,
+                          parent=[tmp.last_uuid],
+                          result=result,
+                          function=[self.transform, data])
 
-        return DDF(task_list=tmp.task_list, last_uuid=uuid_key)
+        return DDF(task_list=tmp.task_list, last_uuid=new_state_uuid)
 
 
-@task(returns=3)
+@task(returns=3, data=FILE_IN)
 def _pr_create_adjlist(data, inlink, outlink):
-
+    cols = [outlink, inlink]
     adj = {}
     ranks = {}
-    cols = [outlink, inlink]
-    for link in data[cols].values:
-        v_out = link[0]
-        v_in = link[1]
+
+    data = read_stage_file(data, cols=cols)
+    for link in data[cols].to_numpy():
+        v_out, v_in = link
 
         # Generate a partial adjacency list.
         if v_out in adj:
@@ -177,7 +180,7 @@ def _calc_contribuitions(adj, ranks):
     for key in adj:
         urls = adj[key][0]
         num_neighbors = adj[key][1]
-        rank = float(ranks[key])
+        rank = ranks[key]
         for url in urls:
             if url not in contrib:
                 #  out       =  contrib
@@ -186,18 +189,6 @@ def _calc_contribuitions(adj, ranks):
                 contrib[url] += rank/num_neighbors
 
     return contrib
-
-
-@task(returns=1)
-def _merge_contribs(contrib1, contrib2):
-    """Merge the contributions."""
-    for k2 in contrib2:
-        if k2 in contrib1:
-            contrib1[k2] += contrib2[k2]
-        else:
-            contrib1[k2] = contrib2[k2]
-
-    return contrib1
 
 
 @task(returns=1)
@@ -212,33 +203,33 @@ def _update_rank(ranks, contrib, factor):
     return ranks
 
 
-@task(returns=1)
-def _print_result(ranks, c1, c2):
-    """Create the final result."""
-    return pd.DataFrame(ranks.items(),  columns=[c1, c2])
+@task(returns=1, dfs=COLLECTION_IN)
+def merge_ranks(dfs, c1, c2):
+    """Create the final result. Merge and remove duplicates vertex."""
+    dfs = [pd.DataFrame(ranks.items(), columns=[c1, c2]) for ranks in dfs]
+
+    dfs = pd.concat(dfs, ignore_index=True)\
+        .drop_duplicates(ignore_index=True)\
+        .sort_values(['Rank'], ascending=False, ignore_index=True)
+
+    return dfs
 
 
-@task(returns=1)
-def _merge_ranks(df1, df2):
-    """Merge and remove duplicates vertex."""
-    result = pd.concat([df1, df2], ignore_index=True).drop_duplicates()
-    result.reset_index(drop=True, inplace=True)
-    return result
-
-
-def _pagerank_split(merged_table, nfrag):
+def _pagerank_split(result, nfrag):
     """Split the list of vertex into nfrag parts.
 
     Note: the list of unique vertex and their ranks must be fit in memory.
     """
-    merged_table = compss_wait_on(merged_table)
-    info = [[merged_table.columns.tolist(), merged_table.dtypes.values, []]
-            for _ in range(nfrag)]
-    result = np.array_split(merged_table, nfrag)
-    for f, table in enumerate(merged_table):
-        info[f][2].append(len(table))
+    result = compss_wait_on(result)
+    result = np.array_split(result, nfrag)
+    outfiles = create_stage_files(nfrag)
+    info = [0] * nfrag
 
-    return result, info
+    for f, table in enumerate(result):
+        save_stage_file(outfiles[f], table)
+        info[f] = generate_info(table, f)
+
+    return outfiles, info
 
 
 

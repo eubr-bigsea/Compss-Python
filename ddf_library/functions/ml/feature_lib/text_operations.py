@@ -4,6 +4,7 @@
 __author__ = "Lucas Miguel S Ponce"
 __email__ = "lucasmsp@gmail.com"
 
+from ddf_library.bases.context_base import ContextBase
 from pycompss.api.task import task
 from pycompss.functions.reduce import merge_reduce
 from pycompss.api.api import compss_wait_on
@@ -65,10 +66,10 @@ class NGram(DDFSketch):
             return _ngram(df, params)
 
         settings = self.__dict__.copy()
-        uuid_key = self._ddf_add_task(task_name=self.name,
-                                      opt=self.OPT_SERIAL,
-                                      function=[task_ngram, settings],
-                                      parent=[data.last_uuid])
+        uuid_key = ContextBase\
+            .ddf_add_task(self.name, opt=self.OPT_SERIAL,
+                          function=[task_ngram, settings],
+                          parent=[data.last_uuid])
 
         return DDF(task_list=data.task_list, last_uuid=uuid_key)
 
@@ -151,10 +152,10 @@ class RegexTokenizer(DDFSketch):
             return _tokenizer_(df, params)
 
         settings = self.__dict__.copy()
-        uuid_key = self._ddf_add_task(task_name=self.name,
-                                      opt=self.OPT_SERIAL,
-                                      function=[task_regex_tokenizer, settings],
-                                      parent=[data.last_uuid])
+        uuid_key = ContextBase \
+            .ddf_add_task(self.name, opt=self.OPT_SERIAL,
+                          function=[task_regex_tokenizer, settings],
+                          parent=[data.last_uuid])
 
         return DDF(task_list=data.task_list, last_uuid=uuid_key)
 
@@ -278,11 +279,10 @@ class RemoveStopWords(ModelDDF):
         def task_stopwords(df, params):
             return _remove_stopwords(df, params)
 
-        uuid_key = self._ddf_add_task(task_name=self.name,
-                                      opt=self.OPT_SERIAL,
-                                      function=[task_stopwords, settings],
-                                      parent=[data.last_uuid],
-                                      n_output=1, n_input=1)
+        uuid_key = ContextBase \
+            .ddf_add_task(self.name, opt=self.OPT_SERIAL,
+                          function=[task_stopwords, settings],
+                          parent=[data.last_uuid])
 
         return DDF(task_list=data.task_list, last_uuid=uuid_key)
 
@@ -390,9 +390,9 @@ class Tokenizer(DDFSketch):
         def task_tokenizer(df, params):
             return _tokenizer_(df, params)
 
-        uuid_key = self._ddf_add_task(task_name=self.name,
-                                      opt=self.OPT_SERIAL,
-                                      function=[task_tokenizer, settings],
-                                      parent=[data.last_uuid])
+        uuid_key = ContextBase \
+            .ddf_add_task(self.name, opt=self.OPT_SERIAL,
+                          function=[task_tokenizer, settings],
+                          parent=[data.last_uuid])
 
         return DDF(task_list=data.task_list, last_uuid=uuid_key)

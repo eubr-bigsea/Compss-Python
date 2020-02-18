@@ -5,6 +5,7 @@
 __author__ = "Lucas Miguel S Ponce"
 __email__ = "lucasmsp@gmail.com"
 
+from ddf_library.bases.context_base import ContextBase
 from ddf_library.ddf import DDF
 from ddf_library.utils import generate_info, read_stage_file
 from ddf_library.bases.ddf_model import ModelDDF
@@ -124,11 +125,10 @@ class LogisticRegression(ModelDDF):
         def task_transform_logr(df, params):
             return _logr_predict(df, params)
 
-        uuid_key = self._ddf_add_task(task_name='task_transform_logr',
-                                      opt=self.OPT_SERIAL,
-                                      function=[task_transform_logr,
-                                                settings],
-                                      parent=[data.last_uuid])
+        uuid_key = ContextBase\
+            .ddf_add_task(self.name, opt=self.OPT_SERIAL,
+                          function=[task_transform_logr, settings],
+                          parent=[data.last_uuid])
 
         return DDF(task_list=data.task_list, last_uuid=uuid_key)
 

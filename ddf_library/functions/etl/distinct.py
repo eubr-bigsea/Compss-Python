@@ -65,7 +65,7 @@ def distinct_stage_2(data, settings):
     if len(cols) == 0:
         cols = list(data.columns)
 
-    data = data.drop_duplicates(cols, keep='first').reset_index(drop=True)
+    data = data.drop_duplicates(cols, keep='first', ignore_index=True)
     info = generate_info(data, frag)
 
     return data, info

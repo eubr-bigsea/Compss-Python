@@ -4,6 +4,7 @@
 __author__ = "Lucas Miguel S Ponce"
 __email__ = "lucasmsp@gmail.com"
 
+from ddf_library.bases.context_base import ContextBase
 from pycompss.api.parameter import FILE_IN
 from pycompss.api.task import task
 from pycompss.functions.reduce import merge_reduce
@@ -120,10 +121,10 @@ class PCA(ModelDDF):
         def transform_pca(df, params):
             return _pca_transform(df, params)
 
-        uuid_key = self._ddf_add_task(task_name=self.name,
-                                      opt=self.OPT_SERIAL,
-                                      function=[transform_pca, settings],
-                                      parent=[data.last_uuid])
+        uuid_key = ContextBase\
+            .ddf_add_task(self.name, opt=self.OPT_SERIAL,
+                          function=[transform_pca, settings],
+                          parent=[data.last_uuid])
 
         return DDF(task_list=data.task_list, last_uuid=uuid_key)
 

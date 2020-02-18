@@ -4,7 +4,7 @@
 __author__ = "Lucas Miguel S Ponce"
 __email__ = "lucasmsp@gmail.com"
 
-from ddf_library.context import COMPSsContext
+from ddf_library.bases.context_base import ContextBase
 from ddf_library.functions.etl.save_data import DataSaver
 from ddf_library.utils import parser_filepath
 
@@ -87,15 +87,13 @@ def _apply_datasaver(format_file, kwargs, task_list, last_uuid):
         def task_save(df, params):
             return data_saver.save(df, params)
 
-        new_state_uuid = DDF._generate_uuid()
-        COMPSsContext.catalog_tasks[new_state_uuid] = \
-            {'name': 'save-{}'.format(storage),
-             'status': DDF.STATUS_WAIT,
-             'optimization': DDF.OPT_SERIAL,
-             'function': [task_save, settings],
-             'output': 0, 'input': 1,
-             'parent': [last_uuid]
-             }
+        new_state_uuid = ContextBase \
+            .ddf_add_task('save-{}'.format(storage),
+                          status=ContextBase.STATUS_WAIT,
+                          opt=ContextBase.OPT_SERIAL,
+                          n_output=0,
+                          parent=[last_uuid],
+                          function=[task_save, settings])
 
-        DDF(task_list=task_list.copy(), last_uuid=new_state_uuid)\
-            ._run_compss_context()
+        DDF(task_list=task_list,
+            last_uuid=new_state_uuid)._run_compss_context()

@@ -4,11 +4,7 @@
 __author__ = "Lucas Miguel S Ponce"
 __email__ = "lucasmsp@gmail.com"
 
-from ddf_library.context import COMPSsContext
 from ddf_library.utils import parser_filepath
-
-task_list = None
-last_uuid = None
 
 
 class DataReader(object):
@@ -28,7 +24,7 @@ class DataReader(object):
         format_file = 'csv'
         kwargs = locals()
         kwargs['schema'] = _check_schema(kwargs['schema'])
-        tmp = _apply_datareader(format_file, kwargs, task_list, last_uuid)
+        tmp = _apply_datareader(format_file, kwargs)
         return tmp
 
     @staticmethod
@@ -37,19 +33,20 @@ class DataReader(object):
         format_file = 'json'
         kwargs = locals()
         kwargs['schema'] = _check_schema(kwargs['schema'])
-        tmp = _apply_datareader(format_file, kwargs, task_list, last_uuid)
+        tmp = _apply_datareader(format_file, kwargs)
         return tmp
 
     @staticmethod
     def parquet(filepath, num_of_parts='*', columns=None):
         format_file = 'parquet'
         kwargs = locals()
-        tmp = _apply_datareader(format_file, kwargs, task_list, last_uuid)
+        tmp = _apply_datareader(format_file, kwargs)
         return tmp
 
     @staticmethod
     def shapefile(shp_path, dbf_path, polygon='points', attributes=None,
                   num_of_parts='*', schema='str'):
+        # noinspection PyUnresolvedReferences
         """
         Reads a shapefile using the shp and dbf file.
 
@@ -66,8 +63,9 @@ class DataReader(object):
 
         :Example:
 
-        >>> ddf1 = DDF().load_shapefile(shp_path='/shapefile.shp',
-        >>>                             dbf_path='/shapefile.dbf')
+        >>> ddf1 = COMPSsContext()\
+        >>> .read.shapefile(shp_path='hdfs://localhost:9000/shapefile.shp',
+        >>>                 dbf_path='hdfs://localhost:9000/shapefile.dbf')
         """
 
         host, port, shp_path, storage = parser_filepath(shp_path)
@@ -91,11 +89,23 @@ class DataReader(object):
         settings['schema'] = _check_schema(schema)
 
         from ddf_library.functions.geo import read_shapefile
+        from ddf_library.bases.context_base import ContextBase
+        from ddf_library.ddf import DDF
 
         results, info = read_shapefile(settings, num_of_parts)
 
-        return _submit('load_shapefile', 'other',
-                       'COMPLETED', results, info=info)
+        first_uuid = ContextBase.create_init()
+        new_state_uuid = ContextBase\
+            .ddf_add_task('read.shapefile',
+                          status=ContextBase.STATUS_COMPLETED,
+                          opt=ContextBase.OPT_OTHER,
+                          n_input=0,
+                          info_data=info,
+                          parent=[first_uuid],
+                          result=results,
+                          function=None)
+
+        return DDF(task_list=[first_uuid], last_uuid=new_state_uuid)
 
 
 def _check_schema(schema):
@@ -120,26 +130,7 @@ def _check_schema(schema):
     return schema
 
 
-def _submit(name_task, optimization, status, results, info=False):
-    from ddf_library.ddf import DDF
-    new_state_uuid = DDF._generate_uuid()
-    if info:
-        COMPSsContext.catalog_schemas[new_state_uuid] = info
-    COMPSsContext.catalog_tasks[new_state_uuid] = \
-        {'name': name_task,
-         'status': status,
-         'optimization': optimization,
-         'function': None,
-         'result': results,
-         'output': 1, 'input': 0,
-         'parent': [last_uuid]
-         }
-
-    return DDF(task_list=task_list, last_uuid=new_state_uuid)
-
-
-def _apply_datareader(format_file, kwargs, task_list, last_uuid):
-    from ddf_library.ddf import DDF
+def _apply_datareader(format_file, kwargs):
 
     host, port, filename, storage = parser_filepath(kwargs['filepath'])
 
@@ -150,6 +141,9 @@ def _apply_datareader(format_file, kwargs, task_list, last_uuid):
     kwargs.pop('format_file', None)
 
     from ddf_library.functions.etl.read_data import DataReader
+    from ddf_library.bases.context_base import ContextBase
+    from ddf_library.ddf import DDF
+
     if format_file == 'csv':
         data_reader = DataReader().csv(**kwargs)
     elif format_file == 'json':
@@ -157,60 +151,53 @@ def _apply_datareader(format_file, kwargs, task_list, last_uuid):
     else:
         raise Exception('File formart not supported.')
 
-    new_state_uuid = DDF._generate_uuid()
+    first_uuid = ContextBase.create_init()
+
     if storage is 'file':
 
         if data_reader.distributed:
             # setting the last task's input (init)
             blocks = data_reader.get_blocks()
-            COMPSsContext.catalog_tasks[last_uuid]['result'] = blocks
 
             def task_read_many_fs(block, params):
                 return data_reader.transform_fs_distributed(block, params)
 
-            COMPSsContext.catalog_tasks[new_state_uuid] = \
-                {'name': 'read-many-file',
-                 'status': DDF.STATUS_WAIT,
-                 'optimization': DDF.OPT_SERIAL,
-                 'function': [task_read_many_fs, {}],
-                 'output': 1,
-                 'input': 0,
-                 'parent': [last_uuid]
-                 }
+            new_state_uuid = ContextBase \
+                .ddf_add_task('read-many-file',
+                              status=ContextBase.STATUS_WAIT,
+                              opt=ContextBase.OPT_SERIAL,
+                              n_input=0,
+                              parent=[first_uuid],
+                              result=blocks,
+                              function=[task_read_many_fs, {}])
 
+            ContextBase.catalog_tasks[first_uuid]['result'] = blocks
         else:
-
             result, info = data_reader.transform_fs_single()
 
-            COMPSsContext.catalog_tasks[new_state_uuid] = \
-                {'name': 'read-one-file',
-                 'status': DDF.STATUS_COMPLETED,
-                 'optimization': DDF.OPT_OTHER,
-                 'function': None,
-                 'result': result,
-                 'output': 1,
-                 'input': 0,
-                 'parent': [last_uuid]
-                 }
+            new_state_uuid = ContextBase \
+                .ddf_add_task('read-one-file',
+                              status=ContextBase.STATUS_COMPLETED,
+                              opt=ContextBase.OPT_OTHER,
+                              n_input=0,
+                              parent=[first_uuid],
+                              result=result,
+                              function=None,
+                              info_data=info)
 
-            COMPSsContext.catalog_schemas[new_state_uuid] = info
     else:
         blocks = data_reader.get_blocks()
-
-        COMPSsContext.catalog_tasks[last_uuid]['result'] = blocks
+        ContextBase.catalog_tasks[first_uuid]['result'] = blocks
 
         def task_read_hdfs(block, params):
             return data_reader.transform_hdfs(block, params)
 
-        COMPSsContext.catalog_tasks[new_state_uuid] = \
-            {'name': 'read-hdfs',
-             'status': DDF.STATUS_WAIT,
-             'optimization': DDF.OPT_SERIAL,
-             'function': [task_read_hdfs, {}],
-             'output': 1,
-             'input': 0,
-             'parent': [last_uuid]
-             }
+        new_state_uuid = ContextBase \
+            .ddf_add_task('read-hdfs',
+                          status=ContextBase.STATUS_WAIT,
+                          opt=ContextBase.OPT_SERIAL,
+                          n_input=0,
+                          parent=[first_uuid],
+                          function=[task_read_hdfs, {}])
 
-    return DDF(task_list=task_list.copy(),
-               last_uuid=new_state_uuid)
+    return DDF(task_list=[first_uuid], last_uuid=new_state_uuid)

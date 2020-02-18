@@ -5,6 +5,8 @@
 __author__ = "Lucas Miguel S Ponce"
 __email__ = "lucasmsp@gmail.com"
 
+from ddf_library.bases.context_base import ContextBase
+
 from ddf_library.ddf import DDF
 from ddf_library.utils import generate_info, read_stage_file, \
     create_stage_files, save_stage_file
@@ -12,7 +14,6 @@ from ddf_library.bases.ddf_model import ModelDDF
 
 from pycompss.api.parameter import FILE_IN, COLLECTION_IN
 from pycompss.api.task import task
-from pycompss.functions.reduce import merge_reduce
 from pycompss.api.api import compss_wait_on
 
 from itertools import chain
@@ -91,13 +92,14 @@ class FPGrowth(ModelDDF):
         # split the result in nfrag to keep compatibility with others algorithms
         result, info = step6(df_group, nfrag)
 
-        uuid_key = self._ddf_add_task(task_name=self.name,
-                                      status=self.STATUS_MATERIALIZED,
-                                      opt=self.OPT_OTHER,
-                                      function=self.fit_transform,
-                                      result=result,
-                                      parent=[new_data.last_uuid],
-                                      info=info)
+        uuid_key = ContextBase\
+            .ddf_add_task(self.name,
+                          status=self.STATUS_COMPLETED,
+                          opt=self.OPT_OTHER,
+                          function=self.fit_transform,
+                          result=result,
+                          parent=[new_data.last_uuid],
+                          info_data=info)
 
         return DDF(task_list=new_data.task_list, last_uuid=uuid_key)
 

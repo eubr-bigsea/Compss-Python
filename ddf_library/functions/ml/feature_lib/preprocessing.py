@@ -4,6 +4,7 @@
 __author__ = "Lucas Miguel S Ponce"
 __email__ = "lucasmsp@gmail.com"
 
+from ddf_library.bases.context_base import ContextBase
 from pycompss.api.task import task
 from pycompss.functions.reduce import merge_reduce
 from pycompss.api.api import compss_wait_on
@@ -65,11 +66,10 @@ class Binarizer(ModelDDF):
             return _binarizer(df, params)
 
         settings = self.__dict__.copy()
-
-        uuid_key = self._ddf_add_task(task_name=self.name,
-                                      opt=self.OPT_SERIAL,
-                                      function=[task_binarizer, settings],
-                                      parent=[data.last_uuid])
+        uuid_key = ContextBase\
+            .ddf_add_task(self.name, opt=self.OPT_SERIAL,
+                          function=[task_binarizer, settings],
+                          parent=[data.last_uuid])
 
         return DDF(task_list=data.task_list, last_uuid=uuid_key)
 
@@ -192,11 +192,10 @@ class OneHotEncoder(ModelDDF):
         def task_transform_one_hot(df, params):
             return _transform_one_hot(df, params)
 
-        uuid_key = self._ddf_add_task(task_name=self.name,
-                                      opt=self.OPT_SERIAL,
-                                      function=[task_transform_one_hot,
-                                                settings],
-                                      parent=[data.last_uuid])
+        uuid_key = ContextBase \
+            .ddf_add_task(self.name, opt=self.OPT_SERIAL,
+                          function=[task_transform_one_hot, settings],
+                          parent=[data.last_uuid])
 
         return DDF(task_list=data.task_list, last_uuid=uuid_key)
 
@@ -316,10 +315,10 @@ class PolynomialExpansion(ModelDDF):
         def task_poly_expansion(df, params):
             return _poly_expansion(df, params)
 
-        uuid_key = self._ddf_add_task(task_name=self.name,
-                                      opt=self.OPT_SERIAL,
-                                      function=[task_poly_expansion, settings],
-                                      parent=[data.last_uuid])
+        uuid_key = ContextBase\
+            .ddf_add_task(self.name, opt=self.OPT_SERIAL,
+                          function=[task_poly_expansion, settings],
+                          parent=[data.last_uuid])
 
         return DDF(task_list=data.task_list, last_uuid=uuid_key)
 
@@ -443,11 +442,10 @@ class StringIndexer(ModelDDF):
         def task_string_to_indexer(df, params):
             return _string_to_indexer(df, params)
 
-        uuid_key = self._ddf_add_task(task_name=self.name,
-                                      opt=self.OPT_SERIAL,
-                                      function=[task_string_to_indexer,
-                                                settings],
-                                      parent=[data.last_uuid])
+        uuid_key = ContextBase\
+            .ddf_add_task(self.name, opt=self.OPT_SERIAL,
+                          function=[task_string_to_indexer, settings],
+                          parent=[data.last_uuid])
 
         return DDF(task_list=data.task_list, last_uuid=uuid_key)
 
@@ -531,10 +529,10 @@ class IndexToString(ModelDDF):
         def task_index_to_string(df, params):
             return _index_to_string(df, params)
 
-        uuid_key = self._ddf_add_task(task_name=self.name,
-                                      opt=self.OPT_SERIAL,
-                                      function=[task_index_to_string, settings],
-                                      parent=[data.last_uuid])
+        uuid_key = ContextBase \
+            .ddf_add_task(self.name, opt=self.OPT_SERIAL,
+                          function=[task_index_to_string, settings],
+                          parent=[data.last_uuid])
 
         return DDF(task_list=data.task_list, last_uuid=uuid_key)
 

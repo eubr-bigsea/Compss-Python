@@ -5,6 +5,7 @@
 __author__ = "Lucas Miguel S Ponce"
 __email__ = "lucasmsp@gmail.com"
 
+from ddf_library.bases.context_base import ContextBase
 from ddf_library.ddf import DDF
 from ddf_library.utils import generate_info, read_stage_file
 from ddf_library.bases.ddf_model import ModelDDF
@@ -133,11 +134,10 @@ class GaussianNB(ModelDDF):
         def task_transform_nb(df, params):
             return _nb_predict(df, params)
 
-        uuid_key = self._ddf_add_task(task_name='task_transform_nb',
-                                      opt=self.OPT_SERIAL,
-                                      function=[task_transform_nb,
-                                                settings],
-                                      parent=[data.last_uuid])
+        uuid_key = ContextBase\
+            .ddf_add_task(self.name, opt=self.OPT_SERIAL,
+                          function=[task_transform_nb, settings],
+                          parent=[data.last_uuid])
 
         return DDF(task_list=data.task_list, last_uuid=uuid_key)
 

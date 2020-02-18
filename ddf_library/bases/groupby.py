@@ -4,7 +4,7 @@
 __author__ = "Lucas Miguel S Ponce"
 __email__ = "lucasmsp@gmail.com"
 
-from ddf_library.context import COMPSsContext
+from ddf_library.bases.context_base import ContextBase
 from ddf_library.ddf import DDF
 
 
@@ -31,7 +31,7 @@ class GroupedDDF(DDF):
         self.last_uuid = ddf_var.last_uuid
         self.ddf_var = ddf_var
         self.last2 = ddf_var.task_list[-2]
-        self.parameters = COMPSsContext().get_task_function(self.last_uuid)[1]
+        self.parameters = ContextBase().get_task_function(self.last_uuid)[1]
 
         super(GroupedDDF, self).__init__(task_list=ddf_var.task_list.copy(),
                                          last_uuid=self.last_uuid)
@@ -41,16 +41,12 @@ class GroupedDDF(DDF):
         """
         Compute aggregates and returns the result as a DDF.
 
-        :param exprs: A single dict mapping from string to string, where the
-         key is the column to perform aggregation on, and the value is a list
-         of aggregation functions.
-        :param alias: A single dict mapping from string to string, where the
-         key is the old column name to perform aggregation on, and the value
-         is a list of aliases for each aggregation function.
+        :param exprs: Tuples, where: alias=('column name', function).
 
         :Example:
 
-        >>> ddf1.group_by(['col_1']).agg(MIN=('col_2', 'min'))
+        >>> ddf1.group_by(['col_1']).agg(MIN=('col_2', 'min'),
+        >>>                              MAX=('col_3', 'max'))
         """
 
         operations = []
@@ -59,9 +55,9 @@ class GroupedDDF(DDF):
             operations.append([col, function, alias])
 
         self.parameters['operation'] = operations
-        COMPSsContext.catalog_tasks[self.last_uuid]['function'][1] = \
+        ContextBase.catalog_tasks[self.last_uuid]['function'][1] = \
             self.parameters
-        COMPSsContext.catalog_tasks[self.last2]['function'][1] = self.parameters
+        ContextBase.catalog_tasks[self.last2]['function'][1] = self.parameters
 
         return self.ddf_var
 
@@ -243,5 +239,6 @@ class GroupedDDF(DDF):
 
         self.parameters['operation'] = operations
 
-        COMPSsContext.catalog_tasks[self.last_uuid]['function'][1] = self.parameters
-        COMPSsContext.catalog_tasks[self.last2]['function'][1] = self.parameters
+        ContextBase.catalog_tasks[self.last_uuid]['function'][1] = \
+            self.parameters
+        ContextBase.catalog_tasks[self.last2]['function'][1] = self.parameters

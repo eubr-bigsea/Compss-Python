@@ -1,23 +1,33 @@
 
-<!DOCTYPE html>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
 
 <html xmlns="http://www.w3.org/1999/xhtml">
   <head>
-    <meta charset="utf-8" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     <title>DDF vs PySpark DataFrame &#8212; DDF</title>
     <link rel="stylesheet" href="_static/nature.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
-    <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    './',
+        VERSION:     '0.3.1',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true,
+        SOURCELINK_SUFFIX: '.txt'
+      };
+    </script>
     <script type="text/javascript" src="_static/jquery.js"></script>
     <script type="text/javascript" src="_static/underscore.js"></script>
     <script type="text/javascript" src="_static/doctools.js"></script>
-    <script type="text/javascript" src="_static/language_data.js"></script>
     <link rel="shortcut icon" href="_static/favicon.ico"/>
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
     <link rel="next" title="API Reference" href="api.html" />
     <link rel="prev" title="Use Cases" href="guide.html" /> 
-  </head><body>
+  </head>
+  <body>
     <div class="related" role="navigation" aria-label="related navigation">
       <h3>Navigation</h3>
       <ul>
@@ -48,173 +58,173 @@
 <p>The following tables show some of these correspondences.</p>
 <div class="section" id="etl">
 <h2>ETL<a class="headerlink" href="#etl" title="Permalink to this headline">¶</a></h2>
-<table class="docutils align-default">
+<table border="1" class="docutils">
 <colgroup>
-<col style="width: 48%" />
-<col style="width: 53%" />
+<col width="48%" />
+<col width="53%" />
 </colgroup>
-<thead>
-<tr class="row-odd"><th class="head"><p>PySpark DataFrame</p></th>
-<th class="head"><p>DDF</p></th>
+<thead valign="bottom">
+<tr class="row-odd"><th class="head">PySpark DataFrame</th>
+<th class="head">DDF</th>
 </tr>
 </thead>
-<tbody>
-<tr class="row-even"><td><p>parallelize</p></td>
-<td><p>parallelize</p></td>
+<tbody valign="top">
+<tr class="row-even"><td>parallelize</td>
+<td>parallelize</td>
 </tr>
-<tr class="row-odd"><td><p>map</p></td>
-<td><p>map</p></td>
+<tr class="row-odd"><td>map</td>
+<td>map</td>
 </tr>
-<tr class="row-even"><td><p>cache</p></td>
-<td><p>cache</p></td>
+<tr class="row-even"><td>cache</td>
+<td>cache</td>
 </tr>
-<tr class="row-odd"><td><p>count</p></td>
-<td><p>count</p></td>
+<tr class="row-odd"><td>count</td>
+<td>count</td>
 </tr>
-<tr class="row-even"><td><p>describe</p></td>
-<td><p>describe</p></td>
+<tr class="row-even"><td>describe</td>
+<td>describe</td>
 </tr>
-<tr class="row-odd"><td><p>subtract</p></td>
-<td><p>subtract</p></td>
+<tr class="row-odd"><td>subtract</td>
+<td>subtract</td>
 </tr>
-<tr class="row-even"><td><p>drop</p></td>
-<td><p>drop</p></td>
+<tr class="row-even"><td>drop</td>
+<td>drop</td>
 </tr>
-<tr class="row-odd"><td><p>dropna</p></td>
-<td><p>dropna</p></td>
+<tr class="row-odd"><td>dropna</td>
+<td>dropna</td>
 </tr>
-<tr class="row-even"><td><p>dropDuplicates</p></td>
-<td><p>drop_duplicates</p></td>
+<tr class="row-even"><td>dropDuplicates</td>
+<td>drop_duplicates</td>
 </tr>
-<tr class="row-odd"><td><p>fillna</p></td>
-<td><p>fillna</p></td>
+<tr class="row-odd"><td>fillna</td>
+<td>fillna</td>
 </tr>
-<tr class="row-even"><td><p>filter</p></td>
-<td><p>filter</p></td>
+<tr class="row-even"><td>filter</td>
+<td>filter</td>
 </tr>
-<tr class="row-odd"><td><p>groupBy.agg</p></td>
-<td><p>groupBy.agg</p></td>
+<tr class="row-odd"><td>groupBy.agg</td>
+<td>groupBy.agg</td>
 </tr>
-<tr class="row-even"><td><p>intersect</p></td>
-<td><p>intersect</p></td>
+<tr class="row-even"><td>intersect</td>
+<td>intersect</td>
 </tr>
-<tr class="row-odd"><td><p>intersectAll</p></td>
-<td><p>intersect_all</p></td>
+<tr class="row-odd"><td>intersectAll</td>
+<td>intersect_all</td>
 </tr>
-<tr class="row-even"><td><p>join</p></td>
-<td><p>join</p></td>
+<tr class="row-even"><td>join</td>
+<td>join</td>
 </tr>
-<tr class="row-odd"><td><p>randomSplit</p></td>
-<td><p>split</p></td>
+<tr class="row-odd"><td>randomSplit</td>
+<td>split</td>
 </tr>
-<tr class="row-even"><td><p>replace</p></td>
-<td><p>replace</p></td>
+<tr class="row-even"><td>replace</td>
+<td>replace</td>
 </tr>
-<tr class="row-odd"><td><p>sample</p></td>
-<td><p>sample</p></td>
+<tr class="row-odd"><td>sample</td>
+<td>sample</td>
 </tr>
-<tr class="row-even"><td><p>select</p></td>
-<td><p>select</p></td>
+<tr class="row-even"><td>select</td>
+<td>select</td>
 </tr>
-<tr class="row-odd"><td><p>show</p></td>
-<td><p>show</p></td>
+<tr class="row-odd"><td>show</td>
+<td>show</td>
 </tr>
-<tr class="row-even"><td><p>sort</p></td>
-<td><p>sort</p></td>
+<tr class="row-even"><td>sort</td>
+<td>sort</td>
 </tr>
-<tr class="row-odd"><td><p>take</p></td>
-<td><p>take</p></td>
+<tr class="row-odd"><td>take</td>
+<td>take</td>
 </tr>
-<tr class="row-even"><td><p>toDF</p></td>
-<td><p>toDF</p></td>
+<tr class="row-even"><td>toDF</td>
+<td>toDF</td>
 </tr>
-<tr class="row-odd"><td><p>union</p></td>
-<td><p>union</p></td>
+<tr class="row-odd"><td>union</td>
+<td>union</td>
 </tr>
-<tr class="row-even"><td><p>unionByName</p></td>
-<td><p>union_by_name</p></td>
+<tr class="row-even"><td>unionByName</td>
+<td>union_by_name</td>
 </tr>
-<tr class="row-odd"><td><p>withColumnRenamed</p></td>
-<td><p>with_column_renamed</p></td>
+<tr class="row-odd"><td>withColumnRenamed</td>
+<td>with_column_renamed</td>
 </tr>
-<tr class="row-even"><td><p>read.text</p></td>
-<td><p>load_text</p></td>
+<tr class="row-even"><td>read.text</td>
+<td>load_text</td>
 </tr>
-<tr class="row-odd"><td><p>write</p></td>
-<td><p>save</p></td>
+<tr class="row-odd"><td>write</td>
+<td>save</td>
 </tr>
 </tbody>
 </table>
 </div>
 <div class="section" id="machine-learning">
 <h2>Machine Learning<a class="headerlink" href="#machine-learning" title="Permalink to this headline">¶</a></h2>
-<table class="docutils align-default">
+<table border="1" class="docutils">
 <colgroup>
-<col style="width: 55%" />
-<col style="width: 45%" />
+<col width="55%" />
+<col width="45%" />
 </colgroup>
-<thead>
-<tr class="row-odd"><th class="head"><p>PySpark DataFrame</p></th>
-<th class="head"><p>DDF</p></th>
+<thead valign="bottom">
+<tr class="row-odd"><th class="head">PySpark DataFrame</th>
+<th class="head">DDF</th>
 </tr>
 </thead>
-<tbody>
-<tr class="row-even"><td><p>VectorAssembler</p></td>
-<td><p>VectorAssembler</p></td>
+<tbody valign="top">
+<tr class="row-even"><td>VectorAssembler</td>
+<td>VectorAssembler</td>
 </tr>
-<tr class="row-odd"><td><p>VectorSlicer</p></td>
-<td><p>VectorSlicer</p></td>
+<tr class="row-odd"><td>VectorSlicer</td>
+<td>VectorSlicer</td>
 </tr>
-<tr class="row-even"><td><p>NGram</p></td>
-<td><p>NGram</p></td>
+<tr class="row-even"><td>NGram</td>
+<td>NGram</td>
 </tr>
-<tr class="row-odd"><td><p>TF-IDF</p></td>
-<td><p>TF-IDF</p></td>
+<tr class="row-odd"><td>TF-IDF</td>
+<td>TF-IDF</td>
 </tr>
-<tr class="row-even"><td><p>CountVectorizer</p></td>
-<td><p>CountVectorizer</p></td>
+<tr class="row-even"><td>CountVectorizer</td>
+<td>CountVectorizer</td>
 </tr>
-<tr class="row-odd"><td><p>Tokenizer</p></td>
-<td><p>Tokenizer</p></td>
+<tr class="row-odd"><td>Tokenizer</td>
+<td>Tokenizer</td>
 </tr>
-<tr class="row-even"><td><p>StopWordsRemover</p></td>
-<td><p>RemoveStopWords</p></td>
+<tr class="row-even"><td>StopWordsRemover</td>
+<td>RemoveStopWords</td>
 </tr>
-<tr class="row-odd"><td><p>PCA</p></td>
-<td><p>PCA</p></td>
+<tr class="row-odd"><td>PCA</td>
+<td>PCA</td>
 </tr>
-<tr class="row-even"><td><p>StringIndexer</p></td>
-<td><p>StringIndexer</p></td>
+<tr class="row-even"><td>StringIndexer</td>
+<td>StringIndexer</td>
 </tr>
-<tr class="row-odd"><td><p>IndexToString</p></td>
-<td><p>IndexToString</p></td>
+<tr class="row-odd"><td>IndexToString</td>
+<td>IndexToString</td>
 </tr>
-<tr class="row-even"><td><p>StandardScaler</p></td>
-<td><p>StandardScaler</p></td>
+<tr class="row-even"><td>StandardScaler</td>
+<td>StandardScaler</td>
 </tr>
-<tr class="row-odd"><td><p>MaxAbsScaler</p></td>
-<td><p>MaxAbsScaler</p></td>
+<tr class="row-odd"><td>MaxAbsScaler</td>
+<td>MaxAbsScaler</td>
 </tr>
-<tr class="row-even"><td><p>MinMaxScaler</p></td>
-<td><p>MinMaxScaler</p></td>
+<tr class="row-even"><td>MinMaxScaler</td>
+<td>MinMaxScaler</td>
 </tr>
-<tr class="row-odd"><td><p>SVMWithSGD</p></td>
-<td><p>SVM</p></td>
+<tr class="row-odd"><td>SVMWithSGD</td>
+<td>SVM</td>
 </tr>
-<tr class="row-even"><td><p>LogisticRegressionWithSGD</p></td>
-<td><p>LogisticRegression</p></td>
+<tr class="row-even"><td>LogisticRegressionWithSGD</td>
+<td>LogisticRegression</td>
 </tr>
-<tr class="row-odd"><td><p>NaiveBayes</p></td>
-<td><p>Gaussian Naive Bayes</p></td>
+<tr class="row-odd"><td>NaiveBayes</td>
+<td>Gaussian Naive Bayes</td>
 </tr>
-<tr class="row-even"><td><p>LinearRegressionWithSGD</p></td>
-<td><p>LinearRegression</p></td>
+<tr class="row-even"><td>LinearRegressionWithSGD</td>
+<td>LinearRegression</td>
 </tr>
-<tr class="row-odd"><td><p>K-means</p></td>
-<td><p>K-Means</p></td>
+<tr class="row-odd"><td>K-means</td>
+<td>K-Means</td>
 </tr>
-<tr class="row-even"><td><p>AssociationRules</p></td>
-<td><p>AssociationRules</p></td>
+<tr class="row-even"><td>AssociationRules</td>
+<td>AssociationRules</td>
 </tr>
 </tbody>
 </table>
@@ -227,7 +237,7 @@
       </div>
       <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
         <div class="sphinxsidebarwrapper">
-  <h3><a href="index.html">Table of Contents</a></h3>
+  <h3><a href="index.html">Table Of Contents</a></h3>
   <ul>
 <li><a class="reference internal" href="#">DDF vs PySpark DataFrame</a><ul>
 <li><a class="reference internal" href="#etl">ETL</a></li>
@@ -243,13 +253,13 @@
   <p class="topless"><a href="api.html"
                         title="next chapter">API Reference</a></p>
 <div id="searchbox" style="display: none" role="search">
-  <h3 id="searchlabel">Quick search</h3>
-    <div class="searchformwrapper">
+  <h3>Quick search</h3>
     <form class="search" action="search.html" method="get">
-      <input type="text" name="q" aria-labelledby="searchlabel" />
-      <input type="submit" value="Go" />
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
     </form>
-    </div>
 </div>
 <script type="text/javascript">$('#searchbox').show(0);</script>
         </div>
@@ -276,7 +286,7 @@
     </div>
     <div class="footer" role="contentinfo">
         &#169; Copyright 2019, Lucas M Ponce.
-      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 2.1.0.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.6.7.
     </div>
   </body>
 </html>

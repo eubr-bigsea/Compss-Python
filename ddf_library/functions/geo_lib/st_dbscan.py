@@ -500,8 +500,7 @@ def _update_cluster(partial, oldC_newC, grid):
                                round(point[lon_col], 5) < (end_lon+0.00001)])
         tmp = df1.apply(f, axis=1)
         df1 = df1.loc[tmp]
-        df1.drop_duplicates([primary_key], inplace=False)
-        df1.reset_index(drop=True, inplace=True)
+        df1.drop_duplicates([primary_key], inplace=False, ignore_index=True)
         for key in oldC_newC:
             if key in clusters:
                 df1.loc[df1[clusterCol] == key, clusterCol] = oldC_newC[key]

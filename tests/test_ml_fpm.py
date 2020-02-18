@@ -1,7 +1,7 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 
-from ddf_library.ddf import DDF
+from ddf_library.context import COMPSsContext
 import pandas as pd
 
 
@@ -17,9 +17,9 @@ def ml_fpm_fpgrowth():
 
     def f1(x):
         return x.split(',')
-
+    cc = COMPSsContext()
     f1_udf = udf(f1, ArrayType, col('col_0'))
-    data_set = DDF() \
+    data_set = cc \
         .parallelize(data, 2) \
         .map(f1_udf, 'col_0')
 
@@ -53,6 +53,7 @@ def ml_fpm_fpgrowth():
     item_set.show()
     print("RESULT rules:")
     # rules.show()
+    cc.stop()
 
 
 if __name__ == '__main__':

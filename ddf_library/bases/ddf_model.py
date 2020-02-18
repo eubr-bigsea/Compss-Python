@@ -6,6 +6,7 @@ __email__ = "lucasmsp@gmail.com"
 
 import _pickle as pickle
 from ddf_library.bases.ddf_base import DDFSketch
+from ddf_library.utils import parser_filepath
 
 
 class ModelDDF(DDFSketch):
@@ -37,22 +38,11 @@ class ModelDDF(DDFSketch):
 
         :Example:
 
-        >>> cls = KMeans().fit(dataset, input_col='features')
+        >>> cls = KMeans().fit(dataset, input_col=['col1', 'col2'])
         >>> cls.save_model('hdfs://localhost:9000/trained_model')
         """
-        host, port = None, None
-        import re
-        if re.match(r"hdfs:\/\/+", filepath):
-            storage = 'hdfs'
-            host, filename = filepath[7:].split(':')
-            port, filename = filename.split('/', 1)
-            filename = '/' + filename
-            port = int(port)
-        elif re.match(r"file:\/\/+", filepath):
-            storage = 'file'
-            filename = filepath[7:]
-        else:
-            raise Exception('`hdfs:` and `file:` storage are supported.')
+
+        host, port, filename, storage = parser_filepath(filepath)
 
         if storage == 'hdfs':
             from hdfspycompss.hdfs import HDFS
@@ -83,19 +73,7 @@ class ModelDDF(DDFSketch):
 
         >>> ml_model = Kmeans().load_model('hdfs://localhost:9000/model')
         """
-        host, port = None, None
-        import re
-        if re.match(r"hdfs:\/\/+", filepath):
-            storage = 'hdfs'
-            host, filename = filepath[7:].split(':')
-            port, filename = filename.split('/', 1)
-            filename = '/' + filename
-            port = int(port)
-        elif re.match(r"file:\/\/+", filepath):
-            storage = 'file'
-            filename = filepath[7:]
-        else:
-            raise Exception('`hdfs:` and `file:` storage are supported.')
+        host, port, filename, storage = parser_filepath(filepath)
 
         if storage == 'hdfs':
             from hdfspycompss.hdfs import HDFS

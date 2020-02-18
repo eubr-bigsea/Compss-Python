@@ -1,23 +1,33 @@
 
-<!DOCTYPE html>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
 
 <html xmlns="http://www.w3.org/1999/xhtml">
   <head>
-    <meta charset="utf-8" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     <title>ML.Clustering &#8212; DDF</title>
     <link rel="stylesheet" href="_static/nature.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
-    <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    './',
+        VERSION:     '0.3.1',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true,
+        SOURCELINK_SUFFIX: '.txt'
+      };
+    </script>
     <script type="text/javascript" src="_static/jquery.js"></script>
     <script type="text/javascript" src="_static/underscore.js"></script>
     <script type="text/javascript" src="_static/doctools.js"></script>
-    <script type="text/javascript" src="_static/language_data.js"></script>
     <link rel="shortcut icon" href="_static/favicon.ico"/>
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
     <link rel="next" title="ML.Evaluation" href="ddf_library.functions.ml.evaluation.html" />
     <link rel="prev" title="ML.Classification" href="ddf_library.functions.ml.classification.html" /> 
-  </head><body>
+  </head>
+  <body>
     <div class="related" role="navigation" aria-label="related navigation">
       <h3>Navigation</h3>
       <ul>
@@ -48,8 +58,8 @@
 <span id="ml-clustering"></span><h1>ML.Clustering<a class="headerlink" href="#module-ddf_library.functions.ml.clustering" title="Permalink to this headline">¶</a></h1>
 <dl class="class">
 <dt id="ddf_library.functions.ml.clustering.Kmeans">
-<em class="property">class </em><code class="sig-prename descclassname">ddf_library.functions.ml.clustering.</code><code class="sig-name descname">Kmeans</code><span class="sig-paren">(</span><em class="sig-param">n_clusters=3</em>, <em class="sig-param">max_iter=100</em>, <em class="sig-param">epsilon=0.01</em>, <em class="sig-param">init_mode='k-means||'</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.functions.ml.clustering.Kmeans" title="Permalink to this definition">¶</a></dt>
-<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">ddf_library.ddf_model.ModelDDF</span></code></p>
+<em class="property">class </em><code class="descclassname">ddf_library.functions.ml.clustering.</code><code class="descname">Kmeans</code><span class="sig-paren">(</span><em>n_clusters=3</em>, <em>max_iter=100</em>, <em>epsilon=0.01</em>, <em>init_mode='k-means||'</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.functions.ml.clustering.Kmeans" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal"><span class="pre">ddf_library.bases.ddf_model.ModelDDF</span></code></p>
 <p>K-means clustering is a type of unsupervised learning, which is used when
 you have unlabeled data (i.e., data without defined categories or groups).
 The goal of this algorithm is to find groups in the data, with the number of
@@ -60,172 +70,204 @@ provided. Data points are clustered based on feature similarity.</p>
 are: “random” and “k-means||”:</p>
 <blockquote>
 <div><ul class="simple">
-<li><p>random: Starting with a set of randomly chosen initial centers;</p></li>
-<li><p>k-means|| (Bahmani et al., Scalable K-Means++, VLDB 2012): This is a
+<li>random: Starting with a set of randomly chosen initial centers;</li>
+<li>k-means|| (Bahmani et al., Scalable K-Means++, VLDB 2012): This is a
 variant of k-means++ that tries to find dissimilar cluster centers by
 starting with a random center and then doing passes where more centers
 are chosen with probability proportional to their squared distance to the
 current cluster set. It results in a provable approximation to an optimal
-clustering.</p></li>
+clustering.</li>
 </ul>
 </div></blockquote>
-<dl class="field-list simple">
-<dt class="field-odd">Example</dt>
-<dd class="field-odd"><p></p></dd>
-</dl>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">clu</span> <span class="o">=</span> <span class="n">Kmeans</span><span class="p">(</span><span class="n">n_clusters</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">init_mode</span><span class="o">=</span><span class="s1">&#39;random&#39;</span><span class="p">)</span>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Example:</th><td class="field-body"></td>
+</tr>
+</tbody>
+</table>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">clu</span> <span class="o">=</span> <span class="n">Kmeans</span><span class="p">(</span><span class="n">n_clusters</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">init_mode</span><span class="o">=</span><span class="s1">&#39;random&#39;</span><span class="p">)</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">ddf2</span> <span class="o">=</span> <span class="n">clu</span><span class="o">.</span><span class="n">fit_transform</span><span class="p">(</span><span class="n">ddf1</span><span class="p">,</span> <span class="n">feature_col</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;col1&#39;</span><span class="p">,</span> <span class="s1">&#39;col2&#39;</span><span class="p">])</span>
 </pre></div>
 </div>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>n_clusters</strong> – Number of clusters;</p></li>
-<li><p><strong>max_iter</strong> – Number maximum of iterations;</p></li>
-<li><p><strong>epsilon</strong> – tolerance value (default, 0.01);</p></li>
-<li><p><strong>init_mode</strong> – <em>‘random’</em> or <em>‘k-means||’</em>.</p></li>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>n_clusters</strong> – Number of clusters;</li>
+<li><strong>max_iter</strong> – Number maximum of iterations;</li>
+<li><strong>epsilon</strong> – tolerance value (default, 0.01);</li>
+<li><strong>init_mode</strong> – <em>‘random’</em> or <em>‘k-means||’</em>.</li>
 </ul>
-</dd>
-</dl>
+</td>
+</tr>
+</tbody>
+</table>
 <dl class="attribute">
 <dt id="ddf_library.functions.ml.clustering.Kmeans.OPT_LAST">
-<code class="sig-name descname">OPT_LAST</code><em class="property"> = 'last'</em><a class="headerlink" href="#ddf_library.functions.ml.clustering.Kmeans.OPT_LAST" title="Permalink to this definition">¶</a></dt>
+<code class="descname">OPT_LAST</code><em class="property"> = 'last'</em><a class="headerlink" href="#ddf_library.functions.ml.clustering.Kmeans.OPT_LAST" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <dl class="attribute">
 <dt id="ddf_library.functions.ml.clustering.Kmeans.OPT_OTHER">
-<code class="sig-name descname">OPT_OTHER</code><em class="property"> = 'other'</em><a class="headerlink" href="#ddf_library.functions.ml.clustering.Kmeans.OPT_OTHER" title="Permalink to this definition">¶</a></dt>
+<code class="descname">OPT_OTHER</code><em class="property"> = 'other'</em><a class="headerlink" href="#ddf_library.functions.ml.clustering.Kmeans.OPT_OTHER" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <dl class="attribute">
 <dt id="ddf_library.functions.ml.clustering.Kmeans.OPT_SERIAL">
-<code class="sig-name descname">OPT_SERIAL</code><em class="property"> = 'serial'</em><a class="headerlink" href="#ddf_library.functions.ml.clustering.Kmeans.OPT_SERIAL" title="Permalink to this definition">¶</a></dt>
+<code class="descname">OPT_SERIAL</code><em class="property"> = 'serial'</em><a class="headerlink" href="#ddf_library.functions.ml.clustering.Kmeans.OPT_SERIAL" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="ddf_library.functions.ml.clustering.Kmeans.STATUS_COMPLETED">
+<code class="descname">STATUS_COMPLETED</code><em class="property"> = 'COMPLETED'</em><a class="headerlink" href="#ddf_library.functions.ml.clustering.Kmeans.STATUS_COMPLETED" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="ddf_library.functions.ml.clustering.Kmeans.STATUS_PERSISTED">
+<code class="descname">STATUS_PERSISTED</code><em class="property"> = 'PERSISTED'</em><a class="headerlink" href="#ddf_library.functions.ml.clustering.Kmeans.STATUS_PERSISTED" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="ddf_library.functions.ml.clustering.Kmeans.STATUS_WAIT">
+<code class="descname">STATUS_WAIT</code><em class="property"> = 'WAIT'</em><a class="headerlink" href="#ddf_library.functions.ml.clustering.Kmeans.STATUS_WAIT" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <dl class="method">
 <dt id="ddf_library.functions.ml.clustering.Kmeans.check_fitted_model">
-<code class="sig-name descname">check_fitted_model</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.functions.ml.clustering.Kmeans.check_fitted_model" title="Permalink to this definition">¶</a></dt>
+<code class="descname">check_fitted_model</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.functions.ml.clustering.Kmeans.check_fitted_model" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <dl class="method">
 <dt id="ddf_library.functions.ml.clustering.Kmeans.compute_cost">
-<code class="sig-name descname">compute_cost</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.functions.ml.clustering.Kmeans.compute_cost" title="Permalink to this definition">¶</a></dt>
+<code class="descname">compute_cost</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.functions.ml.clustering.Kmeans.compute_cost" title="Permalink to this definition">¶</a></dt>
 <dd><p>Compute the cost of this iteration;</p>
-<dl class="field-list simple">
-<dt class="field-odd">Returns</dt>
-<dd class="field-odd"><p>float</p>
-</dd>
-</dl>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">float</td>
+</tr>
+</tbody>
+</table>
 </dd></dl>
 
 <dl class="method">
 <dt id="ddf_library.functions.ml.clustering.Kmeans.fit">
-<code class="sig-name descname">fit</code><span class="sig-paren">(</span><em class="sig-param">data</em>, <em class="sig-param">feature_col</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.functions.ml.clustering.Kmeans.fit" title="Permalink to this definition">¶</a></dt>
-<dd><dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>data</strong> – DDF</p></li>
-<li><p><strong>feature_col</strong> – Features column names;</p></li>
+<code class="descname">fit</code><span class="sig-paren">(</span><em>data</em>, <em>feature_col</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.functions.ml.clustering.Kmeans.fit" title="Permalink to this definition">¶</a></dt>
+<dd><table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>data</strong> – DDF</li>
+<li><strong>feature_col</strong> – Features column names;</li>
 </ul>
-</dd>
-<dt class="field-even">Returns</dt>
-<dd class="field-even"><p>trained model</p>
-</dd>
-</dl>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">trained model</p>
+</td>
+</tr>
+</tbody>
+</table>
 </dd></dl>
 
 <dl class="method">
 <dt id="ddf_library.functions.ml.clustering.Kmeans.fit_transform">
-<code class="sig-name descname">fit_transform</code><span class="sig-paren">(</span><em class="sig-param">data</em>, <em class="sig-param">feature_col</em>, <em class="sig-param">pred_col='prediction_kmeans'</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.functions.ml.clustering.Kmeans.fit_transform" title="Permalink to this definition">¶</a></dt>
+<code class="descname">fit_transform</code><span class="sig-paren">(</span><em>data</em>, <em>feature_col</em>, <em>pred_col='prediction_kmeans'</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.functions.ml.clustering.Kmeans.fit_transform" title="Permalink to this definition">¶</a></dt>
 <dd><p>Fit the model and transform.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>data</strong> – DDF</p></li>
-<li><p><strong>feature_col</strong> – Features column names;</p></li>
-<li><p><strong>pred_col</strong> – Output prediction column;</p></li>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>data</strong> – DDF</li>
+<li><strong>feature_col</strong> – Features column names;</li>
+<li><strong>pred_col</strong> – Output prediction column;</li>
 </ul>
-</dd>
-<dt class="field-even">Returns</dt>
-<dd class="field-even"><p>DDF</p>
-</dd>
-</dl>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">DDF</p>
+</td>
+</tr>
+</tbody>
+</table>
 </dd></dl>
 
 <dl class="method">
 <dt id="ddf_library.functions.ml.clustering.Kmeans.load_model">
-<code class="sig-name descname">load_model</code><span class="sig-paren">(</span><em class="sig-param">filepath</em>, <em class="sig-param">storage='hdfs'</em>, <em class="sig-param">namenode='localhost'</em>, <em class="sig-param">port=9000</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.functions.ml.clustering.Kmeans.load_model" title="Permalink to this definition">¶</a></dt>
+<code class="descname">load_model</code><span class="sig-paren">(</span><em>filepath</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.functions.ml.clustering.Kmeans.load_model" title="Permalink to this definition">¶</a></dt>
 <dd><p>Load a machine learning model from a binary file in a storage.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>filepath</strong> – The absolute path name;</p></li>
-<li><p><strong>storage</strong> – <em>‘hdfs’</em> to load from HDFS storage or <em>‘fs’</em> to load
-from common file system;</p></li>
-<li><p><strong>storage</strong> – <em>‘hdfs’</em> to save in HDFS storage or <em>‘fs’</em> to save in
-common file system;</p></li>
-<li><p><strong>namenode</strong> – IP or DNS address to NameNode (default, <em>‘localhost’</em>).
-Note: Only if storage is <em>‘hdfs’</em>;</p></li>
-<li><p><strong>port</strong> – NameNode port (default, 9000). Note: Only if storage is
-<em>‘hdfs’</em>;</p></li>
-</ul>
-</dd>
-<dt class="field-even">Returns</dt>
-<dd class="field-even"><p>self</p>
-</dd>
-<dt class="field-odd">Example</dt>
-<dd class="field-odd"><p></p></dd>
-</dl>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">ml_model</span> <span class="o">=</span> <span class="n">ml_algorithm</span><span class="p">()</span><span class="o">.</span><span class="n">load_model</span><span class="p">(</span><span class="s1">&#39;/saved_model&#39;</span><span class="p">)</span>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>filepath</strong> – The absolute path name;</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">self</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Example:</th><td class="field-body"></td>
+</tr>
+</tbody>
+</table>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">ml_model</span> <span class="o">=</span> <span class="n">Kmeans</span><span class="p">()</span><span class="o">.</span><span class="n">load_model</span><span class="p">(</span><span class="s1">&#39;hdfs://localhost:9000/model&#39;</span><span class="p">)</span>
 </pre></div>
 </div>
 </dd></dl>
 
 <dl class="attribute">
 <dt id="ddf_library.functions.ml.clustering.Kmeans.optimization_ops">
-<code class="sig-name descname">optimization_ops</code><em class="property"> = ['other', 'serial', 'last']</em><a class="headerlink" href="#ddf_library.functions.ml.clustering.Kmeans.optimization_ops" title="Permalink to this definition">¶</a></dt>
+<code class="descname">optimization_ops</code><em class="property"> = ['other', 'serial', 'last']</em><a class="headerlink" href="#ddf_library.functions.ml.clustering.Kmeans.optimization_ops" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <dl class="method">
 <dt id="ddf_library.functions.ml.clustering.Kmeans.save_model">
-<code class="sig-name descname">save_model</code><span class="sig-paren">(</span><em class="sig-param">filepath</em>, <em class="sig-param">storage='hdfs'</em>, <em class="sig-param">overwrite=True</em>, <em class="sig-param">namenode='localhost'</em>, <em class="sig-param">port=9000</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.functions.ml.clustering.Kmeans.save_model" title="Permalink to this definition">¶</a></dt>
+<code class="descname">save_model</code><span class="sig-paren">(</span><em>filepath</em>, <em>overwrite=True</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.functions.ml.clustering.Kmeans.save_model" title="Permalink to this definition">¶</a></dt>
 <dd><p>Save a machine learning model as a binary file in a storage.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>filepath</strong> – The output absolute path name;</p></li>
-<li><p><strong>storage</strong> – <em>‘hdfs’</em> to save in HDFS storage or <em>‘fs’</em> to save in
-common file system;</p></li>
-<li><p><strong>overwrite</strong> – Overwrite if file already exists (default, True);</p></li>
-<li><p><strong>namenode</strong> – IP or DNS address to NameNode (default, <em>‘localhost’</em>);</p></li>
-<li><p><strong>port</strong> – NameNode port (default, 9000);</p></li>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>filepath</strong> – The output absolute path name;</li>
+<li><strong>overwrite</strong> – Overwrite if file already exists (default, True);</li>
 </ul>
-</dd>
-<dt class="field-even">Returns</dt>
-<dd class="field-even"><p>self</p>
-</dd>
-<dt class="field-odd">Example</dt>
-<dd class="field-odd"><p></p></dd>
-</dl>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">ml_model</span><span class="o">.</span><span class="n">save_model</span><span class="p">(</span><span class="s1">&#39;/trained_model&#39;</span><span class="p">)</span>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">self</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Example:</th><td class="field-body"></td>
+</tr>
+</tbody>
+</table>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="bp">cls</span> <span class="o">=</span> <span class="n">KMeans</span><span class="p">()</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">dataset</span><span class="p">,</span> <span class="n">input_col</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;col1&#39;</span><span class="p">,</span> <span class="s1">&#39;col2&#39;</span><span class="p">])</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="bp">cls</span><span class="o">.</span><span class="n">save_model</span><span class="p">(</span><span class="s1">&#39;hdfs://localhost:9000/trained_model&#39;</span><span class="p">)</span>
 </pre></div>
 </div>
 </dd></dl>
 
 <dl class="method">
 <dt id="ddf_library.functions.ml.clustering.Kmeans.transform">
-<code class="sig-name descname">transform</code><span class="sig-paren">(</span><em class="sig-param">data</em>, <em class="sig-param">pred_col='prediction_kmeans'</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.functions.ml.clustering.Kmeans.transform" title="Permalink to this definition">¶</a></dt>
-<dd><dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>data</strong> – DDF</p></li>
-<li><p><strong>pred_col</strong> – Output prediction column;</p></li>
+<code class="descname">transform</code><span class="sig-paren">(</span><em>data</em>, <em>feature_col=None</em>, <em>pred_col='prediction_kmeans'</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.functions.ml.clustering.Kmeans.transform" title="Permalink to this definition">¶</a></dt>
+<dd><table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>data</strong> – DDF</li>
+<li><strong>feature_col</strong> – Optional, features;</li>
+<li><strong>pred_col</strong> – Output prediction column;</li>
 </ul>
-</dd>
-<dt class="field-even">Returns</dt>
-<dd class="field-even"><p>trained model</p>
-</dd>
-</dl>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">trained model</p>
+</td>
+</tr>
+</tbody>
+</table>
 </dd></dl>
 
 </dd></dl>
@@ -245,13 +287,13 @@ common file system;</p></li>
   <p class="topless"><a href="ddf_library.functions.ml.evaluation.html"
                         title="next chapter">ML.Evaluation</a></p>
 <div id="searchbox" style="display: none" role="search">
-  <h3 id="searchlabel">Quick search</h3>
-    <div class="searchformwrapper">
+  <h3>Quick search</h3>
     <form class="search" action="search.html" method="get">
-      <input type="text" name="q" aria-labelledby="searchlabel" />
-      <input type="submit" value="Go" />
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
     </form>
-    </div>
 </div>
 <script type="text/javascript">$('#searchbox').show(0);</script>
         </div>
@@ -280,7 +322,7 @@ common file system;</p></li>
     </div>
     <div class="footer" role="contentinfo">
         &#169; Copyright 2019, Lucas M Ponce.
-      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 2.1.0.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.6.7.
     </div>
   </body>
 </html>

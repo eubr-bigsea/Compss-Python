@@ -39,9 +39,10 @@ def intersect_stage_2(df1, df2, settings):
     df1 = df1.dropna(axis=0, how='any')
 
     if remove_duplicates:
-        df1 = df1.drop_duplicates(subset=keys)
+        df1 = df1.drop_duplicates(subset=keys, ignore_index=True)
 
-    df2 = df2.dropna(axis=0, how='any').drop_duplicates(subset=keys2)
+    df2 = df2.dropna(axis=0, how='any')\
+        .drop_duplicates(subset=keys2, ignore_index=True)
 
     if set(keys) == set(keys2) and len(df1) > 0:
         df1 = pd.merge(df1, df2, how='inner', on=keys, copy=False)

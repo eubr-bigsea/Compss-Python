@@ -76,7 +76,8 @@ def read_shapefile(settings, nfrag):
 
     if len(header) == 0:
         header = [f for f in fields]
-    header.remove(polygon)
+    if polygon in header:
+        header.remove(polygon)
 
     # position of each selected field
     fields_idx = [fields[f] for f in header]

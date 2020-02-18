@@ -1,15 +1,13 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-from ddf_library.ddf import DDF
 import pandas as pd
 import numpy as np
 
-#from ddf_library.context import COMPSsContext
-#COMPSsContext().set_log(True)
+from ddf_library.context import COMPSsContext
 
 
-def binary_evaluator():
+def binary_evaluator(cc):
     from ddf_library.functions.ml.evaluation import BinaryClassificationMetrics
 
     data = pd.DataFrame([[1, 70, 2, 0],
@@ -20,7 +18,7 @@ def binary_evaluator():
                          [0, 235, 13, 1],
                          [0, 400, 20, 1],
                          ], columns=['label', 'z', 'y', 'prediction'])
-    dataset = DDF().parallelize(data, 4)
+    dataset = cc.parallelize(data, 4)
 
     metrics_bin = BinaryClassificationMetrics(label_col='label',
                                               true_label=1,
@@ -32,7 +30,7 @@ def binary_evaluator():
           metrics_bin.confusion_matrix)
 
 
-def multi_label_evaluator():
+def multi_label_evaluator(cc):
     from ddf_library.functions.ml.evaluation import MultilabelMetrics
 
     data = pd.DataFrame([[1, 70, 2, 1],
@@ -43,7 +41,7 @@ def multi_label_evaluator():
                          [1, 235, 13, 1],
                          [1, 400, 20, 1],
                          ], columns=['label', 'z', 'y', 'prediction'])
-    dataset = DDF().parallelize(data, 4)
+    dataset = cc.parallelize(data, 4)
 
     metrics_multi = MultilabelMetrics(label_col='label',
                                       pred_col='prediction',
@@ -55,7 +53,7 @@ def multi_label_evaluator():
           metrics_multi.precision_recall)
 
 
-def regressor_metrics():
+def regressor_metrics(cc):
     print("\n_____Regression Metrics Evaluator_____\n")
     data = pd.DataFrame([[14, 70, 2, 3.3490],
                          [16, 75, 5, 3.7180],
@@ -65,7 +63,7 @@ def regressor_metrics():
                          [50, 235, 13, 11.9783],
                          [83, 400, 20, 20.2529],
                          ], columns=['x', 'z', 'y', 'prediction'])
-    dataset = DDF().parallelize(data, 4)
+    dataset = cc.parallelize(data, 4)
 
     from ddf_library.functions.ml.evaluation import RegressionMetrics
     metrics1 = RegressionMetrics(col_features=['x'], label_col='y',
@@ -124,4 +122,6 @@ if __name__ == '__main__':
     list_operations = [binary_evaluator,
                        multi_label_evaluator,
                        regressor_metrics]
-    list_operations[operation - 1]()
+    cc = COMPSsContext()
+    list_operations[operation - 1](cc)
+    cc.stop()

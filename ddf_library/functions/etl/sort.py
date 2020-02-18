@@ -91,8 +91,7 @@ def sort_stage_2(data, settings):
     order = settings['ascending']
     frag = settings['id_frag']
 
-    data.sort_values(cols, inplace=True, ascending=order)
-    data.reset_index(drop=True, inplace=True)
+    data.sort_values(cols, inplace=True, ascending=order, ignore_index=True)
 
     info = generate_info(data, frag)
 

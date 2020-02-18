@@ -1,7 +1,7 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 
-from ddf_library.ddf import DDF
+from ddf_library.context import COMPSsContext
 import pandas as pd
 
 
@@ -11,9 +11,8 @@ def use_case1():
     or survived along with their gender and age.
     """
     df = pd.read_csv('./titanic.csv', sep='\t')
-    from ddf_library.context import COMPSsContext
-    # COMPSsContext().set_log(True)
-    ddf1 = DDF().parallelize(df, num_of_parts='*')\
+    cc = COMPSsContext()
+    ddf1 = cc.parallelize(df, num_of_parts='*')\
         .select(['Sex', 'Age', 'Survived'])\
         .dropna(['Sex', 'Age'], mode='REMOVE_ROW')\
         .replace({0: 'No', 1: 'Yes'}, subset=['Survived']).persist()
@@ -32,7 +31,8 @@ def use_case1():
         .join(ddf_kids, key1=['Survived'], key2=['Survived'], mode='inner')
 
     ddf_final.show()
-    # COMPSsContext().context_status()
+    # cc.context_status()
+    cc.stop()
 
 
 def use_case2():
@@ -110,7 +110,8 @@ def use_case2():
     features = ['Pclass', 'Sex', 'Age', 'SibSp', 'Parch', 'Fare', 'Embarked']
     all_columns = features + ['Survived']
 
-    ddf1 = DDF().parallelize(df, num_of_parts='*')\
+    cc = COMPSsContext()
+    ddf1 = cc.parallelize(df, num_of_parts='*')\
         .drop(['PassengerId', 'Cabin', 'Ticket'])\
         .dropna(all_columns, how='any')\
         .replace({'male': 1, 'female': 0}, subset=['Sex'])\
@@ -170,6 +171,7 @@ def use_case2():
 
     print("Metrics:\n", metrics_bin.get_metrics())
     print("\nConfusion Matrix:\n", metrics_bin.confusion_matrix)
+    cc.stop()
 
     """
     Number of rows to fit the model: 88

@@ -5,6 +5,8 @@
 __author__ = "Lucas Miguel S Ponce"
 __email__ = "lucasmsp@gmail.com"
 
+from ddf_library.bases.context_base import ContextBase
+
 from ddf_library.ddf import DDF
 from ddf_library.utils import generate_info, merge_info, read_stage_file, \
     save_stage_file, create_stage_files
@@ -105,12 +107,13 @@ class AssociationRules(ModelDDF): # TODO
         compss_delete_object(out1)
         compss_delete_object(out2)
 
-        uuid_key = self._ddf_add_task(task_name='task_associative_rules',
-                                      status='COMPLETED', opt=self.OPT_OTHER,
-                                      result=result,
-                                      function=self.fit_transform,
-                                      parent=[tmp.last_uuid],
-                                      info=info)
+        uuid_key = ContextBase\
+            .ddf_add_task(self.name, status=self.STATUS_COMPLETED,
+                          opt=self.OPT_OTHER,
+                          result=result,
+                          function=self.fit_transform,
+                          parent=[tmp.last_uuid],
+                          info_data=info)
 
         return DDF(task_list=tmp.task_list, last_uuid=uuid_key)
 

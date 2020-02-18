@@ -5,6 +5,8 @@
 __author__ = "Lucas Miguel S Ponce"
 __email__ = "lucasmsp@gmail.com"
 
+from ddf_library.bases.context_base import ContextBase
+
 from ddf_library.ddf import DDF
 from ddf_library.bases.ddf_model import ModelDDF
 from ddf_library.utils import generate_info, read_stage_file
@@ -110,10 +112,10 @@ class GDRegressor(ModelDDF):
         def task_gd_regressor(df, params):
             return _predict(df, params)
 
-        uuid_key = self._ddf_add_task(task_name='task_gd_regressor',
-                                      opt=self.OPT_SERIAL,
-                                      function=[task_gd_regressor, settings],
-                                      parent=[data.last_uuid])
+        uuid_key = ContextBase\
+            .ddf_add_task(self.name, opt=self.OPT_SERIAL,
+                          function=[task_gd_regressor, settings],
+                          parent=[data.last_uuid])
 
         return DDF(task_list=data.task_list, last_uuid=uuid_key)
 
