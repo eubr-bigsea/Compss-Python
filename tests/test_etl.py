@@ -420,12 +420,13 @@ def flow_recompute_task():
         .select(['a', 'b']) \
         .select(['a'])\
         .sample(5).select(['a'])
-    ddf2.show()
+    ddf2.save.csv('file:///tmp/flow_recompute_task')
 
     ddf3 = ddf1.select(['a', 'b'])
     ddf3.show()
     cc.context_status()
     cc.stop()
+    # expected result: 1 temporary output (select) and 1 persisted (save)
 
 
 def hash_partition():

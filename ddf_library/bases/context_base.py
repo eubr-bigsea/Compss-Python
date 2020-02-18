@@ -35,6 +35,7 @@ class ContextBase(object):
     # but only the last stage can be grouped
 
     STATUS_WAIT = 'WAIT'
+    STATUS_DELETED = 'DELETED'
     STATUS_COMPLETED = 'COMPLETED'
     STATUS_PERSISTED = 'PERSISTED'  # to persist in order to reuse later
 
@@ -73,7 +74,7 @@ class ContextBase(object):
 
     @staticmethod
     def gen_status():
-        n_tasks = n_cached = n_output = n_tmp = 0
+        n_tasks = n_cached = n_tmp = 0
 
         for k in ContextBase.catalog_tasks:
             not_init = ContextBase.catalog_tasks[k]['name'] != 'init'
@@ -82,16 +83,13 @@ class ContextBase(object):
                 n_tasks += 1
             if status == 'PERSISTED':
                 n_cached += 1
-            if ContextBase.catalog_tasks[k].get('result', False) and not_init:
-                n_output += 1
-            if status == 'COMPLETED' and not_init:
+            if status in 'COMPLETED' and not_init:
                 n_tmp += 1
 
         t = PrettyTable(['Metric', 'Value'])
         t.add_row(['Number of tasks', n_tasks])
         t.add_row(['Number of Persisted tasks', n_cached])
-        t.add_row(['Number of tasks with output:', n_output])
-        t.add_row(['Number of temporary tasks', n_tmp])
+        t.add_row(['Number of temporary output', n_tmp])
         print("\nContext status:\n", t, '\n')
 
     @staticmethod
@@ -104,11 +102,13 @@ class ContextBase(object):
             if ContextBase.dag.nodes[k]['label'] == 'init':
                 color = 'black'
                 ContextBase.dag.nodes[k]['style'] = 'solid'
-            elif status == ContextBase.STATUS_WAIT:
+            elif status == ContextBase.STATUS_DELETED:
                 color = 'lightgray'
+            elif status == ContextBase.STATUS_WAIT:
+                color = 'yellow'
             elif status == ContextBase.STATUS_PERSISTED:
                 color = 'forestgreen'
-            else:  # temp viewed or completed
+            else:  # completed
                 color = 'lightblue'
 
             ContextBase.dag.nodes[k]['color'] = color
@@ -202,7 +202,8 @@ class ContextBase(object):
         """
         # check tasks with status different from WAIT
         check_computed = [t for t in lineage
-                          if self.get_task_status(t) != self.STATUS_WAIT]
+                          if self.get_task_status(t) not in
+                          [self.STATUS_WAIT, self.STATUS_DELETED]]
 
         # remove those tasks from the current dag
         dag = copy.deepcopy(self.dag)
@@ -285,6 +286,7 @@ class ContextBase(object):
             # take care to not delete data from leaf nodes
             degree = -1 if id_task not in self.dag.nodes \
                 else self.dag.out_degree(id_task)
+
             if degree > 0:
                 siblings = self.get_task_sibling(current_task)
                 has_siblings = len(siblings) > 1
@@ -324,7 +326,7 @@ class ContextBase(object):
                 if check_serialization(data):
                     delete_result(data)
 
-                self.set_task_status(id_task, self.STATUS_WAIT)
+                self.set_task_status(id_task, self.STATUS_DELETED)
                 self.set_task_result(id_task, None)
                 self.catalog_schemas.pop(id_task, None)
 
@@ -431,7 +433,8 @@ class ContextBase(object):
                   " - opt_functions: {}".format(ids, names)
             print(msg)
 
-        result, info = self._execute_opt_last_tasks(group_func, group_uuids,
+        result, info = self._execute_opt_last_tasks(group_func,
+                                                    group_uuids.copy(),
                                                     inputs, n_input)
         self.save_serial_states(result, info, group_uuids)
         jump = len(group_func)-1
@@ -470,12 +473,16 @@ class ContextBase(object):
         :return:
         """
         last_uuid = opt_uuids[-1]
-        if 'task_save' != self.get_task_name(last_uuid):
-            self.set_task_result(last_uuid, result)
-            self.catalog_schemas[last_uuid] = info
 
         for o in opt_uuids:
-            self.set_task_status(o, self.STATUS_COMPLETED)
+            self.set_task_status(o, self.STATUS_DELETED)
+
+        if 'save' not in self.get_task_name(last_uuid):
+            self.set_task_result(last_uuid, result)
+            self.catalog_schemas[last_uuid] = info
+            self.set_task_status(last_uuid, self.STATUS_COMPLETED)
+        else:
+            self.set_task_status(last_uuid, self.STATUS_PERSISTED)
 
     @staticmethod
     def _execute_other_task(env, input_data):

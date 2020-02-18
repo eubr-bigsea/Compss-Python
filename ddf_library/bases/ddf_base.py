@@ -24,6 +24,7 @@ class DDFSketch(object):
     STATUS_WAIT = 'WAIT'
     STATUS_COMPLETED = 'COMPLETED'
     STATUS_PERSISTED = 'PERSISTED'
+    STATUS_DELETED = 'DELETED'
 
     optimization_ops = [OPT_OTHER, OPT_SERIAL, OPT_LAST]
 
