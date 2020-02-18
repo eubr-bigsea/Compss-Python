@@ -16,7 +16,6 @@ This page gives an overview of all public DDF objects, functions and methods. Al
    install
    guide
    ddf_library
-   ddf_library.bases.groupby
    ddf_library.functions.ml.classification
    ddf_library.functions.ml.clustering
    ddf_library.functions.ml.evaluation

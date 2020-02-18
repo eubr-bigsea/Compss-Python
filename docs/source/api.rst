@@ -146,7 +146,7 @@ ETL
 Statistics
 ============
 
-:func:`DDF.count <ddf.DDF.count>` - Returns a number of rows in this DDF.
+:func:`DDF.count_rows <ddf.DDF.count_rows>` - Returns a number of rows in this DDF.
 
 :func:`DDF.correlation <ddf.DDF.correlation>` - Calculates the Pearson Correlation Coefficient.
 

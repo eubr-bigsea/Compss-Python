@@ -20,13 +20,13 @@ sys.path.insert(0, os.path.abspath('../../'))
 # -- Project information -----------------------------------------------------
 
 project = u'ddf-pycompss'
-copyright = u'2019, Lucas M Ponce'
+copyright = u'2020, Lucas M Ponce'
 author = u'Lucas M Ponce'
 
 # The short X.Y version
-version = u'0.3'
+version = u'0.5'
 # The full version, including alpha/beta/rc tags
-release = u'0.3.1'
+release = u'0.5.1'
 
 
 # -- General configuration ---------------------------------------------------
