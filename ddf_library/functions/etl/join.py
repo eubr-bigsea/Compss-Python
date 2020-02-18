@@ -31,9 +31,8 @@ def join_stage_1(data1, data2, settings):
 
     key1, key2, settings = preprocessing(settings)
     nfrag1, nfrag2 = len(data1), len(data2)
-    info1, info2 = settings['info'][0], settings['info'][1]
+    info1, info2 = settings['info']
     nfrag = max([nfrag1, nfrag2])
-
     info1 = clean_info(info1)
     info2 = clean_info(info2) # TODO: check others tasks
     # first, perform a hash partition to shuffle both data

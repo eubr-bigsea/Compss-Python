@@ -173,11 +173,6 @@ def create_auxiliary_column(columns):
     return column
 
 
-# def col(name):
-#     from ddf_library.bases.config import columns
-#     return columns.index(name)
-
-
 def convert_int64_columns(df):
     for col in df.column:
         if 'int' in df[col].dtype:
@@ -214,11 +209,15 @@ def save_stage_file(filepath, df):
 
 
 def clean_info(info):
-    new_info = dict()
-    new_info['cols'] = info['cols'].copy()
-    new_info['dtypes'] = info['dtypes'].copy()
-    new_info['size'] = info['size'].copy()
-    new_info['frag'] = info['frag'].copy()
+    try:
+        new_info = dict()
+        new_info['cols'] = info['cols'].copy()
+        new_info['dtypes'] = info['dtypes'].copy()
+        new_info['size'] = info['size'].copy()
+        new_info['frag'] = info['frag'].copy()
+    except Exception as e:
+        print('[clean_info] Current dict:', info)
+        raise e
 
     if 'memory' in info:
         new_info['memory'] = info['memory'].copy()

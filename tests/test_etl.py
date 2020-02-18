@@ -489,7 +489,7 @@ def intersect_all():
     s2 = pd.DataFrame([('a', 1), ('a', 1), ('b', 3)], columns=cols)
     cc = COMPSsContext()
     ddf_1a = cc.parallelize(s1, 4)
-    ddf_1b = cc.parallelize(s2, 4)
+    ddf_1b = cc.parallelize(s2, 3)
     ddf_2 = ddf_1a.intersect_all(ddf_1b)
 
     df1 = ddf_2.to_df().sort_values(by=cols)
@@ -509,8 +509,8 @@ def join():
     data2 = data1.copy()
     data2.sample(frac=1,  replace=False)
     cc = COMPSsContext()
-    ddf_1a = cc.parallelize(data1, 4)
-    ddf_1b = cc.parallelize(data2, 4)
+    ddf_1a = cc.parallelize(data1, 5)
+    ddf_1b = cc.parallelize(data2, 3)
     ddf_2 = ddf_1a.join(ddf_1b, key1=['a'], key2=['a'], case=False)
     df1 = ddf_2.to_df().sort_values(by=['a'])
     print(df1)
@@ -866,7 +866,7 @@ def subtract():
     s2 = pd.DataFrame([("a", 1), ("b",  3)], columns=cols)
     cc = COMPSsContext()
     ddf_1a = cc.parallelize(s1, 4)
-    ddf_1b = cc.parallelize(s2, 4)
+    ddf_1b = cc.parallelize(s2, 2)
     ddf_2 = ddf_1a.subtract(ddf_1b)
     df1 = ddf_2.to_df()
 

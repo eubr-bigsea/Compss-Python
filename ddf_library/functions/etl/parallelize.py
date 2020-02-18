@@ -33,20 +33,14 @@ def parallelize(data, nfrag):
     data.reset_index(drop=True, inplace=True)
     result = create_stage_files(nfrag)
 
-    info = {'cols': cols,
-            'dtypes': data.dtypes.to_numpy().tolist(),
-            'size': [],
-            'memory': []
-            }
-
+    info = []
     begin = 0
     for i, (n, out) in enumerate(zip(sizes, result)):
         partition = data.iloc[begin:begin+n]
         begin += n
         partition.reset_index(drop=True, inplace=True)
         save_stage_file(out, partition)
-        info['size'].append(len(partition))
-        info['memory'].append(sys.getsizeof(partition))
+        info.append(generate_info(partition, i))
 
     if len(result) != nfrag:
         raise Exception("Error in parallelize function.")
