@@ -34,6 +34,7 @@ setuptools.setup(
      platforms=['Linux'],
      long_description=get_readme(),
      long_description_content_type='text/markdown',
+     include_package_data=True,
      classifiers=[
          'Programming Language :: Python :: 3',
          "Programming Language :: Python :: 3.6",

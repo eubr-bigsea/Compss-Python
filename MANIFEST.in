@@ -3,4 +3,4 @@ include LICENSE
 recursive-include ddf_library *.ods
 recursive-include ddf_library *.pyx
 recursive-include ddf_library *.so
-
+recursive-include ddf_library *.css
