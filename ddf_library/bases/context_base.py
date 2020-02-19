@@ -10,6 +10,8 @@ DDF is a Library for PyCOMPSs.
 """
 
 from ddf_library.bases.tasks import *
+from ddf_library.bases.monitor.monitor import gen_data
+
 from pycompss.api.api import compss_open, compss_wait_on
 
 from ddf_library.utils import merge_info, check_serialization, delete_result,\
@@ -40,6 +42,7 @@ class ContextBase(object):
     STATUS_PERSISTED = 'PERSISTED'  # to persist in order to reuse later
 
     DEBUG = False
+    monitor = False
 
     """
     task_map: a dictionary to stores all following information about a task:
@@ -90,7 +93,12 @@ class ContextBase(object):
         t.add_row(['Number of tasks', n_tasks])
         t.add_row(['Number of Persisted tasks', n_cached])
         t.add_row(['Number of temporary output', n_tmp])
-        print("\nContext status:\n", t, '\n')
+        msg = "\nContext status:\n{}\n".format(t)
+        t = pd.DataFrame([['Number of tasks', n_tasks],
+                          ['Number of Persisted tasks', n_cached],
+                          ['Number of temporary output', n_tmp]],
+                         columns=['Metric', 'Value'])
+        return t
 
     @staticmethod
     def plot_graph():
@@ -117,6 +125,11 @@ class ContextBase(object):
         t = time.localtime()
         write_dot(ContextBase.dag,
                   'DAG_{}.dot'.format(time.strftime('%b-%d-%Y_%H%M', t)))
+
+    @staticmethod
+    def start_monitor():
+        from ddf_library.bases.monitor.monitor import Monitor
+        ContextBase.monitor = Monitor()
 
     def create_dag(self, specials=None):
         """
@@ -269,6 +282,10 @@ class ContextBase(object):
                 jump -= 1
 
             self.delete_computed_results(current_task, lineage)
+            if self.monitor:
+                msg = ContextBase.gen_status()
+                title = ContextBase.app_folder.replace('/tmp/ddf_', '')
+                gen_data(ContextBase.dag, ContextBase.catalog_tasks, msg, title)
 
     def is_removable(self, id_task, current_task):
         """

@@ -40,6 +40,8 @@ class COMPSsContext(object):
     @staticmethod
     def stop():
         """To avoid that COMPSs sends back all partial result at end."""
+        import shutil
+        import os
         for id_task in list(ContextBase.catalog_tasks.keys()):
             data = ContextBase.catalog_tasks[id_task].get('result', [])
 
@@ -50,14 +52,22 @@ class COMPSsContext(object):
         ContextBase.catalog_tasks = dict()
         ContextBase.dag = nx.DiGraph()
 
+        if ContextBase.monitor:
+            ContextBase.monitor.stop()
+            os.remove('/tmp/ddf_dash_object.pickle')
+
         # TEMPORARY
         import glob
         files_sync = glob.glob(ContextBase.app_folder+'/*')
         if len(files_sync) > 0:
             raise Exception('Partial files were synchronized.')
 
-        import shutil
+
         shutil.rmtree(ContextBase.app_folder)
+
+    @staticmethod
+    def start_monitor():
+        ContextBase.start_monitor()
 
     @staticmethod
     def show_tasks():
@@ -88,7 +98,7 @@ class COMPSsContext(object):
 
     @staticmethod
     def context_status():
-        ContextBase.gen_status()
+        print(ContextBase.gen_status().to_markdown())
         ContextBase.plot_graph()
 
     @staticmethod
