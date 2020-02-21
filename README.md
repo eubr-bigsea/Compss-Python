@@ -20,15 +20,12 @@ implemented over [PyCOMPSs](https://pypi.org/project/pycompss/) programming mode
 ETL (extract-transform-load) and Machine Learning algorithms to Data Science tasks. DDF is greatly inspired by Spark's 
 DataFrame and its operators.
 
-Currently, an operation can be of two types, transformations or actions. Action operations are those that produce 
+An operation can be of two types, transformations or actions. Action operations are those that produce 
 a final result (whether to save to a file or to display on screen). Transformation operations are those that will 
-transform an input DDF into another output DDF. Besides this classification, there are operations with one processing 
-stage and those with two or more stages of processing (those that need to exchange information between the partitions).
-
-When running DDF operation/algorithms, a context variable (COMPSs Context) will check the possibility of 
-optimizations during the scheduling of COMPS tasks. These optimizations can be of the type: grouping one stage 
-operations to a single task COMPSs and stacking operations until an action operation is found.
-
+transform an input DDF into another output DDF. There are operations with one processing 
+stage and those with two or more stages of processing (those that need to exchange information between the partitions). 
+When running DDF operation/algorithms, a context variable (COMPSs Context) will organize the scheduling of COMPSs tasks 
+to optimize the execution. 
 
 ## Contents
 
@@ -68,22 +65,20 @@ to know the number of men, women and children who survived or died in the Titani
 In the first part, we will perform some pre-processing (remove some columns, clean some rows that
 have missing values, replace some value and filter rows) and after that, aggregate the information for adult women.
 
-For explanatory aspects, the input data (Pandas DataFrame) is distributed by COMPSs in 4 fragments using `parallelize()`. 
-At this point, the programmer no longer has to worry about partitioning the data. All operations will be able to 
-work transparently to the user. The COMPS tasks will be executed in parallel, one for each fragment. 
+For explanatory aspects, we can create a DDF data by reading data in many formats files stored in HDFS or in the common
+file system, otherwise, is also possible to import a Pandas DataFrame in memmory by using `parallelize()`. In this 
+example, we read the input file and partitioned in four fragments. After that, all operations will be able to work 
+transparently to the user. 
 
 ```python
-from ddf_library.ddf import DDF
-import pandas as pd
+from ddf_library.context import COMPSsContext
 
-url = 'https://raw.githubusercontent.com/eubr-bigsea/' \
-      'Compss-Python/tests/titanic.csv'
-df = pd.read_csv(url, sep='\t')
+cc = COMPSsContext()
 
-ddf1 = DDF().parallelize(df, num_of_parts=4)\
+ddf1 = cc.read.csv('hdfs://localhost:9000/titanic.csv', num_of_parts=4)\
         .select(['Sex', 'Age', 'Survived'])\
         .dropna(['Sex', 'Age'], mode='REMOVE_ROW')\
-        .replace({0: 'No', 1: 'Yes'}, subset=['Survived']).cache()
+        .replace({0: 'No', 1: 'Yes'}, subset=['Survived'])
 
 ddf_women = ddf1.filter('(Sex == "female") and (Age >= 18)')\
             .group_by(['Survived']).count(['Survived'], alias=['Women'])
@@ -93,26 +88,27 @@ ddf_women.show()
 
 The image shows the DAG created by COMPSs during the execution. The operations `select(), dropna(), replace() and filter()` 
 are some of them that are 'one processing stage' and then, the library was capable of group into a single COMPSs task 
-(which was named `task_bundle()`). In this DAG, the other tasks are referring to the operation of `group_by.count()`. This operations  
-needs certain exchanges of information, so it performs a synchronization of some indices (light data) for submit the
+(which was named `task_bundle()`). In this DAG, the other tasks are referring to the operation of `group_by.count()`. 
+This operations needs certain exchanges of information, so it performs a synchronization of some indices (light data) for submit the
  minimum amount of tasks from master node. Finally, the last synchronization is performed by `show()` function 
  (which is an action) to receives the data produced.
+ 
+ ![usecase1](./docs/source/use_case_1.png)
+ 
+ We can also visualize the status progress of DDF applications by setting `COMPSsContext().start_monitor()` at the 
+ beginning of execution, this command will start a monitor web service that provides some High-level information about 
+ the current status of the executed application. 
 
-![usecase1](./docs/source/use_case_1.png)
 
-
-Next, we extend the previous code to computate the result also for men and kids. 
+Next, we extend the previous code to compute the result also for men and kids. 
 
 
 ```python
-from ddf_library.ddf import DDF
-import pandas as pd
+from ddf_library.context import COMPSsContext
 
-url = 'https://raw.githubusercontent.com/eubr-bigsea/' \
-      'Compss-Python/tests/titanic.csv'
-df = pd.read_csv(url, sep='\t')
+cc = COMPSsContext()
 
-ddf1 = DDF().parallelize(df, num_of_parts=4)\
+ddf1 = cc.parallelize('hdfs://localhost:9000/titanic.csv', num_of_parts=4)\
     .select(['Sex', 'Age', 'Survived'])\
     .dropna(['Sex', 'Age'], mode='REMOVE_ROW')\
     .replace({0: 'No', 1: 'Yes'}, subset=['Survived']).cache()
@@ -156,15 +152,19 @@ you need to install [hdfspycompss](https://github.com/eubr-bigsea/compss-hdfs/tr
 dependencies will be installed automatically from PyPI or can be manually installed by using the command `$ pip install -r requirements.txt` 
 
 ```
-pandas>=0.23.4
-scikit-learn>=0.20.3
-numpy>=1.16.0
-scipy>=1.2.1
-Pyqtree>=0.24
+pandas>=0.25.3
+scikit-learn>=0.21.3
+numpy>=1.17.4
+scipy>=1.3.3
+Pyqtree>=1.0.0
 matplotlib>=1.5.1
-networkx>=1.11
-pyshp>=1.2.11
-nltk>=3.4
+networkx>=2.4
+pyshp>=2.1.0
+nltk>=3.4.5
+graphviz>=0.13.2
+prettytable>=0.7.2
+guppy3>=3.0.9
+dill>=0.3.1.1
 ```
 
 
@@ -172,11 +172,19 @@ nltk>=3.4
 ## Publications
 
 ```
-PONCE, Lucas M.; SANTOS, Walter dos; MEIRA JR., Wagner; GUEDES, Dorgival. 
+Ponce, L. M., Lezzi, D., Badia, R. M., Guedes, D. (2019).
+Extension of a Task-Based Model to Functional Programming. 
+Proceedings of the 31st International Symposium on Computer Architecture and High Performance Computing (SBAC-PAD). 
+Campo Grande, Brazil, 2019, pages 64-71.
+
+Ponce, L. M., dos Santos, W., Meira Jr., W., Guedes, D., Lezzi, D., Badia, R. M. (2019). 
+Upgrading a high performance computing environment for massive data processing. 
+Journal of Internet Services and Applications, 10(1), 19.
+
+Ponce, L. M., Santos, W., Meira Jr., W., Guedes, D. (2018). 
 Extensão de um ambiente de computação de alto desempenho para o processamento de dados massivos. 
-In: BRAZILIAN SYMPOSIUM ON COMPUTER NETWORKS AND DISTRIBUTED SYSTEMS (SBRC), 2018 
-Proceedings of the 36th Brazilian Symposium on Computer Networks and Distributed Systems. 
-Porto Alegre: Sociedade Brasileira de Computação, may 2018. ISSN 2177-9384.
+Proceedings of the XXXVI Simpósio Brasileiro de Redes de Computadores e Sistemas Distribuídos (SBRC). 
+Campos do Jordão, Brazil, 2018. 
 ```
 ## License
 

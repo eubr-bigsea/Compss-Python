@@ -1,16 +1,19 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-from ddf_library.utils import generate_info
+from ddf_library.utils import generate_info, create_stage_files, \
+    save_stage_file, read_stage_file
 from pycompss.api.task import task
+from pycompss.api.api import compss_open
+from pycompss.api.parameter import FILE_IN, FILE_OUT
 import math
 
 
-def random_split(data, settings):
+def random_split(input_files, settings):
     """
     Randomly splits a DataFrame into two distinct DataFrames.
 
-    :param data: A list with nfrag pandas's DataFrame;
+    :param input_files: A list with nfrag pandas's DataFrame;
     :param settings: A dictionary that contains:
       - 'percentage': Percentage to split the data (default, 0.5);
       - 'seed': Optional, seed in case of deterministic random operation;
@@ -24,14 +27,17 @@ def random_split(data, settings):
      size in each partition. The second part cannot be grouped as well because
      generates two outputs data.
     """
-    nfrag = len(data)
+    nfrag = len(input_files)
 
     idx = _preprocessing(settings, nfrag)
-    out1 = [[] for _ in range(nfrag)]
-    out2, info1, info2 = out1[:], out1[:], out1[:]
+    info1 = [[] for _ in range(nfrag)]
+    info2 = info1[:]
 
+    out1 = create_stage_files(nfrag)
+    out2 = create_stage_files(nfrag)
     for i, fraction in enumerate(idx):
-        out1[i], info1[i], out2[i], info2[i] = _split_get(data[i], fraction, i)
+        info1[i], info2[i] = _split_get(input_files[i], out1[i],
+                                        out2[i], fraction, i)
 
     output = {'key_data': ['data1', 'data2'],
               'key_info': ['info1', 'info2'],
@@ -73,22 +79,24 @@ def _split_allocate(n_list, fraction, nfrag):
     return sizes
 
 
-@task(returns=4)
-def _split_get(data, value, frag):
+@task(returns=2, data=FILE_IN, fout1=FILE_OUT, fout2=FILE_OUT)
+def _split_get(data, fout1, fout2, value, frag):
     """Retrieve the split."""
 
     n = len(data)
 
+    data = read_stage_file(data)
     if n > 0:
         data = data.sample(frac=1).reset_index(drop=True)
-
         split2 = data.iloc[value:].reset_index(drop=True)
         data = data.iloc[:value].reset_index(drop=True)
-
     else:
         split2 = data.copy()
 
     info1 = generate_info(data, frag)
     info2 = generate_info(split2, frag)
 
-    return data, info1, split2, info2
+    save_stage_file(fout1, data)
+    save_stage_file(fout2, split2)
+
+    return info1, info2

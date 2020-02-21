@@ -24,7 +24,7 @@ def get_readme():
 
 setuptools.setup(
      name='ddf-pycompss',  
-     version='0.4',
+     version='0.5',
      author="Lucas Miguel Ponce",
      author_email="lucasmsp@dcc.ufmg.br",
      summary="A PyCOMPSs library for Big Data scenarios.",
@@ -34,6 +34,7 @@ setuptools.setup(
      platforms=['Linux'],
      long_description=get_readme(),
      long_description_content_type='text/markdown',
+     include_package_data=True,
      classifiers=[
          'Programming Language :: Python :: 3',
          "Programming Language :: Python :: 3.6",

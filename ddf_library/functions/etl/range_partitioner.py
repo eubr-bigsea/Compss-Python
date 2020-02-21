@@ -5,12 +5,13 @@ __author__ = "Lucas Miguel S Ponce"
 __email__ = "lucasmsp@gmail.com"
 
 from pycompss.api.task import task
-from pycompss.api.constraint import constraint
+from pycompss.api.parameter import FILE_IN
 from pycompss.api.api import compss_wait_on, compss_delete_object
 
-from ddf_library.utils import concatenate_pandas, _get_schema
+from ddf_library.utils import concatenate_pandas, create_stage_files, \
+    read_stage_file
+from ddf_library.bases.tasks import concat_n_pandas
 
-import pandas as pd
 import numpy as np
 import importlib
 
@@ -37,6 +38,7 @@ def range_partition(data, settings):
     cols = settings['columns']
     nfrag_target = settings.get('nfrag', nfrag)
     ascending = settings.get('ascending', True)
+    only_key_columns = settings.get('only_key_columns', False)
 
     if not isinstance(cols, list):
         cols = [cols]
@@ -55,10 +57,11 @@ def range_partition(data, settings):
         bounds, nfrag_target = range_bounds(data, nfrag, sizes, cols,
                                             ascending, nfrag_target)
 
-        import ddf_library.config
-        ddf_library.config.x = nfrag_target
+        import ddf_library.bases.config
+        ddf_library.bases.config.x = nfrag_target
 
-        print("[INFO] - Number of partitions updated to: ", nfrag_target)
+        if nfrag_target != nfrag:
+            print("[INFO] - Number of partitions updated to: ", nfrag_target)
 
         splits = [[0 for _ in range(nfrag_target)] for _ in range(nfrag)]
 
@@ -68,19 +71,17 @@ def range_partition(data, settings):
         for f in range(nfrag):
             splits[f] = ddf_library.functions.etl.repartition\
                 .split_by_boundary(data[f], cols, ascending, bounds,
-                                   info, nfrag_target)
+                                   info, nfrag_target, only_key_columns)
 
-        result = [[] for _ in range(nfrag_target)]
+        result = create_stage_files(nfrag_target)
         info = [{} for _ in range(nfrag_target)]
-
         for f in range(nfrag_target):
             if nfrag_target == 1:
                 tmp = splits
             else:
                 tmp = [splits[t][f] for t in range(nfrag)]
-            result[f] = ddf_library.functions.etl.repartition\
-                .merge_n_reduce(concat_n_pandas, tmp, nfrag)
-            info[f] = _get_schema(result[f], f)
+
+            info[f] = concat_n_pandas(result[f], f, tmp)
 
         compss_delete_object(splits)
 
@@ -114,13 +115,14 @@ def range_bounds(data, nfrag, sizes, cols, ascending, nfrag_target):
     return bounds, nfrag_target
 
 
-@task(returns=1)
-def _sample_keys(data, cols, sample_size):
-    data = data[cols]
+@task(returns=1, input_data=FILE_IN)
+def _sample_keys(input_data, cols, sample_size):
+    data = read_stage_file(input_data, cols)
     n = len(data)
     sample_size = sample_size if sample_size < n else n
-    data.reset_index(drop=True, inplace=True)
-    data = data.sample(n=sample_size, replace=False)
+    data = data\
+        .reset_index(drop=True)\
+        .sample(n=sample_size, replace=False)
     return data
 
 
@@ -152,13 +154,3 @@ def _determine_bounds(sample, cols, ascending, nfrag_target):
 
     return bounds
 
-
-# @constraint(ComputingUnits="2")  # approach to have more memory
-@task(returns=1)
-def concat_n_pandas(*args):
-    dfs = [df for df in args if isinstance(df, pd.DataFrame)]
-    dfs = pd.concat(dfs, ignore_index=True, sort=False)
-    del args
-    dfs = dfs.infer_objects()
-
-    return dfs

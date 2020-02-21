@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-from ddf_library.ddf import DDF
+from ddf_library.context import COMPSsContext
 import pandas as pd
 
 
-def tokenizer():
+def tokenizer(cc):
     from ddf_library.functions.ml.feature import Tokenizer
 
     corpus = [
@@ -16,18 +16,18 @@ def tokenizer():
     ]
     data1 = pd.DataFrame.from_dict({'col_0': corpus})
 
-    data1 = DDF().parallelize(data1)
+    data1 = cc.parallelize(data1)
 
     tokens = Tokenizer().transform(data1, input_col='col_0')
     tokens.show()
     return tokens
 
 
-def remove_stopwords():
+def remove_stopwords(cc):
     from ddf_library.functions.ml.feature import RemoveStopWords
 
-    ddf1 = tokenizer()
-    remover = RemoveStopWords(stops_words_list=['rock', 'destined', 'the'],
+    ddf1 = tokenizer(cc)
+    remover = RemoveStopWords(stops_words_list=['rock', 'destined', 'third'],
                               language='english')
 
     result = remover\
@@ -36,17 +36,17 @@ def remove_stopwords():
     result.show()
 
 
-def ngram():
+def ngram(cc):
     from ddf_library.functions.ml.feature import NGram
 
-    ddf1 = tokenizer()
+    ddf1 = tokenizer(cc)
     result = NGram(n=2).transform(ddf1, input_col='col_0_tokens',
                                   output_col='col_0_tokens')
 
     result.show()
 
 
-def count_vectorizer():
+def count_vectorizer(cc):
     from ddf_library.functions.ml.feature import CountVectorizer, Tokenizer
     corpus = [
              'This is the first document',
@@ -56,7 +56,7 @@ def count_vectorizer():
         ]
     df = pd.DataFrame.from_dict({'col_0': corpus})
 
-    test_data = DDF().parallelize(df, num_of_parts=2)
+    test_data = cc.parallelize(df, num_of_parts=2)
 
     dff_tokens = Tokenizer(min_token_length=1).transform(test_data,
                                                          input_col='col_0')
@@ -70,7 +70,7 @@ def count_vectorizer():
     result.show()
 
 
-def tf_idf_vectorizer():
+def tf_idf_vectorizer(cc):
 
     from ddf_library.functions.ml.feature import TfidfVectorizer, Tokenizer
     corpus = [
@@ -81,7 +81,7 @@ def tf_idf_vectorizer():
         ]
     df = pd.DataFrame.from_dict({'col_0': corpus})
 
-    test_data = DDF().parallelize(df, num_of_parts=2)
+    test_data = cc.parallelize(df, num_of_parts=2)
 
     dff_tokens = Tokenizer(min_token_length=1).transform(test_data,
                                                          input_col='col_0')
@@ -94,14 +94,14 @@ def tf_idf_vectorizer():
     result.show()
 
 
-def categorization():
+def categorization(cc):
 
     from ddf_library.functions.ml.feature import StringIndexer, IndexToString
     data = pd.DataFrame([(0, "a", 'b'), (1, "b", 'b'), (2, "c", 'b'),
                          (3, "a", 'b'), (4, "a", 'b'), (5, "c", 'b')],
                         columns=["id", "category", 'category2'])
 
-    data = DDF().parallelize(data, 4)
+    data = cc.parallelize(data, 4)
 
     model = StringIndexer().fit(data, input_col=['category', 'category2'])
     converted = model.transform(data)
@@ -139,4 +139,7 @@ if __name__ == '__main__':
                        categorization,
                        remove_stopwords,
                        ngram]
-    list_operations[operation - 1]()
+
+    cc = COMPSsContext()
+    list_operations[operation - 1](cc)
+    cc.stop()

@@ -15,6 +15,9 @@ This page gives an overview of all public DDF objects, functions and methods. Al
 
    install
    guide
+   ddf_library.context
+   ddf_library.bases.data_reader
+   ddf_library.bases.data_saver
    ddf_library
    ddf_library.functions.ml.classification
    ddf_library.functions.ml.clustering
@@ -29,6 +32,7 @@ This page gives an overview of all public DDF objects, functions and methods. Al
 Contents
 *********
 
+*  :ref:`cc-anchor`
 
 *  :ref:`etl-anchor`
 
@@ -51,6 +55,36 @@ Contents
 * :ref:`geo-anchor`
 
 * :ref:`graph-anchor`
+
+
+.. _cc-anchor:
+
+COMPSs Context
+==============
+
+:func:`COMPSsContext.stop <ddf_library.context.COMPSsContext.stop>` - Stop the DDF environment.
+
+:func:`COMPSsContext.start_monitor <ddf_library.context.COMPSsContext.start_monitor>` - Start a web service monitor that informs the environment current status.
+
+:func:`COMPSsContext.show_tasks <ddf_library.context.COMPSsContext.show_tasks>` - Show all tasks in the current code.
+
+:func:`COMPSsContext.set_log <ddf_library.context.COMPSsContext.set_log>` - Set the log level.
+
+:func:`COMPSsContext.context_status <ddf_library.context.COMPSsContext.context_status>` - Generates a DAG (in dot file) and some information on screen about the status process.
+
+:func:`COMPSsContext.context_status <ddf_library.context.COMPSsContext.context_status>` - Generates a DAG (in dot file) and some information on screen about the status process.
+
+:func:`COMPSsContext.parallelize <ddf_library.context.COMPSsContext.parallelize>` - Import data to DDF by distributing a DataFrame into DDF.
+
+:func:`COMPSsContext.import_data <ddf_library.context.COMPSsContext.import_data>` - Import a previous Pandas DataFrame list into DDF abstraction.
+
+:func:`COMPSsContext.read.csv <ddf_library.bases.data_reader.DataReader.csv>` - Read a csv file. 
+
+:func:`COMPSsContext.read.json <ddf_library.bases.data_reader.DataReader.json>` - Read a json file.
+
+:func:`COMPSsContext.read.parquet <ddf_library.bases.data_reader.DataReader.parquet>` - Read a parquet file.
+
+:func:`COMPSsContext.read.shapefile <ddf_library.bases.data_reader.DataReader.shapefile>` - Reads a shapefile using the shp and dbf file.
 
 
 .. _etl-anchor:
@@ -90,21 +124,15 @@ ETL
 
 :func:`DDF.hash_partition <ddf.DDF.hash_partition>` - Hash partitioning is a partitioning technique where data is stored separately in different fragments by a hash function.
 
-:func:`DDF.import_data <ddf.DDF.import_data>` - Import a previous Pandas DataFrame list into DDF abstraction.
-
 :func:`DDF.intersect <ddf.DDF.intersect>` - Returns a new DDF containing rows in both DDF.
 
 :func:`DDF.intersect_all <ddf.DDF.intersect_all>` - Returns a new DDF containing rows in both DDF while preserving duplicates.
 
 :func:`DDF.join <ddf.DDF.join>` - Joins two DDF using the given join expression.
 
-:func:`DDF.load_text <ddf.DDF.load_text>` - Create a DDF from a commom file system or from HDFS.
-
 :func:`DDF.map <ddf.DDF.map>` - Applies a function to each row of this data set.
 
 :func:`DDF.num_of_partitions <ddf.DDF.num_of_partitions>` - Returns the number of data partitions (Task parallelism).
-
-:func:`DDF.parallelize <ddf.DDF.parallelize>` - Distributes a DataFrame into DDF.
 
 :func:`DDF.range_partition <ddf.DDF.range_partition>` - Range partitioning is a partitioning technique where ranges of data is stored separately in different fragments.
 
@@ -114,7 +142,13 @@ ETL
 
 :func:`DDF.sample <ddf.DDF.sample>` - Returns a sampled subset.
 
-:func:`DDF.save <ddf.DDF.save>` - Saves the data in the storage.
+:func:`DDF.save.csv <ddf_library.bases.data_saver.Save.csv>` - Saves a csv file. 
+
+:func:`DDF.save.json <ddf_library.bases.data_saver.Save.json>` - Saves a json file.
+
+:func:`DDF.save.parquet <ddf_library.bases.data_saver.Save.parquet>` - Saves a parquet file.
+
+:func:`DDF.save.pickle <ddf_library.bases.data_saver.Save.pickle>` - Saves a pickle file.
 
 :func:`DDF.schema <ddf.DDF.schema>` - Returns a schema table where each row contains the name columns and its data types of the current DDF.
 
@@ -146,7 +180,7 @@ ETL
 Statistics
 ============
 
-:func:`DDF.count <ddf.DDF.count>` - Returns a number of rows in this DDF.
+:func:`DDF.count_rows <ddf.DDF.count_rows>` - Returns a number of rows in this DDF.
 
 :func:`DDF.correlation <ddf.DDF.correlation>` - Calculates the Pearson Correlation Coefficient.
 
@@ -273,7 +307,6 @@ ML.Regression
 Geographic Operations
 =====================
 
-:func:`DDF.load_shapefile <ddf_library.DDF.load_shapefile>` - Create a DDF from a shapefile.
 
 :func:`DDF.geo_within <ddf_library.DDF.geo_within>` - Returns the sectors that the each point belongs.
 

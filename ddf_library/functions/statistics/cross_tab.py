@@ -4,13 +4,12 @@
 __author__ = "Lucas Miguel S Ponce"
 __email__ = "lucasmsp@gmail.com"
 
-
-from ddf_library.utils import generate_info
-
+from pycompss.api.parameter import FILE_IN
 from pycompss.api.task import task
 from pycompss.api.api import compss_wait_on, compss_delete_object
 from pycompss.functions.reduce import merge_reduce
 
+from ddf_library.utils import generate_info, read_stage_file, create_stage_files
 
 import numpy as np
 import pandas as pd
@@ -36,16 +35,19 @@ def cross_tab(data, settings):
     crosstab_df = merge_reduce(_merge_counts, partial)
     compss_delete_object(partial)
 
-    data, info = _create_tab(crosstab_df, nfrag)
+    data_output = create_stage_files(nfrag)
+    info = _create_tab(crosstab_df, nfrag, data_output)
 
     output = {'key_data': ['data'], 'key_info': ['info'],
-              'data': data, 'info': info}
+              'data': data_output, 'info': info}
     return output
 
 
-@task(returns=1)
-def _crosstab_partial(data, cols):
+@task(returns=1, data_input=FILE_IN)
+def _crosstab_partial(data_input, cols):
     col1, col2 = cols
+    data = read_stage_file(data_input, cols)
+
     data = pd.crosstab(index=data[col1], columns=data[col2])
     data.columns = data.columns.values
     data.index = data.index.values
@@ -71,11 +73,13 @@ def _merge_counts(data1, data2):
     return data
 
 
-def _create_tab(data, nfrag):
+def _create_tab(data, nfrag, data_ouput):
     data = compss_wait_on(data)
     data.insert(0, 'key', data.index.values)
 
     data = np.array_split(data, nfrag)
     info = [generate_info(data[f], f) for f in range(nfrag)]
+    for df, out in zip(data, data_ouput):
+        df.to_parquet(out)
 
-    return data, info
+    return info

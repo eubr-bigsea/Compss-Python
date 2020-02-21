@@ -4,12 +4,11 @@
 __author__ = "Lucas Miguel S Ponce"
 __email__ = "lucasmsp@gmail.com"
 
-from ddf_library.utils import merge_info
-from ddf_library.functions.etl.select import select
+from ddf_library.utils import merge_info, read_stage_file, generate_info
 from ddf_library.functions.etl.sort import sort_stage_1, sort_stage_2
 
+from pycompss.api.parameter import FILE_IN, COLLECTION_IN
 from pycompss.api.task import task
-from pycompss.functions.reduce import merge_reduce
 from pycompss.api.api import compss_delete_object, compss_wait_on
 
 import numpy as np
@@ -39,7 +38,6 @@ def kolmogorov_smirnov_one_sample(data, settings):
 
     """
 
-    nfrag = len(data)
     col = settings['col']
     mode = settings.get('mode', 'asymp')
 
@@ -49,18 +47,13 @@ def kolmogorov_smirnov_one_sample(data, settings):
     if not isinstance(col, list):
         col = [col]
 
-    info = [0 for _ in range(nfrag)]
-    for f in range(nfrag):
-        params = {'columns': col, 'id_frag': f}
-        data[f], info[f] = _select(data[f], params)
-    info = merge_info(info)
-
     settings['columns'] = col
     settings['ascending'] = [True for _ in col]
-    settings['info'] = [compss_wait_on(info)]
+    settings['return_info'] = True
+    settings['only_key_columns'] = True
 
     # range_partition used in sort operation can create less partitions
-    sort_data, info, _ = sort_stage_1(data, settings, return_info=True)
+    sort_data, info, _ = sort_stage_1(data, settings)
 
     info = merge_info(info)
     nfrag = len(sort_data)
@@ -69,22 +62,22 @@ def kolmogorov_smirnov_one_sample(data, settings):
         settings['id_frag'] = f
         sort_data[f] = _ks_theoretical_dist(sort_data[f], info, settings.copy())
 
-    info = merge_reduce(_ks_merge, sort_data)
-    compss_delete_object(sort_data)
-
-    info = _ks_d_critical(info, mode)
+    info = _ks_merge_and_critical(sort_data, mode)
+    info = compss_wait_on(info)
     return info
 
 
-@task(returns=2)
-def _select(data, col):
-    data, info = select(data, col)
-    return data, info
+@task(returns=2, data_input=FILE_IN)
+def _select(data_input, params):
+    df = read_stage_file(data_input, params['columns'])
+    info = generate_info(df, params['id_frag'])
+    return df, info
 
 
-@task(returns=1)
+@task(returns=1, data=FILE_IN)
 def _ks_theoretical_dist(data, info, settings):
     col = settings['col']
+    data = read_stage_file(data, col)
     f = settings['id_frag']
     distribution = settings.get('distribution', 'norm')
     args = settings.get('args', ())
@@ -119,20 +112,15 @@ def _ks_theoretical_dist(data, info, settings):
     return [error, n]
 
 
-@task(returns=1)
-def _ks_merge(info1, info2):
-    error1, n = info1
-    error2, _ = info2
-    error1 = error1 + error2
+@task(returns=1, infos=COLLECTION_IN)
+def _ks_merge_and_critical(infos, mode):
+    n = 0
+    error = []
+    for info in infos:
+        error += info[0]
+        n += info[1]
 
-    return [[max(error1)], n]
-
-
-def _ks_d_critical(info, mode):
-
-    info = compss_wait_on(info)
-    ks_stat, n = info
-    ks_stat = ks_stat[0]
+    ks_stat = max(error)
 
     if mode == 'asymp':
         p_value = distributions.kstwobign.sf(ks_stat * np.sqrt(n))

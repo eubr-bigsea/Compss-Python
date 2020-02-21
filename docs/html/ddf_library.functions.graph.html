@@ -1,23 +1,33 @@
 
-<!DOCTYPE html>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
 
 <html xmlns="http://www.w3.org/1999/xhtml">
   <head>
-    <meta charset="utf-8" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     <title>Graph Operations &#8212; DDF</title>
     <link rel="stylesheet" href="_static/nature.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
-    <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    './',
+        VERSION:     '0.5.1',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true,
+        SOURCELINK_SUFFIX: '.txt'
+      };
+    </script>
     <script type="text/javascript" src="_static/jquery.js"></script>
     <script type="text/javascript" src="_static/underscore.js"></script>
     <script type="text/javascript" src="_static/doctools.js"></script>
-    <script type="text/javascript" src="_static/language_data.js"></script>
     <link rel="shortcut icon" href="_static/favicon.ico"/>
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
     <link rel="next" title="ML.Classification" href="ddf_library.functions.ml.classification.html" />
     <link rel="prev" title="DDF operations" href="ddf_library.html" /> 
-  </head><body>
+  </head>
+  <body>
     <div class="related" role="navigation" aria-label="related navigation">
       <h3>Navigation</h3>
       <ul>
@@ -48,44 +58,58 @@
 <span id="graph-operations"></span><h1>Graph Operations<a class="headerlink" href="#module-ddf_library.functions.graph" title="Permalink to this headline">¶</a></h1>
 <dl class="class">
 <dt id="ddf_library.functions.graph.PageRank">
-<em class="property">class </em><code class="sig-prename descclassname">ddf_library.functions.graph.</code><code class="sig-name descname">PageRank</code><span class="sig-paren">(</span><em class="sig-param">outlink_col</em>, <em class="sig-param">inlink_col</em>, <em class="sig-param">damping_factor=0.85</em>, <em class="sig-param">max_iters=100</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.functions.graph.PageRank" title="Permalink to this definition">¶</a></dt>
-<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">ddf_library.ddf_base.DDFSketch</span></code></p>
+<em class="property">class </em><code class="descclassname">ddf_library.functions.graph.</code><code class="descname">PageRank</code><span class="sig-paren">(</span><em>damping_factor=0.85</em>, <em>max_iters=100</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.functions.graph.PageRank" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal"><span class="pre">ddf_library.bases.ddf_model.ModelDDF</span></code></p>
 <p>PageRank is one of the methods Google uses to determine a page’s
 relevance or importance. The idea that Page Rank brought up was that, the
 importance of any web page can be judged by looking at the pages that link
 to it.</p>
 <p>PageRank can be utilized in others domains. For example, may also be used
 as a methodology to measure the apparent impact of a community.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Example</dt>
-<dd class="field-odd"><p></p></dd>
-</dl>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">pr</span> <span class="o">=</span> <span class="n">PageRank</span><span class="p">(</span><span class="n">damping_factor</span><span class="o">=</span><span class="mf">0.85</span><span class="p">)</span>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Example:</th><td class="field-body"></td>
+</tr>
+</tbody>
+</table>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">pr</span> <span class="o">=</span> <span class="n">PageRank</span><span class="p">(</span><span class="n">damping_factor</span><span class="o">=</span><span class="mf">0.85</span><span class="p">)</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">ddf2</span> <span class="o">=</span> <span class="n">pr</span><span class="o">.</span><span class="n">transform</span><span class="p">(</span><span class="n">ddf1</span><span class="p">,</span> <span class="n">inlink_col</span><span class="o">=</span><span class="s1">&#39;col1&#39;</span><span class="p">,</span> <span class="n">outlink_col</span><span class="o">=</span><span class="s1">&#39;col2&#39;</span><span class="p">)</span>
 </pre></div>
 </div>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>outlink_col</strong> – Out-link vertex;</p></li>
-<li><p><strong>inlink_col</strong> – In-link vertex;</p></li>
-<li><p><strong>damping_factor</strong> – Default damping factor is 0.85;</p></li>
-<li><p><strong>max_iters</strong> – Maximum number of iterations (default is 100).</p></li>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>damping_factor</strong> – Default damping factor is 0.85;</li>
+<li><strong>max_iters</strong> – Maximum number of iterations (default is 100).</li>
 </ul>
-</dd>
-</dl>
+</td>
+</tr>
+</tbody>
+</table>
 <dl class="method">
 <dt id="ddf_library.functions.graph.PageRank.transform">
-<code class="sig-name descname">transform</code><span class="sig-paren">(</span><em class="sig-param">data</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.functions.graph.PageRank.transform" title="Permalink to this definition">¶</a></dt>
+<code class="descname">transform</code><span class="sig-paren">(</span><em>data</em>, <em>outlink_col</em>, <em>inlink_col</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.functions.graph.PageRank.transform" title="Permalink to this definition">¶</a></dt>
 <dd><p>Generates the PageRank’s result.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
-<dd class="field-odd"><p><strong>data</strong> – DDF</p>
-</dd>
-<dt class="field-even">Returns</dt>
-<dd class="field-even"><p>DDF with Vertex and Rank columns</p>
-</dd>
-</dl>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>data</strong> – DDF</li>
+<li><strong>outlink_col</strong> – Out-link vertex;</li>
+<li><strong>inlink_col</strong> – In-link vertex;</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">DDF with Vertex and Rank columns</p>
+</td>
+</tr>
+</tbody>
+</table>
 </dd></dl>
 
 </dd></dl>
@@ -105,13 +129,13 @@ as a methodology to measure the apparent impact of a community.</p>
   <p class="topless"><a href="ddf_library.functions.ml.classification.html"
                         title="next chapter">ML.Classification</a></p>
 <div id="searchbox" style="display: none" role="search">
-  <h3 id="searchlabel">Quick search</h3>
-    <div class="searchformwrapper">
+  <h3>Quick search</h3>
     <form class="search" action="search.html" method="get">
-      <input type="text" name="q" aria-labelledby="searchlabel" />
-      <input type="submit" value="Go" />
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
     </form>
-    </div>
 </div>
 <script type="text/javascript">$('#searchbox').show(0);</script>
         </div>
@@ -139,8 +163,8 @@ as a methodology to measure the apparent impact of a community.</p>
       </ul>
     </div>
     <div class="footer" role="contentinfo">
-        &#169; Copyright 2019, Lucas M Ponce.
-      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 2.1.0.
+        &#169; Copyright 2020, Lucas M Ponce.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.6.7.
     </div>
   </body>
 </html>

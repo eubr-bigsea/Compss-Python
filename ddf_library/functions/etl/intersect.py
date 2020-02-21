@@ -7,38 +7,7 @@ __email__ = "lucasmsp@gmail.com"
 from ddf_library.utils import generate_info
 from .hash_partitioner import hash_partition
 
-from pycompss.api.task import task
-
 import pandas as pd
-
-
-def intersect(data1, data2, settings):
-    """
-    Returns a new DataFrame containing rows in both frames.
-
-    :param data1: A list with nfrag pandas's DataFrame;
-    :param data2: Other list with nfrag pandas's DataFrame;
-    :param settings: A dictionary with:
-        - distinct: True to be equivalent to INTERSECT, False to INTERSECT ALL;
-    :return: Returns a new pandas DataFrame
-
-    .. note:: Rows with NA elements will not be take in count.
-    """
-
-    data1, data2, _ = intersect_stage_1(data1, data2, settings)
-
-    nfrag = len(data1)
-    result = [[] for _ in range(nfrag)]
-    info = result[:]
-
-    for f in range(nfrag):
-        settings['id_frag'] = f
-        result[f], info[f] = intersect_stage_2(data1[f], data2[f],
-                                               settings.copy())
-
-    output = {'key_data': ['data'], 'key_info': ['info'],
-              'data': result, 'info': info}
-    return output
 
 
 def intersect_stage_1(data1, data2, settings):
@@ -70,9 +39,10 @@ def intersect_stage_2(df1, df2, settings):
     df1 = df1.dropna(axis=0, how='any')
 
     if remove_duplicates:
-        df1 = df1.drop_duplicates(subset=keys)
+        df1 = df1.drop_duplicates(subset=keys, ignore_index=True)
 
-    df2 = df2.dropna(axis=0, how='any').drop_duplicates(subset=keys2)
+    df2 = df2.dropna(axis=0, how='any')\
+        .drop_duplicates(subset=keys2, ignore_index=True)
 
     if set(keys) == set(keys2) and len(df1) > 0:
         df1 = pd.merge(df1, df2, how='inner', on=keys, copy=False)
@@ -80,8 +50,3 @@ def intersect_stage_2(df1, df2, settings):
 
     info = generate_info(df1, frag)
     return df1, info
-
-
-@task(returns=2)
-def task_intersect_stage_2(df1, df2, settings):
-    return intersect_stage_2(df1, df2, settings)

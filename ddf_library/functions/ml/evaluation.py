@@ -4,8 +4,10 @@
 __author__ = "Lucas Miguel S Ponce"
 __email__ = "lucasmsp@gmail.com"
 
-from ddf_library.ddf_base import DDFSketch
+from ddf_library.bases.ddf_base import DDFSketch
+from ddf_library.utils import read_stage_file
 
+from pycompss.api.parameter import FILE_IN
 from pycompss.api.task import task
 from pycompss.functions.reduce import merge_reduce
 from pycompss.api.api import compss_delete_object, compss_wait_on
@@ -166,10 +168,11 @@ class MultilabelMetrics(DDFSketch):
         return table
 
 
-@task(returns=1)
-def cme_stage1(data, col_test, col_predicted):
+@task(returns=1, data_input=FILE_IN)
+def cme_stage1(data_input, col_test, col_predicted):
     """Create a partial confusion matrix."""
 
+    data = read_stage_file(data_input, [col_test, col_predicted])
     data = data.groupby([col_test,
                          col_predicted]).size().reset_index(name='counts')
 
@@ -342,12 +345,13 @@ class RegressionMetrics(DDFSketch):
         return result
 
 
-@task(returns=1)
-def rme_stage1(df, cols):
+@task(returns=1, data_input=FILE_IN)
+def rme_stage1(data_input, cols):
     """Generate the partial statistics of each fragment."""
     dim = 1
     col_test, col_predicted, col_features = cols
     sse_partial = ssy_partial = abs_error = sum_y = 0.0
+    df = read_stage_file(data_input, [col_test, col_predicted] + col_features)
 
     size = len(df)
     if size > 0:

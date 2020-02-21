@@ -5,11 +5,9 @@
 __author__ = "Lucas Miguel S Ponce"
 __email__ = "lucasmsp@gmail.com"
 
-from ddf_library.ddf import DDF, generate_info
-from ddf_library.ddf_model import ModelDDF
+from ddf_library.ddf import DDF
 
 from pycompss.api.task import task
-from pycompss.api.api import compss_wait_on
 from pycompss.functions.reduce import merge_reduce
 
 import numpy as np
@@ -363,8 +361,7 @@ def _update_clusters(partial, to_update, grids):
     if len(df) > 0:
         tmp = df.apply(lambda row: _inblock(row, column, init, end2), axis=1)
         df = df.loc[tmp]
-        df.drop_duplicates([primary_key], inplace=False)
-        df = df.reset_index(drop=True)
+        df.drop_duplicates([primary_key], inplace=False, ignore_index=True)
 
         for key in to_update:
             if key in clusters:

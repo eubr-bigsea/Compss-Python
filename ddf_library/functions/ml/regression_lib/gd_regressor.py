@@ -5,10 +5,13 @@
 __author__ = "Lucas Miguel S Ponce"
 __email__ = "lucasmsp@gmail.com"
 
-from ddf_library.ddf import DDF
-from ddf_library.ddf_model import ModelDDF
-from ddf_library.utils import generate_info
+from ddf_library.bases.context_base import ContextBase
 
+from ddf_library.ddf import DDF
+from ddf_library.bases.ddf_model import ModelDDF
+from ddf_library.utils import generate_info, read_stage_file
+
+from pycompss.api.parameter import FILE_IN
 from pycompss.api.task import task
 from pycompss.functions.reduce import merge_reduce
 from pycompss.api.api import compss_wait_on, compss_delete_object
@@ -24,14 +27,13 @@ class GDRegressor(ModelDDF):
 
     :Example:
 
-    >>> model = GDRegressor('features', 'y').fit(ddf1)
+    >>> model = GDRegressor()\
+    >>>         .fit(ddf1, feature_col=['col1', 'col2'], label_col='label')
     >>> ddf2 = model.transform(ddf1)
     """
 
-    def __init__(self, feature_col, label_col, max_iter=100, alpha=1, tol=1e-3):
+    def __init__(self, max_iter=100, alpha=1, tol=1e-3):
         """
-        :param feature_col: Feature column name;
-        :param label_col: Label column name;
         :param max_iter: Maximum number of iterations (default, 100);
         :param alpha: learning rate parameter  (default, 1). This method sets
          the learning rate parameter used by Gradient Descent when updating
@@ -43,77 +45,79 @@ class GDRegressor(ModelDDF):
         """
         super(GDRegressor, self).__init__()
 
-        self.settings = dict()
-        self.settings['feature_col'] = feature_col
-        self.settings['label_col'] = label_col
-        self.settings['max_iter'] = max_iter
-        self.settings['alpha'] = alpha
-        self.settings['tolerance'] = tol
+        self.feature_col = None
+        self.label_col = None
+        self.pred_col = None
 
-        self.model = {}
-        self.name = 'GDRegressor'
+        self.max_iter = max_iter
+        self.alpha = alpha
+        self.tolerance = tol
 
-    def fit(self, data):
+    def fit(self, data, feature_col, label_col):
         """
         Fit the model.
 
         :param data: DDF
+        :param feature_col: Feature column name;
+        :param label_col: Label column name;
         :return: trained model
         """
 
         df, nfrag, tmp = self._ddf_initial_setup(data)
 
-        features = self.settings['feature_col']
-        label = self.settings['label_col']
-        alpha = self.settings['alpha']
-        max_iter = self.settings['max_iter']
-        tol = self.settings['tolerance']
-
-        parameters = _gradient_descent(df, features, label,
-                                       alpha, max_iter, tol, nfrag)
+        self.feature_col = feature_col
+        self.label_col = label_col
+        parameters = _gradient_descent(df, self.feature_col, self.label_col,
+                                       self.alpha, self.max_iter,
+                                       self.tolerance, nfrag)
 
         parameters = compss_wait_on(parameters)
         self.model['model'] = parameters
         self.model['algorithm'] = self.name
         return self
 
-    def fit_transform(self, data, pred_col='pred_LinearReg'):
+    def fit_transform(self, data, feature_col, label_col,
+                      pred_col='pred_LinearReg'):
         """
         Fit the model and transform.
 
         :param data: DDF
+        :param feature_col: Feature column name;
+        :param label_col: Label column name;
         :param pred_col: Output prediction column (default, *'pred_LinearReg'*);
         :return: DDF
         """
 
-        self.fit(data)
-        ddf = self.transform(data, pred_col=pred_col)
+        self.fit(data, feature_col, label_col)
+        ddf = self.transform(data, feature_col, pred_col=pred_col)
 
         return ddf
 
-    def transform(self, data, pred_col='pred_LinearReg'):
+    def transform(self, data, feature_col=None, pred_col='pred_LinearReg'):
         """
         :param data: DDF
+        :param feature_col: Feature column name;
         :param pred_col: Output prediction column (default, *'pred_LinearReg'*);
         :return: DDF
         """
 
         self.check_fitted_model()
+        if feature_col:
+            self.feature_col = feature_col
+        self.pred_col = pred_col
 
-        task_list = data.task_list
-        settings = self.settings.copy()
-        settings['pred_col'] = pred_col
-        settings['model'] = self.model['model'].copy()
+        settings = self.__dict__.copy()
+        settings['model'] = settings['model']['model']
 
         def task_gd_regressor(df, params):
             return _predict(df, params)
 
-        uuid_key = self._ddf_add_task(task_name='task_gd_regressor',
-                                      opt=self.OPT_SERIAL,
-                                      function=[task_gd_regressor, settings],
-                                      parent=[data.last_uuid])
+        uuid_key = ContextBase\
+            .ddf_add_task(self.name, opt=self.OPT_SERIAL,
+                          function=[task_gd_regressor, settings],
+                          parent=[data.last_uuid])
 
-        return DDF(task_list=task_list, last_uuid=uuid_key)
+        return DDF(task_list=data.task_list, last_uuid=uuid_key)
 
 
 def _gradient_descent(data, features, label, alpha, max_iter, tol, nfrag):
@@ -141,10 +145,11 @@ def _gradient_descent(data, features, label, alpha, max_iter, tol, nfrag):
     return theta
 
 
-@task(returns=1)
-def _select_att(data, cols):
+@task(returns=1, data_input=FILE_IN)
+def _select_att(data_input, cols):
     features, label = cols
     to_keep = features + [label]
+    data = read_stage_file(data_input, to_keep)
     data = data[to_keep].dropna()
 
     features = data[features].values

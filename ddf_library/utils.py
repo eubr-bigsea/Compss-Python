@@ -4,14 +4,17 @@
 __author__ = "Lucas Miguel S Ponce"
 __email__ = "lucasmsp@gmail.com"
 
+from pycompss.api.parameter import FILE_IN, COLLECTION_IN
 from pycompss.api.task import task
-from pycompss.functions.reduce import merge_reduce
-from pycompss.runtime.binding import Future
+from pycompss.api.api import compss_delete_file
 
 import numpy as np
 import pandas as pd
 import uuid
 import sys
+
+
+stage_id = 0
 
 
 @task(returns=2)
@@ -52,61 +55,82 @@ def generate_info(df, f, info=None):
 
 def merge_info(schemas):
     if isinstance(schemas, list):
-        schemas = merge_reduce(merge_schema, schemas)
+        schemas = merge_schema(schemas)
     return schemas
 
 
-def concatenate_pandas(df):
-    if any([True for r in df if len(r) > 0]):
-        df = [r for r in df if len(r) > 0]  # to avoid change dtypes
-    df = pd.concat(df, sort=False, ignore_index=True)
+def concatenate_pandas(dfs):
+    # issue: https://pandas.pydata.org/pandas-docs/version/1.0.0/user_guide
+    # /integer_na.html
+
+    if any([True for r in dfs if len(r) > 0]):
+        dfs = [r for r in dfs if len(r) > 0]  # to avoid change dtypes
+
+    df = pd.concat(dfs, sort=False, ignore_index=True)
+    del dfs
     df.reset_index(drop=True, inplace=True)
     return df
 
 
-@task(returns=1)
-def merge_schema(schema1, schema2):
+@task(returns=1, schemas=COLLECTION_IN)
+def merge_schema(schemas):
+    schema = schemas[0]
 
-    frags = np.array(schema1['frag'] + schema2['frag'])
-    sizes = schema1['size'] + schema2['size']
+    for schema2 in schemas[1:]:
 
-    idx = np.argsort(frags)
-    frags = frags[idx].tolist()
-    sizes = np.array(sizes)[idx].tolist()
+        frags = np.array(schema['frag'] + schema2['frag'])
+        sizes = schema['size'] + schema2['size']
 
-    schema = {'cols': schema1['cols'],
-              'dtypes': schema1['dtypes'],
-              'size': sizes,
-              'frag': frags}
+        idx = np.argsort(frags)
+        frags = frags[idx].tolist()
+        sizes = np.array(sizes)[idx].tolist()
 
-    if 'memory' in schema1:
-        memory = schema1['memory'] + schema2['memory']
-        schema['memory'] = np.array(memory)[idx].tolist()
+        schema_new = {'cols': schema['cols'],
+                      'dtypes': schema['dtypes'],
+                      'size': sizes,
+                      'frag': frags}
 
-    if set(schema1['cols']) != set(schema2['cols']):
-        schema = "Error: Partitions have different columns names."
+        if 'memory' in schema:
+            memory = schema['memory'] + schema2['memory']
+            schema_new['memory'] = np.array(memory)[idx].tolist()
 
-    # dtypes = info['dtypes'][0]  # TODO
+        if set(schema['cols']) != set(schema2['cols']):
+            raise Exception("Error: Partitions have different columns names.")
+
+        schema = schema_new
 
     return schema
 
 
-@task(returns=1)
-def _get_schema(df, f):
-    info = generate_info(df, f)
-    return info
+def parser_filepath(filepath):
+    import re
+    host, port = 'default', 0
+
+    if re.match(r"hdfs:\/\/+", filepath):
+        storage = 'hdfs'
+        host, filename = filepath[7:].split(':')
+        port, filename = filename.split('/', 1)
+        filename = '/' + filename
+        port = int(port)
+    elif re.match(r"file:\/\/+", filepath):
+        storage = 'file'
+        filename = filepath[7:]
+    else:
+        raise Exception('`hdfs://` and `file://` storage are supported.')
+    return host, port, filename, storage
 
 
 def check_serialization(data):
     """
-    Check if output is a Future object or is data in-memory.
+    Check if output is a str file object (Future) or is a BufferIO.
     :param data:
     :return:
     """
-    if isinstance(data, list):
-        return isinstance(data[0], Future)
 
-    return isinstance(data, Future)
+    if isinstance(data, list):
+        if len(data) > 0:
+            return isinstance(data[0], str)
+        return False
 
 
 def divide_idx_in_frags(ids, n_list):
@@ -149,16 +173,52 @@ def create_auxiliary_column(columns):
     return column
 
 
-def col(name):
-    from ddf_library.config import columns
-    return columns.index(name)
+def convert_int64_columns(df):
+    for col in df.column:
+        if 'int' in df[col].dtype:
+            df[col] = df[col].astype('Int64')
+    return df
 
 
-def clear_context():
-    from ddf_library.context import COMPSsContext, nx
+def delete_result(file_list):
+    for f in file_list:
+        compss_delete_file(f)
 
-    COMPSsContext.adj_tasks = dict()
-    COMPSsContext.schemas_map = dict()
-    COMPSsContext.tasks_map = dict()
-    COMPSsContext.dag = nx.DiGraph()
+
+def create_stage_files(nfrag):
+    global stage_id
+    from ddf_library.bases.context_base import ContextBase
+    app_folder = ContextBase.app_folder
+
+    file_names = ['{}/stage{}_block{}.parquet'
+                  .format(app_folder, stage_id, f) for f in range(nfrag)]
+    stage_id += 1
+    return file_names
+
+
+def read_stage_file(filepath, cols=None):
+    if isinstance(cols, str):
+        cols = [cols]
+    return pd.read_parquet(filepath, columns=cols, engine='pyarrow')
+
+
+def save_stage_file(filepath, df):
+    return df.to_parquet(filepath, engine='pyarrow', index=False,
+                         compression='snappy')
+
+
+def clean_info(info):
+    try:
+        new_info = dict()
+        new_info['cols'] = info['cols'].copy()
+        new_info['dtypes'] = info['dtypes'].copy()
+        new_info['size'] = info['size'].copy()
+        new_info['frag'] = info['frag'].copy()
+    except Exception as e:
+        print('[clean_info] Current dict:', info)
+        raise e
+
+    if 'memory' in info:
+        new_info['memory'] = info['memory'].copy()
+    return new_info
 

@@ -4,23 +4,26 @@
 __author__ = "Lucas Miguel S Ponce"
 __email__ = "lucasmsp@gmail.com"
 
-import ddf_library.config as config
+import ddf_library.bases.config as config
+from ddf_library.utils import read_stage_file
 
 from pycompss.api.task import task
+from pycompss.api.parameter import FILE_IN
 
 from itertools import combinations
 from collections import defaultdict, namedtuple
 
 
-@task(returns=config.x)
-def step4_pfg(df, col, g_list, nfrag):
+@task(returns=config.x, data_input=FILE_IN)
+def step4_pfg(data_input, col, g_list, nfrag):
     """
     Parallel FP-Growth
     """
     g_list = g_list[0]
     result = [[] for _ in range(nfrag)]
 
-    for transaction in df[col].values:
+    df = read_stage_file(data_input, col)
+    for transaction in df[col].to_numpy():
 
         # group_list has already been pruned, but item_set hasn't
         item_set = [item for item in transaction if item in g_list]
@@ -47,41 +50,9 @@ def step4_pfg(df, col, g_list, nfrag):
 
             if group_id not in emitted_groups:
                 emitted_groups.add(group_id)
-
                 result[group_id].append(item_set[:(i + 1)])
 
     return result
-
-
-def merge_n_reduce(f, data, n):
-    """
-    Apply f cumulatively to the items of data,
-    from left to right in binary tree structure, so as to
-    reduce the data to a single value.
-
-    :param f: function to apply to reduce data
-    :param data: List of items to be reduced
-    :param n: step size
-    :return: result of reduce the data to a single value
-    """
-
-    from collections import deque
-    q = deque(range(len(data)))
-    new_data = data[:]
-    len_q = len(q)
-    while len_q:
-        x = q.popleft()
-        len_q = len(q)
-        if len_q:
-            min_d = min([len_q, n - 1])
-            xs = [q.popleft() for _ in range(min_d)]
-            xs = [new_data[i] for i in xs] + [0] * (n - min_d - 1)
-
-            new_data[x] = f(new_data[x], *xs)
-            q.append(x)
-
-        else:
-            return new_data[x]
 
 
 class Node(object):

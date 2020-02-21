@@ -4,7 +4,7 @@
 __author__ = "Lucas Miguel S Ponce"
 __email__ = "lucasmsp@gmail.com"
 
-from ddf_library.context import COMPSsContext
+from ddf_library.bases.context_base import ContextBase
 from ddf_library.ddf import DDF
 
 
@@ -31,39 +31,33 @@ class GroupedDDF(DDF):
         self.last_uuid = ddf_var.last_uuid
         self.ddf_var = ddf_var
         self.last2 = ddf_var.task_list[-2]
-        self.parameters = COMPSsContext().get_task_function(self.last_uuid)[1]
+        self.parameters = ContextBase().get_task_function(self.last_uuid)[1]
 
         super(GroupedDDF, self).__init__(task_list=ddf_var.task_list.copy(),
                                          last_uuid=self.last_uuid)
 
-    def agg(self, exprs, alias=None):
+    def agg(self, **exprs):
         # noinspection PyUnresolvedReferences
         """
         Compute aggregates and returns the result as a DDF.
 
-        :param exprs: A single dict mapping from string to string, where the
-         key is the column to perform aggregation on, and the value is a list
-         of aggregation functions.
-        :param alias: A single dict mapping from string to string, where the
-         key is the old column name to perform aggregation on, and the value
-         is a list of aliases for each aggregation function.
+        :param exprs: Tuples, where: alias=('column name', function).
 
         :Example:
 
-        >>> ddf1.group_by(group_by=['col_1']).agg({'col_2': ['sum', 'last']})
+        >>> ddf1.group_by(['col_1']).agg(MIN=('col_2', 'min'),
+        >>>                              MAX=('col_3', 'max'))
         """
-        self.parameters['operation'] = exprs
-        if alias is None:
-            alias = {}
-            for col in exprs:
-                alias[col] = []
-                for f in exprs[col]:
-                    alias[col].append("{}({})".format(f, col))
 
-        self.parameters['aliases'] = alias
-        COMPSsContext.tasks_map[self.last_uuid]['function'][1] = \
+        operations = []
+        for alias in exprs:
+            col, function = exprs[alias]
+            operations.append([col, function, alias])
+
+        self.parameters['operation'] = operations
+        ContextBase.catalog_tasks[self.last_uuid]['function'][1] = \
             self.parameters
-        COMPSsContext.tasks_map[self.last2]['function'][1] = self.parameters
+        ContextBase.catalog_tasks[self.last2]['function'][1] = self.parameters
 
         return self.ddf_var
 
@@ -219,8 +213,7 @@ class GroupedDDF(DDF):
         return self
 
     def _apply_agg(self, cols, func, new_alias):
-        exprs = self.parameters['operation']
-        aliases = self.parameters.get('aliases', {})
+        operations = self.parameters['operation']
         groupby = self.parameters['groupby'][0]
 
         if not isinstance(cols, list):
@@ -242,16 +235,10 @@ class GroupedDDF(DDF):
             if col == '*':
                 col = groupby
 
-            if col not in exprs:
-                exprs[col] = []
-            exprs[col].append(func)
+            operations.append([col, func, alias])
 
-            if col not in aliases:
-                aliases[col] = []
-            aliases[col].append(alias)
+        self.parameters['operation'] = operations
 
-        self.parameters['operation'] = exprs
-        self.parameters['aliases'] = aliases
-
-        COMPSsContext.tasks_map[self.last_uuid]['function'][1] = self.parameters
-        COMPSsContext.tasks_map[self.last2]['function'][1] = self.parameters
+        ContextBase.catalog_tasks[self.last_uuid]['function'][1] = \
+            self.parameters
+        ContextBase.catalog_tasks[self.last2]['function'][1] = self.parameters

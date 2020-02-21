@@ -13,15 +13,12 @@ import numpy as np
 import time
 import sys
 import math
-
-try:
-    from StringIO import StringIO
-except ImportError:
-    from io import StringIO
+from io import StringIO
 
 ####
-#### Data generation
+#   Data generation
 #### 
+
 
 @task(returns=2)
 def generate_partition(x, multiplier, frag):
@@ -38,6 +35,7 @@ def generate_partition(x, multiplier, frag):
     schema = generate_info(df, frag)
     return df, schema
 
+
 def generate_data(n_repeat, nfrag):
     dfs = [[] for _ in range(nfrag)]
     info = [[] for _ in range(nfrag)]
@@ -49,10 +47,11 @@ def generate_data(n_repeat, nfrag):
         dfs[f], info[f] = generate_partition(block, n_repeat, f)
     return dfs, info
 
+
 if __name__ == "__main__":
 
     ####
-    #### Data generation
+    # Data generation
     #### 
     size_block = int(sys.argv[1])*1024*1024  # in bytes
     n_frag = int(sys.argv[2])
@@ -62,7 +61,7 @@ if __name__ == "__main__":
     df_list, info = generate_data(n_repeat, n_frag)
     
     ####
-    #### Titanic workflow
+    # Titanic workflow
     #### 
     ddf1 = DDF().import_data(df_list, info)
     
@@ -111,10 +110,10 @@ if __name__ == "__main__":
         return category
 
     features = ['Pclass', 'Sex', 'Age', 'SibSp', 'Parch', 'Fare', 'Embarked']
-    all_columns = features +['Survived']
+    all_columns = features + ['Survived']
 
-    ddf1 = StringIndexer(input_col='Embarked') \
-        .fit_transform(ddf1, output_col='Embarked')\
+    ddf1 = StringIndexer() \
+        .fit_transform(ddf1, input_col='Embarked', output_col='Embarked')\
         .drop(['PassengerId', 'Cabin', 'Ticket'])\
         .dropna(all_columns, how='any')\
         .replace({'male': 1, 'female': 0}, subset=['Sex'])\
@@ -125,4 +124,4 @@ if __name__ == "__main__":
     features.append('Name')
     ddf1 = StandardScaler(with_mean=True, with_std=True)\
         .fit_transform(ddf1, input_col=features, output_col=features)\
-        .save("/titanic/titanic", storage='hdfs', host='master')
+        .save("hdfs://localhost:9000/titanic/titanic")

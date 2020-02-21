@@ -1,0 +1,228 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>COMPSs Context &#8212; DDF</title>
+    <link rel="stylesheet" href="_static/nature.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    './',
+        VERSION:     '0.5.1',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true,
+        SOURCELINK_SUFFIX: '.txt'
+      };
+    </script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <link rel="shortcut icon" href="_static/favicon.ico"/>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="DDF operations" href="ddf_library.html" />
+    <link rel="prev" title="API Reference" href="api.html" /> 
+  </head>
+  <body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="ddf_library.html" title="DDF operations"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="api.html" title="API Reference"
+             accesskey="P">previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="index.html">DDF</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="api.html" accesskey="U">API Reference</a> &#187;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="module-ddf_library.context">
+<span id="compss-context"></span><h1>COMPSs Context<a class="headerlink" href="#module-ddf_library.context" title="Permalink to this headline">¶</a></h1>
+<dl class="class">
+<dt id="ddf_library.context.COMPSsContext">
+<em class="property">class </em><code class="descclassname">ddf_library.context.</code><code class="descname">COMPSsContext</code><a class="headerlink" href="#ddf_library.context.COMPSsContext" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal"><span class="pre">object</span></code></p>
+<p>Controls the DDF tasks executions</p>
+<dl class="staticmethod">
+<dt id="ddf_library.context.COMPSsContext.context_status">
+<em class="property">static </em><code class="descname">context_status</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.context.COMPSsContext.context_status" title="Permalink to this definition">¶</a></dt>
+<dd><p>Generates a DAG (in dot file) and some information on screen about
+the status process.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body"></td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="staticmethod">
+<dt id="ddf_library.context.COMPSsContext.import_data">
+<em class="property">static </em><code class="descname">import_data</code><span class="sig-paren">(</span><em>df_list</em>, <em>info=None</em>, <em>parquet=False</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.context.COMPSsContext.import_data" title="Permalink to this definition">¶</a></dt>
+<dd><p>Import a previous Pandas DataFrame list into DDF abstraction.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>df_list</strong> – DataFrame input</li>
+<li><strong>parquet</strong> – if data is saved as list of parquet files</li>
+<li><strong>info</strong> – (Optional) A list of columns names, data types and size
+in each partition;</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">DDF</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Example:</th><td class="field-body"></td>
+</tr>
+</tbody>
+</table>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">cc</span> <span class="o">=</span> <span class="n">COMPSsContext</span><span class="p">()</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">ddf1</span> <span class="o">=</span> <span class="n">cc</span><span class="o">.</span><span class="n">import_partitions</span><span class="p">(</span><span class="n">df_list</span><span class="p">)</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="staticmethod">
+<dt id="ddf_library.context.COMPSsContext.parallelize">
+<em class="property">static </em><code class="descname">parallelize</code><span class="sig-paren">(</span><em>df</em>, <em>num_of_parts='*'</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.context.COMPSsContext.parallelize" title="Permalink to this definition">¶</a></dt>
+<dd><p>Distributes a DataFrame into DDF.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>df</strong> – DataFrame input</li>
+<li><strong>num_of_parts</strong> – number of partitions (default, ‘*’ meaning all
+cores available in master CPU);</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">DDF</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Example:</th><td class="field-body"></td>
+</tr>
+</tbody>
+</table>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">cc</span> <span class="o">=</span> <span class="n">COMPSsContext</span><span class="p">()</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">ddf1</span> <span class="o">=</span> <span class="n">cc</span><span class="o">.</span><span class="n">parallelize</span><span class="p">(</span><span class="n">df</span><span class="p">)</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="method">
+<dt id="ddf_library.context.COMPSsContext.set_log">
+<code class="descname">set_log</code><span class="sig-paren">(</span><em>enabled=True</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.context.COMPSsContext.set_log" title="Permalink to this definition">¶</a></dt>
+<dd><p>Set the log level.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>enabled</strong> – True to debug, False to off.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"></td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="ddf_library.context.COMPSsContext.show_tasks">
+<code class="descname">show_tasks</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.context.COMPSsContext.show_tasks" title="Permalink to this definition">¶</a></dt>
+<dd><p>Show all tasks in the current code. Only to debug.
+:return:</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="ddf_library.context.COMPSsContext.start_monitor">
+<code class="descname">start_monitor</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.context.COMPSsContext.start_monitor" title="Permalink to this definition">¶</a></dt>
+<dd><p>Start a web service monitor that informs the environment current status.
+The process will be shown in <a class="reference external" href="http://127.0.0.1:58227/">http://127.0.0.1:58227/</a>.
+:return:</p>
+</dd></dl>
+
+<dl class="staticmethod">
+<dt id="ddf_library.context.COMPSsContext.stop">
+<em class="property">static </em><code class="descname">stop</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.context.COMPSsContext.stop" title="Permalink to this definition">¶</a></dt>
+<dd><p>Stop the DDF environment. It is important to stop at end of an
+application in order to avoid that COMPSs sends back all partial
+result at end.</p>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+  <h4>Previous topic</h4>
+  <p class="topless"><a href="api.html"
+                        title="previous chapter">API Reference</a></p>
+  <h4>Next topic</h4>
+  <p class="topless"><a href="ddf_library.html"
+                        title="next chapter">DDF operations</a></p>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="ddf_library.html" title="DDF operations"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="api.html" title="API Reference"
+             >previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="index.html">DDF</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="api.html" >API Reference</a> &#187;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2020, Lucas M Ponce.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.6.7.
+    </div>
+  </body>
+</html>

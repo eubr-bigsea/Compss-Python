@@ -5,13 +5,12 @@ __author__ = "Lucas Miguel S Ponce"
 __email__ = "lucasmsp@gmail.com"
 
 from pycompss.api.task import task
+from pycompss.api.parameter import FILE_IN
 
-from pycompss.api.constraint import constraint
-
-from ddf_library.utils import create_auxiliary_column
+from ddf_library.utils import create_auxiliary_column, read_stage_file
 from .parallelize import _generate_distribution2
 from .balancer import _balancer
-import ddf_library.config as config
+import ddf_library.bases.config as config
 
 import numpy as np
 import pandas as pd
@@ -58,12 +57,20 @@ def repartition(data, settings):
     return output
 
 
-@task(returns=config.x)
-def split_by_hash(df, cols, info, nfrag):
-    splits = [pd.DataFrame(columns=info['cols'], dtype=info['dtypes'])
-              for _ in range(nfrag)]
+@task(input_data=FILE_IN, returns=config.x)
+def split_by_hash(input_data, cols, info, nfrag):
+
+    df = read_stage_file(input_data)
+    # Apply a reduction function. Currently, it works only when hash partitioner
+    # is performed by distinct and aggregation operations.
+    associated_function, settings_f = info.get('function', [-1, -1])
+    if associated_function != -1:
+        print('[INFO] - applying reduction inside split_by_hash')
+        df, _ = associated_function(df, settings_f)
 
     df.reset_index(drop=True, inplace=True)
+    splits = [df[0:0] for _ in range(nfrag)]  # create empty clone
+
     if len(df) > 0:
         if len(cols) > 1:
             keys = df[cols].astype(str).values.sum(axis=1).ravel()
@@ -86,11 +93,16 @@ def hashcode(x):
 
 
 # @constraint(ComputingUnits="2")  # approach to have more available memory
-@task(returns=config.x)
-def split_by_boundary(data, cols, ascending, bounds, info, nfrag):
-    splits = [pd.DataFrame(columns=info['cols'], dtype=info['dtypes'])
-              for _ in range(nfrag)]
+@task(input_data=FILE_IN, returns=config.x)
+def split_by_boundary(input_data, cols, ascending, bounds, info, nfrag,
+                      only_key_columns):
 
+    splits = [[] for _ in range(nfrag)]
+
+    columns_to_read = None
+    if only_key_columns:
+        columns_to_read = cols
+    data = read_stage_file(input_data, columns_to_read)
     if len(data) > 0:
         aux_col = create_auxiliary_column(info['cols'])
         data.reset_index(drop=True, inplace=True)
@@ -135,34 +147,3 @@ def split_by_boundary(data, cols, ascending, bounds, info, nfrag):
         splits = splits[0]
 
     return splits
-
-
-def merge_n_reduce(f, data, n):
-    """
-    Apply f cumulatively to the items of data,
-    from left to right in binary tree structure, so as to
-    reduce the data to a single value.
-
-    :param f: function to apply to reduce data
-    :param data: List of items to be reduced
-    :param n: step size
-    :return: result of reduce the data to a single value
-    """
-
-    from collections import deque
-    q = deque(range(len(data)))
-    new_data = data[:]
-    len_q = len(q)
-    while len_q:
-        x = q.popleft()
-        len_q = len(q)
-        if len_q:
-            min_d = min([len_q, n-1])
-            xs = [q.popleft() for _ in range(min_d)]
-            xs = [new_data[i] for i in xs] + [0] * (n - min_d - 1)
-
-            new_data[x] = f(new_data[x], *xs)
-            q.append(x)
-
-        else:
-            return new_data[x]

@@ -1,7 +1,7 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 
-from ddf_library.ddf import DDF
+from ddf_library.context import COMPSsContext
 import pandas as pd
 
 
@@ -12,18 +12,29 @@ def ml_fpm_fpgrowth():
                          ['1,2,3,5'],
                          ['1,2']], columns=['col_0'])
 
-    from ddf_library.utils import col
-    data_set = DDF() \
+    from ddf_library.columns import col, udf
+    from ddf_library.types import ArrayType
+
+    def f1(x):
+        return x.split(',')
+    cc = COMPSsContext()
+    f1_udf = udf(f1, ArrayType, col('col_0'))
+    data_set = cc \
         .parallelize(data, 2) \
-        .map(lambda row: row[col('col_0')].split(','), 'col_0')
+        .map(f1_udf, 'col_0')
+
+    def f2(x):
+        return x.split(' ')[:-1]
+
+    f2_udf = udf(f2, ArrayType, col('col_0'))
 
     # data_set = DDF()\
-    #     .load_text('/transactions.csv', num_of_parts=4, header=False,
-    #                sep='\n')\
-    #     .map(lambda row: row['col_0'].split(' ')[:-1], 'col_0')
+    #     .read.csv('hdfs://localhost:9000/transactions.csv',
+    #               num_of_parts='*', header=False, sep='\n')\
+    #     .map(f2_udf, 'col_0')
 
     fp = FPGrowth(min_support=0.5)  # 0.0284
-    item_set = fp.fit_transform(data_set, column='col_0')
+    item_set = fp.fit_transform(data_set, input_col='col_0')
 
     """
              items  support
@@ -36,12 +47,13 @@ def ml_fpm_fpgrowth():
     6   [1,  2, 5]        2
     """
 
-    rules = AssociationRules(confidence=0.6).fit_transform(item_set)
+    # rules = AssociationRules(confidence=0.6).fit_transform(item_set)
 
     print('RESULT item set:')
     item_set.show()
     print("RESULT rules:")
-    rules.show()
+    # rules.show()
+    cc.stop()
 
 
 if __name__ == '__main__':

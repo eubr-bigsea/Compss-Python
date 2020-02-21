@@ -4,13 +4,12 @@
 __author__ = "Lucas Miguel S Ponce"
 __email__ = "lucasmsp@gmail.com"
 
-from ddf_library.utils import _get_schema
+from ddf_library.utils import create_stage_files
+from ddf_library.bases.tasks import concat_n_pandas
 
-from pycompss.api.task import task
-from pycompss.api.constraint import constraint
 from pycompss.api.api import compss_delete_object
 
-import pandas as pd
+
 import importlib
 
 
@@ -41,8 +40,8 @@ def hash_partition(data, settings):
 
     elif nfrag_target > 1:
 
-        import ddf_library.config
-        ddf_library.config.x = nfrag_target
+        import ddf_library.bases.config
+        ddf_library.bases.config.x = nfrag_target
 
         splits = [[0 for _ in range(nfrag_target)] for _ in range(nfrag)]
 
@@ -53,17 +52,15 @@ def hash_partition(data, settings):
             splits[f] = ddf_library.functions.etl.repartition\
                 .split_by_hash(data[f], cols, info, nfrag_target)
 
-        # n_concat = nfrag // 2 if nfrag > 10 else nfrag
-        result = [[] for _ in range(nfrag_target)]
+        result = create_stage_files(nfrag_target)
         info = [{} for _ in range(nfrag_target)]
         for f in range(nfrag_target):
             tmp = [splits[t][f] for t in range(nfrag)]
-            result[f] = ddf_library.functions.etl.repartition\
-                .merge_n_reduce(concat_n_pandas, tmp, nfrag)
-            info[f] = _get_schema(result[f], f)
+            info[f] = concat_n_pandas(result[f], f, tmp)
 
         compss_delete_object(splits)
     else:
+        # TODO: intermediate_result ou pode ignorar?
         result = data
 
     output = {'key_data': ['data'], 'key_info': ['info'],
@@ -71,12 +68,4 @@ def hash_partition(data, settings):
     return output
 
 
-# @constraint(ComputingUnits="2")  # approach to have more memory
-@task(returns=1)
-def concat_n_pandas(*args):
-    dfs = [df for df in args if isinstance(df, pd.DataFrame)]
-    dfs = pd.concat(dfs, ignore_index=True, sort=False)
-    del args
-    dfs = dfs.infer_objects()
 
-    return dfs

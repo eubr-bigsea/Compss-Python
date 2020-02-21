@@ -4,10 +4,12 @@
 __author__ = "Lucas Miguel S Ponce"
 __email__ = "lucasmsp@gmail.com"
 
+from ddf_library.bases.context_base import ContextBase
 from ddf_library.ddf import DDF
-from ddf_library.ddf_model import ModelDDF
-from ddf_library.utils import generate_info
+from ddf_library.bases.ddf_model import ModelDDF
+from ddf_library.utils import generate_info,  read_stage_file
 
+from pycompss.api.parameter import FILE_IN
 from pycompss.api.task import task
 from pycompss.functions.reduce import merge_reduce
 from pycompss.api.api import compss_wait_on, compss_delete_object
@@ -35,17 +37,10 @@ class MaxAbsScaler(ModelDDF):
     >>> ddf2 = scaler.transform(ddf1)
     """
 
-    def __init__(self, remove=False):
+    def __init__(self):
         """
-        :param remove: Remove input columns after execution (default, False).
         """
         super(MaxAbsScaler, self).__init__()
-
-        self.settings = dict()
-        self.settings['remove'] = remove
-
-        self.model = {}
-        self.name = 'MaxAbsScaler'
 
     def fit(self, data, input_col):
         """
@@ -60,13 +55,11 @@ class MaxAbsScaler(ModelDDF):
 
         if not isinstance(input_col, list):
             input_col = [input_col]
+        self.input_col = input_col
 
-        self.settings['input_col'] = input_col
-
-        columns = self.settings['input_col']
         # generate a list of the min and the max element to each subset.
         minmax_partial = \
-            [_agg_maxmin(df[f], columns) for f in range(nfrag)]
+            [_agg_maxmin(df[f], self.input_col) for f in range(nfrag)]
 
         # merge them into only one list
         minmax = merge_reduce(_merge_maxmin, minmax_partial)
@@ -76,54 +69,58 @@ class MaxAbsScaler(ModelDDF):
         self.model = {'model': minmax, 'algorithm': self.name}
         return self
 
-    def fit_transform(self, data, input_col, output_col=None):
+    def fit_transform(self, data, input_col, output_col=None, remove=False):
         """
         Fit the model and transform.
 
         :param data: DDF
         :param input_col: Column with the features;
         :param output_col: Output column;
+        :param remove: Remove input columns after execution (default, False).
         :return: DDF
         """
 
         self.fit(data, input_col)
-        ddf = self.transform(data, output_col)
+        ddf = self.transform(data, output_col=output_col, remove=remove)
 
         return ddf
 
-    def transform(self, data, output_col=None):
+    def transform(self, data, input_col=None, output_col=None, remove=False):
         """
         :param data: DDF
+        :param input_col: Column with the features;
         :param output_col: Output column;
+        :param remove: Remove input columns after execution (default, False).
         :return: DDF
         """
 
         self.check_fitted_model()
-
-        task_list = data.task_list
-        settings = self.settings.copy()
-        settings['model'] = self.model['model'].copy()
+        if input_col:
+            self.input_col = input_col
+        self.remove = remove
 
         if not output_col:
-            settings['output_col'] = settings['input_col']
+            output_col = self.input_col
 
         elif not isinstance(output_col, list):
-            settings['output_col'] = \
-                ['{}{}'.format(col, output_col)
-                 for col in settings['input_col']]
-        else:
-            settings['output_col'] = output_col
+            # noinspection PyTypeChecker
+            output_col = ['{}{}'.format(col, output_col)
+                          for col in self.input_col]
+
+        self.output_col = output_col
+
+        settings = self.__dict__.copy()
+        settings['model'] = settings['model']['model']
 
         def task_maxabs_scaler(df, params):
             return _maxabs_scaler(df, params)
 
-        uuid_key = self._ddf_add_task(task_name='task_maxabs_scaler',
-                                      opt=self.OPT_SERIAL,
-                                      function=[task_maxabs_scaler,
-                                                settings],
-                                      parent=[data.last_uuid])
+        uuid_key = ContextBase\
+            .ddf_add_task(self.name, opt=self.OPT_SERIAL,
+                          function=[task_maxabs_scaler, settings],
+                          parent=[data.last_uuid])
 
-        return DDF(task_list=task_list, last_uuid=uuid_key)
+        return DDF(task_list=data.task_list, last_uuid=uuid_key)
 
 
 def _maxabs_scaler(data, settings):
@@ -185,10 +182,9 @@ class MinMaxScaler(ModelDDF):
     >>> ddf2 = scaler.fit_transform(ddf1, input_col=['col1', 'col2'])
     """
 
-    def __init__(self, feature_range=(0, 1), remove=False):
+    def __init__(self, feature_range=(0, 1)):
         """
         :param feature_range: A tuple with the range, default is (0,1);
-        :param remove: Remove input columns after execution (default, False).
         """
         super(MinMaxScaler, self).__init__()
 
@@ -196,12 +192,7 @@ class MinMaxScaler(ModelDDF):
                 feature_range[0] >= feature_range[1]:
             raise Exception("You must inform a valid `feature_range`.")
 
-        self.settings = dict()
-        self.settings['feature_range'] = feature_range
-        self.settings['remove'] = remove
-
-        self.model = {}
-        self.name = 'MinMaxScaler'
+        self.feature_range = feature_range
 
     def fit(self, data, input_col):
         """
@@ -215,12 +206,12 @@ class MinMaxScaler(ModelDDF):
         if not isinstance(input_col, list):
             input_col = [input_col]
 
-        self.settings['input_col'] = input_col
+        self.input_col = input_col
         df, nfrag, tmp = self._ddf_initial_setup(data)
 
         # generate a list of the min and the max element to each subset.
         minmax_partial = \
-            [_agg_maxmin(df[f], input_col) for f in range(nfrag)]
+            [_agg_maxmin(df[f], self.input_col) for f in range(nfrag)]
 
         # merge them into only one list
         minmax = merge_reduce(_merge_maxmin, minmax_partial)
@@ -230,58 +221,64 @@ class MinMaxScaler(ModelDDF):
         self.model = {'model': minmax, 'algorithm': self.name}
         return self
 
-    def fit_transform(self, data, input_col, output_col=None):
+    def fit_transform(self, data, input_col, output_col=None, remove=False):
         """
         Fit the model and transform.
 
         :param data: DDF
         :param input_col: Column with the features;
         :param output_col: Output column;
+        :param remove: Remove input columns after execution (default, False).
         :return: DDF
         """
 
         self.fit(data, input_col)
-        ddf = self.transform(data, output_col)
+        ddf = self.transform(data, output_col=output_col, remove=remove)
 
         return ddf
 
-    def transform(self, data, output_col=None):
+    def transform(self, data, input_col=None, output_col=None, remove=False):
         """
         :param data: DDF
+        :param input_col: Column with the features;
         :param output_col: Output column;
+        :param remove: Remove input columns after execution (default, False).
         :return: DDF
         """
 
         self.check_fitted_model()
-
-        task_list = data.task_list
-        settings = self.settings.copy()
-        settings['model'] = self.model['model'].copy()
+        if input_col:
+            self.input_col = input_col
+        self.remove = remove
 
         if not output_col:
-            settings['output_col'] = settings['input_col']
+            output_col = self.input_col
 
         elif not isinstance(output_col, list):
-            settings['output_col'] = ['{}{}'.format(col, output_col)
-                                      for col in settings['input_col']]
-        else:
-            settings['output_col'] = output_col
+            # noinspection PyTypeChecker
+            output_col = ['{}{}'.format(col, output_col)
+                          for col in self.input_col]
+
+        self.output_col = output_col
+
+        settings = self.__dict__.copy()
+        settings['model'] = settings['model']['model']
 
         def task_minmax_scaler(df, params):
             return _minmax_scaler(df, params)
 
-        uuid_key = self._ddf_add_task(task_name='task_minmax_scaler',
-                                      opt=self.OPT_SERIAL,
-                                      function=[task_minmax_scaler,
-                                                settings],
-                                      parent=[data.last_uuid])
+        uuid_key = ContextBase \
+            .ddf_add_task(self.name, opt=self.OPT_SERIAL,
+                          function=[task_minmax_scaler, settings],
+                          parent=[data.last_uuid])
 
-        return DDF(task_list=task_list, last_uuid=uuid_key)
+        return DDF(task_list=data.task_list, last_uuid=uuid_key)
 
 
-@task(returns=1)
-def _agg_maxmin(df, columns):
+@task(returns=1, data_input=FILE_IN)
+def _agg_maxmin(data_input, columns):
     """Generate a list of min and max values, excluding NaN values."""
+    df = read_stage_file(data_input, columns)
     min_max_p = []
     if len(df) > 0:
         min_max_p = [np.min(df[columns].values, axis=0),
@@ -370,24 +367,16 @@ class StandardScaler(ModelDDF):
     >>> ddf2 = scaler.fit_transform(ddf1, input_col=['col1', 'col2'])
     """
 
-    def __init__(self, with_mean=True, with_std=True, remove=False):
+    def __init__(self, with_mean=True, with_std=True):
         """
 
         :param with_mean: True to use the mean (default is True);
         :param with_std: True to use standard deviation of the
          training samples (default is True);
-        :param remove: Remove input columns after execution (default, False).
         """
         super(StandardScaler, self).__init__()
-
-        self.settings = dict()
-
-        self.settings['with_mean'] = with_mean
-        self.settings['with_std'] = with_std
-        self.settings['remove'] = remove
-
-        self.model = {}
-        self.name = 'StandardScaler'
+        self.with_mean = with_mean
+        self.with_std = with_std
 
     def fit(self, data, input_col):
         """
@@ -403,21 +392,21 @@ class StandardScaler(ModelDDF):
         if not isinstance(input_col, list):
             input_col = [input_col]
         # noinspection PyTypeChecker
-        self.settings['input_col'] = input_col
+        self.input_col = input_col
 
         # compute the sum of each subset column
         sums = [0] * nfrag
         sse = [0] * nfrag
 
         for f in range(nfrag):
-            sums[f] = _agg_sum(df[f], input_col)
+            sums[f] = _agg_sum(df[f], self.input_col)
         # merge then to compute a mean
         mean = merge_reduce(_merge_sum, sums)
 
         # using this mean, compute the variance of each subset column
         for f in range(nfrag):
             # noinspection PyTypeChecker
-            sse[f] = _agg_sse(df[f], mean, input_col)
+            sse[f] = _agg_sse(df[f], mean, self.input_col)
         merged_sse = merge_reduce(_merge_sse, sse)
 
         mean = compss_wait_on(mean)
@@ -429,60 +418,64 @@ class StandardScaler(ModelDDF):
 
         return self
 
-    def fit_transform(self, data, input_col, output_col=None):
+    def fit_transform(self, data, input_col, output_col=None, remove=False):
         """
         Fit the model and transform.
 
         :param data: DDF
         :param input_col: Column with the features;
         :param output_col: Output column;
+        :param remove: Remove input columns after execution (default, False).
         :return: DDF
         """
 
         self.fit(data, input_col)
-        ddf = self.transform(data, output_col)
+        ddf = self.transform(data, output_col=output_col, remove=remove)
 
         return ddf
 
-    def transform(self, data, output_col=None):
+    def transform(self, data, input_col=None, output_col=None, remove=False):
         """
         :param data: DDF
+        :param input_col: Column with the features;
         :param output_col: Output column;
+        :param remove: Remove input columns after execution (default, False).
         :return: DDF
         """
 
         self.check_fitted_model()
-
-        task_list = data.task_list
-        settings = self.settings.copy()
-        settings['model'] = self.model['model'].copy()
+        if input_col:
+            self.input_col = input_col
+        self.remove = remove
 
         if not output_col:
-            settings['output_col'] = settings['input_col']
+            output_col = self.input_col
 
         elif not isinstance(output_col, list):
             # noinspection PyTypeChecker
-            settings['output_col'] = ['{}{}'.format(col, output_col)
-                                      for col in settings['input_col']]
-        else:
-            settings['output_col'] = output_col
+            output_col = ['{}{}'.format(col, output_col)
+                          for col in self.input_col]
+
+        self.output_col = output_col
+
+        settings = self.__dict__.copy()
+        settings['model'] = settings['model']['model']
 
         def task_standard_scaler(df, params):
             return _standard_scaler(df, params)
 
-        uuid_key = self._ddf_add_task(task_name='task_standard_scaler',
-                                      opt=self.OPT_SERIAL,
-                                      function=[task_standard_scaler,
-                                                settings],
-                                      parent=[data.last_uuid])
+        uuid_key = ContextBase\
+            .ddf_add_task(self.name, opt=self.OPT_SERIAL,
+                          function=[task_standard_scaler, settings],
+                          parent=[data.last_uuid])
 
-        return DDF(task_list=task_list, last_uuid=uuid_key)
+        return DDF(task_list=data.task_list, last_uuid=uuid_key)
 
 
-@task(returns=1)
-def _agg_sum(df, features):
+@task(returns=1, data_input=FILE_IN)
+def _agg_sum(data_input, features):
     """Pre-compute some values."""
-
+    df = read_stage_file(data_input, features)
     sum_partial = [np.nansum(df[features].values, axis=0), len(df)]
     return sum_partial
 
@@ -497,9 +490,10 @@ def _merge_sum(sum1, sum2):
     return sum_count
 
 
-@task(returns=1)
-def _agg_sse(df, sum_count, features):
+@task(returns=1, data_input=FILE_IN)
+def _agg_sse(data_input, sum_count, features):
     """Perform a partial SSE calculation."""
+    df = read_stage_file(data_input, features)
     df = df[features].values
     means = np.array(sum_count[0]) / sum_count[1]
     sum_sse = np.sum((df - means)**2, axis=0)

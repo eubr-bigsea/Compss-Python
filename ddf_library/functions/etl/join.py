@@ -4,46 +4,9 @@
 __author__ = "Lucas Miguel S Ponce"
 __email__ = "lucasmsp@gmail.com"
 
-from ddf_library.utils import generate_info, create_auxiliary_column
-
-from pycompss.api.task import task
+from ddf_library.utils import generate_info, create_auxiliary_column, clean_info
 
 import pandas as pd
-
-
-def join(data1, data2, settings):
-    """
-    Joins with another DataFrame, using the given join expression.
-
-    :param data1: A list of pandas's DataFrame;
-    :param data2: Other list of pandas's DataFrame;
-    :param settings: A dictionary that contains:
-        - 'option': 'inner' to InnerJoin, 'left' to left join and
-                    'right' to right join.
-        - 'key1': A list of keys of the first DataFrame;
-        - 'key2': A list of keys of the second DataFrame;
-        - 'case': True to case-sensitive (default, True);
-        - 'keep_keys': True to keep the keys of the second data set,
-                       (default, False).
-        - 'suffixes': Suffixes for attributes, a list with 2 values
-                      (default, [_l,_r]);
-    :return: Returns a list of pandas's DataFrame.
-    """
-
-    data1, data2, settings = join_stage_1(data1, data2, settings)
-    nfrag = len(data1)
-    # second, pair-wise join
-    result = [[] for _ in range(nfrag)]
-    info = result[:]
-
-    for f in range(nfrag):
-        settings['id_frag'] = f
-        result[f], info[f] = task_join_stage_2(data1[f], data2[f],
-                                               settings.copy())
-
-    output = {'key_data': ['data'], 'key_info': ['info'],
-              'data': result, 'info': info}
-    return output
 
 
 def preprocessing(params):
@@ -68,9 +31,10 @@ def join_stage_1(data1, data2, settings):
 
     key1, key2, settings = preprocessing(settings)
     nfrag1, nfrag2 = len(data1), len(data2)
-    info1, info2 = settings['info'][0], settings['info'][1]
+    info1, info2 = settings['info']
     nfrag = max([nfrag1, nfrag2])
-
+    info1 = clean_info(info1)
+    info2 = clean_info(info2) # TODO: check others tasks
     # first, perform a hash partition to shuffle both data
     from .hash_partitioner import hash_partition
     hash_params1 = {'columns': key1, 'nfrag': nfrag, 'info': [info1]}
@@ -174,8 +138,3 @@ def rename_cols(data, cols1, cols2, key, suf, keep, op):
 
     data = data.rename(columns=convert)
     return data, key
-
-
-@task(returns=2)
-def task_join_stage_2(data1, data2, params):
-    return join_stage_2(data1, data2, params)

@@ -4,14 +4,16 @@
 __author__ = "Lucas Miguel S Ponce"
 __email__ = "lucasmsp@gmail.com"
 
+from ddf_library.bases.context_base import ContextBase
 from pycompss.api.task import task
 from pycompss.functions.reduce import merge_reduce
 from pycompss.api.api import compss_wait_on
+from pycompss.api.parameter import FILE_IN
 
 from ddf_library.ddf import DDF
-from ddf_library.ddf_base import DDFSketch
-from ddf_library.ddf_model import ModelDDF
-from ddf_library.utils import generate_info
+from ddf_library.bases.ddf_base import DDFSketch
+from ddf_library.bases.ddf_model import ModelDDF
+from ddf_library.utils import generate_info, read_stage_file
 
 import numpy as np
 import re
@@ -39,7 +41,10 @@ class NGram(DDFSketch):
         :param n: Number integer. Default = 2;
         """
         super(NGram, self).__init__()
-        self.settings = {'n': n}
+        self.n = n
+        self.input_col = None
+        self.output_col = None
+        self.name = self.__class__.__name__
 
     def transform(self, data, input_col, output_col=None):
         """
@@ -49,24 +54,22 @@ class NGram(DDFSketch):
         :return: DDF
         """
 
-        settings = self.settings.copy()
-
         if isinstance(input_col, list):
             raise Exception('`input_col` must be a single column')
+        self.input_col = input_col
 
         if not output_col:
             output_col = "{}_ngram".format(input_col)
-
-        settings['input_col'] = input_col
-        settings['output_col'] = output_col
+        self.output_col = output_col
 
         def task_ngram(df, params):
             return _ngram(df, params)
 
-        uuid_key = self._ddf_add_task(task_name='ngram',
-                                      opt=self.OPT_SERIAL,
-                                      function=[task_ngram, settings],
-                                      parent=[data.last_uuid])
+        settings = self.__dict__.copy()
+        uuid_key = ContextBase\
+            .ddf_add_task(self.name, opt=self.OPT_SERIAL,
+                          function=[task_ngram, settings],
+                          parent=[data.last_uuid])
 
         return DDF(task_list=data.task_list, last_uuid=uuid_key)
 
@@ -125,6 +128,10 @@ class RegexTokenizer(DDFSketch):
         self.settings['to_lowercase'] = to_lowercase
         self.settings['pattern'] = pattern
 
+        self.input_col = None
+        self.output_col = None
+        self.name = self.__class__.__name__
+
     def transform(self, data, input_col, output_col=None):
         """
         :param data: DDF
@@ -135,21 +142,20 @@ class RegexTokenizer(DDFSketch):
 
         if isinstance(input_col, list):
             raise Exception('`input_col` must be a single column')
+        self.input_col = input_col
 
         if not output_col:
-            output_col = "{}_token".format(input_col)
-
-        settings = self.settings.copy()
-        settings['input_col'] = input_col
-        settings['output_col'] = output_col
+            output_col = "{}_token".format(self.input_col)
+        self.output_col = output_col
 
         def task_regex_tokenizer(df, params):
             return _tokenizer_(df, params)
 
-        uuid_key = self._ddf_add_task(task_name='tokenizer',
-                                      opt=self.OPT_SERIAL,
-                                      function=[task_regex_tokenizer, settings],
-                                      parent=[data.last_uuid])
+        settings = self.__dict__.copy()
+        uuid_key = ContextBase \
+            .ddf_add_task(self.name, opt=self.OPT_SERIAL,
+                          function=[task_regex_tokenizer, settings],
+                          parent=[data.last_uuid])
 
         return DDF(task_list=data.task_list, last_uuid=uuid_key)
 
@@ -218,10 +224,9 @@ class RemoveStopWords(ModelDDF):
         """
         super(RemoveStopWords, self).__init__()
 
-        self.settings = dict()
-        self.settings['news_stops_words'] = stops_words_list
-        self.settings['case_sensitive'] = case_sensitive
-
+        self.news_stops_words = stops_words_list if stops_words_list else []
+        self.case_sensitive = case_sensitive
+        self.stopwords = []
         if language:
             from nltk.corpus import stopwords
             try:
@@ -230,12 +235,8 @@ class RemoveStopWords(ModelDDF):
                 import nltk
                 nltk.download('stopwords')
                 stopwords = stopwords.words(language)
-            self.settings['news_stops_words'] += stopwords
-            self.settings['news_stops_words'] = \
-                list(set(self.settings['news_stops_words']))
-
-        self.name = 'RemoveStopWords'
-        self.model = {}
+            self.news_stops_words += stopwords
+            self.news_stops_words = list(set(self.news_stops_words))
 
     def stopwords_from_ddf(self, data, input_col):
         """
@@ -253,9 +254,8 @@ class RemoveStopWords(ModelDDF):
             stopwords[f] = read_stopwords(df[f], input_col)
 
         stopwords = merge_reduce(merge_stopwords, stopwords)
+        self.stopwords = compss_wait_on(stopwords)
 
-        self.model['stopwords'] = compss_wait_on(stopwords)
-        self.model['algorithm'] = self.name
         return self
 
     def transform(self, data, input_col, output_col=None):
@@ -266,34 +266,30 @@ class RemoveStopWords(ModelDDF):
         :return: DDF
         """
 
-        settings = self.settings.copy()
-
         if isinstance(input_col, list):
             raise Exception('`input_col` must be a single column')
-
-        settings['input_col'] = input_col
+        self.input_col = input_col
 
         if not output_col:
             output_col = "{}_rm_stopwords".format(input_col)
+        self.output_col = output_col
 
-        settings['output_col'] = output_col
-        if 'stopwords' in self.model:
-            settings['stopwords'] = self.model['stopwords']
+        settings = self.__dict__.copy()
 
         def task_stopwords(df, params):
             return _remove_stopwords(df, params)
 
-        uuid_key = self._ddf_add_task(task_name='task_remove_stopwords',
-                                      status='WAIT', opt=self.OPT_SERIAL,
-                                      function=[task_stopwords, settings],
-                                      parent=[data.last_uuid],
-                                      n_output=1, n_input=1)
+        uuid_key = ContextBase \
+            .ddf_add_task(self.name, opt=self.OPT_SERIAL,
+                          function=[task_stopwords, settings],
+                          parent=[data.last_uuid])
 
         return DDF(task_list=data.task_list, last_uuid=uuid_key)
 
 
-@task(returns=1)
-def read_stopwords(data1, input_col):
+@task(returns=1, data_input=FILE_IN)
+def read_stopwords(data_input, input_col):
+    data1 = read_stage_file(data_input, input_col)
     if len(data1) > 0:
         data1 = data1[input_col].values.tolist()
     else:
@@ -314,8 +310,7 @@ def _remove_stopwords(data, settings):
     frag = settings['id_frag']
 
     stopwords = settings['news_stops_words']
-    if 'stopwords' in settings:
-        stopwords += settings['stopwords']
+    stopwords += settings['stopwords']
     stopwords = np.unique(stopwords)
 
     tmp = []
@@ -365,9 +360,12 @@ class Tokenizer(DDFSketch):
 
         super(Tokenizer, self).__init__()
 
-        self.settings = dict()
-        self.settings['min_token_length'] = min_token_length
-        self.settings['to_lowercase'] = to_lowercase
+        self.min_token_length = min_token_length
+        self.to_lowercase = to_lowercase
+
+        self.input_col = None
+        self.output_col = None
+        self.name = self.__class__.__name__
 
     def transform(self, data, input_col, output_col=None):
         """
@@ -384,16 +382,17 @@ class Tokenizer(DDFSketch):
         if not output_col:
             output_col = "{}_tokens".format(input_col)
 
-        settings = self.settings.copy()
-        settings['input_col'] = input_col
-        settings['output_col'] = output_col
+        self.input_col = input_col
+        self.output_col = output_col
+
+        settings = self.__dict__.copy()
 
         def task_tokenizer(df, params):
             return _tokenizer_(df, params)
 
-        uuid_key = self._ddf_add_task(task_name='tokenizer',
-                                      opt=self.OPT_SERIAL,
-                                      function=[task_tokenizer, settings],
-                                      parent=[data.last_uuid])
+        uuid_key = ContextBase \
+            .ddf_add_task(self.name, opt=self.OPT_SERIAL,
+                          function=[task_tokenizer, settings],
+                          parent=[data.last_uuid])
 
         return DDF(task_list=data.task_list, last_uuid=uuid_key)

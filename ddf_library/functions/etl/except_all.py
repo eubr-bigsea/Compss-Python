@@ -5,7 +5,6 @@ __author__ = "Lucas Miguel S Ponce"
 __email__ = "lucasmsp@gmail.com"
 
 from ddf_library.utils import generate_info, create_auxiliary_column
-from pycompss.api.task import task
 
 
 def except_all(data1, data2, settings):
@@ -81,8 +80,3 @@ def except_all_stage_2(df1, df2, settings):
 
     info = generate_info(df1, frag)
     return df1, info
-
-
-@task(returns=2)
-def task_except_all_stage_2(data1, data2, settings):
-    return except_all_stage_2(data1, data2, settings)

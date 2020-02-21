@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-from ddf_library.ddf import DDF
+from ddf_library.context import COMPSsContext
 import pandas as pd
 
 
-def base():
+def base(cc):
     columns = ['x', 'y']
     n_samples = 1000
     from sklearn import datasets
@@ -18,11 +18,11 @@ def base():
     df['label'] = labels
 
     # creating DDF from a DataFrame
-    ddf = DDF().parallelize(df, 4)
+    ddf = cc.parallelize(df, 4)
 
     # scaling features using MinMax Scaler
     from ddf_library.functions.ml.feature import MinMaxScaler
-    scaler = MinMaxScaler(input_col=columns).fit(ddf)
+    scaler = MinMaxScaler().fit(ddf, input_col=columns)
     ddf = scaler.transform(ddf)
 
     return ddf, columns
@@ -37,7 +37,7 @@ def kmeans(ddf, columns):
 
 
 if __name__ == '__main__':
-    ddf_test, cols = base()
+
     import argparse
 
     parser = argparse.ArgumentParser(
@@ -52,4 +52,9 @@ if __name__ == '__main__':
 
     operation = arg['operation']
     list_operations = [kmeans]
+
+    cc = COMPSsContext()
+    ddf_test, cols = base(cc)
+
     list_operations[operation - 1](ddf_test, cols)
+    cc.stop()

@@ -2,13 +2,13 @@
 # -*- coding: utf-8 -*-
 
 
-from ddf_library.ddf import DDF
+from ddf_library.context import COMPSsContext
 import pandas as pd
 from sklearn import datasets
 import numpy as np
 
 
-def simple_regression():
+def simple_regression(cc):
     print("\n_____Ordinary Least Squares Regressor_____\n")
 
     # Testing 'simple' linear
@@ -30,22 +30,21 @@ def simple_regression():
                                  'y': diabetes_y,
                                  'sol': sol})
 
-    ddf_simple = DDF().parallelize(df, 4)
+    ddf_simple = cc.parallelize(df, 4)
 
     from ddf_library.functions.ml.regression import OrdinaryLeastSquares
-    model = OrdinaryLeastSquares('features', 'y').fit(ddf_simple)
+    model = OrdinaryLeastSquares().fit(ddf_simple, 'features', 'y')
     ddf_pred = model.transform(ddf_simple, pred_col='pred_LinearReg')
 
-    # ddf_pred.show()
-
-    sol_ddf = ddf_pred.to_df('pred_LinearReg').values
+    sol_ddf = ddf_pred.to_df('pred_LinearReg').values.flatten()
     if not np.allclose(sol, sol_ddf):
         raise Exception("Wrong solution.")
+
     else:
         print("OK - Ordinary Least Squares.")
 
 
-def sgb_regression():
+def sgb_regression(cc):
     print("\n_____SGB Regressor_____\n")
 
     diabetes = datasets.load_diabetes()
@@ -59,12 +58,12 @@ def sgb_regression():
     df = pd.DataFrame(diabetes_x, columns=cols)
     df['y'] = diabetes_y
 
-    ddf = DDF().parallelize(df, 4)
+    ddf = cc.parallelize(df, 4)
     # Testing 'SGB' linear regressor
     ddf_train, ddf_test = ddf.split(0.7)
 
     from ddf_library.functions.ml.regression import GDRegressor
-    model = GDRegressor(cols, 'y', max_iter=15, alpha=1).fit(ddf_train)
+    model = GDRegressor(max_iter=15, alpha=1).fit(ddf_train, cols, 'y')
     pred_ddf = model.transform(ddf_test)
     pred_ddf.to_df()
 
@@ -85,4 +84,6 @@ if __name__ == '__main__':
 
     operation = arg['operation']
     list_operations = [simple_regression, sgb_regression]
-    list_operations[operation - 1]()
+    cc = COMPSsContext()
+    list_operations[operation - 1](cc)
+    cc.stop()

@@ -1,0 +1,218 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>Data Saver &#8212; DDF</title>
+    <link rel="stylesheet" href="_static/nature.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    './',
+        VERSION:     '0.5.1',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true,
+        SOURCELINK_SUFFIX: '.txt'
+      };
+    </script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <link rel="shortcut icon" href="_static/favicon.ico"/>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="DDF operations" href="ddf_library.html" />
+    <link rel="prev" title="Data Reader" href="ddf_library.bases.data_reader.html" /> 
+  </head>
+  <body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="ddf_library.html" title="DDF operations"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="ddf_library.bases.data_reader.html" title="Data Reader"
+             accesskey="P">previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="index.html">DDF</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="api.html" accesskey="U">API Reference</a> &#187;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="module-ddf_library.bases.data_saver">
+<span id="data-saver"></span><h1>Data Saver<a class="headerlink" href="#module-ddf_library.bases.data_saver" title="Permalink to this headline">¶</a></h1>
+<dl class="class">
+<dt id="ddf_library.bases.data_saver.Save">
+<em class="property">class </em><code class="descclassname">ddf_library.bases.data_saver.</code><code class="descname">Save</code><a class="headerlink" href="#ddf_library.bases.data_saver.Save" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal"><span class="pre">object</span></code></p>
+<dl class="staticmethod">
+<dt id="ddf_library.bases.data_saver.Save.csv">
+<em class="property">static </em><code class="descname">csv</code><span class="sig-paren">(</span><em>filepath</em>, <em>header=True</em>, <em>mode='overwrite'</em>, <em>sep='</em>, <em>'</em>, <em>na_rep=''</em>, <em>float_format=None</em>, <em>columns=None</em>, <em>encoding=None</em>, <em>quoting=None</em>, <em>quotechar='&quot;'</em>, <em>date_format=None</em>, <em>doublequote=True</em>, <em>escapechar=None</em>, <em>decimal='.'</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.bases.data_saver.Save.csv" title="Permalink to this definition">¶</a></dt>
+<dd><p>Saves a csv file.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>filepath</strong> – </li>
+<li><strong>header</strong> – </li>
+<li><strong>mode</strong> – </li>
+<li><strong>sep</strong> – </li>
+<li><strong>na_rep</strong> – </li>
+<li><strong>float_format</strong> – </li>
+<li><strong>columns</strong> – </li>
+<li><strong>encoding</strong> – </li>
+<li><strong>quoting</strong> – </li>
+<li><strong>quotechar</strong> – </li>
+<li><strong>date_format</strong> – </li>
+<li><strong>doublequote</strong> – </li>
+<li><strong>escapechar</strong> – </li>
+<li><strong>decimal</strong> – </li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last"></p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="staticmethod">
+<dt id="ddf_library.bases.data_saver.Save.json">
+<em class="property">static </em><code class="descname">json</code><span class="sig-paren">(</span><em>filepath</em>, <em>mode='overwrite'</em>, <em>date_format=None</em>, <em>double_precision=10</em>, <em>force_ascii=True</em>, <em>date_unit='ms'</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.bases.data_saver.Save.json" title="Permalink to this definition">¶</a></dt>
+<dd><p>Saves a json file.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>filepath</strong> – </li>
+<li><strong>mode</strong> – </li>
+<li><strong>date_format</strong> – </li>
+<li><strong>double_precision</strong> – </li>
+<li><strong>force_ascii</strong> – </li>
+<li><strong>date_unit</strong> – </li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last"></p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="staticmethod">
+<dt id="ddf_library.bases.data_saver.Save.parquet">
+<em class="property">static </em><code class="descname">parquet</code><span class="sig-paren">(</span><em>filepath</em>, <em>mode='overwrite'</em>, <em>compression='snappy'</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.bases.data_saver.Save.parquet" title="Permalink to this definition">¶</a></dt>
+<dd><p>Saves a parquet file.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>filepath</strong> – </li>
+<li><strong>mode</strong> – </li>
+<li><strong>compression</strong> – </li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last"></p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="staticmethod">
+<dt id="ddf_library.bases.data_saver.Save.pickle">
+<em class="property">static </em><code class="descname">pickle</code><span class="sig-paren">(</span><em>filepath</em>, <em>mode='overwrite'</em>, <em>compression='infer'</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.bases.data_saver.Save.pickle" title="Permalink to this definition">¶</a></dt>
+<dd><p>Saves a pickle file.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>filepath</strong> – </li>
+<li><strong>mode</strong> – </li>
+<li><strong>compression</strong> – </li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last"></p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+  <h4>Previous topic</h4>
+  <p class="topless"><a href="ddf_library.bases.data_reader.html"
+                        title="previous chapter">Data Reader</a></p>
+  <h4>Next topic</h4>
+  <p class="topless"><a href="ddf_library.html"
+                        title="next chapter">DDF operations</a></p>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="ddf_library.html" title="DDF operations"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="ddf_library.bases.data_reader.html" title="Data Reader"
+             >previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="index.html">DDF</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="api.html" >API Reference</a> &#187;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2020, Lucas M Ponce.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.6.7.
+    </div>
+  </body>
+</html>

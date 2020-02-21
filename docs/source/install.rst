@@ -42,7 +42,7 @@ Besides the PyCOMPSs installation, DDF uses others third-party libraries. The ma
 Optional Dependencies
 ~~~~~~~~~~~~~~~~~~~~~
 
-If you want to read and save data from HDFS, you need to install `hdfspycompss <#>`__ library.
+If you want to read and save data from HDFS, you need to install `hdfspycompss <https://pypi.org/project/hdfs-pycompss/>`_ library.
 
 
 

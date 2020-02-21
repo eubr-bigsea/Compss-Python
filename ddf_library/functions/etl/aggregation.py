@@ -4,205 +4,97 @@
 __author__ = "Lucas Miguel S Ponce"
 __email__ = "lucasmsp@gmail.com"
 
-from ddf_library.utils import generate_info, merge_schema, merge_reduce
-
-from pycompss.api.task import task
-from pycompss.api.api import compss_wait_on, compss_delete_object
+from ddf_library.utils import generate_info
 
 import functools
-
-
-def aggregation(data, settings):
-    """
-    Computes aggregates and returns the result as a DataFrame
-
-    :param data: A list with nfrag pandas's DataFrame;
-    :param settings: A dictionary that contains:
-        - groupby: A list with the columns names to aggregates;
-        - aliases: A dictionary with the aliases of all aggregated columns;
-        - operation: A dictionary with the functions to be applied in
-                     the aggregation:
-            'mean': Computes average values for each numeric columns
-             for each group;
-            'count': Counts the number of records for each group;
-            'first': Returns the first element of group;
-            'last': Returns the last element of group;
-            'max': Computes the max value for each numeric columns;
-            'min': Computes the min value for each numeric column;
-            'sum': Computes the sum for each numeric columns for each group;
-            'list': Returns a list of objects with duplicates;
-            'set': Returns a set of objects with duplicate elements
-             eliminated.
-    :return: Returns a list of pandas's DataFrame.
-
-    example:
-        settings['groupby']   = ["col1"]
-        settings['operation'] = {'col2':['sum'],'col3':['first','last']}
-        settings['aliases']   = {'col2':["Sum_col2"],
-                                 'col3':['col_First','col_Last']}
-
-    """
-
-    data, _ = aggregation_stage_1(data, settings)
-    nfrag = len(data)
-
-    # 3º perform a global aggregation
-    result = [[] for _ in range(nfrag)]
-    info = result[:]
-
-    for f in range(nfrag):
-        settings['id_frag'] = f
-        result[f], info[f] = task_aggregation_stage_2(data[f], settings.copy())
-
-    compss_delete_object(data)
-    output = {'key_data': ['data'], 'key_info': ['info'],
-              'data': result, 'info': info}
-    return output
+import pandas as pd
+import numpy as np
 
 
 def aggregation_stage_1(data, settings):
     nfrag = len(data)
-
-    # 1º perform a local aggregation in each partition
-    partial_agg = [[] for _ in range(nfrag)]
-    info = [[] for _ in range(nfrag)]
-    for f in range(nfrag):
-        partial_agg[f], info[f] = _aggregate(data[f], settings, f)
-
-    # 2º perform a hash partition
-    info = merge_reduce(merge_schema, info)
-    info = compss_wait_on(info)
+    info1 = settings['info'][0]
+    info1['function'] = [_aggregate, settings]
 
     from .hash_partitioner import hash_partition
-    params = {'nfrag': nfrag,
-              'columns': settings['groupby'],
-              'info': [info]}
 
-    data = hash_partition(partial_agg, params)['data']
-    compss_delete_object(partial_agg)
-
-    return data, settings
+    hash_params = {'columns': settings['groupby'],
+                   'nfrag': nfrag, 'info': [info1]}
+    output = hash_partition(data, hash_params)['data']
+    settings['intermediate_result'] = True
+    return output, settings
 
 
-@task(returns=2)
-def _aggregate(data, params, f):
+def _aggregate(data, params):
     """Perform a partial aggregation."""
     columns = params['groupby']
-    target = params['aliases']
-    operation = params['operation']
+    operation_list = params['operation']
 
     if columns is '*':
         columns = list(data.columns)
-        params['groupby'] = columns
 
-    if '*' in target.keys():
-        target[columns[0]] = target['*']
-        del target['*']
-        params['aliases'] = target
+    operations = _generate_agg_operations(operation_list, columns)
+    data = data.groupby(columns).agg(**operations)\
+        .reset_index()\
+        .reset_index(drop=True)
 
-    if '*' in operation.keys():
-        operation[columns[0]] = operation['*']
-        del operation['*']
-        params['operation'] = operation
-
-    operation = _replace_functions_name(operation)
-    data = data.groupby(columns).agg(operation)
-
-    new_idx = []
-    i = 0
-    old = None
-    # renaming
-    for (n1, n2) in data.columns.ravel():
-        if old != n1:
-            old = n1
-            i = 0
-        new_idx.append(target[n1][i])
-        i += 1
-
-    data.columns = new_idx
-    data = data.reset_index()
-    data.reset_index(drop=True, inplace=True)
-
-    info = generate_info(data, f)
-    return data, info
+    return data, params
 
 
 def aggregation_stage_2(data1, params):
-    """Combining the aggregation with other fragment.
-
-    if a key is present in both fragments, it will remain
-    in the result only if f1 <f2.
-    """
+    """Combining the aggregation with other fragment."""
     columns = params['groupby']
-    target = params['aliases']
-    operation = params['operation']
+    operation_list = params['operation']
     frag = params['id_frag']
 
-    if len(data1) > 0:
-
-        operation = _replace_name_by_functions(operation, target)
-        data1 = data1.groupby(columns).agg(operation)
-
-        # remove the different level
-        data1.reset_index(inplace=True)
-        sequence = columns + [c for c in data1.columns.tolist()
-                              if c not in columns]
-        data1 = data1[sequence]
+    operations = _generate_agg_operations(operation_list, columns, True)
+    data1 = data1.groupby(columns).agg(**operations).reset_index()\
+        .reset_index(drop=True)
 
     info = generate_info(data1, frag)
     return data1, info
 
 
-def _collect_list(x):
-    """Generate a list of a group."""
-    return x.tolist()
+def _generate_agg_operations(operations_list, groupby, replace=False):
+    """
+    Used to create a pd.NamedAgg list to be used by Pandas to aggregate.
+    Replace option is used in to merge the partial result of each partition.
+    """
+    operations = dict()
+    for col, func, target in operations_list:
+        if '*' in col:
+            target = groupby
+
+        if replace:
+            if func in 'count':
+                func = 'sum'
+            elif func == 'set':
+                func = _merge_set
+            elif func == 'list':
+                func = _merge_list
+            col = target
+
+        else:
+            if func == 'list':
+                func = list
+            elif func == 'set':
+                func = _collect_set
+
+        operations[target] = pd.NamedAgg(column=col, aggfunc=func)
+    return operations
+
+
+def _merge_list(series):
+    return functools\
+        .reduce(lambda x, y: list(x) + list(y), series.tolist())
 
 
 def _collect_set(x):
-    """Part of the generation of a set from a group.
-
-    collect_list and collect_set must be different functions, otherwise
-    pandas will raise error.
-    """
-    return x.tolist()
+    """Generate a set of a group."""
+    return list(set(x))
 
 
 def _merge_set(series):
     """Merge set list."""
-    return functools.reduce(lambda x, y: list(set(x + y)), series.tolist())
-
-
-def _replace_functions_name(operation):
-    """Replace 'set' and 'list' to the pointer of the real function."""
-    for col in operation.keys():
-        for f in range(len(operation[col])):
-            if operation[col][f] == 'list':
-                operation[col][f] = _collect_list
-            elif operation[col][f] == 'set':
-                operation[col][f] = _collect_set
-    return operation
-
-
-def _replace_name_by_functions(operation, target):
-    """Convert the operation dictionary to Alias."""
-    new_operations = {}
-
-    for col in operation:
-        for f in range(len(operation[col])):
-            if operation[col][f] == 'list':
-                operation[col][f] = 'sum'
-            elif operation[col][f] == 'set':
-                operation[col][f] = _merge_set
-            elif operation[col][f] == 'count':
-                operation[col][f] = 'sum'
-
-    for k in target:
-        values = target[k]
-        for i in range(len(values)):
-            new_operations[values[i]] = operation[k][i]
-    return new_operations
-
-
-@task(returns=2)
-def task_aggregation_stage_2(data, params):
-    return aggregation_stage_2(data, params)
+    return functools\
+        .reduce(lambda x, y: list(set(list(x) + list(y))), series.tolist())

@@ -70,6 +70,7 @@ def sample_stage_1(data, params):
 
     params['idx_list'] = idx_list
     params['seed'] = seed
+    params['intermediate_result'] = False
 
     return data, params
 

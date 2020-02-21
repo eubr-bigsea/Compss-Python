@@ -4,13 +4,15 @@
 __author__ = "Lucas Miguel S Ponce"
 __email__ = "lucasmsp@gmail.com"
 
+from ddf_library.bases.context_base import ContextBase
 from pycompss.api.task import task
 from pycompss.functions.reduce import merge_reduce
 from pycompss.api.api import compss_wait_on
+from pycompss.api.parameter import FILE_IN
 
 from ddf_library.ddf import DDF
-from ddf_library.ddf_model import ModelDDF
-from ddf_library.utils import generate_info
+from ddf_library.bases.ddf_model import ModelDDF
+from ddf_library.utils import generate_info, read_stage_file
 
 import numpy as np
 import pandas as pd
@@ -27,54 +29,47 @@ class Binarizer(ModelDDF):
 
     :Example:
 
-    >>> ddf = Binarizer(input_col=['feature'], threshold=5.0).transform(ddf)
+    >>> ddf = Binarizer(threshold=5.0).transform(ddf, input_col=['feature'])
     """
 
-    def __init__(self, input_col, threshold=0.0, remove=False):
+    def __init__(self, threshold=0.0):
         """
-        :param input_col: List of columns;
         :param threshold: Feature values below or equal to this are
          replaced by 0, above it by 1. Default = 0.0;
-        :param remove: Remove input columns after execution (default, False).
         """
 
         super(Binarizer, self).__init__()
+        self.threshold = threshold
 
-        if not isinstance(input_col, list):
-            input_col = [input_col]
-
-        self.settings = dict()
-        self.settings['input_col'] = input_col
-        self.settings['threshold'] = threshold
-        self.settings['remove'] = remove
-        self.output_cols = None
-
-    def transform(self, data, output_col=None):
+    def transform(self, data, input_col, output_col=None, remove=False):
         """
         :param data: DDF
+        :param input_col: List of columns;
         :param output_col: Output columns names.
+        :param remove: Remove input columns after execution (default, False).
         :return: DDF
         """
 
-        input_col = self.settings['input_col']
+        self.remove = remove
+
+        if not isinstance(input_col, list):
+            input_col = [input_col]
+        self.input_col = input_col
 
         if output_col is None:
             output_col = '_binarized'
-
         if not isinstance(output_col, list):
-            output_col = ['{}{}'.format(col, output_col) for col in
-                          input_col]
-
-        self.settings['output_col'] = output_col
-        self.output_cols = output_col
+            output_col = ['{}{}'.format(col, output_col) for col in input_col]
+        self.output_col = output_col
 
         def task_binarizer(df, params):
             return _binarizer(df, params)
 
-        uuid_key = self._ddf_add_task(task_name='binarizer',
-                                      opt=self.OPT_SERIAL,
-                                      function=[task_binarizer, self.settings],
-                                      parent=[data.last_uuid])
+        settings = self.__dict__.copy()
+        uuid_key = ContextBase\
+            .ddf_add_task(self.name, opt=self.OPT_SERIAL,
+                          function=[task_binarizer, settings],
+                          parent=[data.last_uuid])
 
         return DDF(task_list=data.task_list, last_uuid=uuid_key)
 
@@ -115,41 +110,33 @@ class OneHotEncoder(ModelDDF):
 
     :Example:
 
-    >>> enc = OneHotEncoder(input_col='col_1', output_col='col_2')
-    >>> ddf2 = enc.fit_transform(ddf1)
+    >>> enc = OneHotEncoder()
+    >>> ddf2 = enc.fit_transform(ddf1, input_col='col_1', output_col='col_2')
     """
 
-    def __init__(self, input_col, remove=False):
+    def __init__(self):
         """
-        :param input_col: Input column name with the tokens;
-        :param remove: Remove input columns after execution (default, False).
         """
         super(OneHotEncoder, self).__init__()
 
-        if not isinstance(input_col, list):
-            input_col = [input_col]
-
-        self.settings = dict()
-        self.settings['input_col'] = input_col
-        self.settings['remove'] = remove
-
-        self.model = {}
-        self.name = 'OneHotEncoder'
-        self.output_cols = None
-
-    def fit(self, data):
+    def fit(self, data, input_col):
         """
         Fit the model.
 
         :param data: DDF
+        :param input_col: Input column name with the tokens;
         :return: a trained model
         """
 
         df, nfrag, tmp = self._ddf_initial_setup(data)
 
+        if not isinstance(input_col, list):
+            input_col = [input_col]
+        self.input_col = input_col
+
         result_p = [[] for _ in range(nfrag)]
         for f in range(nfrag):
-            result_p[f] = _one_hot_encoder(df[f], self.settings)
+            result_p[f] = _one_hot_encoder(df[f], self.input_col)
 
         categories = merge_reduce(_one_hot_encoder_merge, result_p)
         categories = compss_wait_on(categories)
@@ -159,57 +146,65 @@ class OneHotEncoder(ModelDDF):
 
         return self
 
-    def fit_transform(self, data, output_col='_onehot'):
+    def fit_transform(self, data, input_col, output_col='_onehot',
+                      remove=False):
         """
         Fit the model and transform.
 
         :param data: DDF
+        :param input_col: Input column name with the tokens;
         :param output_col: Output suffix name. The pattern will be
          `col + order + suffix`, suffix default is '_onehot';
+        :param remove: Remove input columns after execution (default, False).
         :return: DDF
         """
 
-        self.fit(data)
-        ddf = self.transform(data, output_col)
+        self.fit(data, input_col)
+        ddf = self.transform(data, output_col=output_col, remove=remove)
 
         return ddf
 
-    def transform(self, data, output_col='_onehot'):
+    def transform(self, data, input_col=None, output_col='_onehot',
+                  remove=False):
         """
         :type output_col: str
 
         :param data: DDF
+        :param input_col: Input column name with the tokens;
         :param output_col: Output suffix name. The pattern will be
          `col + order + suffix`, suffix default is '_onehot';
+        :param remove: Remove input columns after execution (default, False).
         :return: DDF
         """
 
         self.check_fitted_model()
+        if input_col:
+            self.input_col = input_col
 
-        task_list = data.task_list
-        settings = self.settings.copy()
-        settings['model'] = self.model['model'].copy()
-
-        dimension = sum([len(cat) for cat in settings['model']])
+        dimension = sum([len(cat) for cat in self.model['model']])
         output_col = ['col{}{}'.format(i, output_col) for i in range(dimension)]
-        settings['output_col'] = output_col
+        self.output_col = output_col
+        self.remove = remove
+
+        settings = self.__dict__.copy()
+        settings['model'] = settings['model']['model']
 
         def task_transform_one_hot(df, params):
             return _transform_one_hot(df, params)
 
-        uuid_key = self._ddf_add_task(task_name='task_transform_one_hot',
-                                      opt=self.OPT_SERIAL,
-                                      function=[task_transform_one_hot,
-                                                settings],
-                                      parent=[data.last_uuid])
+        uuid_key = ContextBase \
+            .ddf_add_task(self.name, opt=self.OPT_SERIAL,
+                          function=[task_transform_one_hot, settings],
+                          parent=[data.last_uuid])
 
-        return DDF(task_list=task_list, last_uuid=uuid_key)
+        return DDF(task_list=data.task_list, last_uuid=uuid_key)
 
 
-@task(returns=1)
-def _one_hot_encoder(df, settings):
+@task(returns=1, data_input=FILE_IN)
+def _one_hot_encoder(data_input, input_col):
     from sklearn.preprocessing import OneHotEncoder
-    input_col = settings['input_col']
+
+    df = read_stage_file(data_input)
     values = df[input_col].values
     del df
 
@@ -276,57 +271,54 @@ class PolynomialExpansion(ModelDDF):
     the degree-2 polynomial features are [1, a, b, a^2, ab, b^2]
     """
 
-    def __init__(self, input_col, degree=2, interaction_only=False,
-                 remove=False):
+    def __init__(self,  degree=2, interaction_only=False):
         # noinspection PyUnresolvedReferences
         """
-       :param input_col: List of columns;
        :param degree: The degree of the polynomial features. Default = 2.
        :param interaction_only: If true, only interaction features are
         produced: features that are products of at most degree distinct input
         features. Default = False
-       :param remove: Remove input columns after execution (default, False).
 
         :Example:
 
-        >>> dff = PolynomialExpansion(input_col=['x', 'y'],
-        >>>                           degree=2).transform(ddf)
+        >>> dff = PolynomialExpansion(degree=2)\
+        >>>         .transform(ddf, input_col=['x', 'y'],)
        """
         super(PolynomialExpansion, self).__init__()
 
-        if not isinstance(input_col, list):
-            input_col = [input_col]
+        self.degree = int(degree)
+        self.interaction_only = interaction_only
 
-        self.settings = dict()
-        self.settings['input_col'] = input_col
-        self.settings['degree'] = int(degree)
-        self.settings['interaction_only'] = interaction_only
-        self.settings['remove'] = remove
-        self.output_cols = None
-
-    def transform(self, data, output_col="_poly"):
+    def transform(self, data, input_col, output_col="_poly",
+                  remove=False):
         """
         :param data: DDF
+        :param input_col: List of columns;
         :param output_col: Output suffix name following `col` plus order and
          suffix. Suffix default is '_poly';
+        :param remove: Remove input columns after execution (default, False).
         :return: DDF
         """
 
+        if not isinstance(input_col, list):
+            input_col = [input_col]
+        self.input_col = input_col
+
         if isinstance(output_col, list):
             raise Exception("'output_col' must be a single suffix name")
+        self.output_col = output_col
+        self.remove = remove
 
-        settings = self.settings.copy()
-        # noinspection PyTypeChecker
-        settings['output_col'] = output_col
+        settings = self.__dict__.copy()
         settings = _check_dimension(settings)
 
         def task_poly_expansion(df, params):
             return _poly_expansion(df, params)
 
-        uuid_key = self._ddf_add_task(task_name='poly_expansion',
-                                      opt=self.OPT_SERIAL,
-                                      function=[task_poly_expansion, settings],
-                                      parent=[data.last_uuid])
+        uuid_key = ContextBase\
+            .ddf_add_task(self.name, opt=self.OPT_SERIAL,
+                          function=[task_poly_expansion, settings],
+                          parent=[data.last_uuid])
 
         return DDF(task_list=data.task_list, last_uuid=uuid_key)
 
@@ -384,16 +376,12 @@ class StringIndexer(ModelDDF):
     StringIndexer indexes a feature by encoding a string column as a
     column containing indexes.
     :Example:
-    >>> model = StringIndexer(input_col='category').fit(ddf1)
+    >>> model = StringIndexer().fit(ddf1, input_col='category')
     >>> ddf2 = model.transform(ddf1)
     """
 
     def __init__(self):
         super(StringIndexer, self).__init__()
-
-        self.settings = dict()
-        self.model = dict()
-        self.name = 'StringIndexer'
 
     def fit(self, data, input_col):
         """
@@ -403,13 +391,12 @@ class StringIndexer(ModelDDF):
         :return: a trained model
         """
 
-        input_col = [input_col] \
+        self.input_col = [input_col] \
             if isinstance(input_col, str) else input_col
-        self.settings['input_col'] = input_col
 
         df, nfrag, tmp = self._ddf_initial_setup(data)
 
-        mapper = [get_indexes(df[f], input_col) for f in range(nfrag)]
+        mapper = [get_indexes(df[f], self.input_col) for f in range(nfrag)]
         mapper = merge_reduce(merge_mapper, mapper)
 
         self.model['model'] = compss_wait_on(mapper)
@@ -426,48 +413,48 @@ class StringIndexer(ModelDDF):
         """
 
         self.fit(data, input_col)
-        ddf = self.transform(data, output_col)
+        ddf = self.transform(data, output_col=output_col)
 
         return ddf
 
-    def transform(self, data, output_col=None):
+    def transform(self, data, input_col=None, output_col=None):
         """
         :param data: DDF
+        :param input_col: list of columns;
         :param output_col:  List of output indexes column.
         :return: DDF
         """
 
         self.check_fitted_model()
-
-        task_list = data.task_list
-        settings = self.settings.copy()
-        settings['model'] = self.model['model'].copy()
+        if input_col:
+            self.input_col = input_col
 
         if output_col is None:
             output_col = ["{}_indexed".format(col)
-                          for col in settings['input_col']]
+                          for col in self.input_col]
 
-        output_col = [output_col] \
+        self.output_col = [output_col] \
             if isinstance(output_col, str) else output_col
 
-        settings['output_col'] = output_col
+        settings = self.__dict__.copy()
+        settings['model'] = settings['model']['model']
 
         def task_string_to_indexer(df, params):
             return _string_to_indexer(df, params)
 
-        uuid_key = self._ddf_add_task(task_name='task_string_to_indexer',
-                                      opt=self.OPT_SERIAL,
-                                      function=[task_string_to_indexer,
-                                                settings],
-                                      parent=[data.last_uuid])
+        uuid_key = ContextBase\
+            .ddf_add_task(self.name, opt=self.OPT_SERIAL,
+                          function=[task_string_to_indexer, settings],
+                          parent=[data.last_uuid])
 
-        return DDF(task_list=task_list, last_uuid=uuid_key)
+        return DDF(task_list=data.task_list, last_uuid=uuid_key)
 
 
-@task(returns=1)
-def get_indexes(data, in_cols):
+@task(returns=1, data_input=FILE_IN)
+def get_indexes(data_input, in_cols):
     """Create partial model to convert string to index."""
     result = []
+    data = read_stage_file(data_input, in_cols)
     for in_col in in_cols:
         result.extend(data[in_col].dropna().unique().tolist())
     result = np.unique(result).tolist()
@@ -504,8 +491,8 @@ class IndexToString(ModelDDF):
     Symmetrically to StringIndexer, IndexToString maps a column of
     label indices back to a column containing the original labels as strings.
     :Example:
-    >>> ddf2 = IndexToString(input_col='category_indexed',
-    >>>                      model=model).transform(ddf1)
+    >>> ddf2 = IndexToString(model=model)\
+    >>>         .transform(ddf1, input_col='category_indexed')
     """
 
     def __init__(self, model):
@@ -529,27 +516,25 @@ class IndexToString(ModelDDF):
 
         self.check_fitted_model()
 
-        task_list = data.task_list
-        settings = self.settings.copy()
-        settings['model'] = self.model['model'].copy()
-
-        settings['input_col'] = [input_col] \
+        self.input_col = [input_col] \
             if isinstance(input_col, str) else input_col
 
         if not output_col:
-            output_col = ["{}_converted".format(col)
-                          for col in settings['input_col']]
-            settings['output_col'] = output_col
+            self.output_col = ["{}_converted".format(col)
+                               for col in self.input_col]
+
+        settings = self.__dict__.copy()
+        settings['model'] = settings['model']['model']
 
         def task_index_to_string(df, params):
             return _index_to_string(df, params)
 
-        uuid_key = self._ddf_add_task(task_name='task_index_to_string',
-                                      opt=self.OPT_SERIAL,
-                                      function=[task_index_to_string, settings],
-                                      parent=[data.last_uuid])
+        uuid_key = ContextBase \
+            .ddf_add_task(self.name, opt=self.OPT_SERIAL,
+                          function=[task_index_to_string, settings],
+                          parent=[data.last_uuid])
 
-        return DDF(task_list=task_list, last_uuid=uuid_key)
+        return DDF(task_list=data.task_list, last_uuid=uuid_key)
 
 
 def _index_to_string(data, settings):

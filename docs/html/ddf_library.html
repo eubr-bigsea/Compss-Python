@@ -1,23 +1,33 @@
 
-<!DOCTYPE html>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
 
 <html xmlns="http://www.w3.org/1999/xhtml">
   <head>
-    <meta charset="utf-8" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     <title>DDF operations &#8212; DDF</title>
     <link rel="stylesheet" href="_static/nature.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
-    <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    './',
+        VERSION:     '0.5.1',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true,
+        SOURCELINK_SUFFIX: '.txt'
+      };
+    </script>
     <script type="text/javascript" src="_static/jquery.js"></script>
     <script type="text/javascript" src="_static/underscore.js"></script>
     <script type="text/javascript" src="_static/doctools.js"></script>
-    <script type="text/javascript" src="_static/language_data.js"></script>
     <link rel="shortcut icon" href="_static/favicon.ico"/>
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
     <link rel="next" title="Graph Operations" href="ddf_library.functions.graph.html" />
-    <link rel="prev" title="API Reference" href="api.html" /> 
-  </head><body>
+    <link rel="prev" title="Data Saver" href="ddf_library.bases.data_saver.html" /> 
+  </head>
+  <body>
     <div class="related" role="navigation" aria-label="related navigation">
       <h3>Navigation</h3>
       <ul>
@@ -31,7 +41,7 @@
           <a href="ddf_library.functions.graph.html" title="Graph Operations"
              accesskey="N">next</a> |</li>
         <li class="right" >
-          <a href="api.html" title="API Reference"
+          <a href="ddf_library.bases.data_saver.html" title="Data Saver"
              accesskey="P">previous</a> |</li>
         <li class="nav-item nav-item-0"><a href="index.html">DDF</a> &#187;</li>
           <li class="nav-item nav-item-1"><a href="api.html" accesskey="U">API Reference</a> &#187;</li> 
@@ -49,6 +59,9 @@
 <h2>packages<a class="headerlink" href="#packages" title="Permalink to this headline">¶</a></h2>
 <div class="toctree-wrapper compound">
 <ul>
+<li class="toctree-l1"><a class="reference internal" href="ddf_library.bases.data_reader.html">Data Reader</a></li>
+<li class="toctree-l1"><a class="reference internal" href="ddf_library.bases.data_saver.html">Data Saver</a></li>
+<li class="toctree-l1"><a class="reference internal" href="ddf_library.context.html">COMPSs Context</a></li>
 <li class="toctree-l1"><a class="reference internal" href="ddf_library.functions.graph.html">Graph Operations</a></li>
 <li class="toctree-l1"><a class="reference internal" href="ddf_library.functions.ml.classification.html">ML.Classification</a></li>
 <li class="toctree-l1"><a class="reference internal" href="ddf_library.functions.ml.clustering.html">ML.Clustering</a></li>
@@ -63,810 +76,834 @@
 <span id="module-contents"></span><h2>Module contents<a class="headerlink" href="#module-ddf_library.ddf" title="Permalink to this headline">¶</a></h2>
 <dl class="class">
 <dt id="ddf_library.ddf.DDF">
-<em class="property">class </em><code class="sig-prename descclassname">ddf_library.ddf.</code><code class="sig-name descname">DDF</code><span class="sig-paren">(</span><em class="sig-param">**kwargs</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.ddf.DDF" title="Permalink to this definition">¶</a></dt>
-<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">ddf_library.ddf_base.DDFSketch</span></code></p>
+<em class="property">class </em><code class="descclassname">ddf_library.ddf.</code><code class="descname">DDF</code><span class="sig-paren">(</span><em>**kwargs</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.ddf.DDF" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal"><span class="pre">ddf_library.bases.ddf_base.DDFSketch</span></code></p>
 <p>Distributed DataFrame Handler.</p>
-<p>Should distribute the data and run tasks for each partition.</p>
 <dl class="method">
 <dt id="ddf_library.ddf.DDF.add_column">
-<code class="sig-name descname">add_column</code><span class="sig-paren">(</span><em class="sig-param">data2</em>, <em class="sig-param">suffixes=None</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.ddf.DDF.add_column" title="Permalink to this definition">¶</a></dt>
+<code class="descname">add_column</code><span class="sig-paren">(</span><em>data2</em>, <em>suffixes=None</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.ddf.DDF.add_column" title="Permalink to this definition">¶</a></dt>
 <dd><p>Merge two DDF, column-wise.</p>
 <p>Is it a Lazy function: No</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>data2</strong> – The second DDF;</p></li>
-<li><p><strong>suffixes</strong> – Suffixes in case of duplicated columns name
-(default, [“_l”,”_r”]);</p></li>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>data2</strong> – The second DDF;</li>
+<li><strong>suffixes</strong> – Suffixes in case of duplicated columns name
+(default, [“_l”,”_r”]);</li>
 </ul>
-</dd>
-<dt class="field-even">Returns</dt>
-<dd class="field-even"><p>DDF</p>
-</dd>
-<dt class="field-odd">Example</dt>
-<dd class="field-odd"><p></p></dd>
-</dl>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">ddf1</span><span class="o">.</span><span class="n">add_column</span><span class="p">(</span><span class="n">ddf2</span><span class="p">)</span>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">DDF</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Example:</th><td class="field-body"></td>
+</tr>
+</tbody>
+</table>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">ddf1</span><span class="o">.</span><span class="n">add_column</span><span class="p">(</span><span class="n">ddf2</span><span class="p">)</span>
 </pre></div>
 </div>
 </dd></dl>
 
 <dl class="method">
 <dt id="ddf_library.ddf.DDF.balancer">
-<code class="sig-name descname">balancer</code><span class="sig-paren">(</span><em class="sig-param">forced=False</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.ddf.DDF.balancer" title="Permalink to this definition">¶</a></dt>
+<code class="descname">balancer</code><span class="sig-paren">(</span><em>forced=False</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.ddf.DDF.balancer" title="Permalink to this definition">¶</a></dt>
 <dd><p>Repartition data in order to balance the distributed data between nodes.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Returns</dt>
-<dd class="field-odd"><p>DDF</p>
-</dd>
-<dt class="field-even">Example</dt>
-<dd class="field-even"><p></p></dd>
-</dl>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">ddf1</span><span class="o">.</span><span class="n">balancer</span><span class="p">(</span><span class="n">force</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">DDF</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Example:</th><td class="field-body"></td>
+</tr>
+</tbody>
+</table>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">ddf1</span><span class="o">.</span><span class="n">balancer</span><span class="p">(</span><span class="n">force</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 </pre></div>
 </div>
 </dd></dl>
 
 <dl class="method">
 <dt id="ddf_library.ddf.DDF.cache">
-<code class="sig-name descname">cache</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.ddf.DDF.cache" title="Permalink to this definition">¶</a></dt>
-<dd><p>Compute all tasks until the current state</p>
-<dl class="field-list simple">
-<dt class="field-odd">Returns</dt>
-<dd class="field-odd"><p>DDF</p>
-</dd>
-<dt class="field-even">Example</dt>
-<dd class="field-even"><p></p></dd>
-</dl>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">ddf1</span><span class="o">.</span><span class="n">cache</span><span class="p">()</span>
+<code class="descname">cache</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.ddf.DDF.cache" title="Permalink to this definition">¶</a></dt>
+<dd><p>Currently it is only an alias for persist().</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">DDF</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Example:</th><td class="field-body"></td>
+</tr>
+</tbody>
+</table>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">ddf1</span><span class="o">.</span><span class="n">cache</span><span class="p">()</span>
 </pre></div>
 </div>
 </dd></dl>
 
 <dl class="method">
 <dt id="ddf_library.ddf.DDF.cast">
-<code class="sig-name descname">cast</code><span class="sig-paren">(</span><em class="sig-param">column</em>, <em class="sig-param">cast</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.ddf.DDF.cast" title="Permalink to this definition">¶</a></dt>
+<code class="descname">cast</code><span class="sig-paren">(</span><em>column</em>, <em>cast</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.ddf.DDF.cast" title="Permalink to this definition">¶</a></dt>
 <dd><p>Change the data’s type of some columns.</p>
 <p>Is it a Lazy function: Yes</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>column</strong> – String or list of strings with columns to cast;</p></li>
-<li><p><strong>cast</strong> – String or list of string with the supported types:
-‘integer’, ‘string’, ‘double’, ‘date’, ‘date/time’;</p></li>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>column</strong> – String or list of strings with columns to cast;</li>
+<li><strong>cast</strong> – String or list of string with the supported types:
+‘integer’, ‘string’, ‘decimal’, ‘date’, ‘date/time’;</li>
 </ul>
-</dd>
-<dt class="field-even">Returns</dt>
-<dd class="field-even"><p>DDF</p>
-</dd>
-</dl>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">DDF</p>
+</td>
+</tr>
+</tbody>
+</table>
 </dd></dl>
 
 <dl class="method">
 <dt id="ddf_library.ddf.DDF.columns">
-<code class="sig-name descname">columns</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.ddf.DDF.columns" title="Permalink to this definition">¶</a></dt>
+<code class="descname">columns</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.ddf.DDF.columns" title="Permalink to this definition">¶</a></dt>
 <dd><p>Returns the columns name in the current DDF.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Returns</dt>
-<dd class="field-odd"><p>A list of strings</p>
-</dd>
-</dl>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">A list of strings</td>
+</tr>
+</tbody>
+</table>
 </dd></dl>
 
 <dl class="method">
 <dt id="ddf_library.ddf.DDF.correlation">
-<code class="sig-name descname">correlation</code><span class="sig-paren">(</span><em class="sig-param">col1</em>, <em class="sig-param">col2</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.ddf.DDF.correlation" title="Permalink to this definition">¶</a></dt>
+<code class="descname">correlation</code><span class="sig-paren">(</span><em>col1</em>, <em>col2</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.ddf.DDF.correlation" title="Permalink to this definition">¶</a></dt>
 <dd><p>Calculate the Pearson Correlation Coefficient.</p>
 <p>When one of the standard deviations is zero so the correlation is
 undefined (NaN).</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>col1</strong> – The name of the first column</p></li>
-<li><p><strong>col2</strong> – The name of the second column</p></li>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>col1</strong> – The name of the first column</li>
+<li><strong>col2</strong> – The name of the second column</li>
 </ul>
-</dd>
-<dt class="field-even">Returns</dt>
-<dd class="field-even"><p>The result of sample covariance</p>
-</dd>
-</dl>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">The result of sample covariance</p>
+</td>
+</tr>
+</tbody>
+</table>
 </dd></dl>
 
 <dl class="method">
 <dt id="ddf_library.ddf.DDF.count_rows">
-<code class="sig-name descname">count_rows</code><span class="sig-paren">(</span><em class="sig-param">total=True</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.ddf.DDF.count_rows" title="Permalink to this definition">¶</a></dt>
+<code class="descname">count_rows</code><span class="sig-paren">(</span><em>total=True</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.ddf.DDF.count_rows" title="Permalink to this definition">¶</a></dt>
 <dd><p>Return the number of rows in this DDF.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
-<dd class="field-odd"><p><strong>total</strong> – Show the total number (default) or the number over
-the fragments.</p>
-</dd>
-<dt class="field-even">Returns</dt>
-<dd class="field-even"><p>integer</p>
-</dd>
-<dt class="field-odd">Example</dt>
-<dd class="field-odd"><p></p></dd>
-</dl>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="nb">print</span><span class="p">(</span><span class="n">ddf1</span><span class="o">.</span><span class="n">count_rows</span><span class="p">())</span>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>total</strong> – Show the total number (default) or the number over
+the fragments.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">integer</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Example:</th><td class="field-body"></td>
+</tr>
+</tbody>
+</table>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="nb">print</span><span class="p">(</span><span class="n">ddf1</span><span class="o">.</span><span class="n">count_rows</span><span class="p">())</span>
 </pre></div>
 </div>
 </dd></dl>
 
 <dl class="method">
 <dt id="ddf_library.ddf.DDF.covariance">
-<code class="sig-name descname">covariance</code><span class="sig-paren">(</span><em class="sig-param">col1</em>, <em class="sig-param">col2</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.ddf.DDF.covariance" title="Permalink to this definition">¶</a></dt>
+<code class="descname">covariance</code><span class="sig-paren">(</span><em>col1</em>, <em>col2</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.ddf.DDF.covariance" title="Permalink to this definition">¶</a></dt>
 <dd><p>Calculate the sample covariance for the given columns, specified by
 their names, as a double value.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>col1</strong> – The name of the first column</p></li>
-<li><p><strong>col2</strong> – The name of the second column</p></li>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>col1</strong> – The name of the first column</li>
+<li><strong>col2</strong> – The name of the second column</li>
 </ul>
-</dd>
-<dt class="field-even">Returns</dt>
-<dd class="field-even"><p>The result of sample covariance</p>
-</dd>
-</dl>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">The result of sample covariance</p>
+</td>
+</tr>
+</tbody>
+</table>
 </dd></dl>
 
 <dl class="method">
 <dt id="ddf_library.ddf.DDF.cross_join">
-<code class="sig-name descname">cross_join</code><span class="sig-paren">(</span><em class="sig-param">data2</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.ddf.DDF.cross_join" title="Permalink to this definition">¶</a></dt>
+<code class="descname">cross_join</code><span class="sig-paren">(</span><em>data2</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.ddf.DDF.cross_join" title="Permalink to this definition">¶</a></dt>
 <dd><p>Returns the cartesian product with another DDF.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
-<dd class="field-odd"><p><strong>data2</strong> – Right side of the cartesian product;</p>
-</dd>
-<dt class="field-even">Returns</dt>
-<dd class="field-even"><p>DDF.</p>
-</dd>
-<dt class="field-odd">Example</dt>
-<dd class="field-odd"><p></p></dd>
-</dl>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">ddf1</span><span class="o">.</span><span class="n">cross_join</span><span class="p">(</span><span class="n">ddf2</span><span class="p">)</span>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>data2</strong> – Right side of the cartesian product;</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">DDF.</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Example:</th><td class="field-body"></td>
+</tr>
+</tbody>
+</table>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">ddf1</span><span class="o">.</span><span class="n">cross_join</span><span class="p">(</span><span class="n">ddf2</span><span class="p">)</span>
 </pre></div>
 </div>
 </dd></dl>
 
 <dl class="method">
 <dt id="ddf_library.ddf.DDF.cross_tab">
-<code class="sig-name descname">cross_tab</code><span class="sig-paren">(</span><em class="sig-param">col1</em>, <em class="sig-param">col2</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.ddf.DDF.cross_tab" title="Permalink to this definition">¶</a></dt>
+<code class="descname">cross_tab</code><span class="sig-paren">(</span><em>col1</em>, <em>col2</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.ddf.DDF.cross_tab" title="Permalink to this definition">¶</a></dt>
 <dd><p>Computes a pair-wise frequency table of the given columns. Also known as
 a contingency table.  The number of distinct values for each column
 should be less than 1e4. At most 1e6 non-zero pair frequencies will be
 returned.</p>
 <p>Is it a Lazy function: No</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>col1</strong> – The name of the first column</p></li>
-<li><p><strong>col2</strong> – The name of the second column</p></li>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>col1</strong> – The name of the first column</li>
+<li><strong>col2</strong> – The name of the second column</li>
 </ul>
-</dd>
-<dt class="field-even">Returns</dt>
-<dd class="field-even"><p>DDF</p>
-</dd>
-<dt class="field-odd">Example</dt>
-<dd class="field-odd"><p></p></dd>
-</dl>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">ddf1</span><span class="o">.</span><span class="n">cross_tab</span><span class="p">(</span><span class="n">col1</span><span class="o">=</span><span class="s1">&#39;col_1&#39;</span><span class="p">,</span> <span class="n">col2</span><span class="o">=</span><span class="s1">&#39;col_2&#39;</span><span class="p">)</span>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">DDF</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Example:</th><td class="field-body"></td>
+</tr>
+</tbody>
+</table>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">ddf1</span><span class="o">.</span><span class="n">cross_tab</span><span class="p">(</span><span class="n">col1</span><span class="o">=</span><span class="s1">&#39;col_1&#39;</span><span class="p">,</span> <span class="n">col2</span><span class="o">=</span><span class="s1">&#39;col_2&#39;</span><span class="p">)</span>
 </pre></div>
 </div>
 </dd></dl>
 
 <dl class="method">
 <dt id="ddf_library.ddf.DDF.describe">
-<code class="sig-name descname">describe</code><span class="sig-paren">(</span><em class="sig-param">columns=None</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.ddf.DDF.describe" title="Permalink to this definition">¶</a></dt>
+<code class="descname">describe</code><span class="sig-paren">(</span><em>columns=None</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.ddf.DDF.describe" title="Permalink to this definition">¶</a></dt>
 <dd><p>Computes basic statistics for numeric and string columns. This include
 count, mean, number of NaN, stddev, min, and max.</p>
 <p>Is it a Lazy function: No</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
-<dd class="field-odd"><p><strong>columns</strong> – A list of columns, if no columns are given,
-this function computes statistics for all numerical or string columns;</p>
-</dd>
-<dt class="field-even">Returns</dt>
-<dd class="field-even"><p>A pandas DataFrame</p>
-</dd>
-<dt class="field-odd">Example</dt>
-<dd class="field-odd"><p></p></dd>
-</dl>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">ddf1</span><span class="o">.</span><span class="n">describe</span><span class="p">([</span><span class="s1">&#39;col_1&#39;</span><span class="p">])</span>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>columns</strong> – A list of columns, if no columns are given,
+this function computes statistics for all numerical or string columns;</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">A pandas DataFrame</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Example:</th><td class="field-body"></td>
+</tr>
+</tbody>
+</table>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">ddf1</span><span class="o">.</span><span class="n">describe</span><span class="p">([</span><span class="s1">&#39;col_1&#39;</span><span class="p">])</span>
 </pre></div>
 </div>
 </dd></dl>
 
 <dl class="method">
 <dt id="ddf_library.ddf.DDF.distinct">
-<code class="sig-name descname">distinct</code><span class="sig-paren">(</span><em class="sig-param">cols</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.ddf.DDF.distinct" title="Permalink to this definition">¶</a></dt>
+<code class="descname">distinct</code><span class="sig-paren">(</span><em>cols</em>, <em>opt=True</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.ddf.DDF.distinct" title="Permalink to this definition">¶</a></dt>
 <dd><p>Returns a new DDF containing the distinct rows in this DDF.</p>
 <p>Is it a Lazy function: No</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
-<dd class="field-odd"><p><strong>cols</strong> – subset of columns;</p>
-</dd>
-<dt class="field-even">Returns</dt>
-<dd class="field-even"><p>DDF</p>
-</dd>
-<dt class="field-odd">Example</dt>
-<dd class="field-odd"><p></p></dd>
-</dl>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">ddf1</span><span class="o">.</span><span class="n">distinct</span><span class="p">(</span><span class="s1">&#39;col_1&#39;</span><span class="p">)</span>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>cols</strong> – subset of columns;</li>
+<li><strong>opt</strong> – Tries to reduce partial output size before shuffle;</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">DDF</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Example:</th><td class="field-body"></td>
+</tr>
+</tbody>
+</table>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">ddf1</span><span class="o">.</span><span class="n">distinct</span><span class="p">(</span><span class="s1">&#39;col_1&#39;</span><span class="p">)</span>
 </pre></div>
 </div>
 </dd></dl>
 
 <dl class="method">
 <dt id="ddf_library.ddf.DDF.drop">
-<code class="sig-name descname">drop</code><span class="sig-paren">(</span><em class="sig-param">columns</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.ddf.DDF.drop" title="Permalink to this definition">¶</a></dt>
+<code class="descname">drop</code><span class="sig-paren">(</span><em>columns</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.ddf.DDF.drop" title="Permalink to this definition">¶</a></dt>
 <dd><p>Remove some columns from DDF.</p>
 <p>Is it a Lazy function: Yes</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
-<dd class="field-odd"><p><strong>columns</strong> – A list of columns names to be removed;</p>
-</dd>
-<dt class="field-even">Returns</dt>
-<dd class="field-even"><p>DDF</p>
-</dd>
-<dt class="field-odd">Example</dt>
-<dd class="field-odd"><p></p></dd>
-</dl>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">ddf1</span><span class="o">.</span><span class="n">drop</span><span class="p">([</span><span class="s1">&#39;col_1&#39;</span><span class="p">,</span> <span class="s1">&#39;col_2&#39;</span><span class="p">])</span>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>columns</strong> – A list of columns names to be removed;</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">DDF</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Example:</th><td class="field-body"></td>
+</tr>
+</tbody>
+</table>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">ddf1</span><span class="o">.</span><span class="n">drop</span><span class="p">([</span><span class="s1">&#39;col_1&#39;</span><span class="p">,</span> <span class="s1">&#39;col_2&#39;</span><span class="p">])</span>
 </pre></div>
 </div>
 </dd></dl>
 
 <dl class="method">
 <dt id="ddf_library.ddf.DDF.drop_duplicates">
-<code class="sig-name descname">drop_duplicates</code><span class="sig-paren">(</span><em class="sig-param">cols</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.ddf.DDF.drop_duplicates" title="Permalink to this definition">¶</a></dt>
+<code class="descname">drop_duplicates</code><span class="sig-paren">(</span><em>cols</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.ddf.DDF.drop_duplicates" title="Permalink to this definition">¶</a></dt>
 <dd><p>Alias for distinct.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Example</dt>
-<dd class="field-odd"><p></p></dd>
-</dl>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">ddf1</span><span class="o">.</span><span class="n">drop_duplicates</span><span class="p">(</span><span class="s1">&#39;col_1&#39;</span><span class="p">)</span>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Example:</th><td class="field-body"></td>
+</tr>
+</tbody>
+</table>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">ddf1</span><span class="o">.</span><span class="n">drop_duplicates</span><span class="p">(</span><span class="s1">&#39;col_1&#39;</span><span class="p">)</span>
 </pre></div>
 </div>
 </dd></dl>
 
 <dl class="method">
 <dt id="ddf_library.ddf.DDF.dropna">
-<code class="sig-name descname">dropna</code><span class="sig-paren">(</span><em class="sig-param">subset=None</em>, <em class="sig-param">mode='REMOVE_ROW'</em>, <em class="sig-param">how='any'</em>, <em class="sig-param">thresh=None</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.ddf.DDF.dropna" title="Permalink to this definition">¶</a></dt>
+<code class="descname">dropna</code><span class="sig-paren">(</span><em>subset=None</em>, <em>mode='REMOVE_ROW'</em>, <em>how='any'</em>, <em>thresh=None</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.ddf.DDF.dropna" title="Permalink to this definition">¶</a></dt>
 <dd><p>Cleans missing rows or columns fields.</p>
 <p>Is it a Lazy function: Yes, if mode is <em>“REMOVE_ROW”</em>, otherwise is No</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>subset</strong> – A list of attributes to evaluate;</p></li>
-<li><p><strong>mode</strong> – <em>“REMOVE_ROW”*</em> to remove entire row (default) or
-<strong>“REMOVE_COLUMN”</strong> to remove a column.</p></li>
-<li><p><strong>thresh</strong> – int, default None If specified, drop rows that have less
-than thresh non-null values. This overwrites the how parameter.</p></li>
-<li><p><strong>how</strong> – ‘any’ or ‘all’. If ‘any’, drop a row if it contains any
-nulls. If ‘all’, drop a row only if all its values are null.</p></li>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>subset</strong> – A list of attributes to evaluate;</li>
+<li><strong>mode</strong> – <em>“REMOVE_ROW”*</em> to remove entire row (default) or
+<strong>“REMOVE_COLUMN”</strong> to remove a column.</li>
+<li><strong>thresh</strong> – int, default None If specified, drop rows that have less
+than thresh non-null values. This overwrites the how parameter.</li>
+<li><strong>how</strong> – ‘any’ or ‘all’. If ‘any’, drop a row if it contains any
+nulls. If ‘all’, drop a row only if all its values are null.</li>
 </ul>
-</dd>
-<dt class="field-even">Returns</dt>
-<dd class="field-even"><p>DDF</p>
-</dd>
-<dt class="field-odd">Example</dt>
-<dd class="field-odd"><p></p></dd>
-</dl>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">ddf1</span><span class="o">.</span><span class="n">dropna</span><span class="p">([</span><span class="s1">&#39;col_1&#39;</span><span class="p">],</span> <span class="n">mode</span><span class="o">=</span><span class="s1">&#39;REMOVE_ROW&#39;</span><span class="p">)</span>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">DDF</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Example:</th><td class="field-body"></td>
+</tr>
+</tbody>
+</table>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">ddf1</span><span class="o">.</span><span class="n">dropna</span><span class="p">([</span><span class="s1">&#39;col_1&#39;</span><span class="p">],</span> <span class="n">mode</span><span class="o">=</span><span class="s1">&#39;REMOVE_ROW&#39;</span><span class="p">)</span>
 </pre></div>
 </div>
 </dd></dl>
 
 <dl class="method">
+<dt id="ddf_library.ddf.DDF.dtypes">
+<code class="descname">dtypes</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.ddf.DDF.dtypes" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns a list of dtypes of each column on the current DDF.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">a list</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
 <dt id="ddf_library.ddf.DDF.except_all">
-<code class="sig-name descname">except_all</code><span class="sig-paren">(</span><em class="sig-param">data2</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.ddf.DDF.except_all" title="Permalink to this definition">¶</a></dt>
+<code class="descname">except_all</code><span class="sig-paren">(</span><em>data2</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.ddf.DDF.except_all" title="Permalink to this definition">¶</a></dt>
 <dd><p>Returns a new DDF with containing rows in the first frame but not
 in the second one while preserving duplicates. This is equivalent to
 EXCEPT ALL in SQL.</p>
 <p>Is it a Lazy function: No</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
-<dd class="field-odd"><p><strong>data2</strong> – second DDF;</p>
-</dd>
-<dt class="field-even">Returns</dt>
-<dd class="field-even"><p>DDF</p>
-</dd>
-<dt class="field-odd">Example</dt>
-<dd class="field-odd"><p></p></dd>
-</dl>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">ddf1</span><span class="o">.</span><span class="n">except_all</span><span class="p">(</span><span class="n">ddf2</span><span class="p">)</span>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>data2</strong> – second DDF;</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">DDF</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Example:</th><td class="field-body"></td>
+</tr>
+</tbody>
+</table>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">ddf1</span><span class="o">.</span><span class="n">except_all</span><span class="p">(</span><span class="n">ddf2</span><span class="p">)</span>
 </pre></div>
 </div>
 </dd></dl>
 
 <dl class="method">
 <dt id="ddf_library.ddf.DDF.explode">
-<code class="sig-name descname">explode</code><span class="sig-paren">(</span><em class="sig-param">column</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.ddf.DDF.explode" title="Permalink to this definition">¶</a></dt>
+<code class="descname">explode</code><span class="sig-paren">(</span><em>column</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.ddf.DDF.explode" title="Permalink to this definition">¶</a></dt>
 <dd><p>Returns a new row for each element in the given array.</p>
 <p>Is it a Lazy function: Yes</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
-<dd class="field-odd"><p><strong>column</strong> – Column name to be unnest;</p>
-</dd>
-<dt class="field-even">Returns</dt>
-<dd class="field-even"><p>DDF</p>
-</dd>
-<dt class="field-odd">Example</dt>
-<dd class="field-odd"><p></p></dd>
-</dl>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">ddf1</span><span class="o">.</span><span class="n">explode</span><span class="p">(</span><span class="s1">&#39;col_1&#39;</span><span class="p">)</span>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>column</strong> – Column name to be unnest;</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">DDF</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Example:</th><td class="field-body"></td>
+</tr>
+</tbody>
+</table>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">ddf1</span><span class="o">.</span><span class="n">explode</span><span class="p">(</span><span class="s1">&#39;col_1&#39;</span><span class="p">)</span>
 </pre></div>
 </div>
 </dd></dl>
 
 <dl class="method">
 <dt id="ddf_library.ddf.DDF.export_ddf">
-<code class="sig-name descname">export_ddf</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.ddf.DDF.export_ddf" title="Permalink to this definition">¶</a></dt>
+<code class="descname">export_ddf</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.ddf.DDF.export_ddf" title="Permalink to this definition">¶</a></dt>
 <dd><p>Export ddf data.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Returns</dt>
-<dd class="field-odd"><p>A list of Pandas’s DataFrame</p>
-</dd>
-</dl>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">A list of Pandas’s DataFrame</td>
+</tr>
+</tbody>
+</table>
 </dd></dl>
 
 <dl class="method">
 <dt id="ddf_library.ddf.DDF.fillna">
-<code class="sig-name descname">fillna</code><span class="sig-paren">(</span><em class="sig-param">subset=None</em>, <em class="sig-param">mode='VALUE'</em>, <em class="sig-param">value=None</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.ddf.DDF.fillna" title="Permalink to this definition">¶</a></dt>
+<code class="descname">fillna</code><span class="sig-paren">(</span><em>subset=None</em>, <em>mode='VALUE'</em>, <em>value=None</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.ddf.DDF.fillna" title="Permalink to this definition">¶</a></dt>
 <dd><p>Replace missing rows or columns by mean, median, value or mode.</p>
 <p>Is it a Lazy function: Yes, only if mode <em>“VALUE”</em></p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>subset</strong> – A list of attributes to evaluate;</p></li>
-<li><p><strong>mode</strong> – action in case of missing values: <em>“VALUE”</em> to replace by
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>subset</strong> – A list of attributes to evaluate;</li>
+<li><strong>mode</strong> – action in case of missing values: <em>“VALUE”</em> to replace by
 parameter “value” (default); <em>“MEDIAN”</em> to replace by median value;
-<em>“MODE”</em> to replace by  mode value; <em>“MEAN”</em> to replace by mean value;</p></li>
-<li><p><strong>value</strong> – Value to be replaced (only if mode is <em>“VALUE”</em>)</p></li>
+<em>“MODE”</em> to replace by  mode value; <em>“MEAN”</em> to replace by mean value;</li>
+<li><strong>value</strong> – Value to be replaced (only if mode is <em>“VALUE”</em>)</li>
 </ul>
-</dd>
-<dt class="field-even">Returns</dt>
-<dd class="field-even"><p>DDF</p>
-</dd>
-<dt class="field-odd">Example</dt>
-<dd class="field-odd"><p></p></dd>
-</dl>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">ddf1</span><span class="o">.</span><span class="n">fillna</span><span class="p">([</span><span class="s1">&#39;col_1&#39;</span><span class="p">],</span> <span class="n">value</span><span class="o">=</span><span class="mi">42</span><span class="p">)</span>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">DDF</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Example:</th><td class="field-body"></td>
+</tr>
+</tbody>
+</table>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">ddf1</span><span class="o">.</span><span class="n">fillna</span><span class="p">([</span><span class="s1">&#39;col_1&#39;</span><span class="p">],</span> <span class="n">value</span><span class="o">=</span><span class="mi">42</span><span class="p">)</span>
 </pre></div>
 </div>
 </dd></dl>
 
 <dl class="method">
 <dt id="ddf_library.ddf.DDF.filter">
-<code class="sig-name descname">filter</code><span class="sig-paren">(</span><em class="sig-param">expr</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.ddf.DDF.filter" title="Permalink to this definition">¶</a></dt>
+<code class="descname">filter</code><span class="sig-paren">(</span><em>expr</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.ddf.DDF.filter" title="Permalink to this definition">¶</a></dt>
 <dd><p>Filters rows using the given condition.</p>
 <p>Is it a Lazy function: Yes</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
-<dd class="field-odd"><p><strong>expr</strong> – A filtering function;</p>
-</dd>
-<dt class="field-even">Returns</dt>
-<dd class="field-even"><p>DDF</p>
-</dd>
-</dl>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>expr</strong> – A filtering function;</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">DDF</td>
+</tr>
+</tbody>
+</table>
 <div class="admonition seealso">
-<p class="admonition-title">See also</p>
-<p>Visit this <a class="reference external" href="https://pandas.pydata.org/pandas-docs/stable/generated/pandas.DataFrame.query.html">link</a> to more
+<p class="first admonition-title">See also</p>
+<p class="last">Visit this <a class="reference external" href="https://pandas.pydata.org/pandas-docs/stable/generated/pandas.DataFrame.query.html">link</a> to more
 information about query options.</p>
 </div>
-<dl class="field-list simple">
-<dt class="field-odd">Example</dt>
-<dd class="field-odd"><p></p></dd>
-</dl>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">ddf1</span><span class="o">.</span><span class="n">filter</span><span class="p">(</span><span class="s2">&quot;(col_1 == &#39;male&#39;) and (col_3 &gt; 42)&quot;</span><span class="p">)</span>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Example:</th><td class="field-body"></td>
+</tr>
+</tbody>
+</table>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">ddf1</span><span class="o">.</span><span class="n">filter</span><span class="p">(</span><span class="s2">&quot;(col_1 == &#39;male&#39;) and (col_3 &gt; 42)&quot;</span><span class="p">)</span>
 </pre></div>
 </div>
 </dd></dl>
 
 <dl class="method">
 <dt id="ddf_library.ddf.DDF.freq_items">
-<code class="sig-name descname">freq_items</code><span class="sig-paren">(</span><em class="sig-param">col</em>, <em class="sig-param">support=0.01</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.ddf.DDF.freq_items" title="Permalink to this definition">¶</a></dt>
+<code class="descname">freq_items</code><span class="sig-paren">(</span><em>col</em>, <em>support=0.01</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.ddf.DDF.freq_items" title="Permalink to this definition">¶</a></dt>
 <dd><p>Finding frequent items for columns, possibly with false positives.
 Using the frequent element count algorithm described in
 “<a class="reference external" href="http://dx.doi.org/10.1145/762471.762473">http://dx.doi.org/10.1145/762471.762473</a>, proposed by Karp, Schenker,
 and Papadimitriou”</p>
 <p>Is it a Lazy function: No</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>col</strong> – Names of the columns to calculate frequent items</p></li>
-<li><p><strong>support</strong> – The frequency with which to consider an item ‘frequent’.
-Default is 1%. The support must be greater than 1e-4.</p></li>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>col</strong> – Names of the columns to calculate frequent items</li>
+<li><strong>support</strong> – The frequency with which to consider an item ‘frequent’.
+Default is 1%. The support must be greater than 1e-4.</li>
 </ul>
-</dd>
-<dt class="field-even">Returns</dt>
-<dd class="field-even"><p>DDF</p>
-</dd>
-<dt class="field-odd">Example</dt>
-<dd class="field-odd"><p></p></dd>
-</dl>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">ddf1</span><span class="o">.</span><span class="n">freq_items</span><span class="p">(</span><span class="n">col</span><span class="o">=</span><span class="s1">&#39;col_1&#39;</span><span class="p">,</span> <span class="n">support</span><span class="o">=</span><span class="mf">0.01</span><span class="p">)</span>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">DDF</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Example:</th><td class="field-body"></td>
+</tr>
+</tbody>
+</table>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">ddf1</span><span class="o">.</span><span class="n">freq_items</span><span class="p">(</span><span class="n">col</span><span class="o">=</span><span class="s1">&#39;col_1&#39;</span><span class="p">,</span> <span class="n">support</span><span class="o">=</span><span class="mf">0.01</span><span class="p">)</span>
 </pre></div>
 </div>
 </dd></dl>
 
 <dl class="method">
 <dt id="ddf_library.ddf.DDF.geo_within">
-<code class="sig-name descname">geo_within</code><span class="sig-paren">(</span><em class="sig-param">shp_object</em>, <em class="sig-param">lat_col</em>, <em class="sig-param">lon_col</em>, <em class="sig-param">polygon</em>, <em class="sig-param">attributes=None</em>, <em class="sig-param">suffix='_shp'</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.ddf.DDF.geo_within" title="Permalink to this definition">¶</a></dt>
+<code class="descname">geo_within</code><span class="sig-paren">(</span><em>shp_object</em>, <em>lat_col</em>, <em>lon_col</em>, <em>polygon</em>, <em>attributes=None</em>, <em>suffix='_shp'</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.ddf.DDF.geo_within" title="Permalink to this definition">¶</a></dt>
 <dd><p>Returns the sectors that the each point belongs.</p>
 <p>Is it a Lazy function: No</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>shp_object</strong> – The DDF with the shapefile information;</p></li>
-<li><p><strong>lat_col</strong> – Column which represents the Latitude field in the data;</p></li>
-<li><p><strong>lon_col</strong> – Column which represents the Longitude field in the data;</p></li>
-<li><p><strong>polygon</strong> – Field in shp_object where is store the
-coordinates of each sector;</p></li>
-<li><p><strong>attributes</strong> – Attributes list to retrieve from shapefile,
-empty to all (default, None);</p></li>
-<li><p><strong>suffix</strong> – Shapefile attributes suffix (default, <em>‘_shp’</em>);</p></li>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>shp_object</strong> – The DDF with the shapefile information;</li>
+<li><strong>lat_col</strong> – Column which represents the Latitude field in the data;</li>
+<li><strong>lon_col</strong> – Column which represents the Longitude field in the data;</li>
+<li><strong>polygon</strong> – Field in shp_object where is store the
+coordinates of each sector;</li>
+<li><strong>attributes</strong> – Attributes list to retrieve from shapefile,
+empty to all (default, None);</li>
+<li><strong>suffix</strong> – Shapefile attributes suffix (default, <em>‘_shp’</em>);</li>
 </ul>
-</dd>
-<dt class="field-even">Returns</dt>
-<dd class="field-even"><p>DDF</p>
-</dd>
-<dt class="field-odd">Example</dt>
-<dd class="field-odd"><p></p></dd>
-</dl>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">ddf2</span><span class="o">.</span><span class="n">geo_within</span><span class="p">(</span><span class="n">ddf1</span><span class="p">,</span> <span class="s1">&#39;LATITUDE&#39;</span><span class="p">,</span> <span class="s1">&#39;LONGITUDE&#39;</span><span class="p">,</span> <span class="s1">&#39;points&#39;</span><span class="p">)</span>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">DDF</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Example:</th><td class="field-body"></td>
+</tr>
+</tbody>
+</table>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">ddf2</span><span class="o">.</span><span class="n">geo_within</span><span class="p">(</span><span class="n">ddf1</span><span class="p">,</span> <span class="s1">&#39;LATITUDE&#39;</span><span class="p">,</span> <span class="s1">&#39;LONGITUDE&#39;</span><span class="p">,</span> <span class="s1">&#39;points&#39;</span><span class="p">)</span>
 </pre></div>
 </div>
 </dd></dl>
 
 <dl class="method">
 <dt id="ddf_library.ddf.DDF.group_by">
-<code class="sig-name descname">group_by</code><span class="sig-paren">(</span><em class="sig-param">group_by</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.ddf.DDF.group_by" title="Permalink to this definition">¶</a></dt>
+<code class="descname">group_by</code><span class="sig-paren">(</span><em>group_by</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.ddf.DDF.group_by" title="Permalink to this definition">¶</a></dt>
 <dd><p>Computes aggregates and returns the result as a DDF.</p>
 <p>Is it a Lazy function: No</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
-<dd class="field-odd"><p><strong>group_by</strong> – A list of columns to be grouped;</p>
-</dd>
-<dt class="field-even">Returns</dt>
-<dd class="field-even"><p>A GroupedDFF with a set of methods for aggregations on a DDF</p>
-</dd>
-<dt class="field-odd">Example</dt>
-<dd class="field-odd"><p></p></dd>
-</dl>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">ddf1</span><span class="o">.</span><span class="n">group_by</span><span class="p">(</span><span class="n">group_by</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;col_1&#39;</span><span class="p">])</span><span class="o">.</span><span class="n">mean</span><span class="p">([</span><span class="s1">&#39;col_2&#39;</span><span class="p">])</span><span class="o">.</span><span class="n">first</span><span class="p">([</span><span class="s1">&#39;col_2&#39;</span><span class="p">])</span>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>group_by</strong> – A list of columns to be grouped;</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">A GroupedDFF with a set of methods for aggregations on a DDF</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Example:</th><td class="field-body"></td>
+</tr>
+</tbody>
+</table>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">ddf1</span><span class="o">.</span><span class="n">group_by</span><span class="p">(</span><span class="n">group_by</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;col_1&#39;</span><span class="p">])</span><span class="o">.</span><span class="n">mean</span><span class="p">([</span><span class="s1">&#39;col_2&#39;</span><span class="p">])</span><span class="o">.</span><span class="n">first</span><span class="p">([</span><span class="s1">&#39;col_2&#39;</span><span class="p">])</span>
 </pre></div>
 </div>
 </dd></dl>
 
 <dl class="method">
 <dt id="ddf_library.ddf.DDF.hash_partition">
-<code class="sig-name descname">hash_partition</code><span class="sig-paren">(</span><em class="sig-param">columns</em>, <em class="sig-param">nfrag=None</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.ddf.DDF.hash_partition" title="Permalink to this definition">¶</a></dt>
+<code class="descname">hash_partition</code><span class="sig-paren">(</span><em>columns</em>, <em>nfrag=None</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.ddf.DDF.hash_partition" title="Permalink to this definition">¶</a></dt>
 <dd><p>Hash partitioning is a partitioning technique where data
 is stored separately in different fragments by a hash function.</p>
 <p>Is it a Lazy function: No</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>columns</strong> – Columns to be used as key in a hash function;</p></li>
-<li><p><strong>nfrag</strong> – Number of fragments (default, keep the input nfrag).</p></li>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>columns</strong> – Columns to be used as key in a hash function;</li>
+<li><strong>nfrag</strong> – Number of fragments (default, keep the input nfrag).</li>
 </ul>
-</dd>
-<dt class="field-even">Example</dt>
-<dd class="field-even"><p></p></dd>
-</dl>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">ddf2</span> <span class="o">=</span> <span class="n">ddf1</span><span class="o">.</span><span class="n">hash_partition</span><span class="p">(</span><span class="n">columns</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;col1&#39;</span><span class="p">,</span> <span class="n">col2</span><span class="p">])</span>
-</pre></div>
-</div>
-</dd></dl>
-
-<dl class="method">
-<dt id="ddf_library.ddf.DDF.import_data">
-<code class="sig-name descname">import_data</code><span class="sig-paren">(</span><em class="sig-param">df_list</em>, <em class="sig-param">info=None</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.ddf.DDF.import_data" title="Permalink to this definition">¶</a></dt>
-<dd><p>Import a previous Pandas DataFrame list into DDF abstraction.
-Replace old data if DDF is not empty.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>df_list</strong> – DataFrame input</p></li>
-<li><p><strong>info</strong> – (Optional) A list of columns names, data types and size
-in each partition;</p></li>
-</ul>
-</dd>
-<dt class="field-even">Returns</dt>
-<dd class="field-even"><p>DDF</p>
-</dd>
-<dt class="field-odd">Example</dt>
-<dd class="field-odd"><p></p></dd>
-</dl>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">ddf1</span> <span class="o">=</span> <span class="n">DDF</span><span class="p">()</span><span class="o">.</span><span class="n">import_partitions</span><span class="p">(</span><span class="n">df_list</span><span class="p">)</span>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Example:</th><td class="field-body"></td>
+</tr>
+</tbody>
+</table>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">ddf2</span> <span class="o">=</span> <span class="n">ddf1</span><span class="o">.</span><span class="n">hash_partition</span><span class="p">(</span><span class="n">columns</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;col1&#39;</span><span class="p">,</span> <span class="n">col2</span><span class="p">])</span>
 </pre></div>
 </div>
 </dd></dl>
 
 <dl class="method">
 <dt id="ddf_library.ddf.DDF.intersect">
-<code class="sig-name descname">intersect</code><span class="sig-paren">(</span><em class="sig-param">data2</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.ddf.DDF.intersect" title="Permalink to this definition">¶</a></dt>
+<code class="descname">intersect</code><span class="sig-paren">(</span><em>data2</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.ddf.DDF.intersect" title="Permalink to this definition">¶</a></dt>
 <dd><p>Returns a new DDF containing rows in both DDF. This is equivalent to
 INTERSECT in SQL.</p>
 <p>Is it a Lazy function: No</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
-<dd class="field-odd"><p><strong>data2</strong> – DDF</p>
-</dd>
-<dt class="field-even">Returns</dt>
-<dd class="field-even"><p>DDF</p>
-</dd>
-<dt class="field-odd">Example</dt>
-<dd class="field-odd"><p></p></dd>
-</dl>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">ddf2</span><span class="o">.</span><span class="n">intersect</span><span class="p">(</span><span class="n">ddf1</span><span class="p">)</span>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>data2</strong> – DDF</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">DDF</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Example:</th><td class="field-body"></td>
+</tr>
+</tbody>
+</table>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">ddf2</span><span class="o">.</span><span class="n">intersect</span><span class="p">(</span><span class="n">ddf1</span><span class="p">)</span>
 </pre></div>
 </div>
 </dd></dl>
 
 <dl class="method">
 <dt id="ddf_library.ddf.DDF.intersect_all">
-<code class="sig-name descname">intersect_all</code><span class="sig-paren">(</span><em class="sig-param">data2</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.ddf.DDF.intersect_all" title="Permalink to this definition">¶</a></dt>
+<code class="descname">intersect_all</code><span class="sig-paren">(</span><em>data2</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.ddf.DDF.intersect_all" title="Permalink to this definition">¶</a></dt>
 <dd><p>Returns a new DDF containing rows in both DDF while preserving
 duplicates. This is equivalent to INTERSECT ALL in SQL.</p>
 <p>Is it a Lazy function: No</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
-<dd class="field-odd"><p><strong>data2</strong> – DDF</p>
-</dd>
-<dt class="field-even">Returns</dt>
-<dd class="field-even"><p>DDF</p>
-</dd>
-<dt class="field-odd">Example</dt>
-<dd class="field-odd"><p></p></dd>
-</dl>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">ddf2</span><span class="o">.</span><span class="n">intersect_all</span><span class="p">(</span><span class="n">ddf1</span><span class="p">)</span>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>data2</strong> – DDF</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">DDF</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Example:</th><td class="field-body"></td>
+</tr>
+</tbody>
+</table>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">ddf2</span><span class="o">.</span><span class="n">intersect_all</span><span class="p">(</span><span class="n">ddf1</span><span class="p">)</span>
 </pre></div>
 </div>
 </dd></dl>
 
 <dl class="method">
 <dt id="ddf_library.ddf.DDF.join">
-<code class="sig-name descname">join</code><span class="sig-paren">(</span><em class="sig-param">data2</em>, <em class="sig-param">key1=None</em>, <em class="sig-param">key2=None</em>, <em class="sig-param">mode='inner'</em>, <em class="sig-param">suffixes=None</em>, <em class="sig-param">keep_keys=False</em>, <em class="sig-param">case=True</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.ddf.DDF.join" title="Permalink to this definition">¶</a></dt>
+<code class="descname">join</code><span class="sig-paren">(</span><em>data2</em>, <em>key1=None</em>, <em>key2=None</em>, <em>mode='inner'</em>, <em>suffixes=None</em>, <em>keep_keys=False</em>, <em>case=True</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.ddf.DDF.join" title="Permalink to this definition">¶</a></dt>
 <dd><p>Joins two DDF using the given join expression.</p>
 <p>Is it a Lazy function: No</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>data2</strong> – Second DDF;</p></li>
-<li><p><strong>key1</strong> – List of keys of first DDF;</p></li>
-<li><p><strong>key2</strong> – List of keys of second DDF;</p></li>
-<li><p><strong>mode</strong> – How to handle the operation of the two objects. {‘left’,
-‘right’, ‘inner’}, default ‘inner’</p></li>
-<li><p><strong>suffixes</strong> – A list of suffix to be used in overlapping columns.
-Default is [‘_l’, ‘_r’];</p></li>
-<li><p><strong>keep_keys</strong> – True to keep keys of second DDF (default is False);</p></li>
-<li><p><strong>case</strong> – True to keep the keys as case sensitive;</p></li>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>data2</strong> – Second DDF;</li>
+<li><strong>key1</strong> – List of keys of first DDF;</li>
+<li><strong>key2</strong> – List of keys of second DDF;</li>
+<li><strong>mode</strong> – How to handle the operation of the two objects. {‘left’,
+‘right’, ‘inner’}, default ‘inner’</li>
+<li><strong>suffixes</strong> – A list of suffix to be used in overlapping columns.
+Default is [‘_l’, ‘_r’];</li>
+<li><strong>keep_keys</strong> – True to keep keys of second DDF (default is False);</li>
+<li><strong>case</strong> – True to keep the keys as case sensitive;</li>
 </ul>
-</dd>
-<dt class="field-even">Returns</dt>
-<dd class="field-even"><p>DDF</p>
-</dd>
-<dt class="field-odd">Example</dt>
-<dd class="field-odd"><p></p></dd>
-</dl>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">ddf1</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">ddf2</span><span class="p">,</span> <span class="n">key1</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;col_1&#39;</span><span class="p">],</span> <span class="n">key2</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;col_1&#39;</span><span class="p">],</span> <span class="n">mode</span><span class="o">=</span><span class="s1">&#39;inner&#39;</span><span class="p">)</span>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">DDF</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Example:</th><td class="field-body"></td>
+</tr>
+</tbody>
+</table>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">ddf1</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">ddf2</span><span class="p">,</span> <span class="n">key1</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;col_1&#39;</span><span class="p">],</span> <span class="n">key2</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;col_1&#39;</span><span class="p">],</span> <span class="n">mode</span><span class="o">=</span><span class="s1">&#39;inner&#39;</span><span class="p">)</span>
 </pre></div>
 </div>
 </dd></dl>
 
 <dl class="method">
 <dt id="ddf_library.ddf.DDF.kolmogorov_smirnov_one_sample">
-<code class="sig-name descname">kolmogorov_smirnov_one_sample</code><span class="sig-paren">(</span><em class="sig-param">col</em>, <em class="sig-param">distribution='norm'</em>, <em class="sig-param">mode='asymp'</em>, <em class="sig-param">args=None</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.ddf.DDF.kolmogorov_smirnov_one_sample" title="Permalink to this definition">¶</a></dt>
+<code class="descname">kolmogorov_smirnov_one_sample</code><span class="sig-paren">(</span><em>col</em>, <em>distribution='norm'</em>, <em>mode='asymp'</em>, <em>args=None</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.ddf.DDF.kolmogorov_smirnov_one_sample" title="Permalink to this definition">¶</a></dt>
 <dd><p>Perform the Kolmogorov-Smirnov test for goodness of fit. This
 implementation of Kolmogorov–Smirnov test is a two-sided test
 for the null hypothesis that the sample is drawn from a continuous
 distribution.</p>
 <p>Is it a Lazy function: No</p>
 <blockquote>
-<div><dl class="field-list simple">
-<dt class="field-odd">param col</dt>
-<dd class="field-odd"><p>sample column name;</p>
-</dd>
-<dt class="field-even">param distribution</dt>
-<dd class="field-even"><p>Name of distribution (default is ‘norm’);</p>
-</dd>
-<dt class="field-odd">param mode</dt>
-<dd class="field-odd"><p>Defines the distribution used for calculating the p-value.
+<div><table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">param col:</th><td class="field-body">sample column name;</td>
+</tr>
+<tr class="field-even field"><th class="field-name" colspan="2">param distribution:</th></tr>
+<tr class="field-even field"><td>&#160;</td><td class="field-body">Name of distribution (default is ‘norm’);</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">param mode:</th><td class="field-body">Defines the distribution used for calculating the p-value.
 - ‘approx’ : use approximation to exact distribution
-- ‘asymp’ : use asymptotic distribution of test statistic</p>
-</dd>
-</dl>
+- ‘asymp’ : use asymptotic distribution of test statistic</td>
+</tr>
+</tbody>
+</table>
 </div></blockquote>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
-<dd class="field-odd"><p><strong>args</strong> – A tuple of distribution parameters. Default is (0,1);</p>
-</dd>
-<dt class="field-even">Returns</dt>
-<dd class="field-even"><p>KS statistic and two-tailed p-value</p>
-</dd>
-</dl>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>args</strong> – A tuple of distribution parameters. Default is (0,1);</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">KS statistic and two-tailed p-value</td>
+</tr>
+</tbody>
+</table>
 <div class="admonition seealso">
-<p class="admonition-title">See also</p>
-<p>Visit this <a class="reference external" href="https://docs.scipy.org/doc/scipy-0.14.0/reference/stats.html#module-scipy.stats">link</a> to see all supported
+<p class="first admonition-title">See also</p>
+<p class="last">Visit this <a class="reference external" href="https://docs.scipy.org/doc/scipy-0.14.0/reference/stats.html#module-scipy.stats">link</a> to see all supported
 distributions.</p>
 </div>
 <div class="admonition note">
-<p class="admonition-title">Note</p>
+<p class="first admonition-title">Note</p>
 <p>The KS statistic is the absolute max distance between
 the CDFs of the two samples. The closer this number is to 0 the
 more likely it is that the two samples were drawn from the
 same distribution.</p>
-<p>The p-value returned by the KS test has the same interpretation
+<p class="last">The p-value returned by the KS test has the same interpretation
 as other p-values. You reject the null hypothesis that the two
 samples were drawn from the same distribution if the p-value is
 less than your significance level.</p>
 </div>
-<dl class="field-list simple">
-<dt class="field-odd">Example</dt>
-<dd class="field-odd"><p></p></dd>
-</dl>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">ddf1</span><span class="o">.</span><span class="n">kolmogorov_smirnov_one_sample</span><span class="p">(</span><span class="n">col</span><span class="o">=</span><span class="s1">&#39;col_1&#39;</span><span class="p">)</span>
-</pre></div>
-</div>
-</dd></dl>
-
-<dl class="method">
-<dt id="ddf_library.ddf.DDF.load_shapefile">
-<code class="sig-name descname">load_shapefile</code><span class="sig-paren">(</span><em class="sig-param">shp_path</em>, <em class="sig-param">dbf_path</em>, <em class="sig-param">polygon='points'</em>, <em class="sig-param">attributes=None</em>, <em class="sig-param">num_of_parts=4</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.ddf.DDF.load_shapefile" title="Permalink to this definition">¶</a></dt>
-<dd><p>Reads a shapefile using the shp and dbf file.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>shp_path</strong> – Path to the shapefile (.shp)</p></li>
-<li><p><strong>dbf_path</strong> – Path to the shapefile (.dbf)</p></li>
-<li><p><strong>polygon</strong> – Alias to the new column to store the
-polygon coordinates (default, ‘points’);</p></li>
-<li><p><strong>attributes</strong> – List of attributes to keep in the DataFrame,
-empty to use all fields;</p></li>
-<li><p><strong>num_of_parts</strong> – The number of fragments;</p></li>
-</ul>
-</dd>
-<dt class="field-even">Returns</dt>
-<dd class="field-even"><p>DDF</p>
-</dd>
-</dl>
-<div class="admonition note">
-<p class="admonition-title">Note</p>
-<p>$ pip install pyshp</p>
-</div>
-<dl class="field-list simple">
-<dt class="field-odd">Example</dt>
-<dd class="field-odd"><p></p></dd>
-</dl>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">ddf1</span> <span class="o">=</span> <span class="n">DDF</span><span class="p">()</span><span class="o">.</span><span class="n">load_shapefile</span><span class="p">(</span><span class="n">shp_path</span><span class="o">=</span><span class="s1">&#39;/shapefile.shp&#39;</span><span class="p">,</span>
-<span class="gp">&gt;&gt;&gt; </span>                            <span class="n">dbf_path</span><span class="o">=</span><span class="s1">&#39;/shapefile.dbf&#39;</span><span class="p">)</span>
-</pre></div>
-</div>
-</dd></dl>
-
-<dl class="method">
-<dt id="ddf_library.ddf.DDF.load_text">
-<code class="sig-name descname">load_text</code><span class="sig-paren">(</span><em class="sig-param">filename</em>, <em class="sig-param">num_of_parts=4</em>, <em class="sig-param">header=True</em>, <em class="sig-param">sep='</em>, <em class="sig-param">'</em>, <em class="sig-param">dtype=None</em>, <em class="sig-param">na_values=None</em>, <em class="sig-param">storage='hdfs'</em>, <em class="sig-param">host='localhost'</em>, <em class="sig-param">port=9000</em>, <em class="sig-param">distributed=False</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.ddf.DDF.load_text" title="Permalink to this definition">¶</a></dt>
-<dd><p>Create a DDF from a common file system or from HDFS.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>filename</strong> – Input file name;</p></li>
-<li><p><strong>num_of_parts</strong> – number of partitions (default, 4);</p></li>
-<li><p><strong>header</strong> – Use the first line as DataFrame header (default, True);</p></li>
-<li><p><strong>dtype</strong> – Type name or dict of column (default, ‘str’). Data type
-for data or columns. E.g. {‘a’: np.float64, ‘b’: np.int32, ‘c’:
-‘Int64’} Use str or object together with suitable na_values settings
-to preserve and not interpret dtype;</p></li>
-<li><p><strong>sep</strong> – separator delimiter (default, ‘,’);</p></li>
-<li><p><strong>na_values</strong> – A list with the all nan characters. Default list:
-[‘’, ‘#N/A’, ‘#N/A N/A’, ‘#NA’, ‘-1.#IND’, ‘-1.#QNAN’, ‘-NaN’,
-‘-nan’, ‘1.#IND’, ‘1.#QNAN’, ‘N/A’, ‘NA’, ‘NULL’, ‘NaN’, ‘nan’]</p></li>
-<li><p><strong>storage</strong> – <em>‘hdfs’</em> to use HDFS as storage or <em>‘fs’</em> to use the
-common file system;</p></li>
-<li><p><strong>distributed</strong> – if the absolute path represents a unique file or
-a folder with multiple files;</p></li>
-<li><p><strong>host</strong> – Namenode host if storage is <cite>hdfs</cite> (default, ‘localhost’);</p></li>
-<li><p><strong>port</strong> – Port to Namenode host if storage is <cite>hdfs</cite> (default, 9000);</p></li>
-</ul>
-</dd>
-<dt class="field-even">Returns</dt>
-<dd class="field-even"><p>DDF.</p>
-</dd>
-</dl>
-<p>..see also: Visit this <a class="reference external" href="https://docs.scipy.org/doc/numpy-1.15.0/reference/arrays.dtypes.html">link</a> to more information about dtype.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Example</dt>
-<dd class="field-odd"><p></p></dd>
-</dl>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">ddf1</span> <span class="o">=</span> <span class="n">DDF</span><span class="p">()</span><span class="o">.</span><span class="n">load_text</span><span class="p">(</span><span class="s1">&#39;/titanic.csv&#39;</span><span class="p">,</span> <span class="n">num_of_parts</span><span class="o">=</span><span class="mi">4</span><span class="p">)</span>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Example:</th><td class="field-body"></td>
+</tr>
+</tbody>
+</table>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">ddf1</span><span class="o">.</span><span class="n">kolmogorov_smirnov_one_sample</span><span class="p">(</span><span class="n">col</span><span class="o">=</span><span class="s1">&#39;col_1&#39;</span><span class="p">)</span>
 </pre></div>
 </div>
 </dd></dl>
 
 <dl class="method">
 <dt id="ddf_library.ddf.DDF.map">
-<code class="sig-name descname">map</code><span class="sig-paren">(</span><em class="sig-param">f</em>, <em class="sig-param">alias</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.ddf.DDF.map" title="Permalink to this definition">¶</a></dt>
+<code class="descname">map</code><span class="sig-paren">(</span><em>f</em>, <em>alias</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.ddf.DDF.map" title="Permalink to this definition">¶</a></dt>
 <dd><p>Apply a function to each row of this DDF.</p>
 <p>Is it a Lazy function: Yes</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>f</strong> – Lambda function that will take each element of this data
-set as a parameter;</p></li>
-<li><p><strong>alias</strong> – name of column to put the result;</p></li>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>f</strong> – Lambda function that will take each element of this data
+set as a parameter;</li>
+<li><strong>alias</strong> – name of column to put the result;</li>
 </ul>
-</dd>
-<dt class="field-even">Returns</dt>
-<dd class="field-even"><p>DDF</p>
-</dd>
-<dt class="field-odd">Example</dt>
-<dd class="field-odd"><p></p></dd>
-</dl>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">ddf1</span><span class="o">.</span><span class="n">map</span><span class="p">(</span><span class="k">lambda</span> <span class="n">row</span><span class="p">:</span> <span class="n">row</span><span class="p">[</span><span class="s1">&#39;col_0&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;,&#39;</span><span class="p">),</span> <span class="s1">&#39;col_0_new&#39;</span><span class="p">)</span>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">DDF</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Example:</th><td class="field-body"></td>
+</tr>
+</tbody>
+</table>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span> <span class="nn">ddf_library.columns</span> <span class="kn">import</span> <span class="n">col</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span> <span class="nn">ddf_library.types</span> <span class="kn">import</span> <span class="n">IntegerType</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">ddf1</span><span class="o">.</span><span class="n">map</span><span class="p">(</span><span class="n">col</span><span class="p">(</span><span class="s1">&#39;col_0&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">cast</span><span class="p">(</span><span class="n">IntegerType</span><span class="p">),</span> <span class="s1">&#39;col_0_new&#39;</span><span class="p">)</span>
 </pre></div>
 </div>
 </dd></dl>
 
 <dl class="method">
 <dt id="ddf_library.ddf.DDF.num_of_partitions">
-<code class="sig-name descname">num_of_partitions</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.ddf.DDF.num_of_partitions" title="Permalink to this definition">¶</a></dt>
+<code class="descname">num_of_partitions</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.ddf.DDF.num_of_partitions" title="Permalink to this definition">¶</a></dt>
 <dd><p>Returns the number of data partitions (Task parallelism).</p>
-<dl class="field-list simple">
-<dt class="field-odd">Returns</dt>
-<dd class="field-odd"><p>integer</p>
-</dd>
-<dt class="field-even">Example</dt>
-<dd class="field-even"><p></p></dd>
-</dl>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="nb">print</span><span class="p">(</span><span class="n">ddf1</span><span class="o">.</span><span class="n">num_of_partitions</span><span class="p">())</span>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">integer</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Example:</th><td class="field-body"></td>
+</tr>
+</tbody>
+</table>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="nb">print</span><span class="p">(</span><span class="n">ddf1</span><span class="o">.</span><span class="n">num_of_partitions</span><span class="p">())</span>
 </pre></div>
 </div>
 </dd></dl>
 
 <dl class="method">
-<dt id="ddf_library.ddf.DDF.parallelize">
-<code class="sig-name descname">parallelize</code><span class="sig-paren">(</span><em class="sig-param">df</em>, <em class="sig-param">num_of_parts=4</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.ddf.DDF.parallelize" title="Permalink to this definition">¶</a></dt>
-<dd><p>Distributes a DataFrame into DDF.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>df</strong> – DataFrame input</p></li>
-<li><p><strong>num_of_parts</strong> – number of partitions</p></li>
-</ul>
-</dd>
-<dt class="field-even">Returns</dt>
-<dd class="field-even"><p>DDF</p>
-</dd>
-<dt class="field-odd">Example</dt>
-<dd class="field-odd"><p></p></dd>
-</dl>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">ddf1</span> <span class="o">=</span> <span class="n">DDF</span><span class="p">()</span><span class="o">.</span><span class="n">parallelize</span><span class="p">(</span><span class="n">df</span><span class="p">)</span>
+<dt id="ddf_library.ddf.DDF.persist">
+<code class="descname">persist</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.ddf.DDF.persist" title="Permalink to this definition">¶</a></dt>
+<dd><p>Compute the current flow and keep in disk.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">DDF</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Example:</th><td class="field-body"></td>
+</tr>
+</tbody>
+</table>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">ddf1</span><span class="o">.</span><span class="n">persist</span><span class="p">()</span>
 </pre></div>
 </div>
 </dd></dl>
 
 <dl class="method">
 <dt id="ddf_library.ddf.DDF.range_partition">
-<code class="sig-name descname">range_partition</code><span class="sig-paren">(</span><em class="sig-param">columns</em>, <em class="sig-param">ascending=None</em>, <em class="sig-param">nfrag=None</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.ddf.DDF.range_partition" title="Permalink to this definition">¶</a></dt>
+<code class="descname">range_partition</code><span class="sig-paren">(</span><em>columns</em>, <em>ascending=None</em>, <em>nfrag=None</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.ddf.DDF.range_partition" title="Permalink to this definition">¶</a></dt>
 <dd><p>Range partitioning is a partitioning technique where ranges of data
 is stored separately in different fragments.</p>
 <p>Is it a Lazy function: No</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>columns</strong> – Columns to be used as key;</p></li>
-<li><p><strong>ascending</strong> – Order of each key (True to ascending order);</p></li>
-<li><p><strong>nfrag</strong> – Number of fragments (default, keep the input nfrag).</p></li>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>columns</strong> – Columns to be used as key;</li>
+<li><strong>ascending</strong> – Order of each key (True to ascending order);</li>
+<li><strong>nfrag</strong> – Number of fragments (default, keep the input nfrag).</li>
 </ul>
-</dd>
-<dt class="field-even">Example</dt>
-<dd class="field-even"><p></p></dd>
-</dl>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">ddf2</span> <span class="o">=</span> <span class="n">ddf1</span><span class="o">.</span><span class="n">range_partition</span><span class="p">(</span><span class="n">columns</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;col1&#39;</span><span class="p">,</span> <span class="n">col2</span><span class="p">],</span>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Example:</th><td class="field-body"></td>
+</tr>
+</tbody>
+</table>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">ddf2</span> <span class="o">=</span> <span class="n">ddf1</span><span class="o">.</span><span class="n">range_partition</span><span class="p">(</span><span class="n">columns</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;col1&#39;</span><span class="p">,</span> <span class="n">col2</span><span class="p">],</span>
 <span class="gp">&gt;&gt;&gt; </span>                            <span class="n">ascending</span><span class="o">=</span><span class="p">[</span><span class="kc">True</span><span class="p">,</span> <span class="kc">False</span><span class="p">])</span>
 </pre></div>
 </div>
@@ -874,87 +911,105 @@ is stored separately in different fragments.</p>
 
 <dl class="method">
 <dt id="ddf_library.ddf.DDF.rename">
-<code class="sig-name descname">rename</code><span class="sig-paren">(</span><em class="sig-param">old_column</em>, <em class="sig-param">new_column</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.ddf.DDF.rename" title="Permalink to this definition">¶</a></dt>
+<code class="descname">rename</code><span class="sig-paren">(</span><em>old_column</em>, <em>new_column</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.ddf.DDF.rename" title="Permalink to this definition">¶</a></dt>
 <dd><p>Returns a new DDF by renaming an existing column. This is a no-op if
 schema does not contain the given column name.</p>
 <p>Is it a Lazy function: Yes</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>old_column</strong> – String or list of strings with columns to rename;</p></li>
-<li><p><strong>new_column</strong> – String or list of strings with new names.</p></li>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>old_column</strong> – String or list of strings with columns to rename;</li>
+<li><strong>new_column</strong> – String or list of strings with new names.</li>
 </ul>
-</dd>
-<dt class="field-even">Returns</dt>
-<dd class="field-even"><p>DDF</p>
-</dd>
-</dl>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">DDF</p>
+</td>
+</tr>
+</tbody>
+</table>
 </dd></dl>
 
 <dl class="method">
 <dt id="ddf_library.ddf.DDF.repartition">
-<code class="sig-name descname">repartition</code><span class="sig-paren">(</span><em class="sig-param">nfrag=-1</em>, <em class="sig-param">distribution=None</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.ddf.DDF.repartition" title="Permalink to this definition">¶</a></dt>
+<code class="descname">repartition</code><span class="sig-paren">(</span><em>nfrag=-1</em>, <em>distribution=None</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.ddf.DDF.repartition" title="Permalink to this definition">¶</a></dt>
 <dd><p>Repartition a distributed data based in a fixed number of partitions or
 based on a distribution list.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>nfrag</strong> – Optional, if used, the data will be partitioned in
-nfrag fragments.</p></li>
-<li><p><strong>distribution</strong> – Optional, a list of integers where each
-element will represent the amount of data in this index.</p></li>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>nfrag</strong> – Optional, if used, the data will be partitioned in
+nfrag fragments.</li>
+<li><strong>distribution</strong> – Optional, a list of integers where each
+element will represent the amount of data in this index.</li>
 </ul>
-</dd>
-<dt class="field-even">Returns</dt>
-<dd class="field-even"><p>DDF</p>
-</dd>
-</dl>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">DDF</p>
+</td>
+</tr>
+</tbody>
+</table>
 </dd></dl>
 
 <dl class="method">
 <dt id="ddf_library.ddf.DDF.replace">
-<code class="sig-name descname">replace</code><span class="sig-paren">(</span><em class="sig-param">replaces</em>, <em class="sig-param">subset=None</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.ddf.DDF.replace" title="Permalink to this definition">¶</a></dt>
+<code class="descname">replace</code><span class="sig-paren">(</span><em>replaces</em>, <em>subset=None</em>, <em>regex=False</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.ddf.DDF.replace" title="Permalink to this definition">¶</a></dt>
 <dd><p>Replace one or more values to new ones.</p>
 <p>Is it a Lazy function: Yes</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>replaces</strong> – dict-like <cite>to_replace</cite>;</p></li>
-<li><p><strong>subset</strong> – A list of columns to be applied (default is
-None to applies in all columns);</p></li>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>replaces</strong> – dict-like <cite>to_replace</cite>;</li>
+<li><strong>subset</strong> – A list of columns to be applied (default is
+None to applies in all columns);</li>
+<li><strong>regex</strong> – Whether to interpret to_replace and/or value as regular
+expressions. If this is True then replaces must be a dictionary.</li>
 </ul>
-</dd>
-<dt class="field-even">Returns</dt>
-<dd class="field-even"><p>DDF</p>
-</dd>
-<dt class="field-odd">Example</dt>
-<dd class="field-odd"><p></p></dd>
-</dl>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">ddf1</span><span class="o">.</span><span class="n">replace</span><span class="p">({</span><span class="mi">0</span><span class="p">:</span> <span class="s1">&#39;No&#39;</span><span class="p">,</span> <span class="mi">1</span><span class="p">:</span> <span class="s1">&#39;Yes&#39;</span><span class="p">},</span> <span class="n">subset</span><span class="o">=</span><span class="s1">&#39;col_1&#39;</span><span class="p">)</span>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">DDF</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Example:</th><td class="field-body"></td>
+</tr>
+</tbody>
+</table>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">ddf1</span><span class="o">.</span><span class="n">replace</span><span class="p">({</span><span class="mi">0</span><span class="p">:</span> <span class="s1">&#39;No&#39;</span><span class="p">,</span> <span class="mi">1</span><span class="p">:</span> <span class="s1">&#39;Yes&#39;</span><span class="p">},</span> <span class="n">subset</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;col_1&#39;</span><span class="p">])</span>
 </pre></div>
 </div>
 </dd></dl>
 
 <dl class="method">
 <dt id="ddf_library.ddf.DDF.sample">
-<code class="sig-name descname">sample</code><span class="sig-paren">(</span><em class="sig-param">value=None</em>, <em class="sig-param">seed=None</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.ddf.DDF.sample" title="Permalink to this definition">¶</a></dt>
+<code class="descname">sample</code><span class="sig-paren">(</span><em>value=None</em>, <em>seed=None</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.ddf.DDF.sample" title="Permalink to this definition">¶</a></dt>
 <dd><p>Returns a sampled subset.</p>
 <p>Is it a Lazy function: No</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>value</strong> – None to sample a random amount of records (default),
-a integer or float N to sample a N random records;</p></li>
-<li><p><strong>seed</strong> – optional, seed for the random operation.</p></li>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>value</strong> – None to sample a random amount of records (default),
+a integer or float N to sample a N random records;</li>
+<li><strong>seed</strong> – optional, seed for the random operation.</li>
 </ul>
-</dd>
-<dt class="field-even">Returns</dt>
-<dd class="field-even"><p>DDF</p>
-</dd>
-<dt class="field-odd">Example</dt>
-<dd class="field-odd"><p></p></dd>
-</dl>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">ddf1</span><span class="o">.</span><span class="n">sample</span><span class="p">(</span><span class="mi">10</span><span class="p">)</span>  <span class="c1"># to sample 10 rows</span>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">DDF</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Example:</th><td class="field-body"></td>
+</tr>
+</tbody>
+</table>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">ddf1</span><span class="o">.</span><span class="n">sample</span><span class="p">(</span><span class="mi">10</span><span class="p">)</span>  <span class="c1"># to sample 10 rows</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">ddf1</span><span class="o">.</span><span class="n">sample</span><span class="p">(</span><span class="mf">0.5</span><span class="p">)</span> <span class="c1"># to sample half of the elements</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">ddf1</span><span class="o">.</span><span class="n">sample</span><span class="p">()</span>  <span class="c1"># a random sample</span>
 </pre></div>
@@ -962,523 +1017,574 @@ a integer or float N to sample a N random records;</p></li>
 </dd></dl>
 
 <dl class="method">
-<dt id="ddf_library.ddf.DDF.save">
-<code class="sig-name descname">save</code><span class="sig-paren">(</span><em class="sig-param">filename</em>, <em class="sig-param">format='csv'</em>, <em class="sig-param">storage='hdfs'</em>, <em class="sig-param">header=True</em>, <em class="sig-param">mode='overwrite'</em>, <em class="sig-param">host='localhost'</em>, <em class="sig-param">port=9000</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.ddf.DDF.save" title="Permalink to this definition">¶</a></dt>
-<dd><p>Save the data in the storage.</p>
-<p>Is it a Lazy function: Yes</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>filename</strong> – output name;</p></li>
-<li><p><strong>format</strong> – format file, csv, json or a pickle;</p></li>
-<li><p><strong>storage</strong> – ‘fs’ to common file system or ‘hdfs’ to use HDFS;</p></li>
-<li><p><strong>header</strong> – save with the columns header;</p></li>
-<li><p><strong>mode</strong> – ‘overwrite’ (default) if file exists, ‘ignore’ or ‘error’.
-Only used when storage is ‘hdfs’.</p></li>
-<li><p><strong>host</strong> – Namenode HDFS host;</p></li>
-<li><p><strong>port</strong> – Namenode HDFS port</p></li>
-</ul>
-</dd>
-<dt class="field-even">Returns</dt>
-<dd class="field-even"><p>Return the same input data to perform others operations;</p>
-</dd>
-</dl>
-</dd></dl>
-
-<dl class="method">
 <dt id="ddf_library.ddf.DDF.schema">
-<code class="sig-name descname">schema</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.ddf.DDF.schema" title="Permalink to this definition">¶</a></dt>
+<code class="descname">schema</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.ddf.DDF.schema" title="Permalink to this definition">¶</a></dt>
 <dd><p>Returns a schema table where each row contains the name
 columns and its data types of the current DDF.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Returns</dt>
-<dd class="field-odd"><p>a Pandas’s DataFrame</p>
-</dd>
-</dl>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">a Pandas’s DataFrame</td>
+</tr>
+</tbody>
+</table>
 </dd></dl>
 
 <dl class="method">
 <dt id="ddf_library.ddf.DDF.select">
-<code class="sig-name descname">select</code><span class="sig-paren">(</span><em class="sig-param">columns</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.ddf.DDF.select" title="Permalink to this definition">¶</a></dt>
+<code class="descname">select</code><span class="sig-paren">(</span><em>columns</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.ddf.DDF.select" title="Permalink to this definition">¶</a></dt>
 <dd><p>Projects a set of expressions and returns a new DDF.</p>
 <p>Is it a Lazy function: Yes</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
-<dd class="field-odd"><p><strong>columns</strong> – list of column names (string);</p>
-</dd>
-<dt class="field-even">Returns</dt>
-<dd class="field-even"><p>DDF</p>
-</dd>
-<dt class="field-odd">Example</dt>
-<dd class="field-odd"><p></p></dd>
-</dl>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">ddf1</span><span class="o">.</span><span class="n">select</span><span class="p">([</span><span class="s1">&#39;col_1&#39;</span><span class="p">,</span> <span class="s1">&#39;col_2&#39;</span><span class="p">])</span>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>columns</strong> – list of column names (string);</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">DDF</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Example:</th><td class="field-body"></td>
+</tr>
+</tbody>
+</table>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">ddf1</span><span class="o">.</span><span class="n">select</span><span class="p">([</span><span class="s1">&#39;col_1&#39;</span><span class="p">,</span> <span class="s1">&#39;col_2&#39;</span><span class="p">])</span>
 </pre></div>
 </div>
 </dd></dl>
 
 <dl class="method">
 <dt id="ddf_library.ddf.DDF.select_expression">
-<code class="sig-name descname">select_expression</code><span class="sig-paren">(</span><em class="sig-param">*exprs</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.ddf.DDF.select_expression" title="Permalink to this definition">¶</a></dt>
+<code class="descname">select_expression</code><span class="sig-paren">(</span><em>*exprs</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.ddf.DDF.select_expression" title="Permalink to this definition">¶</a></dt>
 <dd><p>Projects a set of SQL expressions and returns a new DDF.
 This is a variant of select() that accepts SQL expressions.</p>
 <p>Is it a Lazy function: Yes</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
-<dd class="field-odd"><p><strong>exprs</strong> – SQL expressions.</p>
-</dd>
-<dt class="field-even">Returns</dt>
-<dd class="field-even"><p>DDF</p>
-</dd>
-</dl>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>exprs</strong> – SQL expressions.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">DDF</td>
+</tr>
+</tbody>
+</table>
 <div class="admonition note">
-<p class="admonition-title">Note</p>
+<p class="first admonition-title">Note</p>
 <p>These operations are supported by select_exprs:</p>
 <ul class="simple">
-<li><p>Arithmetic operations except for the left shift (&lt;&lt;) and
+<li>Arithmetic operations except for the left shift (&lt;&lt;) and
 right shift (&gt;&gt;) operators, e.g., ‘col’ + 2 * pi / s ** 4 % 42
-- the_golden_ratio</p></li>
-<li><p>list and tuple literals, e.g., [1, 2] or (1, 2)</p></li>
-<li><p>Math functions: sin, cos, exp, log, abs, log10, …</p></li>
-<li><p>You must explicitly reference any local variable that you want to
+- the_golden_ratio</li>
+<li>list and tuple literals, e.g., [1, 2] or (1, 2)</li>
+<li>Math functions: sin, cos, exp, log, abs, log10, …</li>
+<li>You must explicitly reference any local variable that you want to
 use in an expression by placing the &#64; character in front of the
-name.</p></li>
-<li><p>This Python syntax is not allowed:</p></li>
+name.</li>
+<li>This Python syntax is not allowed:</li>
 </ul>
-<blockquote>
+<blockquote class="last">
 <div><ul class="simple">
-<li><p>Function calls other than math functions.</p></li>
-<li><p>is/is not operations</p></li>
-<li><p>if expressions</p></li>
-<li><p>lambda expressions</p></li>
-<li><p>list/set/dict comprehensions</p></li>
-<li><p>Literal dict and set expressions</p></li>
-<li><p>yield expressions</p></li>
-<li><p>Generator expressions</p></li>
-<li><p>Boolean expressions consisting of only scalar values</p></li>
-<li><p>Statements: Neither simple nor compound statements are allowed.</p></li>
+<li>Function calls other than math functions.</li>
+<li>is/is not operations</li>
+<li>if expressions</li>
+<li>lambda expressions</li>
+<li>list/set/dict comprehensions</li>
+<li>Literal dict and set expressions</li>
+<li>yield expressions</li>
+<li>Generator expressions</li>
+<li>Boolean expressions consisting of only scalar values</li>
+<li>Statements: Neither simple nor compound statements are allowed.</li>
 </ul>
 </div></blockquote>
 </div>
 <div class="admonition seealso">
-<p class="admonition-title">See also</p>
-<p>Visit this <a class="reference external" href="https://pandas-docs.github.io/pandas-docs-travis/reference/api/pandas.eval.html#pandas.eval">link</a> to more
+<p class="first admonition-title">See also</p>
+<p class="last">Visit this <a class="reference external" href="https://pandas-docs.github.io/pandas-docs-travis/reference/api/pandas.eval.html#pandas.eval">link</a> to more
 information about eval options.</p>
 </div>
-<dl class="field-list simple">
-<dt class="field-odd">Example</dt>
-<dd class="field-odd"><p></p></dd>
-</dl>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">ddf1</span><span class="o">.</span><span class="n">select_exprs</span><span class="p">(</span><span class="s1">&#39;col1 = age * 2&#39;</span><span class="p">,</span> <span class="s2">&quot;abs(age)&quot;</span><span class="p">)</span>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Example:</th><td class="field-body"></td>
+</tr>
+</tbody>
+</table>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">ddf1</span><span class="o">.</span><span class="n">select_exprs</span><span class="p">(</span><span class="s1">&#39;col1 = age * 2&#39;</span><span class="p">,</span> <span class="s2">&quot;abs(age)&quot;</span><span class="p">)</span>
 </pre></div>
 </div>
 </dd></dl>
 
 <dl class="method">
 <dt id="ddf_library.ddf.DDF.show">
-<code class="sig-name descname">show</code><span class="sig-paren">(</span><em class="sig-param">n=20</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.ddf.DDF.show" title="Permalink to this definition">¶</a></dt>
+<code class="descname">show</code><span class="sig-paren">(</span><em>n=20</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.ddf.DDF.show" title="Permalink to this definition">¶</a></dt>
 <dd><p>Print the DDF contents in a concatenated pandas’s DataFrame.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
-<dd class="field-odd"><p><strong>n</strong> – A number of rows in the result (default is 20);</p>
-</dd>
-<dt class="field-even">Returns</dt>
-<dd class="field-even"><p>DataFrame in stdout</p>
-</dd>
-<dt class="field-odd">Example</dt>
-<dd class="field-odd"><p></p></dd>
-</dl>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">ddf1</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>n</strong> – A number of rows in the result (default is 20);</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">DataFrame in stdout</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Example:</th><td class="field-body"></td>
+</tr>
+</tbody>
+</table>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">ddf1</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
 </pre></div>
 </div>
 </dd></dl>
 
 <dl class="method">
 <dt id="ddf_library.ddf.DDF.sort">
-<code class="sig-name descname">sort</code><span class="sig-paren">(</span><em class="sig-param">cols</em>, <em class="sig-param">ascending=None</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.ddf.DDF.sort" title="Permalink to this definition">¶</a></dt>
+<code class="descname">sort</code><span class="sig-paren">(</span><em>cols</em>, <em>ascending=None</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.ddf.DDF.sort" title="Permalink to this definition">¶</a></dt>
 <dd><p>Returns a sorted DDF by the specified column(s).</p>
 <p>Is it a Lazy function: No</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>cols</strong> – list of columns to be sorted;</p></li>
-<li><p><strong>ascending</strong> – list indicating whether the sort order
-is ascending (True) for each column (Default, True);</p></li>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>cols</strong> – list of columns to be sorted;</li>
+<li><strong>ascending</strong> – list indicating whether the sort order
+is ascending (True) for each column (Default, True);</li>
 </ul>
-</dd>
-<dt class="field-even">Returns</dt>
-<dd class="field-even"><p>DDF</p>
-</dd>
-<dt class="field-odd">Example</dt>
-<dd class="field-odd"><p></p></dd>
-</dl>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">dd1</span><span class="o">.</span><span class="n">sort</span><span class="p">([</span><span class="s1">&#39;col_1&#39;</span><span class="p">,</span> <span class="s1">&#39;col_2&#39;</span><span class="p">],</span> <span class="n">ascending</span><span class="o">=</span><span class="p">[</span><span class="kc">True</span><span class="p">,</span> <span class="kc">False</span><span class="p">])</span>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">DDF</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Example:</th><td class="field-body"></td>
+</tr>
+</tbody>
+</table>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">dd1</span><span class="o">.</span><span class="n">sort</span><span class="p">([</span><span class="s1">&#39;col_1&#39;</span><span class="p">,</span> <span class="s1">&#39;col_2&#39;</span><span class="p">],</span> <span class="n">ascending</span><span class="o">=</span><span class="p">[</span><span class="kc">True</span><span class="p">,</span> <span class="kc">False</span><span class="p">])</span>
 </pre></div>
 </div>
 </dd></dl>
 
 <dl class="method">
 <dt id="ddf_library.ddf.DDF.split">
-<code class="sig-name descname">split</code><span class="sig-paren">(</span><em class="sig-param">percentage=0.5</em>, <em class="sig-param">seed=None</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.ddf.DDF.split" title="Permalink to this definition">¶</a></dt>
+<code class="descname">split</code><span class="sig-paren">(</span><em>percentage=0.5</em>, <em>seed=None</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.ddf.DDF.split" title="Permalink to this definition">¶</a></dt>
 <dd><p>Randomly splits a DDF into two DDF.</p>
 <p>Is it a Lazy function: No</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>percentage</strong> – percentage to split the data (default, 0.5);</p></li>
-<li><p><strong>seed</strong> – optional, seed in case of deterministic random operation;</p></li>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>percentage</strong> – percentage to split the data (default, 0.5);</li>
+<li><strong>seed</strong> – optional, seed in case of deterministic random operation;</li>
 </ul>
-</dd>
-<dt class="field-even">Returns</dt>
-<dd class="field-even"><p>DDF</p>
-</dd>
-<dt class="field-odd">Example</dt>
-<dd class="field-odd"><p></p></dd>
-</dl>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">ddf2a</span><span class="p">,</span> <span class="n">ddf2b</span> <span class="o">=</span> <span class="n">ddf1</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="mf">0.5</span><span class="p">)</span>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">DDF</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Example:</th><td class="field-body"></td>
+</tr>
+</tbody>
+</table>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">ddf2a</span><span class="p">,</span> <span class="n">ddf2b</span> <span class="o">=</span> <span class="n">ddf1</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="mf">0.5</span><span class="p">)</span>
 </pre></div>
 </div>
 </dd></dl>
 
 <dl class="method">
 <dt id="ddf_library.ddf.DDF.subtract">
-<code class="sig-name descname">subtract</code><span class="sig-paren">(</span><em class="sig-param">data2</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.ddf.DDF.subtract" title="Permalink to this definition">¶</a></dt>
+<code class="descname">subtract</code><span class="sig-paren">(</span><em>data2</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.ddf.DDF.subtract" title="Permalink to this definition">¶</a></dt>
 <dd><p>Returns a new DDF with containing rows in the first frame but not
 in the second one. This is equivalent to EXCEPT in SQL.</p>
 <p>Is it a Lazy function: No</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
-<dd class="field-odd"><p><strong>data2</strong> – second DDF;</p>
-</dd>
-<dt class="field-even">Returns</dt>
-<dd class="field-even"><p>DDF</p>
-</dd>
-<dt class="field-odd">Example</dt>
-<dd class="field-odd"><p></p></dd>
-</dl>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">ddf1</span><span class="o">.</span><span class="n">subtract</span><span class="p">(</span><span class="n">ddf2</span><span class="p">)</span>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>data2</strong> – second DDF;</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">DDF</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Example:</th><td class="field-body"></td>
+</tr>
+</tbody>
+</table>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">ddf1</span><span class="o">.</span><span class="n">subtract</span><span class="p">(</span><span class="n">ddf2</span><span class="p">)</span>
 </pre></div>
 </div>
 </dd></dl>
 
 <dl class="method">
 <dt id="ddf_library.ddf.DDF.take">
-<code class="sig-name descname">take</code><span class="sig-paren">(</span><em class="sig-param">num</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.ddf.DDF.take" title="Permalink to this definition">¶</a></dt>
+<code class="descname">take</code><span class="sig-paren">(</span><em>num</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.ddf.DDF.take" title="Permalink to this definition">¶</a></dt>
 <dd><p>Returns the first num rows.</p>
 <p>Is it a Lazy function: No</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
-<dd class="field-odd"><p><strong>num</strong> – number of rows to retrieve;</p>
-</dd>
-<dt class="field-even">Returns</dt>
-<dd class="field-even"><p>DDF</p>
-</dd>
-<dt class="field-odd">Example</dt>
-<dd class="field-odd"><p></p></dd>
-</dl>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">ddf1</span><span class="o">.</span><span class="n">take</span><span class="p">(</span><span class="mi">10</span><span class="p">)</span>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>num</strong> – number of rows to retrieve;</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">DDF</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Example:</th><td class="field-body"></td>
+</tr>
+</tbody>
+</table>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">ddf1</span><span class="o">.</span><span class="n">take</span><span class="p">(</span><span class="mi">10</span><span class="p">)</span>
 </pre></div>
 </div>
 </dd></dl>
 
 <dl class="method">
 <dt id="ddf_library.ddf.DDF.to_df">
-<code class="sig-name descname">to_df</code><span class="sig-paren">(</span><em class="sig-param">columns=None</em>, <em class="sig-param">split=False</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.ddf.DDF.to_df" title="Permalink to this definition">¶</a></dt>
+<code class="descname">to_df</code><span class="sig-paren">(</span><em>columns=None</em>, <em>split=False</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.ddf.DDF.to_df" title="Permalink to this definition">¶</a></dt>
 <dd><p>Returns the DDF contents as a pandas’s DataFrame.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>columns</strong> – Optional, A column name or list of column names;</p></li>
-<li><p><strong>split</strong> – True to keep data in partitions (default, False);</p></li>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>columns</strong> – Optional, A column name or list of column names;</li>
+<li><strong>split</strong> – True to keep data in partitions (default, False);</li>
 </ul>
-</dd>
-<dt class="field-even">Returns</dt>
-<dd class="field-even"><p>Pandas’s DataFrame</p>
-</dd>
-<dt class="field-odd">Example</dt>
-<dd class="field-odd"><p></p></dd>
-</dl>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">df</span> <span class="o">=</span> <span class="n">ddf1</span><span class="o">.</span><span class="n">to_df</span><span class="p">([</span><span class="s1">&#39;col_1&#39;</span><span class="p">,</span> <span class="s1">&#39;col_2&#39;</span><span class="p">])</span>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">Pandas’s DataFrame</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Example:</th><td class="field-body"></td>
+</tr>
+</tbody>
+</table>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">df</span> <span class="o">=</span> <span class="n">ddf1</span><span class="o">.</span><span class="n">to_df</span><span class="p">([</span><span class="s1">&#39;col_1&#39;</span><span class="p">,</span> <span class="s1">&#39;col_2&#39;</span><span class="p">])</span>
 </pre></div>
 </div>
 </dd></dl>
 
 <dl class="method">
 <dt id="ddf_library.ddf.DDF.union">
-<code class="sig-name descname">union</code><span class="sig-paren">(</span><em class="sig-param">data2</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.ddf.DDF.union" title="Permalink to this definition">¶</a></dt>
+<code class="descname">union</code><span class="sig-paren">(</span><em>data2</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.ddf.DDF.union" title="Permalink to this definition">¶</a></dt>
 <dd><p>Combine this data set with some other DDF. Also as standard in SQL,
-this function resolves columns by position (not by name). The old names
-are replaced to <cite>col_</cite> + index.</p>
+this function resolves columns by position (not by name). Union can
+only be performed on tables with the same number of columns.</p>
 <p>Is it a Lazy function: No</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
-<dd class="field-odd"><p><strong>data2</strong> – </p>
-</dd>
-<dt class="field-even">Returns</dt>
-<dd class="field-even"><p>DDF</p>
-</dd>
-<dt class="field-odd">Example</dt>
-<dd class="field-odd"><p></p></dd>
-</dl>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">ddf1</span><span class="o">.</span><span class="n">union</span><span class="p">(</span><span class="n">ddf2</span><span class="p">)</span>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>data2</strong> – </td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">DDF</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Example:</th><td class="field-body"></td>
+</tr>
+</tbody>
+</table>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">ddf1</span><span class="o">.</span><span class="n">union</span><span class="p">(</span><span class="n">ddf2</span><span class="p">)</span>
 </pre></div>
 </div>
 </dd></dl>
 
 <dl class="method">
 <dt id="ddf_library.ddf.DDF.union_by_name">
-<code class="sig-name descname">union_by_name</code><span class="sig-paren">(</span><em class="sig-param">data2</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.ddf.DDF.union_by_name" title="Permalink to this definition">¶</a></dt>
-<dd><dl class="simple">
-<dt>Combine this data set with some other DDF. This function resolves</dt><dd><p>columns by name (not by position).</p>
-</dd>
+<code class="descname">union_by_name</code><span class="sig-paren">(</span><em>data2</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.ddf.DDF.union_by_name" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="docutils">
+<dt>Combine this data set with some other DDF. This function resolves</dt>
+<dd>columns by name (not by position).</dd>
 </dl>
 <p>Is it a Lazy function: No</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
-<dd class="field-odd"><p><strong>data2</strong> – </p>
-</dd>
-<dt class="field-even">Returns</dt>
-<dd class="field-even"><p>DDF</p>
-</dd>
-<dt class="field-odd">Example</dt>
-<dd class="field-odd"><p></p></dd>
-</dl>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">ddf1</span><span class="o">.</span><span class="n">union_by_name</span><span class="p">(</span><span class="n">ddf2</span><span class="p">)</span>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>data2</strong> – </td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">DDF</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Example:</th><td class="field-body"></td>
+</tr>
+</tbody>
+</table>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">ddf1</span><span class="o">.</span><span class="n">union_by_name</span><span class="p">(</span><span class="n">ddf2</span><span class="p">)</span>
 </pre></div>
 </div>
 </dd></dl>
 
+<dl class="method">
+<dt id="ddf_library.ddf.DDF.unpersist">
+<code class="descname">unpersist</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.ddf.DDF.unpersist" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
 </dd></dl>
 
-<span class="target" id="module-ddf_library.groupby"></span><dl class="class">
-<dt id="ddf_library.groupby.GroupedDDF">
-<em class="property">class </em><code class="sig-prename descclassname">ddf_library.groupby.</code><code class="sig-name descname">GroupedDDF</code><a class="headerlink" href="#ddf_library.groupby.GroupedDDF" title="Permalink to this definition">¶</a></dt>
+<span class="target" id="module-ddf_library.bases.groupby"></span><dl class="class">
+<dt id="ddf_library.bases.groupby.GroupedDDF">
+<em class="property">class </em><code class="descclassname">ddf_library.bases.groupby.</code><code class="descname">GroupedDDF</code><a class="headerlink" href="#ddf_library.bases.groupby.GroupedDDF" title="Permalink to this definition">¶</a></dt>
 <dd><p>A set of methods for aggregations on a DDF, created by DDF.group_by().</p>
 <p>The available aggregate functions are:</p>
 <ul class="simple">
-<li><p>avg: Computes average values for each numeric columns for each group;</p></li>
-<li><p>mean: Alias for avg;</p></li>
-<li><p>count: Counts the number of records for each group;</p></li>
-<li><p>first’: Returns the first element of group;</p></li>
-<li><p>last’: Returns the last element of group;</p></li>
-<li><p>max’: Computes the max value for each numeric columns for each group;</p></li>
-<li><p>min’: Computes the min value for each numeric column for each group;</p></li>
-<li><p>sum’: Computes the sum for each numeric columns for each group;</p></li>
-<li><p>list’: Returns a list of objects with duplicates;</p></li>
-<li><p>set’: Returns a set of objects with duplicate elements</p></li>
+<li>avg: Computes average values for each numeric columns for each group;</li>
+<li>mean: Alias for avg;</li>
+<li>count: Counts the number of records for each group;</li>
+<li>first’: Returns the first element of group;</li>
+<li>last’: Returns the last element of group;</li>
+<li>max’: Computes the max value for each numeric columns for each group;</li>
+<li>min’: Computes the min value for each numeric column for each group;</li>
+<li>sum’: Computes the sum for each numeric columns for each group;</li>
+<li>list’: Returns a list of objects with duplicates;</li>
+<li>set’: Returns a set of objects with duplicate elements</li>
 </ul>
 </dd></dl>
 
 <dl class="method">
-<dt id="ddf_library.groupby.GroupedDDF.agg">
-<code class="sig-prename descclassname">GroupedDDF.</code><code class="sig-name descname">agg</code><span class="sig-paren">(</span><em class="sig-param">exprs</em>, <em class="sig-param">alias=None</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.groupby.GroupedDDF.agg" title="Permalink to this definition">¶</a></dt>
+<dt id="ddf_library.bases.groupby.GroupedDDF.agg">
+<code class="descclassname">GroupedDDF.</code><code class="descname">agg</code><span class="sig-paren">(</span><em>**exprs</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.bases.groupby.GroupedDDF.agg" title="Permalink to this definition">¶</a></dt>
 <dd><p>Compute aggregates and returns the result as a DDF.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>exprs</strong> – A single dict mapping from string to string, where the
-key is the column to perform aggregation on, and the value is a list
-of aggregation functions.</p></li>
-<li><p><strong>alias</strong> – A single dict mapping from string to string, where the
-key is the old column name to perform aggregation on, and the value
-is a list of aliases for each aggregation function.</p></li>
-</ul>
-</dd>
-<dt class="field-even">Example</dt>
-<dd class="field-even"><p></p></dd>
-</dl>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">ddf1</span><span class="o">.</span><span class="n">group_by</span><span class="p">(</span><span class="n">group_by</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;col_1&#39;</span><span class="p">])</span><span class="o">.</span><span class="n">agg</span><span class="p">({</span><span class="s1">&#39;col_2&#39;</span><span class="p">:</span> <span class="p">[</span><span class="s1">&#39;sum&#39;</span><span class="p">,</span> <span class="s1">&#39;last&#39;</span><span class="p">]})</span>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>exprs</strong> – Tuples, where: alias=(‘column name’, function).</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Example:</th><td class="field-body"></td>
+</tr>
+</tbody>
+</table>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">ddf1</span><span class="o">.</span><span class="n">group_by</span><span class="p">([</span><span class="s1">&#39;col_1&#39;</span><span class="p">])</span><span class="o">.</span><span class="n">agg</span><span class="p">(</span><span class="n">MIN</span><span class="o">=</span><span class="p">(</span><span class="s1">&#39;col_2&#39;</span><span class="p">,</span> <span class="s1">&#39;min&#39;</span><span class="p">),</span>
+<span class="gp">&gt;&gt;&gt; </span>                             <span class="n">MAX</span><span class="o">=</span><span class="p">(</span><span class="s1">&#39;col_3&#39;</span><span class="p">,</span> <span class="s1">&#39;max&#39;</span><span class="p">))</span>
 </pre></div>
 </div>
 </dd></dl>
 
 <dl class="method">
-<dt id="ddf_library.groupby.GroupedDDF.avg">
-<code class="sig-prename descclassname">GroupedDDF.</code><code class="sig-name descname">avg</code><span class="sig-paren">(</span><em class="sig-param">cols</em>, <em class="sig-param">alias=None</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.groupby.GroupedDDF.avg" title="Permalink to this definition">¶</a></dt>
+<dt id="ddf_library.bases.groupby.GroupedDDF.avg">
+<code class="descclassname">GroupedDDF.</code><code class="descname">avg</code><span class="sig-paren">(</span><em>cols</em>, <em>alias=None</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.bases.groupby.GroupedDDF.avg" title="Permalink to this definition">¶</a></dt>
 <dd><p>Computes average values for each numeric columns for each group.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>cols</strong> – String or a list of columns names</p></li>
-<li><p><strong>alias</strong> – String or a list of aliases</p></li>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>cols</strong> – String or a list of columns names</li>
+<li><strong>alias</strong> – String or a list of aliases</li>
 </ul>
-</dd>
-<dt class="field-even">Example</dt>
-<dd class="field-even"><p></p></dd>
-</dl>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">ddf1</span><span class="o">.</span><span class="n">group_by</span><span class="p">(</span><span class="n">group_by</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;col_1&#39;</span><span class="p">])</span><span class="o">.</span><span class="n">avg</span><span class="p">([</span><span class="s1">&#39;col_2&#39;</span><span class="p">])</span>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Example:</th><td class="field-body"></td>
+</tr>
+</tbody>
+</table>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">ddf1</span><span class="o">.</span><span class="n">group_by</span><span class="p">(</span><span class="n">group_by</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;col_1&#39;</span><span class="p">])</span><span class="o">.</span><span class="n">avg</span><span class="p">([</span><span class="s1">&#39;col_2&#39;</span><span class="p">])</span>
 </pre></div>
 </div>
 </dd></dl>
 
 <dl class="method">
-<dt id="ddf_library.groupby.GroupedDDF.count">
-<code class="sig-prename descclassname">GroupedDDF.</code><code class="sig-name descname">count</code><span class="sig-paren">(</span><em class="sig-param">cols</em>, <em class="sig-param">alias=None</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.groupby.GroupedDDF.count" title="Permalink to this definition">¶</a></dt>
+<dt id="ddf_library.bases.groupby.GroupedDDF.count">
+<code class="descclassname">GroupedDDF.</code><code class="descname">count</code><span class="sig-paren">(</span><em>cols</em>, <em>alias=None</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.bases.groupby.GroupedDDF.count" title="Permalink to this definition">¶</a></dt>
 <dd><p>Counts the number of records for each group.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>cols</strong> – String or a list of columns names</p></li>
-<li><p><strong>alias</strong> – String or a list of aliases</p></li>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>cols</strong> – String or a list of columns names</li>
+<li><strong>alias</strong> – String or a list of aliases</li>
 </ul>
-</dd>
-<dt class="field-even">Example</dt>
-<dd class="field-even"><p></p></dd>
-</dl>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">ddf1</span><span class="o">.</span><span class="n">group_by</span><span class="p">(</span><span class="n">group_by</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;col_1&#39;</span><span class="p">])</span><span class="o">.</span><span class="n">count</span><span class="p">([</span><span class="s1">&#39;col_2&#39;</span><span class="p">])</span>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Example:</th><td class="field-body"></td>
+</tr>
+</tbody>
+</table>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">ddf1</span><span class="o">.</span><span class="n">group_by</span><span class="p">(</span><span class="n">group_by</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;col_1&#39;</span><span class="p">])</span><span class="o">.</span><span class="n">count</span><span class="p">([</span><span class="s1">&#39;col_2&#39;</span><span class="p">])</span>
 </pre></div>
 </div>
 </dd></dl>
 
 <dl class="method">
-<dt id="ddf_library.groupby.GroupedDDF.first">
-<code class="sig-prename descclassname">GroupedDDF.</code><code class="sig-name descname">first</code><span class="sig-paren">(</span><em class="sig-param">cols</em>, <em class="sig-param">alias=None</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.groupby.GroupedDDF.first" title="Permalink to this definition">¶</a></dt>
+<dt id="ddf_library.bases.groupby.GroupedDDF.first">
+<code class="descclassname">GroupedDDF.</code><code class="descname">first</code><span class="sig-paren">(</span><em>cols</em>, <em>alias=None</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.bases.groupby.GroupedDDF.first" title="Permalink to this definition">¶</a></dt>
 <dd><p>Returns the first element of group.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>cols</strong> – String or a list of columns names</p></li>
-<li><p><strong>alias</strong> – String or a list of aliases</p></li>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>cols</strong> – String or a list of columns names</li>
+<li><strong>alias</strong> – String or a list of aliases</li>
 </ul>
-</dd>
-<dt class="field-even">Example</dt>
-<dd class="field-even"><p></p></dd>
-</dl>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">ddf1</span><span class="o">.</span><span class="n">group_by</span><span class="p">(</span><span class="n">group_by</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;col_1&#39;</span><span class="p">])</span><span class="o">.</span><span class="n">avg</span><span class="p">([</span><span class="s1">&#39;col_2&#39;</span><span class="p">])</span>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Example:</th><td class="field-body"></td>
+</tr>
+</tbody>
+</table>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">ddf1</span><span class="o">.</span><span class="n">group_by</span><span class="p">(</span><span class="n">group_by</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;col_1&#39;</span><span class="p">])</span><span class="o">.</span><span class="n">avg</span><span class="p">([</span><span class="s1">&#39;col_2&#39;</span><span class="p">])</span>
 </pre></div>
 </div>
 </dd></dl>
 
 <dl class="method">
-<dt id="ddf_library.groupby.GroupedDDF.last">
-<code class="sig-prename descclassname">GroupedDDF.</code><code class="sig-name descname">last</code><span class="sig-paren">(</span><em class="sig-param">cols</em>, <em class="sig-param">alias=None</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.groupby.GroupedDDF.last" title="Permalink to this definition">¶</a></dt>
+<dt id="ddf_library.bases.groupby.GroupedDDF.last">
+<code class="descclassname">GroupedDDF.</code><code class="descname">last</code><span class="sig-paren">(</span><em>cols</em>, <em>alias=None</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.bases.groupby.GroupedDDF.last" title="Permalink to this definition">¶</a></dt>
 <dd><p>Returns the last element of group.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>cols</strong> – String or a list of columns names</p></li>
-<li><p><strong>alias</strong> – String or a list of aliases</p></li>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>cols</strong> – String or a list of columns names</li>
+<li><strong>alias</strong> – String or a list of aliases</li>
 </ul>
-</dd>
-<dt class="field-even">Example</dt>
-<dd class="field-even"><p></p></dd>
-</dl>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">ddf1</span><span class="o">.</span><span class="n">group_by</span><span class="p">(</span><span class="n">group_by</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;col_1&#39;</span><span class="p">])</span><span class="o">.</span><span class="n">avg</span><span class="p">([</span><span class="s1">&#39;col_2&#39;</span><span class="p">])</span>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Example:</th><td class="field-body"></td>
+</tr>
+</tbody>
+</table>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">ddf1</span><span class="o">.</span><span class="n">group_by</span><span class="p">(</span><span class="n">group_by</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;col_1&#39;</span><span class="p">])</span><span class="o">.</span><span class="n">avg</span><span class="p">([</span><span class="s1">&#39;col_2&#39;</span><span class="p">])</span>
 </pre></div>
 </div>
 </dd></dl>
 
 <dl class="method">
-<dt id="ddf_library.groupby.GroupedDDF.list">
-<code class="sig-prename descclassname">GroupedDDF.</code><code class="sig-name descname">list</code><span class="sig-paren">(</span><em class="sig-param">cols</em>, <em class="sig-param">alias=None</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.groupby.GroupedDDF.list" title="Permalink to this definition">¶</a></dt>
+<dt id="ddf_library.bases.groupby.GroupedDDF.list">
+<code class="descclassname">GroupedDDF.</code><code class="descname">list</code><span class="sig-paren">(</span><em>cols</em>, <em>alias=None</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.bases.groupby.GroupedDDF.list" title="Permalink to this definition">¶</a></dt>
 <dd><p>Returns a list of objects with duplicates;</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>cols</strong> – String or a list of columns names</p></li>
-<li><p><strong>alias</strong> – String or a list of aliases</p></li>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>cols</strong> – String or a list of columns names</li>
+<li><strong>alias</strong> – String or a list of aliases</li>
 </ul>
-</dd>
-<dt class="field-even">Example</dt>
-<dd class="field-even"><p></p></dd>
-</dl>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">ddf1</span><span class="o">.</span><span class="n">group_by</span><span class="p">(</span><span class="n">group_by</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;col_1&#39;</span><span class="p">])</span><span class="o">.</span><span class="n">avg</span><span class="p">([</span><span class="s1">&#39;col_2&#39;</span><span class="p">])</span>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Example:</th><td class="field-body"></td>
+</tr>
+</tbody>
+</table>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">ddf1</span><span class="o">.</span><span class="n">group_by</span><span class="p">(</span><span class="n">group_by</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;col_1&#39;</span><span class="p">])</span><span class="o">.</span><span class="n">avg</span><span class="p">([</span><span class="s1">&#39;col_2&#39;</span><span class="p">])</span>
 </pre></div>
 </div>
 </dd></dl>
 
 <dl class="method">
-<dt id="ddf_library.groupby.GroupedDDF.max">
-<code class="sig-prename descclassname">GroupedDDF.</code><code class="sig-name descname">max</code><span class="sig-paren">(</span><em class="sig-param">cols</em>, <em class="sig-param">alias=None</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.groupby.GroupedDDF.max" title="Permalink to this definition">¶</a></dt>
+<dt id="ddf_library.bases.groupby.GroupedDDF.max">
+<code class="descclassname">GroupedDDF.</code><code class="descname">max</code><span class="sig-paren">(</span><em>cols</em>, <em>alias=None</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.bases.groupby.GroupedDDF.max" title="Permalink to this definition">¶</a></dt>
 <dd><p>Computes the max value for each numeric columns for each group.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>cols</strong> – String or a list of columns names</p></li>
-<li><p><strong>alias</strong> – String or a list of aliases</p></li>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>cols</strong> – String or a list of columns names</li>
+<li><strong>alias</strong> – String or a list of aliases</li>
 </ul>
-</dd>
-<dt class="field-even">Example</dt>
-<dd class="field-even"><p></p></dd>
-</dl>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">ddf1</span><span class="o">.</span><span class="n">group_by</span><span class="p">(</span><span class="n">group_by</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;col_1&#39;</span><span class="p">])</span><span class="o">.</span><span class="n">avg</span><span class="p">([</span><span class="s1">&#39;col_2&#39;</span><span class="p">])</span>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Example:</th><td class="field-body"></td>
+</tr>
+</tbody>
+</table>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">ddf1</span><span class="o">.</span><span class="n">group_by</span><span class="p">(</span><span class="n">group_by</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;col_1&#39;</span><span class="p">])</span><span class="o">.</span><span class="n">avg</span><span class="p">([</span><span class="s1">&#39;col_2&#39;</span><span class="p">])</span>
 </pre></div>
 </div>
 </dd></dl>
 
 <dl class="method">
-<dt id="ddf_library.groupby.GroupedDDF.mean">
-<code class="sig-prename descclassname">GroupedDDF.</code><code class="sig-name descname">mean</code><span class="sig-paren">(</span><em class="sig-param">cols</em>, <em class="sig-param">alias=None</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.groupby.GroupedDDF.mean" title="Permalink to this definition">¶</a></dt>
+<dt id="ddf_library.bases.groupby.GroupedDDF.mean">
+<code class="descclassname">GroupedDDF.</code><code class="descname">mean</code><span class="sig-paren">(</span><em>cols</em>, <em>alias=None</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.bases.groupby.GroupedDDF.mean" title="Permalink to this definition">¶</a></dt>
 <dd><p>Alias for avg. Computes average values for each numeric columns for
 each group.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>cols</strong> – String or a list of columns names</p></li>
-<li><p><strong>alias</strong> – String or a list of aliases</p></li>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>cols</strong> – String or a list of columns names</li>
+<li><strong>alias</strong> – String or a list of aliases</li>
 </ul>
-</dd>
-<dt class="field-even">Example</dt>
-<dd class="field-even"><p></p></dd>
-</dl>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">ddf1</span><span class="o">.</span><span class="n">group_by</span><span class="p">(</span><span class="n">group_by</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;col_1&#39;</span><span class="p">])</span><span class="o">.</span><span class="n">mean</span><span class="p">([</span><span class="s1">&#39;col_2&#39;</span><span class="p">])</span>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Example:</th><td class="field-body"></td>
+</tr>
+</tbody>
+</table>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">ddf1</span><span class="o">.</span><span class="n">group_by</span><span class="p">(</span><span class="n">group_by</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;col_1&#39;</span><span class="p">])</span><span class="o">.</span><span class="n">mean</span><span class="p">([</span><span class="s1">&#39;col_2&#39;</span><span class="p">])</span>
 </pre></div>
 </div>
 </dd></dl>
 
 <dl class="method">
-<dt id="ddf_library.groupby.GroupedDDF.min">
-<code class="sig-prename descclassname">GroupedDDF.</code><code class="sig-name descname">min</code><span class="sig-paren">(</span><em class="sig-param">cols</em>, <em class="sig-param">alias=None</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.groupby.GroupedDDF.min" title="Permalink to this definition">¶</a></dt>
+<dt id="ddf_library.bases.groupby.GroupedDDF.min">
+<code class="descclassname">GroupedDDF.</code><code class="descname">min</code><span class="sig-paren">(</span><em>cols</em>, <em>alias=None</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.bases.groupby.GroupedDDF.min" title="Permalink to this definition">¶</a></dt>
 <dd><p>Computes the min value for each numeric column for each group.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>cols</strong> – String or a list of columns names</p></li>
-<li><p><strong>alias</strong> – String or a list of aliases</p></li>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>cols</strong> – String or a list of columns names</li>
+<li><strong>alias</strong> – String or a list of aliases</li>
 </ul>
-</dd>
-<dt class="field-even">Example</dt>
-<dd class="field-even"><p></p></dd>
-</dl>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">ddf1</span><span class="o">.</span><span class="n">group_by</span><span class="p">(</span><span class="n">group_by</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;col_1&#39;</span><span class="p">])</span><span class="o">.</span><span class="n">min</span><span class="p">([</span><span class="s1">&#39;col_2&#39;</span><span class="p">])</span>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Example:</th><td class="field-body"></td>
+</tr>
+</tbody>
+</table>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">ddf1</span><span class="o">.</span><span class="n">group_by</span><span class="p">(</span><span class="n">group_by</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;col_1&#39;</span><span class="p">])</span><span class="o">.</span><span class="n">min</span><span class="p">([</span><span class="s1">&#39;col_2&#39;</span><span class="p">])</span>
 </pre></div>
 </div>
 </dd></dl>
 
 <dl class="method">
-<dt id="ddf_library.groupby.GroupedDDF.set">
-<code class="sig-prename descclassname">GroupedDDF.</code><code class="sig-name descname">set</code><span class="sig-paren">(</span><em class="sig-param">cols</em>, <em class="sig-param">alias=None</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.groupby.GroupedDDF.set" title="Permalink to this definition">¶</a></dt>
+<dt id="ddf_library.bases.groupby.GroupedDDF.set">
+<code class="descclassname">GroupedDDF.</code><code class="descname">set</code><span class="sig-paren">(</span><em>cols</em>, <em>alias=None</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.bases.groupby.GroupedDDF.set" title="Permalink to this definition">¶</a></dt>
 <dd><p>Returns a set of objects with duplicate elements.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>cols</strong> – String or a list of columns names</p></li>
-<li><p><strong>alias</strong> – String or a list of aliases</p></li>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>cols</strong> – String or a list of columns names</li>
+<li><strong>alias</strong> – String or a list of aliases</li>
 </ul>
-</dd>
-<dt class="field-even">Example</dt>
-<dd class="field-even"><p></p></dd>
-</dl>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">ddf1</span><span class="o">.</span><span class="n">group_by</span><span class="p">(</span><span class="n">group_by</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;col_1&#39;</span><span class="p">])</span><span class="o">.</span><span class="n">set</span><span class="p">([</span><span class="s1">&#39;col_2&#39;</span><span class="p">])</span>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Example:</th><td class="field-body"></td>
+</tr>
+</tbody>
+</table>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">ddf1</span><span class="o">.</span><span class="n">group_by</span><span class="p">(</span><span class="n">group_by</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;col_1&#39;</span><span class="p">])</span><span class="o">.</span><span class="n">set</span><span class="p">([</span><span class="s1">&#39;col_2&#39;</span><span class="p">])</span>
 </pre></div>
 </div>
 </dd></dl>
 
 <dl class="method">
-<dt id="ddf_library.groupby.GroupedDDF.sum">
-<code class="sig-prename descclassname">GroupedDDF.</code><code class="sig-name descname">sum</code><span class="sig-paren">(</span><em class="sig-param">cols</em>, <em class="sig-param">alias=None</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.groupby.GroupedDDF.sum" title="Permalink to this definition">¶</a></dt>
+<dt id="ddf_library.bases.groupby.GroupedDDF.sum">
+<code class="descclassname">GroupedDDF.</code><code class="descname">sum</code><span class="sig-paren">(</span><em>cols</em>, <em>alias=None</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.bases.groupby.GroupedDDF.sum" title="Permalink to this definition">¶</a></dt>
 <dd><p>Computes the sum for each numeric columns for each group.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>cols</strong> – String or a list of columns names</p></li>
-<li><p><strong>alias</strong> – String or a list of aliases</p></li>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>cols</strong> – String or a list of columns names</li>
+<li><strong>alias</strong> – String or a list of aliases</li>
 </ul>
-</dd>
-<dt class="field-even">Example</dt>
-<dd class="field-even"><p></p></dd>
-</dl>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">ddf1</span><span class="o">.</span><span class="n">group_by</span><span class="p">(</span><span class="n">group_by</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;col_1&#39;</span><span class="p">])</span><span class="o">.</span><span class="n">sum</span><span class="p">([</span><span class="s1">&#39;col_2&#39;</span><span class="p">])</span>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Example:</th><td class="field-body"></td>
+</tr>
+</tbody>
+</table>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">ddf1</span><span class="o">.</span><span class="n">group_by</span><span class="p">(</span><span class="n">group_by</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;col_1&#39;</span><span class="p">])</span><span class="o">.</span><span class="n">sum</span><span class="p">([</span><span class="s1">&#39;col_2&#39;</span><span class="p">])</span>
 </pre></div>
 </div>
 </dd></dl>
@@ -1492,7 +1598,7 @@ each group.</p>
       </div>
       <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
         <div class="sphinxsidebarwrapper">
-  <h3><a href="index.html">Table of Contents</a></h3>
+  <h3><a href="index.html">Table Of Contents</a></h3>
   <ul>
 <li><a class="reference internal" href="#">DDF operations</a><ul>
 <li><a class="reference internal" href="#packages">packages</a></li>
@@ -1502,19 +1608,19 @@ each group.</p>
 </ul>
 
   <h4>Previous topic</h4>
-  <p class="topless"><a href="api.html"
-                        title="previous chapter">API Reference</a></p>
+  <p class="topless"><a href="ddf_library.bases.data_saver.html"
+                        title="previous chapter">Data Saver</a></p>
   <h4>Next topic</h4>
   <p class="topless"><a href="ddf_library.functions.graph.html"
                         title="next chapter">Graph Operations</a></p>
 <div id="searchbox" style="display: none" role="search">
-  <h3 id="searchlabel">Quick search</h3>
-    <div class="searchformwrapper">
+  <h3>Quick search</h3>
     <form class="search" action="search.html" method="get">
-      <input type="text" name="q" aria-labelledby="searchlabel" />
-      <input type="submit" value="Go" />
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
     </form>
-    </div>
 </div>
 <script type="text/javascript">$('#searchbox').show(0);</script>
         </div>
@@ -1534,15 +1640,15 @@ each group.</p>
           <a href="ddf_library.functions.graph.html" title="Graph Operations"
              >next</a> |</li>
         <li class="right" >
-          <a href="api.html" title="API Reference"
+          <a href="ddf_library.bases.data_saver.html" title="Data Saver"
              >previous</a> |</li>
         <li class="nav-item nav-item-0"><a href="index.html">DDF</a> &#187;</li>
           <li class="nav-item nav-item-1"><a href="api.html" >API Reference</a> &#187;</li> 
       </ul>
     </div>
     <div class="footer" role="contentinfo">
-        &#169; Copyright 2019, Lucas M Ponce.
-      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 2.1.0.
+        &#169; Copyright 2020, Lucas M Ponce.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.6.7.
     </div>
   </body>
 </html>
