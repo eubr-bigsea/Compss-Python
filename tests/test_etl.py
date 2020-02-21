@@ -26,7 +26,7 @@ def log(msg):
 
 def etl():
     cc = COMPSsContext()
-    # cc.start_monitor()
+    cc.start_monitor()
     url = ('https://archive.ics.uci.edu/ml/'
            'machine-learning-databases/abalone/abalone.data')
     cols = ['sex', 'length', 'diam', 'height', 'weight', 'rings']
@@ -146,7 +146,11 @@ def etl():
         print(len_df)
         raise Exception('Error in etl_test_6b')
     log("etl_test_7b - OK")
-    # cc.context_status()
+
+    # import time
+    # time.sleep(5)
+    cc.context_status()
+    # cc.show_tasks()
     cc.stop()
 
 

@@ -76,8 +76,8 @@ class DDFSketch(object):
         """
         stored = False
         for _ in range(2):
-            if ContextBase.catalog_tasks[self.last_uuid]['status'] != \
-                    ContextBase.STATUS_WAIT:
+            if ContextBase.catalog_tasks[self.last_uuid]['status'] not in \
+                    [ContextBase.STATUS_WAIT, ContextBase.STATUS_DELETED]:
                 self.partitions = \
                     ContextBase.catalog_tasks[self.last_uuid]['result']
                 stored = True

@@ -51,6 +51,7 @@ class COMPSsContext(object):
         ContextBase.catalog_schemas = dict()
         ContextBase.catalog_tasks = dict()
         ContextBase.dag = nx.DiGraph()
+        ContextBase.catalog_tasks = list()
 
         if ContextBase.monitor:
             ContextBase.monitor.stop()
@@ -62,15 +63,13 @@ class COMPSsContext(object):
         if len(files_sync) > 0:
             raise Exception('Partial files were synchronized.')
 
-
         shutil.rmtree(ContextBase.app_folder)
 
-    @staticmethod
-    def start_monitor():
+    def start_monitor(self):
         ContextBase.start_monitor()
+        return self
 
-    @staticmethod
-    def show_tasks():
+    def show_tasks(self):
         """
         Show all tasks in the current code. Only to debug.
         :return:
@@ -91,10 +90,11 @@ class COMPSsContext(object):
                        r])
         print(t)
         print('\n')
+        return self
 
-    @staticmethod
-    def set_log(enabled=True):
+    def set_log(self, enabled=True):
         ContextBase.DEBUG = enabled
+        return self
 
     @staticmethod
     def context_status():

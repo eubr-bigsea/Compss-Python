@@ -185,14 +185,13 @@ def delete_result(file_list):
         compss_delete_file(f)
 
 
-def create_stage_files(nfrag, suffix=''):
+def create_stage_files(nfrag):
     global stage_id
     from ddf_library.bases.context_base import ContextBase
     app_folder = ContextBase.app_folder
 
-    file_names = ['{}/stage{}_{}block{}.parquet'
-                  .format(app_folder, stage_id, suffix, f)
-                  for f in range(nfrag)]
+    file_names = ['{}/stage{}_block{}.parquet'
+                  .format(app_folder, stage_id, f) for f in range(nfrag)]
     stage_id += 1
     return file_names
 

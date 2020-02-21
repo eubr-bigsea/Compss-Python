@@ -29,6 +29,8 @@ class ContextBase(object):
     started = False
     catalog_schemas = dict()
     catalog_tasks = dict()
+    # to speedup the searching for completed tasks:
+    completed_tasks = list()
     dag = nx.DiGraph()
 
     OPT_SERIAL = 'serial'  # it can be grouped with others operations
@@ -175,6 +177,8 @@ class ContextBase(object):
 
     def set_task_status(self, uuid_task, status):
         self.catalog_tasks[uuid_task]['status'] = status
+        if status == self.STATUS_COMPLETED:
+            self.completed_tasks.append(uuid_task)
 
     def get_task_parents(self, uuid_task):
         return self.catalog_tasks[uuid_task].get('parent', [])
@@ -213,12 +217,12 @@ class ContextBase(object):
         :param lineage: a sorted list of tasks;
         :return: a sorted list starting from previous results (if exists);
         """
-        # check tasks with status different from WAIT
+        # check tasks with status different from STATUS_WAIT or STATUS_DELETED
         check_computed = [t for t in lineage
                           if self.get_task_status(t) not in
                           [self.STATUS_WAIT, self.STATUS_DELETED]]
 
-        # remove those tasks from the current dag
+        # remove those tasks from the temporary dag
         dag = copy.deepcopy(self.dag)
         if len(check_computed) > 0:
             for n in check_computed:
@@ -233,6 +237,28 @@ class ContextBase(object):
         reduced_list = [t for t in lineage if t in sub_graph]
         return reduced_list
 
+    @staticmethod
+    def update_status(lineage, new_status):
+
+        for uuid in lineage:
+            current_status = ContextBase.catalog_tasks[uuid]['status']
+
+            if new_status == ContextBase.STATUS_WAIT:
+                if current_status == ContextBase.STATUS_DELETED:
+                    ContextBase.catalog_tasks[uuid]['status'] = new_status
+
+            elif new_status == ContextBase.STATUS_PERSISTED:
+                if current_status == ContextBase.STATUS_COMPLETED:
+                    ContextBase.catalog_tasks[uuid]['status'] = new_status
+                    ContextBase.completed_tasks = \
+                        list(filter(lambda a: a != uuid,
+                                    ContextBase.completed_tasks))
+
+            elif new_status == ContextBase.STATUS_COMPLETED:
+                if current_status == ContextBase.STATUS_PERSISTED:
+                    ContextBase.catalog_tasks[uuid]['status'] = new_status
+                    ContextBase.completed_tasks.append(uuid)
+
     def run_workflow(self, lineage):
         """
         Find the flow of non executed tasks. This method is executed only when
@@ -245,6 +271,8 @@ class ContextBase(object):
 
         self.create_dag(lineage)
         lineage = self.check_pointer(lineage)
+        # all DELETED task are now waiting a new result
+        self.update_status(lineage, self.STATUS_WAIT)
 
         if ContextBase.DEBUG:
             self.show_workflow(self.catalog_tasks, lineage)
@@ -281,59 +309,51 @@ class ContextBase(object):
             elif jump > 0:
                 jump -= 1
 
-            self.delete_computed_results(current_task, lineage)
+            self.delete_computed_results(current_task)
+
             if self.monitor:
                 msg = ContextBase.gen_status()
                 title = ContextBase.app_folder.replace('/tmp/ddf_', '')
                 gen_data(ContextBase.dag, ContextBase.catalog_tasks, msg, title)
 
-    def is_removable(self, id_task, current_task):
+    def is_removable(self, id_task):
         """
         We keep all non computed tasks or tasks that have a non computed
         children. In other words, in order to delete a task, its degree
         need be more than zero and its children need to be already computed.
 
         :param id_task:
-        :param current_task:
         :return:
         """
 
         cond = False
-        if self.get_task_status(id_task) == self.STATUS_COMPLETED:
-            # take care to not delete data from leaf nodes
-            degree = -1 if id_task not in self.dag.nodes \
-                else self.dag.out_degree(id_task)
+        # take care to not delete data from leaf nodes
+        degree = -1 if id_task not in self.dag.nodes \
+            else self.dag.out_degree(id_task)
 
-            if degree > 0:
-                siblings = self.get_task_sibling(current_task)
-                has_siblings = len(siblings) > 1
-                # to not delete a split-operation #TODO
-                if not has_siblings:
-                    out_edges = self.dag.out_edges(id_task)
-                    cond = True
-                    for (inv, outv) in out_edges:
-                        if self.get_task_status(outv) == self.STATUS_WAIT:
-                            return False
-                        elif 'save' in self.get_task_name(outv) \
-                                and len(out_edges) == 1:
-                            return False
+        if degree > 0:
+            # we need to take care operations with siblings
+            siblings = self.get_task_sibling(id_task)
+            cond = True
+            for current_sibling in siblings:
+                out_edges = self.dag.out_edges(current_sibling)
+                for (inv, outv) in out_edges:
+                    if self.get_task_status(outv) == self.STATUS_WAIT:
+                        return False
+
         return cond
 
-    def delete_computed_results(self, current_task, lineage):
+    def delete_computed_results(self, current_task):
         """
         Delete results from computed tasks in order to free up disk space.
 
         :param current_task:
-        :param lineage:
         :return:
         """
 
-        for id_task in lineage:
+        for id_task in self.completed_tasks:
 
-            if id_task == current_task:
-                return 1
-
-            elif self.is_removable(id_task, current_task):
+            if id_task != current_task and self.is_removable(id_task):
 
                 if ContextBase.DEBUG:
                     print(" - delete_computed_results - {} ({})"
@@ -346,6 +366,9 @@ class ContextBase(object):
                 self.set_task_status(id_task, self.STATUS_DELETED)
                 self.set_task_result(id_task, None)
                 self.catalog_schemas.pop(id_task, None)
+                ContextBase.completed_tasks = \
+                    list(filter(lambda a: a != id_task,
+                                ContextBase.completed_tasks))
 
     def run_opt_others(self, child_task, id_parents, inputs):
         """
@@ -492,12 +515,13 @@ class ContextBase(object):
         last_uuid = opt_uuids[-1]
 
         for o in opt_uuids:
-            self.set_task_status(o, self.STATUS_DELETED)
+            self.set_task_status(o, self.STATUS_COMPLETED)
 
         if 'save' not in self.get_task_name(last_uuid):
             self.set_task_result(last_uuid, result)
             self.catalog_schemas[last_uuid] = info
             self.set_task_status(last_uuid, self.STATUS_COMPLETED)
+
         else:
             self.set_task_status(last_uuid, self.STATUS_PERSISTED)
 
@@ -510,7 +534,11 @@ class ContextBase(object):
         :param input_data: A list of DataFrame as input data
         :return:
         """
-        function, settings = env
+        try:
+            function, settings = env
+        except TypeError as e:
+            raise Exception('Task is not computed or is already deleted.')
+
         nfrag = len(input_data)
 
         if nfrag == 1:
@@ -587,7 +615,6 @@ class ContextBase(object):
         return out_files, info
 
     def _execute_opt_last_tasks(self, tasks_list, uuid_list, data, n_input):
-
         """
         Execute a group of tasks starting by a 'last' tasks. Some operations
         have more than one processing stage (e.g., sort), some of them, can be
@@ -672,7 +699,21 @@ class ContextBase(object):
     def ddf_add_task(name, opt, function, parent, n_input=-1, n_output=1,
                      status='WAIT', result=None, info=False,
                      info_data=None):
-        # TODO: doc this
+        """
+        Insert a DDF task in COMPSs Context catalog.
+
+        :param name: DDF task name;
+        :param opt: Optimization police;
+        :param function: a tuple (function, parameters);
+        :param parent: uuid parent task;
+        :param n_input: number of parents;
+        :param n_output: number of results that this task generates;
+        :param status: current status;
+        :param result: a list of files output, if completed;
+        :param info: True if this task needs information about parents to run;
+        :param info_data: Information (schema), if task is already completed;
+        :return:
+        """
         if n_input < 0:
             n_input = len(parent)
 
@@ -681,6 +722,7 @@ class ContextBase(object):
             'status': status,
             'optimization': opt,
             'function': function,
+            'result': result,
             'parent': parent,
             'output': n_output,
             'input': n_input,
@@ -695,14 +737,20 @@ class ContextBase(object):
         if info_data:
             ContextBase.catalog_schemas[new_state_uuid] = info_data
 
-        if result:
-            ContextBase.catalog_tasks[new_state_uuid]['result'] = result
+        if status == ContextBase.STATUS_COMPLETED and name != 'init':
+            ContextBase.completed_tasks.append(new_state_uuid)
 
         return new_state_uuid
 
     @staticmethod
     def link_siblings(siblings):
-        #TODO: DOC this
+        """
+        Link two or more tasks as siblings, meaning, the result for both task
+        are generated together.
+
+        :param siblings: uuid list
+        :return:
+        """
         for uuid in siblings:
             if uuid not in ContextBase.catalog_tasks:
                 raise Exception('uuid "" not in catalog_tasks'.format(uuid[:8]))

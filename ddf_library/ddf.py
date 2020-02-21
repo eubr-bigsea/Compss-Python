@@ -1149,13 +1149,11 @@ class DDF(DDFSketch):
 
         status = ContextBase.catalog_tasks[self.last_uuid]\
             .get('status', self.STATUS_WAIT)
-        if status == self.STATUS_WAIT:
+
+        if status in [self.STATUS_WAIT, self.STATUS_DELETED]:
             self._run_compss_context()
 
-        if status == self.STATUS_COMPLETED:
-            ContextBase.catalog_tasks[self.last_uuid]['status'] = \
-                self.STATUS_PERSISTED
-
+        ContextBase.update_status([self.last_uuid], self.STATUS_PERSISTED)
         return self
 
     def range_partition(self, columns, ascending=None, nfrag=None):
@@ -1628,8 +1626,6 @@ class DDF(DDFSketch):
         self._check_stored()
 
         res = [compss_open(f, mode='rb') for f in self.partitions]
-        ContextBase.catalog_tasks[self.last_uuid]['status'] \
-            = self.STATUS_PERSISTED
 
         if isinstance(columns, str):
             columns = [columns]
@@ -1643,11 +1639,7 @@ class DDF(DDFSketch):
         return df
 
     def unpersist(self):
-        status = ContextBase.catalog_tasks[self.last_uuid]['status']
-        if status == self.STATUS_PERSISTED:
-            status = self.STATUS_COMPLETED
-        ContextBase.catalog_tasks[self.last_uuid]['status'] = status
-
+        ContextBase.update_status([self.last_uuid], self.STATUS_COMPLETED)
         return self
 
     def union(self, data2):

@@ -33,8 +33,8 @@ def random_split(input_files, settings):
     info1 = [[] for _ in range(nfrag)]
     info2 = info1[:]
 
-    out1 = create_stage_files(nfrag, suffix='split1_')
-    out2 = create_stage_files(nfrag, suffix='split2_')
+    out1 = create_stage_files(nfrag)
+    out2 = create_stage_files(nfrag)
     for i, fraction in enumerate(idx):
         info1[i], info2[i] = _split_get(input_files[i], out1[i],
                                         out2[i], fraction, i)

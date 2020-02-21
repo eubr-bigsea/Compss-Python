@@ -52,7 +52,7 @@ def hash_partition(data, settings):
             splits[f] = ddf_library.functions.etl.repartition\
                 .split_by_hash(data[f], cols, info, nfrag_target)
 
-        result = create_stage_files(nfrag_target, 'hash_partition_')
+        result = create_stage_files(nfrag_target)
         info = [{} for _ in range(nfrag_target)]
         for f in range(nfrag_target):
             tmp = [splits[t][f] for t in range(nfrag)]
