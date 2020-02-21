@@ -164,7 +164,9 @@ def update_status(n):
         with open(temporary_file, 'rb') as handle:
             data = pickle.load(handle)
 
-        msg = data.get('msg_status', pd.DataFrame()).to_markdown()
+        table = pd.DataFrame(data.get('msg_status', [['-', '-']]),
+                             columns=['Metric', 'Value'])
+        msg = table.to_markdown()
         msg = "## Context Status: \n" + msg
     else:
         msg = "## Context Status: \n COMPSs Context is starting ..."

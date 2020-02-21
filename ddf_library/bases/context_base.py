@@ -73,9 +73,8 @@ class ContextBase(object):
         t = PrettyTable(['Order', 'Task name', 'uuid'])
         for i, uuid in enumerate(selected_tasks):
             t.add_row([i+1, tasks_map[uuid]['name'], uuid[:8]])
-        print("\nRelevant tasks:")
-        print(t)
-        print('\n')
+
+        print("\nRelevant tasks:", t, '\n')
 
     @staticmethod
     def gen_status():
@@ -91,16 +90,11 @@ class ContextBase(object):
             if status in 'COMPLETED' and not_init:
                 n_tmp += 1
 
-        t = PrettyTable(['Metric', 'Value'])
-        t.add_row(['Number of tasks', n_tasks])
-        t.add_row(['Number of Persisted tasks', n_cached])
-        t.add_row(['Number of temporary output', n_tmp])
-        msg = "\nContext status:\n{}\n".format(t)
-        t = pd.DataFrame([['Number of tasks', n_tasks],
-                          ['Number of Persisted tasks', n_cached],
-                          ['Number of temporary output', n_tmp]],
-                         columns=['Metric', 'Value'])
-        return t
+        table = [['Number of tasks', n_tasks],
+                 ['Number of Persisted tasks', n_cached],
+                 ['Number of temporary output', n_tmp]]
+
+        return table
 
     @staticmethod
     def plot_graph():
@@ -312,9 +306,10 @@ class ContextBase(object):
             self.delete_computed_results(current_task)
 
             if self.monitor:
-                msg = ContextBase.gen_status()
+                table = ContextBase.gen_status()
                 title = ContextBase.app_folder.replace('/tmp/ddf_', '')
-                gen_data(ContextBase.dag, ContextBase.catalog_tasks, msg, title)
+                gen_data(ContextBase.dag, ContextBase.catalog_tasks,
+                         table, title)
 
     def is_removable(self, id_task):
         """

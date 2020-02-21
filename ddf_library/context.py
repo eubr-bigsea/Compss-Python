@@ -98,7 +98,12 @@ class COMPSsContext(object):
 
     @staticmethod
     def context_status():
-        print(ContextBase.gen_status().to_markdown())
+        table = ContextBase.gen_status()
+        t = PrettyTable(['Metric', 'Value'])
+        for row in table:
+            t.add_row(row)
+
+        print("\nContext status:\n{}\n".format(t))
         ContextBase.plot_graph()
 
     @staticmethod
