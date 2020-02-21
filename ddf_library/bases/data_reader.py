@@ -20,6 +20,41 @@ class DataReader(object):
             escapechar=None, comment=None, encoding='utf-8',
             error_bad_lines=True, warn_bad_lines=True, delim_whitespace=False,
             float_precision=None):
+        """
+        Reads a csv file.
+
+        :param filepath:
+        :param num_of_parts:
+        :param schema:
+        :param sep:
+        :param header:
+        :param delimiter:
+        :param na_filter:
+        :param usecols:
+        :param prefix:
+        :param engine:
+        :param converters:
+        :param true_values:
+        :param false_values:
+        :param skipinitialspace:
+        :param na_values:
+        :param keep_default_na:
+        :param skip_blank_lines:
+        :param parse_dates:
+        :param decimal:
+        :param dayfirst:
+        :param thousands:
+        :param quotechar:
+        :param doublequote:
+        :param escapechar:
+        :param comment:
+        :param encoding:
+        :param error_bad_lines:
+        :param warn_bad_lines:
+        :param delim_whitespace:
+        :param float_precision:
+        :return:
+        """
 
         format_file = 'csv'
         kwargs = locals()
@@ -30,6 +65,16 @@ class DataReader(object):
     @staticmethod
     def json(filepath,  num_of_parts='*', schema='str', precise_float=False,
              encoding='utf-8'):
+        """
+        Reads a json file.
+
+        :param filepath:
+        :param num_of_parts:
+        :param schema:
+        :param precise_float:
+        :param encoding:
+        :return:
+        """
         format_file = 'json'
         kwargs = locals()
         kwargs['schema'] = _check_schema(kwargs['schema'])
@@ -38,6 +83,14 @@ class DataReader(object):
 
     @staticmethod
     def parquet(filepath, num_of_parts='*', columns=None):
+        """
+        Reads a parquet file.
+
+        :param filepath:
+        :param num_of_parts:
+        :param columns:
+        :return:
+        """
         format_file = 'parquet'
         kwargs = locals()
         tmp = _apply_datareader(format_file, kwargs)

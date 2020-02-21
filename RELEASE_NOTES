@@ -6,10 +6,12 @@ The Distributed DataFrame Library (DDF Library) provides distributed algorithms 
 library implemented over PyCOMPSs programming model.
 
 Release number: 0.5
-Release date: X-2020
+Release date: March-2020
 -------------------------------
 
 Improvements:
 
  - Improvements in operations like partitioning methods and merge schema by using COLLECTION COMPSs feature.
  - The data output of a COMPSs's task is a parquet file to speedup the des/serialization process.
+ - Creation of the execution monitoring panel.
+ - New interface to map functions.

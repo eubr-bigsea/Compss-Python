@@ -14,22 +14,31 @@ last_uuid = None
 
 class Save(object):
     # noinspection PyUnresolvedReferences
-    """
-    Save the data in the storage.
-
-    :param filepath: output file path;
-    :param format: format file, csv, json or a pickle;
-    :param header: save with the columns header;
-    :param mode: 'overwrite' (default) if file exists, 'ignore' or 'error'.
-     Only used when storage is 'hdfs'.
-    :return: Return the same input data to perform others operations;
-    """
 
     @staticmethod
     def csv(filepath, header=True, mode=DataSaver.MODE_OVERWRITE, sep=',',
             na_rep='', float_format=None, columns=None, encoding=None,
             quoting=None, quotechar='"', date_format=None, doublequote=True,
             escapechar=None, decimal='.'):
+        """
+        Saves a csv file.
+
+        :param filepath:
+        :param header:
+        :param mode:
+        :param sep:
+        :param na_rep:
+        :param float_format:
+        :param columns:
+        :param encoding:
+        :param quoting:
+        :param quotechar:
+        :param date_format:
+        :param doublequote:
+        :param escapechar:
+        :param decimal:
+        :return:
+        """
 
         format_file = DataSaver.FORMAT_CSV
         kwargs = locals()
@@ -39,6 +48,17 @@ class Save(object):
     @staticmethod
     def json(filepath, mode=DataSaver.MODE_OVERWRITE, date_format=None,
              double_precision=10, force_ascii=True, date_unit='ms'):
+        """
+        Saves a json file.
+
+        :param filepath:
+        :param mode:
+        :param date_format:
+        :param double_precision:
+        :param force_ascii:
+        :param date_unit:
+        :return:
+        """
         format_file = DataSaver.FORMAT_JSON
         kwargs = locals()
         _apply_datasaver(format_file, kwargs, task_list, last_uuid)
@@ -46,6 +66,14 @@ class Save(object):
 
     @staticmethod
     def parquet(filepath, mode=DataSaver.MODE_OVERWRITE, compression='snappy'):
+        """
+        Saves a parquet file.
+
+        :param filepath:
+        :param mode:
+        :param compression:
+        :return:
+        """
         format_file = DataSaver.FORMAT_PARQUET
         kwargs = locals()
         _apply_datasaver(format_file, kwargs, task_list, last_uuid)
@@ -53,6 +81,14 @@ class Save(object):
 
     @staticmethod
     def pickle(filepath, mode=DataSaver.MODE_OVERWRITE, compression='infer'):
+        """
+        Saves a pickle file.
+
+        :param filepath:
+        :param mode:
+        :param compression:
+        :return:
+        """
         format_file = DataSaver.FORMAT_PICKLE
         kwargs = locals()
         _apply_datasaver(format_file, kwargs, task_list, last_uuid)

@@ -24,7 +24,7 @@
     <link rel="shortcut icon" href="_static/favicon.ico"/>
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
-    <link rel="next" title="DDF operations" href="ddf_library.html" />
+    <link rel="next" title="COMPSs Context" href="ddf_library.context.html" />
     <link rel="prev" title="DDF vs PySpark DataFrame" href="comparison.html" /> 
   </head>
   <body>
@@ -38,7 +38,7 @@
           <a href="py-modindex.html" title="Python Module Index"
              >modules</a> |</li>
         <li class="right" >
-          <a href="ddf_library.html" title="DDF operations"
+          <a href="ddf_library.context.html" title="COMPSs Context"
              accesskey="N">next</a> |</li>
         <li class="right" >
           <a href="comparison.html" title="DDF vs PySpark DataFrame"
@@ -60,6 +60,7 @@
 <div class="section" id="contents">
 <h2>Contents<a class="headerlink" href="#contents" title="Permalink to this headline">¶</a></h2>
 <ul class="simple">
+<li><a class="reference internal" href="#cc-anchor"><span class="std std-ref">COMPSs Context</span></a></li>
 <li><a class="reference internal" href="#etl-anchor"><span class="std std-ref">ETL</span></a></li>
 <li><a class="reference internal" href="#statistics-anchor"><span class="std std-ref">Statistics</span></a></li>
 <li><a class="reference internal" href="#ml-anchor"><span class="std std-ref">ML</span></a></li>
@@ -78,6 +79,21 @@
 <li><a class="reference internal" href="#geo-anchor"><span class="std std-ref">Geographic Operations</span></a></li>
 <li><a class="reference internal" href="#graph-anchor"><span class="std std-ref">Graph Algorithms</span></a></li>
 </ul>
+<div class="section" id="compss-context">
+<span id="cc-anchor"></span><h3>COMPSs Context<a class="headerlink" href="#compss-context" title="Permalink to this headline">¶</a></h3>
+<p><a class="reference internal" href="ddf_library.context.html#ddf_library.context.COMPSsContext.stop" title="ddf_library.context.COMPSsContext.stop"><code class="xref py py-func docutils literal"><span class="pre">COMPSsContext.stop</span></code></a> - Stop the DDF environment.</p>
+<p><a class="reference internal" href="ddf_library.context.html#ddf_library.context.COMPSsContext.start_monitor" title="ddf_library.context.COMPSsContext.start_monitor"><code class="xref py py-func docutils literal"><span class="pre">COMPSsContext.start_monitor</span></code></a> - Start a web service monitor that informs the environment current status.</p>
+<p><a class="reference internal" href="ddf_library.context.html#ddf_library.context.COMPSsContext.show_tasks" title="ddf_library.context.COMPSsContext.show_tasks"><code class="xref py py-func docutils literal"><span class="pre">COMPSsContext.show_tasks</span></code></a> - Show all tasks in the current code.</p>
+<p><a class="reference internal" href="ddf_library.context.html#ddf_library.context.COMPSsContext.set_log" title="ddf_library.context.COMPSsContext.set_log"><code class="xref py py-func docutils literal"><span class="pre">COMPSsContext.set_log</span></code></a> - Set the log level.</p>
+<p><a class="reference internal" href="ddf_library.context.html#ddf_library.context.COMPSsContext.context_status" title="ddf_library.context.COMPSsContext.context_status"><code class="xref py py-func docutils literal"><span class="pre">COMPSsContext.context_status</span></code></a> - Generates a DAG (in dot file) and some information on screen about the status process.</p>
+<p><a class="reference internal" href="ddf_library.context.html#ddf_library.context.COMPSsContext.context_status" title="ddf_library.context.COMPSsContext.context_status"><code class="xref py py-func docutils literal"><span class="pre">COMPSsContext.context_status</span></code></a> - Generates a DAG (in dot file) and some information on screen about the status process.</p>
+<p><a class="reference internal" href="ddf_library.context.html#ddf_library.context.COMPSsContext.parallelize" title="ddf_library.context.COMPSsContext.parallelize"><code class="xref py py-func docutils literal"><span class="pre">COMPSsContext.parallelize</span></code></a> - Import data to DDF by distributing a DataFrame into DDF.</p>
+<p><a class="reference internal" href="ddf_library.context.html#ddf_library.context.COMPSsContext.import_data" title="ddf_library.context.COMPSsContext.import_data"><code class="xref py py-func docutils literal"><span class="pre">COMPSsContext.import_data</span></code></a> - Import a previous Pandas DataFrame list into DDF abstraction.</p>
+<p><a class="reference internal" href="ddf_library.bases.data_reader.html#ddf_library.bases.data_reader.DataReader.csv" title="ddf_library.bases.data_reader.DataReader.csv"><code class="xref py py-func docutils literal"><span class="pre">COMPSsContext.read.csv</span></code></a> - Read a csv file.</p>
+<p><a class="reference internal" href="ddf_library.bases.data_reader.html#ddf_library.bases.data_reader.DataReader.json" title="ddf_library.bases.data_reader.DataReader.json"><code class="xref py py-func docutils literal"><span class="pre">COMPSsContext.read.json</span></code></a> - Read a json file.</p>
+<p><a class="reference internal" href="ddf_library.bases.data_reader.html#ddf_library.bases.data_reader.DataReader.parquet" title="ddf_library.bases.data_reader.DataReader.parquet"><code class="xref py py-func docutils literal"><span class="pre">COMPSsContext.read.parquet</span></code></a> - Read a parquet file.</p>
+<p><a class="reference internal" href="ddf_library.bases.data_reader.html#ddf_library.bases.data_reader.DataReader.shapefile" title="ddf_library.bases.data_reader.DataReader.shapefile"><code class="xref py py-func docutils literal"><span class="pre">COMPSsContext.read.shapefile</span></code></a> - Reads a shapefile using the shp and dbf file.</p>
+</div>
 <div class="section" id="etl">
 <span id="etl-anchor"></span><h3>ETL<a class="headerlink" href="#etl" title="Permalink to this headline">¶</a></h3>
 <p><a class="reference internal" href="ddf_library.html#ddf_library.ddf.DDF.add_column" title="ddf_library.ddf.DDF.add_column"><code class="xref py py-func docutils literal"><span class="pre">DDF.add_column</span></code></a> - Merges two dataFrames, column-wise.</p>
@@ -96,19 +112,19 @@
 <p><a class="reference internal" href="ddf_library.html#ddf_library.ddf.DDF.filter" title="ddf_library.ddf.DDF.filter"><code class="xref py py-func docutils literal"><span class="pre">DDF.filter</span></code></a> - Filters elements based on a condition.</p>
 <p><a class="reference internal" href="ddf_library.html#ddf_library.ddf.DDF.group_by" title="ddf_library.ddf.DDF.group_by"><code class="xref py py-func docutils literal"><span class="pre">DDF.group_by</span></code></a> - Returns a GroupedDFF with a set of methods for aggregations on a DDF.</p>
 <p><a class="reference internal" href="ddf_library.html#ddf_library.ddf.DDF.hash_partition" title="ddf_library.ddf.DDF.hash_partition"><code class="xref py py-func docutils literal"><span class="pre">DDF.hash_partition</span></code></a> - Hash partitioning is a partitioning technique where data is stored separately in different fragments by a hash function.</p>
-<p><code class="xref py py-func docutils literal"><span class="pre">DDF.import_data</span></code> - Import a previous Pandas DataFrame list into DDF abstraction.</p>
 <p><a class="reference internal" href="ddf_library.html#ddf_library.ddf.DDF.intersect" title="ddf_library.ddf.DDF.intersect"><code class="xref py py-func docutils literal"><span class="pre">DDF.intersect</span></code></a> - Returns a new DDF containing rows in both DDF.</p>
 <p><a class="reference internal" href="ddf_library.html#ddf_library.ddf.DDF.intersect_all" title="ddf_library.ddf.DDF.intersect_all"><code class="xref py py-func docutils literal"><span class="pre">DDF.intersect_all</span></code></a> - Returns a new DDF containing rows in both DDF while preserving duplicates.</p>
 <p><a class="reference internal" href="ddf_library.html#ddf_library.ddf.DDF.join" title="ddf_library.ddf.DDF.join"><code class="xref py py-func docutils literal"><span class="pre">DDF.join</span></code></a> - Joins two DDF using the given join expression.</p>
-<p><code class="xref py py-func docutils literal"><span class="pre">DDF.load_text</span></code> - Create a DDF from a commom file system or from HDFS.</p>
 <p><a class="reference internal" href="ddf_library.html#ddf_library.ddf.DDF.map" title="ddf_library.ddf.DDF.map"><code class="xref py py-func docutils literal"><span class="pre">DDF.map</span></code></a> - Applies a function to each row of this data set.</p>
 <p><a class="reference internal" href="ddf_library.html#ddf_library.ddf.DDF.num_of_partitions" title="ddf_library.ddf.DDF.num_of_partitions"><code class="xref py py-func docutils literal"><span class="pre">DDF.num_of_partitions</span></code></a> - Returns the number of data partitions (Task parallelism).</p>
-<p><code class="xref py py-func docutils literal"><span class="pre">DDF.parallelize</span></code> - Distributes a DataFrame into DDF.</p>
 <p><a class="reference internal" href="ddf_library.html#ddf_library.ddf.DDF.range_partition" title="ddf_library.ddf.DDF.range_partition"><code class="xref py py-func docutils literal"><span class="pre">DDF.range_partition</span></code></a> - Range partitioning is a partitioning technique where ranges of data is stored separately in different fragments.</p>
 <p><a class="reference internal" href="ddf_library.html#ddf_library.ddf.DDF.repartition" title="ddf_library.ddf.DDF.repartition"><code class="xref py py-func docutils literal"><span class="pre">DDF.repartition</span></code></a> - Repartition a distributed data based in a fixed number of partitions or based on a distribution list.</p>
 <p><a class="reference internal" href="ddf_library.html#ddf_library.ddf.DDF.replace" title="ddf_library.ddf.DDF.replace"><code class="xref py py-func docutils literal"><span class="pre">DDF.replace</span></code></a> - Replaces one or more values to new ones.</p>
 <p><a class="reference internal" href="ddf_library.html#ddf_library.ddf.DDF.sample" title="ddf_library.ddf.DDF.sample"><code class="xref py py-func docutils literal"><span class="pre">DDF.sample</span></code></a> - Returns a sampled subset.</p>
-<p><code class="xref py py-func docutils literal"><span class="pre">DDF.save</span></code> - Saves the data in the storage.</p>
+<p><a class="reference internal" href="ddf_library.bases.data_saver.html#ddf_library.bases.data_saver.Save.csv" title="ddf_library.bases.data_saver.Save.csv"><code class="xref py py-func docutils literal"><span class="pre">DDF.save.csv</span></code></a> - Saves a csv file.</p>
+<p><a class="reference internal" href="ddf_library.bases.data_saver.html#ddf_library.bases.data_saver.Save.json" title="ddf_library.bases.data_saver.Save.json"><code class="xref py py-func docutils literal"><span class="pre">DDF.save.json</span></code></a> - Saves a json file.</p>
+<p><a class="reference internal" href="ddf_library.bases.data_saver.html#ddf_library.bases.data_saver.Save.parquet" title="ddf_library.bases.data_saver.Save.parquet"><code class="xref py py-func docutils literal"><span class="pre">DDF.save.parquet</span></code></a> - Saves a parquet file.</p>
+<p><a class="reference internal" href="ddf_library.bases.data_saver.html#ddf_library.bases.data_saver.Save.pickle" title="ddf_library.bases.data_saver.Save.pickle"><code class="xref py py-func docutils literal"><span class="pre">DDF.save.pickle</span></code></a> - Saves a pickle file.</p>
 <p><a class="reference internal" href="ddf_library.html#ddf_library.ddf.DDF.schema" title="ddf_library.ddf.DDF.schema"><code class="xref py py-func docutils literal"><span class="pre">DDF.schema</span></code></a> - Returns a schema table where each row contains the name columns and its data types of the current DDF.</p>
 <p><a class="reference internal" href="ddf_library.html#ddf_library.ddf.DDF.select" title="ddf_library.ddf.DDF.select"><code class="xref py py-func docutils literal"><span class="pre">DDF.select</span></code></a> - Performs a projection of selected columns.</p>
 <p><a class="reference internal" href="ddf_library.html#ddf_library.ddf.DDF.select_expression" title="ddf_library.ddf.DDF.select_expression"><code class="xref py py-func docutils literal"><span class="pre">DDF.select_expression</span></code></a> - Projects a set of SQL expressions and returns a new DDF.</p>
@@ -189,7 +205,6 @@ Selection: Selecting a subset from a larger set of features:</p>
 </div>
 <div class="section" id="geographic-operations">
 <span id="geo-anchor"></span><h3>Geographic Operations<a class="headerlink" href="#geographic-operations" title="Permalink to this headline">¶</a></h3>
-<p><code class="xref py py-func docutils literal"><span class="pre">DDF.load_shapefile</span></code> - Create a DDF from a shapefile.</p>
 <p><code class="xref py py-func docutils literal"><span class="pre">DDF.geo_within</span></code> - Returns the sectors that the each point belongs.</p>
 </div>
 <div class="section" id="graph-algorithms">
@@ -209,6 +224,7 @@ Selection: Selecting a subset from a larger set of features:</p>
   <ul>
 <li><a class="reference internal" href="#">API Reference</a><ul>
 <li><a class="reference internal" href="#contents">Contents</a><ul>
+<li><a class="reference internal" href="#compss-context">COMPSs Context</a></li>
 <li><a class="reference internal" href="#etl">ETL</a></li>
 <li><a class="reference internal" href="#statistics">Statistics</a></li>
 <li><a class="reference internal" href="#ml">ML</a><ul>
@@ -232,8 +248,8 @@ Selection: Selecting a subset from a larger set of features:</p>
   <p class="topless"><a href="comparison.html"
                         title="previous chapter">DDF vs PySpark DataFrame</a></p>
   <h4>Next topic</h4>
-  <p class="topless"><a href="ddf_library.html"
-                        title="next chapter">DDF operations</a></p>
+  <p class="topless"><a href="ddf_library.context.html"
+                        title="next chapter">COMPSs Context</a></p>
 <div id="searchbox" style="display: none" role="search">
   <h3>Quick search</h3>
     <form class="search" action="search.html" method="get">
@@ -258,7 +274,7 @@ Selection: Selecting a subset from a larger set of features:</p>
           <a href="py-modindex.html" title="Python Module Index"
              >modules</a> |</li>
         <li class="right" >
-          <a href="ddf_library.html" title="DDF operations"
+          <a href="ddf_library.context.html" title="COMPSs Context"
              >next</a> |</li>
         <li class="right" >
           <a href="comparison.html" title="DDF vs PySpark DataFrame"

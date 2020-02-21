@@ -1,0 +1,245 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>Data Reader &#8212; DDF</title>
+    <link rel="stylesheet" href="_static/nature.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    './',
+        VERSION:     '0.5.1',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true,
+        SOURCELINK_SUFFIX: '.txt'
+      };
+    </script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <link rel="shortcut icon" href="_static/favicon.ico"/>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Data Saver" href="ddf_library.bases.data_saver.html" />
+    <link rel="prev" title="COMPSs Context" href="ddf_library.context.html" /> 
+  </head>
+  <body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="ddf_library.bases.data_saver.html" title="Data Saver"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="ddf_library.context.html" title="COMPSs Context"
+             accesskey="P">previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="index.html">DDF</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="api.html" accesskey="U">API Reference</a> &#187;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="module-ddf_library.bases.data_reader">
+<span id="data-reader"></span><h1>Data Reader<a class="headerlink" href="#module-ddf_library.bases.data_reader" title="Permalink to this headline">¶</a></h1>
+<dl class="class">
+<dt id="ddf_library.bases.data_reader.DataReader">
+<em class="property">class </em><code class="descclassname">ddf_library.bases.data_reader.</code><code class="descname">DataReader</code><a class="headerlink" href="#ddf_library.bases.data_reader.DataReader" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal"><span class="pre">object</span></code></p>
+<dl class="staticmethod">
+<dt id="ddf_library.bases.data_reader.DataReader.csv">
+<em class="property">static </em><code class="descname">csv</code><span class="sig-paren">(</span><em>filepath</em>, <em>num_of_parts='*'</em>, <em>schema='str'</em>, <em>sep='</em>, <em>'</em>, <em>header=True</em>, <em>delimiter=None</em>, <em>na_filter=True</em>, <em>usecols=None</em>, <em>prefix=None</em>, <em>engine=None</em>, <em>converters=None</em>, <em>true_values=None</em>, <em>false_values=None</em>, <em>skipinitialspace=False</em>, <em>na_values=None</em>, <em>keep_default_na=True</em>, <em>skip_blank_lines=True</em>, <em>parse_dates=False</em>, <em>decimal='.'</em>, <em>dayfirst=False</em>, <em>thousands=None</em>, <em>quotechar='&quot;'</em>, <em>doublequote=True</em>, <em>escapechar=None</em>, <em>comment=None</em>, <em>encoding='utf-8'</em>, <em>error_bad_lines=True</em>, <em>warn_bad_lines=True</em>, <em>delim_whitespace=False</em>, <em>float_precision=None</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.bases.data_reader.DataReader.csv" title="Permalink to this definition">¶</a></dt>
+<dd><p>Reads a csv file.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>filepath</strong> – </li>
+<li><strong>num_of_parts</strong> – </li>
+<li><strong>schema</strong> – </li>
+<li><strong>sep</strong> – </li>
+<li><strong>header</strong> – </li>
+<li><strong>delimiter</strong> – </li>
+<li><strong>na_filter</strong> – </li>
+<li><strong>usecols</strong> – </li>
+<li><strong>prefix</strong> – </li>
+<li><strong>engine</strong> – </li>
+<li><strong>converters</strong> – </li>
+<li><strong>true_values</strong> – </li>
+<li><strong>false_values</strong> – </li>
+<li><strong>skipinitialspace</strong> – </li>
+<li><strong>na_values</strong> – </li>
+<li><strong>keep_default_na</strong> – </li>
+<li><strong>skip_blank_lines</strong> – </li>
+<li><strong>parse_dates</strong> – </li>
+<li><strong>decimal</strong> – </li>
+<li><strong>dayfirst</strong> – </li>
+<li><strong>thousands</strong> – </li>
+<li><strong>quotechar</strong> – </li>
+<li><strong>doublequote</strong> – </li>
+<li><strong>escapechar</strong> – </li>
+<li><strong>comment</strong> – </li>
+<li><strong>encoding</strong> – </li>
+<li><strong>error_bad_lines</strong> – </li>
+<li><strong>warn_bad_lines</strong> – </li>
+<li><strong>delim_whitespace</strong> – </li>
+<li><strong>float_precision</strong> – </li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last"></p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="staticmethod">
+<dt id="ddf_library.bases.data_reader.DataReader.json">
+<em class="property">static </em><code class="descname">json</code><span class="sig-paren">(</span><em>filepath</em>, <em>num_of_parts='*'</em>, <em>schema='str'</em>, <em>precise_float=False</em>, <em>encoding='utf-8'</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.bases.data_reader.DataReader.json" title="Permalink to this definition">¶</a></dt>
+<dd><p>Reads a json file.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>filepath</strong> – </li>
+<li><strong>num_of_parts</strong> – </li>
+<li><strong>schema</strong> – </li>
+<li><strong>precise_float</strong> – </li>
+<li><strong>encoding</strong> – </li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last"></p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="staticmethod">
+<dt id="ddf_library.bases.data_reader.DataReader.parquet">
+<em class="property">static </em><code class="descname">parquet</code><span class="sig-paren">(</span><em>filepath</em>, <em>num_of_parts='*'</em>, <em>columns=None</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.bases.data_reader.DataReader.parquet" title="Permalink to this definition">¶</a></dt>
+<dd><p>Reads a parquet file.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>filepath</strong> – </li>
+<li><strong>num_of_parts</strong> – </li>
+<li><strong>columns</strong> – </li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last"></p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="staticmethod">
+<dt id="ddf_library.bases.data_reader.DataReader.shapefile">
+<em class="property">static </em><code class="descname">shapefile</code><span class="sig-paren">(</span><em>shp_path</em>, <em>dbf_path</em>, <em>polygon='points'</em>, <em>attributes=None</em>, <em>num_of_parts='*'</em>, <em>schema='str'</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.bases.data_reader.DataReader.shapefile" title="Permalink to this definition">¶</a></dt>
+<dd><p>Reads a shapefile using the shp and dbf file.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>shp_path</strong> – Path to the shapefile (.shp)</li>
+<li><strong>dbf_path</strong> – Path to the shapefile (.dbf)</li>
+<li><strong>polygon</strong> – Alias to the new column to store the
+polygon coordinates (default, ‘points’);</li>
+<li><strong>attributes</strong> – List of attributes to keep in the DataFrame,
+empty to use all fields;</li>
+<li><strong>schema</strong> – ‘infer’ to infer schema, otherwise, provide the dtype</li>
+<li><strong>num_of_parts</strong> – number of partitions (default, ‘*’ meaning all
+cores available in master CPU);</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">DDF</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Example:</th><td class="field-body"></td>
+</tr>
+</tbody>
+</table>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">ddf1</span> <span class="o">=</span> <span class="n">COMPSsContext</span><span class="p">()</span>        <span class="o">&gt;&gt;&gt;</span> <span class="o">.</span><span class="n">read</span><span class="o">.</span><span class="n">shapefile</span><span class="p">(</span><span class="n">shp_path</span><span class="o">=</span><span class="s1">&#39;hdfs://localhost:9000/shapefile.shp&#39;</span><span class="p">,</span>
+<span class="gp">&gt;&gt;&gt; </span>                <span class="n">dbf_path</span><span class="o">=</span><span class="s1">&#39;hdfs://localhost:9000/shapefile.dbf&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+  <h4>Previous topic</h4>
+  <p class="topless"><a href="ddf_library.context.html"
+                        title="previous chapter">COMPSs Context</a></p>
+  <h4>Next topic</h4>
+  <p class="topless"><a href="ddf_library.bases.data_saver.html"
+                        title="next chapter">Data Saver</a></p>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="ddf_library.bases.data_saver.html" title="Data Saver"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="ddf_library.context.html" title="COMPSs Context"
+             >previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="index.html">DDF</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="api.html" >API Reference</a> &#187;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2020, Lucas M Ponce.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.6.7.
+    </div>
+  </body>
+</html>

@@ -39,7 +39,11 @@ class COMPSsContext(object):
 
     @staticmethod
     def stop():
-        """To avoid that COMPSs sends back all partial result at end."""
+        """
+        Stop the DDF environment. It is important to stop at end of an
+        application in order to avoid that COMPSs sends back all partial
+        result at end.
+        """
         import shutil
         import os
         for id_task in list(ContextBase.catalog_tasks.keys()):
@@ -66,6 +70,11 @@ class COMPSsContext(object):
         shutil.rmtree(ContextBase.app_folder)
 
     def start_monitor(self):
+        """
+        Start a web service monitor that informs the environment current status.
+        The process will be shown in http://127.0.0.1:58227/.
+        :return:
+        """
         ContextBase.start_monitor()
         return self
 
@@ -93,11 +102,23 @@ class COMPSsContext(object):
         return self
 
     def set_log(self, enabled=True):
+        """
+        Set the log level.
+
+        :param enabled: True to debug, False to off.
+        :return:
+        """
         ContextBase.DEBUG = enabled
         return self
 
     @staticmethod
     def context_status():
+        """
+        Generates a DAG (in dot file) and some information on screen about
+        the status process.
+
+        :return:
+        """
         table = ContextBase.gen_status()
         t = PrettyTable(['Metric', 'Value'])
         for row in table:
@@ -147,7 +168,6 @@ class COMPSsContext(object):
         # noinspection PyUnresolvedReferences
         """
         Import a previous Pandas DataFrame list into DDF abstraction.
-        Replace old data if DDF is not empty.
 
         :param df_list: DataFrame input
         :param parquet: if data is saved as list of parquet files
