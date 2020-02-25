@@ -51,7 +51,6 @@ class ContextBase(object):
 
      - name: task name;
      - status: WAIT, COMPLETED, PERSISTED
-     - parent: a list with its parents uuid;
      - output: number of output;
      - input: number of input;
      - optimization: Currently, 'serial', 'other' or 'last'.
@@ -100,10 +99,13 @@ class ContextBase(object):
     def plot_graph():
 
         for k, _ in ContextBase.dag.nodes(data=True):
+            # TODO: unify the color system plot with monitor
             status = ContextBase.catalog_tasks[k].get('status',
                                                       ContextBase.STATUS_WAIT)
+            name = ContextBase.catalog_tasks[k].get('name', '')
             ContextBase.dag.nodes[k]['style'] = 'filled'
-            if ContextBase.dag.nodes[k]['label'] == 'init':
+            ContextBase.dag.nodes[k]['label'] = name
+            if name == 'init':
                 color = 'black'
                 ContextBase.dag.nodes[k]['style'] = 'solid'
             elif status == ContextBase.STATUS_DELETED:
@@ -126,24 +128,6 @@ class ContextBase(object):
     def start_monitor():
         from ddf_library.bases.monitor.monitor import Monitor
         ContextBase.monitor = Monitor()
-
-    def create_dag(self, specials=None):
-        """
-        Create a DAG
-        :return: networkx directed Graph
-        """
-
-        if specials is None:
-            specials = [k for k in self.catalog_tasks]
-
-        for t in self.catalog_tasks:
-            parents = self.get_task_parents(t)
-            if t in specials:
-                self.dag.add_node(t, label=self.get_task_name(t))
-                for p in parents:
-                    if p in specials:
-                        self.dag.add_node(p, label=self.get_task_name(p))
-                        self.dag.add_edge(p, t)
 
     def check_action(self, uuid_task):
         return self.catalog_tasks[uuid_task]['name'] in ['save', 'sync']
@@ -175,7 +159,7 @@ class ContextBase(object):
             self.completed_tasks.append(uuid_task)
 
     def get_task_parents(self, uuid_task):
-        return self.catalog_tasks[uuid_task].get('parent', [])
+        return [i for i, o in self.dag.in_edges(uuid_task)]
 
     def get_n_input(self, uuid_task):
         return self.catalog_tasks[uuid_task]['input']
@@ -263,7 +247,7 @@ class ContextBase(object):
         :param lineage: the current DDF state to be executed
         """
 
-        self.create_dag(lineage)
+        # self.create_dag(lineage)
         lineage = self.check_pointer(lineage)
         # all DELETED task are now waiting a new result
         self.update_status(lineage, self.STATUS_WAIT)
@@ -276,6 +260,7 @@ class ContextBase(object):
         for i_task, current_task in enumerate(lineage):
 
             if jump == 0:
+
                 id_parents = self.get_task_parents(current_task)
                 inputs = self.get_input_data(id_parents)
                 opt_type = self.get_task_opt_type(current_task)
@@ -718,7 +703,6 @@ class ContextBase(object):
             'optimization': opt,
             'function': function,
             'result': result,
-            'parent': parent,
             'output': n_output,
             'input': n_input,
             'info': info,
@@ -735,6 +719,10 @@ class ContextBase(object):
         if status == ContextBase.STATUS_COMPLETED and name != 'init':
             ContextBase.completed_tasks.append(new_state_uuid)
 
+        ContextBase.dag.add_node(new_state_uuid)
+        for p in parent:
+            ContextBase.dag.add_edge(p, new_state_uuid)
+
         return new_state_uuid
 
     @staticmethod
@@ -748,5 +736,6 @@ class ContextBase(object):
         """
         for uuid in siblings:
             if uuid not in ContextBase.catalog_tasks:
-                raise Exception('uuid "" not in catalog_tasks'.format(uuid[:8]))
+                raise Exception('uuid "{}" not in '
+                                'catalog_tasks'.format(uuid[:8]))
             ContextBase.catalog_tasks[uuid]['sibling'] = siblings

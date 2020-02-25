@@ -147,8 +147,8 @@ def etl():
         raise Exception('Error in etl_test_6b')
     log("etl_test_7b - OK")
 
-    # import time
-    # time.sleep(5)
+    import time
+    time.sleep(5)
     cc.context_status()
     # cc.show_tasks()
     cc.stop()
