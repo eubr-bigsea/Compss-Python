@@ -8,14 +8,14 @@ __email__ = "lucasmsp@gmail.com"
 from ddf_library.utils import generate_info, create_stage_files, \
     save_stage_file
 
-import shapefile
+from shapefile import Reader
 from io import BytesIO
 import pandas as pd
 import numpy as np
 import time
 
 
-def read_shapefile(settings, nfrag):
+def read_shapefile_stage_1(settings, nfrag):
     """
     Reads a shapefile using the shp and dbf file.
 
@@ -35,13 +35,87 @@ def read_shapefile(settings, nfrag):
     .. note:: pip install pyshp
     """
     t1 = time.time()
+    polygon = settings.get('polygon', 'points')
+    header = settings.get('attributes', [])
+    lat_long = settings.get('lat_long', True)
+
+    # importing to shapefile object
+    shp_object = _read(settings)
+
+    fields = {}  # column name: position
+    for i, f in enumerate(shp_object.fields):
+        fields[f[0]] = i
+    del fields['DeletionFlag']
+
+    if len(header) == 0:
+        header = [f for f in fields]
+    if polygon in header:
+        header.remove(polygon)
+
+    # position of each selected field
+    fields_idx = [fields[f] for f in header]
+
+    size_shape = len(shp_object)
+    parts_range, cum_range = _generate_distribution2(size_shape, nfrag)
+
+    # the geometry do not have index to be used in the read stage, so, we canot
+    # distribute this task to other workers.
+    data_points = []
+    if lat_long:
+        x, y = 0, 1
+    else:
+        x, y = 1, 0
+
+    for i, sector in enumerate(shp_object.iterShapes()):
+        points = []
+        for point in sector.points:
+            a, b = point[y], point[x]
+            points.append([a, b])
+        data_points.append(points)
+
+    geo_data = pd.DataFrame()
+    geo_data[polygon] = data_points
+
+    geo_data = np.array_split(geo_data, cum_range)
+    output_files = create_stage_files(nfrag)
+    for g, o in zip(geo_data, output_files):
+        save_stage_file(o, g)
+
+    settings['parts_range'] = parts_range
+    settings['fields_idx'] = fields_idx
+    settings['header'] = header
+
+    t2 = time.time()
+    print('[INFO] - Time to process `read_shapefile_stage_1`: {:.0f} seconds'
+          .format(t2 - t1))
+
+    return output_files, None, settings
+
+
+def _generate_distribution2(n_rows, nfrag):
+    """Data is divided among the partitions."""
+
+    size = n_rows / nfrag
+    size = int(np.ceil(size))
+    sizes = [size for _ in range(nfrag)]
+
+    i = 0
+    while sum(sizes) > n_rows:
+        i += 1
+        sizes[i % nfrag] -= 1
+
+    cum_range = np.array(sizes, dtype=np.intp).cumsum().tolist()
+    divs = [0] + cum_range
+    sizes = [0] * nfrag
+    for f in range(nfrag):
+        sizes[f] = [divs[f], divs[f+1]]
+    return sizes, cum_range
+
+
+def _read(settings):
     storage = settings.get('storage', 'file')
     shp_path = settings['shp_path']
     dbf_path = settings['dbf_path']
-
-    polygon = settings.get('polygon', 'points')
-    lat_long = settings.get('lat_long', True)
-    header = settings.get('attributes', [])
 
     if storage == 'hdfs':
 
@@ -64,59 +138,76 @@ def read_shapefile(settings, nfrag):
         shp_io = shp_path
         dbf_io = dbf_path
 
+    shp_object = Reader(shp=shp_io, dbf=dbf_io)
+
+    return shp_object
+
+
+def read_shapefile_stage_2(df, settings):
+
+    polygon = settings.get('polygon', 'points')
+    header = settings.get('header')
+    frag = settings['id_frag']
+    fields_idx = settings['fields_idx']
+    idx_range = settings['parts_range'][frag]
+    t1 = time.time()
+
     # importing to shapefile object
-    shp_object = shapefile.Reader(shp=shp_io, dbf=dbf_io)
-    records = shp_object.records()
-    sectors = shp_object.shapeRecords()
+    shp_object = _read(settings)
 
-    fields = {}  # column name: position
-    for i, f in enumerate(shp_object.fields):
-        fields[f[0]] = i
-    del fields['DeletionFlag']
-
-    if len(header) == 0:
-        header = [f for f in fields]
-    if polygon in header:
-        header.remove(polygon)
-
-    # position of each selected field
-    fields_idx = [fields[f] for f in header]
+    records = _record_range(shp_object, idx_range[0], idx_range[1])
 
     data = []
-    data_points = []
-    for i, sector in enumerate(sectors):
+    for r in records:
         attributes = []
-        r = records[i]
         for t in fields_idx:
-             attributes.append(r[t-1])
+            attributes.append(r[t - 1])
         data.append(attributes)
-
-        points = []
-        for point in sector.shape.points:
-            a, b = point[0], point[1]
-            if lat_long:
-                points.append([b, a])
-            else:
-                points.append([a, b])
-        data_points.append(points)
 
     geo_data = pd.DataFrame(data, columns=header)
     geo_data = geo_data.infer_objects()
     # forcing pandas to infer dtype
     # geo_data = convert_int64_columns(geo_data)
 
-    geo_data[polygon] = data_points
+    geo_data[polygon] = df[polygon]
 
-    info = []
-    geo_data = np.array_split(geo_data, nfrag)
-    output_files = create_stage_files(nfrag)
-
-    for f, (out, df) in enumerate(zip(output_files, geo_data)):
-        info.append(generate_info(df, f))
-        save_stage_file(out, df)
+    info = generate_info(geo_data, frag)
 
     t2 = time.time()
-    print('[INFO] - Time to process `read_shapefile`: {:.0f} seconds'
+    print('[INFO] - Time to process `read_shapefile_stage_1`: {:.0f} seconds'
           .format(t2 - t1))
-    return output_files, info
+    return geo_data, info
 
+
+def _record_range(shp_object, id_start, id_end):
+    """Returns records in a dbf file."""
+    if shp_object.numRecords is None:
+        shp_object._Reader__dbfHeader()
+    records = []
+    f = shp_object._Reader__getFileObj(shp_object.dbf)
+    f.seek(shp_object._Reader__dbfHdrLength)
+    for i in range(id_start, id_end):
+        r = shp_object._Reader__record(oid=i)
+        if r:
+            records.append(r)
+    return records
+
+
+def _shape_range(shp_object, id_start, id_end):
+    """Returns a shape object for a shape in the the geometry
+    record file."""
+    shp = shp_object._Reader__getFileObj(shp_object.shp)
+    id_start = shp_object._Reader__restrictIndex(id_start)
+
+    shp.seek(0, 2)
+    shpLength = shp.tell()
+    shp.seek(100)
+    shapes = []
+    idx = 0
+    while shp.tell() < shpLength:
+        if id_start >= idx < id_end:
+            shapes.append(shp.__shape())
+        elif id_end == idx:
+            break
+
+    return shapes

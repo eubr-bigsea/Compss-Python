@@ -65,6 +65,45 @@ class DDF(DDFSketch):
         """
         return self.persist()
 
+    def crst_transform(self, lat_col, lon_col, src_epsg, dst_epsg,
+                       lat_alias=None, lon_alias=None):
+        # noinspection PyUnresolvedReferences
+        """
+        Given a source EPSG code, and target EPSG code, convert the Spatial
+        Reference System / Coordinate Reference System.
+
+        :param lat_col: Latitude column name;
+        :param lon_col: Longitude column name;
+        :param src_epsg: Coordinate Reference System used in the source points;
+        :param dst_epsg: Target coordinate Reference System;
+        :param lat_alias: Latitude column alias (default, replace the input);
+        :param lon_alias: Longitude column alias (default, replace the input);
+
+        :return: DDF
+
+        :Example:
+
+        >>> ddf1.crst_transform('latitude', 'longitude',
+        >>>                     src_epsg=4326, dst_epsg=32633)
+        """
+        settings = {'lat_col': lat_col, 'lon_col': lon_col,
+                    'src_epsg': src_epsg, 'dst_epsg': dst_epsg,
+                    'lat_alias': lat_alias, 'lon_alias': lon_alias}
+
+        from ddf_library.functions.geo import crst_transform
+
+        def task_crst_transform(df, params):
+            return crst_transform(df, params)
+
+        new_state_uuid = ContextBase \
+            .ddf_add_task('crst_transform',
+                          opt=self.OPT_SERIAL,
+                          function=[task_crst_transform, settings],
+                          parent=[self.last_uuid],
+                          info=True)
+
+        return DDF(task_list=self.task_list, last_uuid=new_state_uuid)
+
     def num_of_partitions(self):
         # noinspection PyUnresolvedReferences
         """

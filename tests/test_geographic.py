@@ -14,8 +14,8 @@ def read_shapefile(cc):
                         dbf_path='hdfs://localhost:9000/pp/41CURITI.dbf')\
         .select(['points', 'NOMEMESO', 'ID'])
 
-    ddf1.show()
-    print(ddf1.schema())
+    # ddf1.show()
+    # print(ddf1.schema())
     return ddf1
 
 

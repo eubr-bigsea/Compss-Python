@@ -108,7 +108,7 @@ from ddf_library.context import COMPSsContext
 
 cc = COMPSsContext()
 
-ddf1 = cc.parallelize('hdfs://localhost:9000/titanic.csv', num_of_parts=4)\
+ddf1 = cc.read.csv('hdfs://localhost:9000/titanic.csv', num_of_parts=4)\
     .select(['Sex', 'Age', 'Survived'])\
     .dropna(['Sex', 'Age'], mode='REMOVE_ROW')\
     .replace({0: 'No', 1: 'Yes'}, subset=['Survived']).cache()
