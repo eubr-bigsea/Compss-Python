@@ -6,13 +6,34 @@ __email__ = "lucasmsp@gmail.com"
 
 
 from ddf_library.utils import generate_info, create_stage_files, \
-    save_stage_file
+    save_stage_file, read_stage_file
 
 from shapefile import Reader
 from io import BytesIO
 import pandas as pd
 import numpy as np
 import time
+
+
+def read_shapefile_all(settings, nfrag):
+    # This method will be executed only if shapefile is in common file system.
+
+    stage1_result, _, settings = read_shapefile_stage_1(settings, nfrag)
+
+    outputs = create_stage_files(nfrag)
+    infos = []
+    for f, out in enumerate(stage1_result):
+        param = settings.copy()
+        param['id_frag'] = f
+        df = read_stage_file(out)
+        geo_data, info = read_shapefile_stage_2(df, param)
+        save_stage_file(outputs[f], geo_data)
+        infos.append(info)
+
+    from ddf_library.utils import delete_result
+    delete_result(stage1_result)
+
+    return outputs, infos
 
 
 def read_shapefile_stage_1(settings, nfrag):
@@ -34,6 +55,8 @@ def read_shapefile_stage_1(settings, nfrag):
 
     .. note:: pip install pyshp
     """
+    # This method will be executed on master node because the input file is
+    # a binary file, and cannot be splitted.
     t1 = time.time()
     polygon = settings.get('polygon', 'points')
     header = settings.get('attributes', [])
@@ -135,8 +158,8 @@ def _read(settings):
         shp_io = BytesIO(shp_path)
         dbf_io = BytesIO(dbf_path)
     else:
-        shp_io = shp_path
-        dbf_io = dbf_path
+        shp_io = open(shp_path, "rb")
+        dbf_io = open(dbf_path, "rb")
 
     shp_object = Reader(shp=shp_io, dbf=dbf_io)
 
@@ -174,7 +197,7 @@ def read_shapefile_stage_2(df, settings):
     info = generate_info(geo_data, frag)
 
     t2 = time.time()
-    print('[INFO] - Time to process `read_shapefile_stage_1`: {:.0f} seconds'
+    print('[INFO] - Time to process `read_shapefile_stage_2`: {:.0f} seconds'
           .format(t2 - t1))
     return geo_data, info
 

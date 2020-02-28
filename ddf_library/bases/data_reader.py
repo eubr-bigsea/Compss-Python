@@ -142,35 +142,54 @@ class DataReader(object):
         settings['schema'] = _check_schema(schema)
 
         from ddf_library.functions.geo import read_shapefile_stage_1, \
-            read_shapefile_stage_2
+            read_shapefile_stage_2, read_shapefile_all
         from ddf_library.bases.context_base import ContextBase
         from ddf_library.ddf import DDF
 
         def task_read_shapefile_stage_1(_, params):
             return read_shapefile_stage_1(params, num_of_parts)
 
-        def task_read_shapefile_stage_2(df, params):
-            return read_shapefile_stage_2(df, params)
-
         first_uuid = ContextBase.create_init()
-        last_state_uuid = ContextBase\
-            .ddf_add_task('read.read_shapefile_stage_1',
-                          status=ContextBase.STATUS_WAIT,
-                          opt=ContextBase.OPT_LAST,
-                          n_input=0,
-                          parent=[first_uuid],
-                          function=[task_read_shapefile_stage_1, settings])
 
-        new_state_uuid = ContextBase \
-            .ddf_add_task('read.read_shapefile_stage_2',
-                          status=ContextBase.STATUS_WAIT,
-                          opt=ContextBase.OPT_SERIAL,
-                          n_input=0,
-                          parent=[last_state_uuid],
-                          function=[task_read_shapefile_stage_2, None])
+        if host == 'hdfs':
 
-        return DDF(task_list=[first_uuid, last_state_uuid],
-                   last_uuid=new_state_uuid)
+            def task_read_shapefile_stage_2(df, params):
+                return read_shapefile_stage_2(df, params)
+
+            last_state_uuid = ContextBase\
+                .ddf_add_task('read.read_shapefile_stage_1',
+                              status=ContextBase.STATUS_WAIT,
+                              opt=ContextBase.OPT_LAST,
+                              n_input=0,
+                              parent=[first_uuid],
+                              function=[task_read_shapefile_stage_1, settings])
+
+            new_state_uuid = ContextBase \
+                .ddf_add_task('read.read_shapefile_stage_2',
+                              status=ContextBase.STATUS_WAIT,
+                              opt=ContextBase.OPT_SERIAL,
+                              n_input=0,
+                              parent=[last_state_uuid],
+                              function=[task_read_shapefile_stage_2, None])
+
+            return DDF(task_list=[first_uuid, last_state_uuid],
+                       last_uuid=new_state_uuid)
+
+        else:
+
+            result, info = read_shapefile_all(settings, num_of_parts)
+
+            new_state_uuid = ContextBase \
+                .ddf_add_task('read.read_shapefile_stage',
+                              status=ContextBase.STATUS_COMPLETED,
+                              opt=ContextBase.OPT_OTHER,
+                              result=result,
+                              info_data=info,
+                              n_input=0,
+                              function=None,
+                              parent=[first_uuid])
+
+            return DDF(task_list=[first_uuid], last_uuid=new_state_uuid)
 
 
 def _check_schema(schema):
