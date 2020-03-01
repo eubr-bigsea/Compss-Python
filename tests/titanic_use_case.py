@@ -49,7 +49,7 @@ def use_case2():
     df = pd.read_csv('./titanic.csv', sep='\t')
 
     from ddf_library.columns import col, udf
-    from ddf_library.types import IntegerType
+    from ddf_library.types import DataType
 
     def title_checker(name):
         titles = {"Mr.": 1, "Miss": 2, "Mrs.": 3, "Master": 4, "Rare": 5}
@@ -58,7 +58,7 @@ def use_case2():
                 return titles[title]
         return -1
 
-    title_checker_udf = udf(title_checker, IntegerType, col('Name'))
+    title_checker_udf = udf(title_checker, DataType.INT, col('Name'))
 
     def age_categorizer(age):
         category = 7
@@ -79,7 +79,7 @@ def use_case2():
 
         return category
 
-    age_categorizer_udf = udf(age_categorizer, IntegerType, col('Age'))
+    age_categorizer_udf = udf(age_categorizer, DataType.INT, col('Age'))
 
     def fare_categorizer(fare):
         category = 5
@@ -95,7 +95,7 @@ def use_case2():
             category = 4
         return category
 
-    fare_categorizer_udf = udf(fare_categorizer, IntegerType, col('Fare'))
+    fare_categorizer_udf = udf(fare_categorizer, DataType.INT, col('Fare'))
 
     """
     First of all, we need to remove some columns (Passenger id, Cabin number 

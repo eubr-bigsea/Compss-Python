@@ -8,7 +8,7 @@ __email__ = "lucasmsp@gmail.com"
 __all__ = ['col', 'udf']
 
 
-from ddf_library.types import DateType, _converted_types
+from ddf_library.types import DataType, _converted_types
 import pandas as pd
 
 
@@ -51,7 +51,7 @@ class Column(object):
             with_column_cast
         settings = dict()
         settings['attributes'] = [self.column]
-        settings['cast'] = [DateType]
+        settings['cast'] = [DataType.DATE]
         settings['datetime_format'] = mask
 
         operation = [with_column_cast, settings.copy()]

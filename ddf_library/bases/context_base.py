@@ -97,25 +97,20 @@ class ContextBase(object):
 
     @staticmethod
     def plot_graph():
+        from ddf_library.bases.monitor.monitor import select_colors
 
         for k, _ in ContextBase.dag.nodes(data=True):
-            # TODO: unify the color system plot with monitor
             status = ContextBase.catalog_tasks[k].get('status',
                                                       ContextBase.STATUS_WAIT)
             name = ContextBase.catalog_tasks[k].get('name', '')
             ContextBase.dag.nodes[k]['style'] = 'filled'
             ContextBase.dag.nodes[k]['label'] = name
+
+            color = select_colors(status)
+
             if name == 'init':
                 color = 'black'
                 ContextBase.dag.nodes[k]['style'] = 'solid'
-            elif status == ContextBase.STATUS_DELETED:
-                color = 'lightgray'
-            elif status == ContextBase.STATUS_WAIT:
-                color = 'yellow'
-            elif status == ContextBase.STATUS_PERSISTED:
-                color = 'forestgreen'
-            else:  # completed
-                color = 'lightblue'
 
             ContextBase.dag.nodes[k]['color'] = color
 

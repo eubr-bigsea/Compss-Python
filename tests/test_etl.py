@@ -34,11 +34,11 @@ def etl():
     data = pd.read_csv(url, usecols=[0, 1, 2, 3, 4, 8], names=cols)[:n_dataset]
 
     from ddf_library.columns import col, udf
-    from ddf_library.types import DecimalType, StringType
+    from ddf_library.types import DataType
 
     def f1(x):
         return -42 if x > 0.09 else x
-    f1_udf = udf(f1, DecimalType, col('height'))
+    f1_udf = udf(f1, DataType.DECIMAL, col('height'))
 
     data1 = cc.parallelize(data, 4).map(f1_udf, 'height_nan').cache()
 
@@ -46,7 +46,7 @@ def etl():
         t = '.{}'.format(x)
         return t
 
-    f2_udf = udf(f2, StringType, col('sex'))
+    f2_udf = udf(f2, DataType.STRING, col('sex'))
     data2 = data1.map(f2_udf, 'sex')
 
     log("etl_test_1: Multiple caches")
@@ -566,16 +566,16 @@ def map():
     data['date'] = ['30/04/17 1{}:46:5{}.000000'.format(i, i)
                     for i in range(10)]
 
-    from ddf_library.types import DecimalType, IntegerType
+    from ddf_library.types import DataType
     from ddf_library.columns import col, udf
 
     def f3(x):
         return 7 if x > 5 else x
 
-    cat = udf(f3, IntegerType, col('a'))
+    cat = udf(f3, DataType.INT, col('a'))
     cc = COMPSsContext()
     ddf_1 = cc.parallelize(data, 4) \
-        .map(col('b').cast(DecimalType), 'd')\
+        .map(col('b').cast(DataType.DECIMAL), 'd')\
         .map(cat, 'a')\
         .map(col('date').to_datetime('dd/MM/yy HH:mm:ss.SSSSSS'), 'e')\
         .map(col('e').year(), 'f')
@@ -593,12 +593,12 @@ def map():
 
 def read_data_single_fs():
     print("\n|-------- Read Data from a single file on FS --------|\n")
-    from ddf_library.types import DecimalType, StringType
+    from ddf_library.types import DataType
     cc = COMPSsContext()
-    dtypes = {'sepal_length': DecimalType, 'sepal_width': DecimalType,
-              'petal_length': DecimalType, 'petal_width': DecimalType,
-              'class': StringType}
-    ddf_1 = cc.read.csv('file://./iris-dataset.csv', header=True,
+    dtypes = {'sepal_length': DataType.DECIMAL, 'sepal_width': DataType.DECIMAL,
+              'petal_length': DataType.DECIMAL, 'petal_width': DataType.DECIMAL,
+              'class': DataType.STRING}
+    ddf_1 = cc.read.csv('file://./datasets/iris-dataset.csv', header=True,
                         sep=',', schema=dtypes)\
         .select(['class', 'sepal_length'])\
         #.save.csv('file:///tmp/read_data_single_fs')
@@ -611,12 +611,12 @@ def read_data_single_fs():
 
 def read_data_multi_fs():
     print("\n|-------- Read Data from files in a folder on FS --------|\n")
-    from ddf_library.types import DecimalType, StringType
+    from ddf_library.types import DataType
     cc = COMPSsContext()
-    dtypes = {'sepal_length': DecimalType, 'sepal_width': DecimalType,
-              'petal_length': DecimalType, 'petal_width': DecimalType,
-              'class': StringType}
-    ddf_1 = cc.read.csv('file://./iris_dataset_folder/', header=True,
+    dtypes = {'sepal_length': DataType.DECIMAL, 'sepal_width': DataType.DECIMAL,
+              'petal_length': DataType.DECIMAL, 'petal_width': DataType.DECIMAL,
+              'class': DataType.STRING}
+    ddf_1 = cc.read.csv('file://./datasets/iris_dataset_folder/', header=True,
                         sep=',', schema=dtypes)\
         .select(['class', 'sepal_width'])\
         # .save.csv('file:///tmp/read_data_multi_fs')
@@ -629,11 +629,11 @@ def read_data_multi_fs():
 
 def read_data_single_hdfs():
     print("\n|-------- Read Data From a single file on HDFS --------|\n")
-    from ddf_library.types import DecimalType, StringType
+    from ddf_library.types import DataType
     cc = COMPSsContext()
-    dtypes = {'sepal_length': DecimalType, 'sepal_width': DecimalType,
-              'petal_length': DecimalType, 'petal_width': DecimalType,
-              'class': StringType}
+    dtypes = {'sepal_length': DataType.DECIMAL, 'sepal_width': DataType.DECIMAL,
+              'petal_length': DataType.DECIMAL, 'petal_width': DataType.DECIMAL,
+              'class': DataType.STRING}
     ddf_1 = cc.read.csv('hdfs://localhost:9000/iris-dataset.csv',
                            header=True, sep=',', schema=dtypes)\
         .select(['sepal_length'])
@@ -647,11 +647,11 @@ def read_data_single_hdfs():
 
 def read_data_multi_hdfs():
     print("\n|-------- Read Data from files in a folder on HDFS --------|\n")
-    from ddf_library.types import DecimalType, StringType
+    from ddf_library.types import DataType
     cc = COMPSsContext()
-    dtypes = {'sepal_length': DecimalType, 'sepal_width': DecimalType,
-              'petal_length': DecimalType, 'petal_width': DecimalType,
-              'class': StringType}
+    dtypes = {'sepal_length': DataType.DECIMAL, 'sepal_width': DataType.DECIMAL,
+              'petal_length': DataType.DECIMAL, 'petal_width': DataType.DECIMAL,
+              'class': DataType.STRING}
     ddf_1 = cc.read.csv('hdfs://localhost:9000/iris_dataset_folder/',
                            header=True, sep=',', schema=dtypes)\
         .select(['class', 'sepal_width', 'sepal_length'])

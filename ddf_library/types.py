@@ -7,19 +7,21 @@ __email__ = "lucasmsp@gmail.com"
 import datetime
 import numpy as np
 
-IntegerType = 'integer'
-StringType = 'string'
-DecimalType = 'decimal'
-TimestampType = 'date/time'
-DateType = 'date'
-ArrayType = 'array'
+
+class DataType(object):
+    INT = 1
+    STRING = 2
+    DECIMAL = 3
+    TIMESTAMP = 4
+    DATE = 5
+    ARRAY = 6
 
 
 _converted_types = {
-    IntegerType: int,
-    DecimalType: float,
-    ArrayType: list,
-    StringType: np.dtype('O'),
-    TimestampType: datetime.datetime,
-    DateType: datetime.date,
+    DataType.INT: int,
+    DataType.DECIMAL: float,
+    DataType.ARRAY: list,
+    DataType.STRING: np.dtype('O'),  #TODO: check string type
+    DataType.TIMESTAMP: datetime.datetime,
+    DataType.DATE: datetime.date,
 }

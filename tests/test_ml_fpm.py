@@ -13,12 +13,12 @@ def ml_fpm_fpgrowth():
                          ['1,2']], columns=['col_0'])
 
     from ddf_library.columns import col, udf
-    from ddf_library.types import ArrayType
+    from ddf_library.types import DataType
 
     def f1(x):
         return x.split(',')
     cc = COMPSsContext()
-    f1_udf = udf(f1, ArrayType, col('col_0'))
+    f1_udf = udf(f1, DataType.ARRAY, col('col_0'))
     data_set = cc \
         .parallelize(data, 2) \
         .map(f1_udf, 'col_0')
@@ -26,7 +26,7 @@ def ml_fpm_fpgrowth():
     def f2(x):
         return x.split(' ')[:-1]
 
-    f2_udf = udf(f2, ArrayType, col('col_0'))
+    f2_udf = udf(f2, DataType.ARRAY, col('col_0'))
 
     # data_set = DDF()\
     #     .read.csv('hdfs://localhost:9000/transactions.csv',

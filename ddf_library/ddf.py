@@ -1156,8 +1156,8 @@ class DDF(DDFSketch):
         :Example:
 
         >>> from ddf_library.columns import col
-        >>> from ddf_library.types import IntegerType
-        >>> ddf1.map(col('col_0').cast(IntegerType), 'col_0_new')
+        >>> from ddf_library.types import DataType
+        >>> ddf1.map(col('col_0').cast(DataType.INT), 'col_0_new')
         """
         settings = {'function': f, 'alias': alias}
 

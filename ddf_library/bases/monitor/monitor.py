@@ -80,6 +80,18 @@ def serve_static(path):
     return send_from_directory(static_folder, path)
 
 
+def select_colors(status):
+    if status == 'DELETED':
+        color = 'lightgray'
+    elif status == 'WAIT':
+        color = 'yellow'
+    elif status == 'PERSISTED':
+        color = 'forestgreen'
+    else:  # completed
+        color = 'lightblue'
+    return color
+
+
 def gen_data(dag, catalog_tasks, msg_status, title):
 
     pos = graphviz_layout(dag, prog='dot')
@@ -99,15 +111,8 @@ def gen_data(dag, catalog_tasks, msg_status, title):
         name = catalog_tasks[node]['name']
         node_label.append(name)
 
-        if status == 'DELETED':
-            color = 'lightgray'
-        elif status == 'WAIT':
-            color = 'yellow'
-        elif status == 'PERSISTED':
-            color = 'forestgreen'
-        elif status == 'COMPLETED':
-            color = 'lightblue'
-        else:
+        color = select_colors(status)
+        if name == 'init':
             color = 'white'
         colors.append(color)
 

@@ -6,7 +6,7 @@ __author__ = "Lucas Miguel S Ponce"
 __email__ = "lucasmsp@gmail.com"
 
 from ddf_library.utils import generate_info
-from ddf_library.types import *
+from ddf_library.types import DataType
 
 import pandas as pd
 
@@ -41,7 +41,6 @@ def create_settings_cast(**settings):
     attributes = settings['attributes']
     new_data_type = settings['cast']
     alias = settings.get('alias', None)
-    allowed = [IntegerType, StringType, DateType, DecimalType, TimestampType]
 
     if not isinstance(attributes, list):
         attributes = [attributes]
@@ -63,7 +62,7 @@ def create_settings_cast(**settings):
                                                        new_data_type, 'keep')
 
     for t in new_data_type:
-        if t not in allowed:
+        if not 1 <= t <= 6:
             raise Exception("Type '{}' is not valid.".format(t))
 
     settings['attributes'] = attributes
@@ -109,18 +108,18 @@ def with_column_cast(data, settings):
     # first, change the data types.
     for att, new_col, dtype in zip(attributes, alias, new_data_type):
         dtype = dtype.lower()
-        if dtype == IntegerType:
+        if dtype == DataType.INT:
             data[new_col] = data[att].astype(int)
-        elif dtype == StringType:
+        elif dtype == DataType.STRING:
             data[new_col] = data[att].astype(str)
-        elif dtype == DecimalType:
+        elif dtype == DataType.DECIMAL:
             data[new_col] = \
                 pd.to_numeric(data[att], downcast='float', errors='coerce')
-        elif dtype == DateType:
+        elif dtype == DataType.DATE:
             data[new_col] = pd.to_datetime(data[att],
                                            infer_datetime_format=True,
-                                           format=datetime_format).dt.date
-        elif dtype == TimestampType:
+                                           format=datetime_format).dt.date  #TODO
+        elif dtype == DataType.TIMESTAMP:
             data[new_col] = pd.to_datetime(data[att],
                                            infer_datetime_format=True,
                                            format=datetime_format)
