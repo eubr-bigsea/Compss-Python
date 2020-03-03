@@ -128,7 +128,7 @@ class CountVectorizer(ModelDDF):
                           function=[task_transform_bow, settings],
                           parent=[data.last_uuid])
 
-        return DDF(task_list=data.task_list, last_uuid=uuid_key)
+        return DDF(last_uuid=uuid_key)
 
 
 @task(returns=dict, data_input=FILE_IN)

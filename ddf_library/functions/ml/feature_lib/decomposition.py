@@ -126,7 +126,7 @@ class PCA(ModelDDF):
                           function=[transform_pca, settings],
                           parent=[data.last_uuid])
 
-        return DDF(task_list=data.task_list, last_uuid=uuid_key)
+        return DDF(last_uuid=uuid_key)
 
 
 @task(returns=1, data_input=FILE_IN)

@@ -101,7 +101,7 @@ class FPGrowth(ModelDDF):
                           parent=[new_data.last_uuid],
                           info_data=info)
 
-        return DDF(task_list=new_data.task_list, last_uuid=uuid_key)
+        return DDF(last_uuid=uuid_key)
 
 
 @task(returns=1, data_input=FILE_IN)

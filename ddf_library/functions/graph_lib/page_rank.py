@@ -115,7 +115,7 @@ class PageRank(ModelDDF):
                           result=result,
                           function=[self.transform, data])
 
-        return DDF(task_list=tmp.task_list, last_uuid=new_state_uuid)
+        return DDF(last_uuid=new_state_uuid)
 
 
 @task(returns=3, data=FILE_IN)

@@ -131,5 +131,5 @@ def _apply_datasaver(format_file, kwargs, task_list, last_uuid):
                           parent=[last_uuid],
                           function=[task_save, settings])
 
-        DDF(task_list=task_list,
-            last_uuid=new_state_uuid)._run_compss_context()
+        tmp = DDF(last_uuid=new_state_uuid)
+        ContextBase().run_workflow(tmp.last_uuid)

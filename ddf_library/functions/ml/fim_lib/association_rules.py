@@ -115,7 +115,7 @@ class AssociationRules(ModelDDF): # TODO
                           parent=[tmp.last_uuid],
                           info_data=info)
 
-        return DDF(task_list=tmp.task_list, last_uuid=uuid_key)
+        return DDF(last_uuid=uuid_key)
 
 
 @task(returns=4, data_input=FILE_IN)

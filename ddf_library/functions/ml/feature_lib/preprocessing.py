@@ -71,7 +71,7 @@ class Binarizer(ModelDDF):
                           function=[task_binarizer, settings],
                           parent=[data.last_uuid])
 
-        return DDF(task_list=data.task_list, last_uuid=uuid_key)
+        return DDF(last_uuid=uuid_key)
 
 
 def _binarizer(df, settings):

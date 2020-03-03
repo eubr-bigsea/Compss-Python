@@ -117,7 +117,7 @@ class GDRegressor(ModelDDF):
                           function=[task_gd_regressor, settings],
                           parent=[data.last_uuid])
 
-        return DDF(task_list=data.task_list, last_uuid=uuid_key)
+        return DDF(last_uuid=uuid_key)
 
 
 def _gradient_descent(data, features, label, alpha, max_iter, tol, nfrag):

@@ -183,30 +183,38 @@ class ContextBase(object):
 
         return task_and_operation
 
-    def check_pointer(self, lineage):
+    def check_pointer(self, last_node):
         """
         Generate a new lineage excluding the computed sub-flows.
 
-        :param lineage: a sorted list of tasks;
+        :param last_node: The last task that we want to compute.
         :return: a sorted list starting from previous results (if exists);
         """
+
+        lineage = list(nx.algorithms.topological_sort(self.dag))
+        idx = lineage.index(last_node)
+        lineage = lineage[0:idx+1]
+
         # check tasks with status different from STATUS_WAIT or STATUS_DELETED
         check_computed = [t for t in lineage
                           if self.get_task_status(t) not in
                           [self.STATUS_WAIT, self.STATUS_DELETED]]
 
-        # remove those tasks from the temporary dag
+        # remove those tasks from the temporary dag. we need remove those nodes
+        # by graph analyses because if we consider only the topological order
+        # we could remove non computed nodes (e.g., in case of join).
         dag = copy.deepcopy(self.dag)
         if len(check_computed) > 0:
             for n in check_computed:
                 dag.remove_node(n)
 
-        # retrieve all connected components where the
-        # last task (action) is inside
-        last_node = lineage[-1]
+        # when we cut the dag (previous code), we might generate multiple
+        # subgraphs. We are interested in a connected components where the
+        # last node is inside (that, by definition, will exist only one).
         cc = list(nx.connected_components(dag.to_undirected()))
         sub_graph = [c for c in cc if last_node in c][0]
 
+        # create the final lineage based on sub_graph
         reduced_list = [t for t in lineage if t in sub_graph]
         return reduced_list
 
@@ -232,18 +240,18 @@ class ContextBase(object):
                     ContextBase.catalog_tasks[uuid]['status'] = new_status
                     ContextBase.completed_tasks.append(uuid)
 
-    def run_workflow(self, lineage):
+    def run_workflow(self, last_task):
         """
         Find the flow of non executed tasks. This method is executed only when
         an action (show, save, cache, etc) is submitted. DDF have lazy
         evaluation system which means that tasks are not executed until a
         result is required (by an action task).
 
-        :param lineage: the current DDF state to be executed
+        :param last_task: the current DDF state to be executed
         """
 
         # self.create_dag(lineage)
-        lineage = self.check_pointer(lineage)
+        lineage = self.check_pointer(last_task)
         # all DELETED task are now waiting a new result
         self.update_status(lineage, self.STATUS_WAIT)
 
@@ -673,7 +681,7 @@ class ContextBase(object):
     @staticmethod
     def ddf_add_task(name, opt, function, parent, n_input=-1, n_output=1,
                      status='WAIT', result=None, info=False,
-                     info_data=None):
+                     info_data=None, expr=None):
         """
         Insert a DDF task in COMPSs Context catalog.
 
@@ -692,6 +700,10 @@ class ContextBase(object):
         if n_input < 0:
             n_input = len(parent)
 
+        if expr is None:
+            expr = {}
+        expr['name'] = name
+
         args_task = {
             'name': name,
             'status': status,
@@ -701,6 +713,7 @@ class ContextBase(object):
             'output': n_output,
             'input': n_input,
             'info': info,
+            'expr': expr  # TODO: remove or establish it
         }
 
         new_state_uuid = _gen_uuid()

@@ -172,8 +172,7 @@ class DataReader(object):
                               parent=[last_state_uuid],
                               function=[task_read_shapefile_stage_2, None])
 
-            return DDF(task_list=[first_uuid, last_state_uuid],
-                       last_uuid=new_state_uuid)
+            return DDF(last_uuid=new_state_uuid)
 
         else:
 
@@ -189,7 +188,7 @@ class DataReader(object):
                               function=None,
                               parent=[first_uuid])
 
-            return DDF(task_list=[first_uuid], last_uuid=new_state_uuid)
+            return DDF(last_uuid=new_state_uuid)
 
 
 def _check_schema(schema):
@@ -284,4 +283,4 @@ def _apply_datareader(format_file, kwargs):
                           parent=[first_uuid],
                           function=[task_read_hdfs, {}])
 
-    return DDF(task_list=[first_uuid], last_uuid=new_state_uuid)
+    return DDF(last_uuid=new_state_uuid)
