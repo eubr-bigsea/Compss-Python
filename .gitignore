@@ -19,7 +19,7 @@ __pycache__/
 *.iml
 
 # Ignore Sphinx files
-docs/build/doctrees
+./docs/build/doctrees
 
 
 # Distribution / packaging

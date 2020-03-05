@@ -31,25 +31,30 @@ class OPTGroup(object):
 class CatalogTask(object):
 
     dag = nx.DiGraph()
-    catalog_tasks = dict()
-    """
-    task_map: a dictionary to stores all following information about a task:
 
-     - name: task name;
-     - status: WAIT, COMPLETED, PERSISTED
-     - output: number of output;
-     - input: number of input;
-     - optimization: Currently, 'serial', 'other' or 'last'.
-     - function: a list with the function and its parameters;
-     - result: if status is COMPLETED, a dictionary with the results. The keys 
-         of this dictionary is index that represents the output (to handle with 
-         multiple outputs, like split task);
-     - n_input: a ordered list that informs the id key of its parent output
-    """
-    catalog_schemas = dict()
+    task_definitions = dict()
+    # A dictionary with static information about some operations:
+    #  - output: number of output;
+    #  - input: number of input;
+    #  - optimization: Currently, 'serial', 'other' or 'last'.
+    #  - info_condition: If task needs a parent schema;  # TODO
+
+    catalog_tasks = dict()
+    # task_map: a dictionary to stores all following information about a task:
+    #      - name: task name
+    #      - function: a list with the function and its parameters;
+    #      - status: WAIT, COMPLETED, PERSISTED
+    #      - result: if status is COMPLETED, a dictionary with the results.
+    #         The keys of this dictionary is index that represents the output
+    #         (to handle with multiple outputs, like split task);
+    #      - schema:
 
     # to speedup the searching for completed tasks:
     completed_tasks = list()
+
+    def add_definition(self, name, args):
+        if name not in self.task_definitions:
+            self.task_definitions[name] = args
 
     def clear(self):  # TODO
 
@@ -59,7 +64,7 @@ class CatalogTask(object):
             if check_serialization(data):
                 delete_result(data)
 
-        self.catalog_schemas = dict()
+        self.task_definitions = dict()
         self.catalog_tasks = dict()
         self.completed_tasks = list()
         self.dag = nx.DiGraph()
@@ -92,10 +97,10 @@ class CatalogTask(object):
         self.completed_tasks.append(uuid)
 
     def rm_completed(self, uuid):
-        # ContextBase.completed_tasks = \
-        #     list(filter(lambda a: a != id_task,
-        #                 ContextBase.completed_tasks))
-        self.completed_tasks.remove(uuid)
+        # to prevent multiple occurrences
+        self.completed_tasks = \
+            list(filter(lambda a: a != uuid,
+                        self.completed_tasks))
 
     def list_completed(self):
         return self.completed_tasks
@@ -104,13 +109,13 @@ class CatalogTask(object):
         return list(self.catalog_tasks)
 
     def get_schema(self, uuid):
-        return self.catalog_schemas.get(uuid, None)
+        return self.catalog_tasks[uuid].get('schema', None)
 
     def set_schema(self, uuid, schema):
-        self.catalog_schemas[uuid] = schema
+        self.catalog_tasks[uuid]['schema'] = schema
 
     def rm_schema(self, uuid):
-        self.catalog_schemas.pop(uuid, None)
+        self.catalog_tasks[uuid].pop('schema', None)
 
     def set_new_task(self, uuid_task, args):
         self.catalog_tasks[uuid_task] = args
@@ -119,8 +124,9 @@ class CatalogTask(object):
         return self.catalog_tasks[uuid_task].get('name', '')
 
     def get_task_opt_type(self, uuid_task):
-        return self.catalog_tasks[uuid_task].get('optimization',
-                                                 OPTGroup.OPT_OTHER)
+        name_task = self.get_task_name(uuid_task)
+        return self.task_definitions[name_task].get('optimization',
+                                                    OPTGroup.OPT_OTHER)
 
     def get_task_function(self, uuid_task):
         return self.catalog_tasks[uuid_task]['function']
@@ -158,7 +164,8 @@ class CatalogTask(object):
         return [i for i, o in self.dag.in_edges(uuid_task)]
 
     def get_n_input(self, uuid_task):
-        return self.catalog_tasks[uuid_task]['input']
+        name_task = self.get_task_name(uuid_task)
+        return self.task_definitions[name_task]['input']
 
     def get_task_sibling(self, uuid_task):
         return self.catalog_tasks[uuid_task].get('sibling', [uuid_task])
@@ -173,4 +180,5 @@ class CatalogTask(object):
         return [self.get_task_return(id_p) for id_p in id_parents]
 
     def get_info_condition(self, uuid_task):
-        return self.catalog_tasks[uuid_task].get('info', False)
+        name_task = self.get_task_name(uuid_task)
+        return self.task_definitions[name_task].get('info', False)

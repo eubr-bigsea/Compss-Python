@@ -647,27 +647,29 @@ class ContextBase(object):
         :param expr: Information used by DDF Optimizer;
         :return:
         """
-        if n_input < 0:
-            n_input = len(parent)
+
+        # Add information about the operation if operation is not cataloged yet
+        args_task = {
+            'optimization': opt,
+            'output': n_output,
+            'input': n_input if n_input >= 0 else len(parent),
+            'info': info,
+        }
+        ContextBase.catalog_tasks.add_definition(name, args_task)
 
         if expr is None:
             expr = {}
 
         if 'name' not in expr:
-            expr['name'] = name
+            expr['name'] = name  # Todo: change it in future
 
         args_task = {
             'name': name,
             'status': status,
-            'optimization': opt,
             'function': function,
             'result': result,
-            'output': n_output,
-            'input': n_input,
-            'info': info,
             'expr': expr  # TODO: remove or establish it
         }
-
         new_state_uuid = ContextBase.catalog_tasks.gen_new_uuid()
 
         ContextBase.catalog_tasks.set_new_task(new_state_uuid, args_task)

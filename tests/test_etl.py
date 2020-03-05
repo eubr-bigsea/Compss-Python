@@ -404,7 +404,9 @@ def flow_serial_only():
         .drop(['c'])\
         .select(['a', 'b', 'd'])\
         .select(['a', 'b']).to_df()
+
     print(ddf1)
+    cc.show_tasks()
     cc.stop()
 
 
