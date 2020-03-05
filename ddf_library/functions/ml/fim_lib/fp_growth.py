@@ -6,6 +6,7 @@ __author__ = "Lucas Miguel S Ponce"
 __email__ = "lucasmsp@gmail.com"
 
 from ddf_library.bases.context_base import ContextBase
+from ddf_library.bases.metadata import OPTGroup, Status
 
 from ddf_library.ddf import DDF
 from ddf_library.utils import generate_info, read_stage_file, \
@@ -94,8 +95,8 @@ class FPGrowth(ModelDDF):
 
         uuid_key = ContextBase\
             .ddf_add_task(self.name,
-                          status=self.STATUS_COMPLETED,
-                          opt=self.OPT_OTHER,
+                          status=Status.STATUS_COMPLETED,
+                          opt=OPTGroup.OPT_OTHER,
                           function=self.fit_transform,
                           result=result,
                           parent=[new_data.last_uuid],

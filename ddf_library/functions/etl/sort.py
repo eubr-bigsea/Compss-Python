@@ -37,13 +37,22 @@ def sort(data, settings):
 
 
 def sort_stage_1(data, settings):
+    """
+    :param data: input data;
+    :param settings: A dictionary with:
+     * columns = columns name used as keys;
+     * ascending = list with the order to sort;
+     * return_info = Used by kolmogorov_smirnov;
+     * only_key_columns = Used by kolmogorov_smirnov to return a
+      DataFrame with only the keys;
+    :return:
+    """
 
     nfrag = len(data)
     settings = preprocessing(settings)
     info = settings['info'][0]
-    # used by kolmogorov_smirnov
+
     return_info = settings.get('return_info', False)
-    # used by kolmogorov_smirnov to return a dataframe with only the keys
     only_key_columns = settings.get('only_key_columns', False)
 
     if nfrag > 1:

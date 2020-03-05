@@ -6,6 +6,7 @@ __author__ = "Lucas Miguel S Ponce"
 __email__ = "lucasmsp@gmail.com"
 
 from ddf_library.bases.context_base import ContextBase
+from ddf_library.bases.metadata import OPTGroup
 
 from ddf_library.ddf import DDF
 from ddf_library.bases.ddf_model import ModelDDF
@@ -116,7 +117,7 @@ class OrdinaryLeastSquares(ModelDDF):
             return _predict(df, params)
 
         uuid_key = ContextBase\
-            .ddf_add_task(self.name, opt=self.OPT_SERIAL,
+            .ddf_add_task(self.name, opt=OPTGroup.OPT_SERIAL,
                           function=[task_ols_regressor, settings],
                           parent=[data.last_uuid])
 

@@ -31,7 +31,8 @@ class GroupedDDF(DDF):
         self.last_uuid = ddf_var.last_uuid
         self.ddf_var = ddf_var
         self.last2 = ddf_var.task_list[-2]
-        self.parameters = ContextBase().get_task_function(self.last_uuid)[1]
+        self.parameters = ContextBase.catalog_tasks\
+            .get_task_parameters(self.last_uuid)
 
         super(GroupedDDF, self).__init__(task_list=ddf_var.task_list.copy(),
                                          last_uuid=self.last_uuid)
@@ -55,10 +56,10 @@ class GroupedDDF(DDF):
             operations.append([col, function, alias])
 
         self.parameters['operation'] = operations
-        ContextBase.catalog_tasks[self.last_uuid]['function'][1] = \
-            self.parameters
-        ContextBase.catalog_tasks[self.last2]['function'][1] = self.parameters
-
+        ContextBase.catalog_tasks.set_task_parameters(self.last_uuid,
+                                                      self.parameters)
+        ContextBase.catalog_tasks.set_task_parameters(self.last2,
+                                                      self.parameters)
         return self.ddf_var
 
     def avg(self, cols, alias=None):
@@ -238,7 +239,7 @@ class GroupedDDF(DDF):
             operations.append([col, func, alias])
 
         self.parameters['operation'] = operations
-
-        ContextBase.catalog_tasks[self.last_uuid]['function'][1] = \
-            self.parameters
-        ContextBase.catalog_tasks[self.last2]['function'][1] = self.parameters
+        ContextBase.catalog_tasks.set_task_parameters(self.last_uuid,
+                                                      self.parameters)
+        ContextBase.catalog_tasks.set_task_parameters(self.last2,
+                                                      self.parameters)

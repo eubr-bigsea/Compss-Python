@@ -4,6 +4,7 @@
 __author__ = "Lucas Miguel S Ponce"
 __email__ = "lucasmsp@gmail.com"
 
+from ddf_library.bases.metadata import Status, OPTGroup
 from ddf_library.bases.context_base import ContextBase
 from ddf_library.ddf import DDF
 from ddf_library.bases.ddf_model import ModelDDF
@@ -108,8 +109,8 @@ class PageRank(ModelDDF):
 
         new_state_uuid = ContextBase\
             .ddf_add_task(self.name,
-                          status=ContextBase.STATUS_COMPLETED,
-                          opt=ContextBase.OPT_OTHER,
+                          status=Status.STATUS_COMPLETED,
+                          opt=OPTGroup.OPT_OTHER,
                           info_data=info,
                           parent=[tmp.last_uuid],
                           result=result,

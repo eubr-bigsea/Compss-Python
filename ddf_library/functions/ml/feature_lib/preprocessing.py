@@ -10,6 +10,7 @@ from pycompss.functions.reduce import merge_reduce
 from pycompss.api.api import compss_wait_on
 from pycompss.api.parameter import FILE_IN
 
+from ddf_library.bases.metadata import OPTGroup
 from ddf_library.ddf import DDF
 from ddf_library.bases.ddf_model import ModelDDF
 from ddf_library.utils import generate_info, read_stage_file
@@ -67,7 +68,7 @@ class Binarizer(ModelDDF):
 
         settings = self.__dict__.copy()
         uuid_key = ContextBase\
-            .ddf_add_task(self.name, opt=self.OPT_SERIAL,
+            .ddf_add_task(self.name, opt=OPTGroup.OPT_SERIAL,
                           function=[task_binarizer, settings],
                           parent=[data.last_uuid])
 
@@ -193,7 +194,7 @@ class OneHotEncoder(ModelDDF):
             return _transform_one_hot(df, params)
 
         uuid_key = ContextBase \
-            .ddf_add_task(self.name, opt=self.OPT_SERIAL,
+            .ddf_add_task(self.name, opt=OPTGroup.OPT_SERIAL,
                           function=[task_transform_one_hot, settings],
                           parent=[data.last_uuid])
 
@@ -316,7 +317,7 @@ class PolynomialExpansion(ModelDDF):
             return _poly_expansion(df, params)
 
         uuid_key = ContextBase\
-            .ddf_add_task(self.name, opt=self.OPT_SERIAL,
+            .ddf_add_task(self.name, opt=OPTGroup.OPT_SERIAL,
                           function=[task_poly_expansion, settings],
                           parent=[data.last_uuid])
 
@@ -443,7 +444,7 @@ class StringIndexer(ModelDDF):
             return _string_to_indexer(df, params)
 
         uuid_key = ContextBase\
-            .ddf_add_task(self.name, opt=self.OPT_SERIAL,
+            .ddf_add_task(self.name, opt=OPTGroup.OPT_SERIAL,
                           function=[task_string_to_indexer, settings],
                           parent=[data.last_uuid])
 
@@ -530,7 +531,7 @@ class IndexToString(ModelDDF):
             return _index_to_string(df, params)
 
         uuid_key = ContextBase \
-            .ddf_add_task(self.name, opt=self.OPT_SERIAL,
+            .ddf_add_task(self.name, opt=OPTGroup.OPT_SERIAL,
                           function=[task_index_to_string, settings],
                           parent=[data.last_uuid])
 

@@ -4,11 +4,11 @@
 __author__ = "Lucas Miguel S Ponce"
 __email__ = "lucasmsp@gmail.com"
 
+from ddf_library.bases.metadata import OPTGroup, Status
 from ddf_library.bases.context_base import ContextBase
 from ddf_library.functions.etl.save_data import DataSaver
 from ddf_library.utils import parser_filepath
 
-task_list = None
 last_uuid = None
 
 
@@ -42,7 +42,7 @@ class Save(object):
 
         format_file = DataSaver.FORMAT_CSV
         kwargs = locals()
-        _apply_datasaver(format_file, kwargs, task_list, last_uuid)
+        _apply_datasaver(format_file, kwargs, last_uuid)
         return None
 
     @staticmethod
@@ -61,7 +61,7 @@ class Save(object):
         """
         format_file = DataSaver.FORMAT_JSON
         kwargs = locals()
-        _apply_datasaver(format_file, kwargs, task_list, last_uuid)
+        _apply_datasaver(format_file, kwargs, last_uuid)
         return None
 
     @staticmethod
@@ -76,7 +76,7 @@ class Save(object):
         """
         format_file = DataSaver.FORMAT_PARQUET
         kwargs = locals()
-        _apply_datasaver(format_file, kwargs, task_list, last_uuid)
+        _apply_datasaver(format_file, kwargs, last_uuid)
         return None
 
     @staticmethod
@@ -91,11 +91,11 @@ class Save(object):
         """
         format_file = DataSaver.FORMAT_PICKLE
         kwargs = locals()
-        _apply_datasaver(format_file, kwargs, task_list, last_uuid)
+        _apply_datasaver(format_file, kwargs, last_uuid)
         return None
 
 
-def _apply_datasaver(format_file, kwargs, task_list, last_uuid):
+def _apply_datasaver(format_file, kwargs, uuid):
     from ddf_library.ddf import DDF
     host, port, filename, storage = parser_filepath(kwargs['filepath'])
 
@@ -125,10 +125,10 @@ def _apply_datasaver(format_file, kwargs, task_list, last_uuid):
 
         new_state_uuid = ContextBase \
             .ddf_add_task('save-{}'.format(storage),
-                          status=ContextBase.STATUS_WAIT,
-                          opt=ContextBase.OPT_SERIAL,
+                          status=Status.STATUS_WAIT,
+                          opt=OPTGroup.OPT_SERIAL,
                           n_output=0,
-                          parent=[last_uuid],
+                          parent=[uuid],
                           function=[task_save, settings])
 
         tmp = DDF(last_uuid=new_state_uuid)

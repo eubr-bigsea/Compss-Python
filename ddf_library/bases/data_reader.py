@@ -5,6 +5,7 @@ __author__ = "Lucas Miguel S Ponce"
 __email__ = "lucasmsp@gmail.com"
 
 from ddf_library.utils import parser_filepath
+from ddf_library.bases.metadata import Status, OPTGroup
 
 
 class DataReader(object):
@@ -158,16 +159,16 @@ class DataReader(object):
 
             last_state_uuid = ContextBase\
                 .ddf_add_task('read.read_shapefile_stage_1',
-                              status=ContextBase.STATUS_WAIT,
-                              opt=ContextBase.OPT_LAST,
+                              status=Status.STATUS_WAIT,
+                              opt=OPTGroup.OPT_LAST,
                               n_input=0,
                               parent=[first_uuid],
                               function=[task_read_shapefile_stage_1, settings])
 
             new_state_uuid = ContextBase \
                 .ddf_add_task('read.read_shapefile_stage_2',
-                              status=ContextBase.STATUS_WAIT,
-                              opt=ContextBase.OPT_SERIAL,
+                              status=Status.STATUS_WAIT,
+                              opt=OPTGroup.OPT_SERIAL,
                               n_input=0,
                               parent=[last_state_uuid],
                               function=[task_read_shapefile_stage_2, None])
@@ -180,8 +181,8 @@ class DataReader(object):
 
             new_state_uuid = ContextBase \
                 .ddf_add_task('read.read_shapefile_stage',
-                              status=ContextBase.STATUS_COMPLETED,
-                              opt=ContextBase.OPT_OTHER,
+                              status=Status.STATUS_COMPLETED,
+                              opt=OPTGroup.OPT_OTHER,
                               result=result,
                               info_data=info,
                               n_input=0,
@@ -247,21 +248,21 @@ def _apply_datareader(format_file, kwargs):
 
             new_state_uuid = ContextBase \
                 .ddf_add_task('read-many-file',
-                              status=ContextBase.STATUS_WAIT,
-                              opt=ContextBase.OPT_SERIAL,
+                              status=Status.STATUS_WAIT,
+                              opt=OPTGroup.OPT_SERIAL,
                               n_input=0,
                               parent=[first_uuid],
                               result=blocks,
                               function=[task_read_many_fs, {}])
 
-            ContextBase.catalog_tasks[first_uuid]['result'] = blocks
+            ContextBase.catalog_tasks.set_task_result(first_uuid, blocks)
         else:
             result, info = data_reader.transform_fs_single()
 
             new_state_uuid = ContextBase \
                 .ddf_add_task('read-one-file',
-                              status=ContextBase.STATUS_COMPLETED,
-                              opt=ContextBase.OPT_OTHER,
+                              status=Status.STATUS_COMPLETED,
+                              opt=OPTGroup.OPT_OTHER,
                               n_input=0,
                               parent=[first_uuid],
                               result=result,
@@ -270,15 +271,15 @@ def _apply_datareader(format_file, kwargs):
 
     else:
         blocks = data_reader.get_blocks()
-        ContextBase.catalog_tasks[first_uuid]['result'] = blocks
+        ContextBase.catalog_tasks.set_task_result(first_uuid, blocks)
 
         def task_read_hdfs(block, params):
             return data_reader.transform_hdfs(block, params)
 
         new_state_uuid = ContextBase \
             .ddf_add_task('read-hdfs',
-                          status=ContextBase.STATUS_WAIT,
-                          opt=ContextBase.OPT_SERIAL,
+                          status=Status.STATUS_WAIT,
+                          opt=OPTGroup.OPT_SERIAL,
                           n_input=0,
                           parent=[first_uuid],
                           function=[task_read_hdfs, {}])

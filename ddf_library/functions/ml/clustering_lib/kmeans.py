@@ -5,6 +5,7 @@
 __author__ = "Lucas Miguel S Ponce"
 __email__ = "lucasmsp@gmail.com"
 
+from ddf_library.bases.metadata import OPTGroup
 from ddf_library.bases.context_base import ContextBase
 from ddf_library.ddf import DDF
 from ddf_library.utils import generate_info, read_stage_file
@@ -155,7 +156,7 @@ class Kmeans(ModelDDF):
             return _kmeans_predict(df, params)
 
         uuid_key = ContextBase\
-            .ddf_add_task(self.name, opt=self.OPT_SERIAL,
+            .ddf_add_task(self.name, opt=OPTGroup.OPT_SERIAL,
                           function=[task_transform_kmeans, settings],
                           parent=[data.last_uuid])
 
@@ -395,7 +396,7 @@ def _kmeans_init_clusters(xp):
 
 
 @task(returns=1)
-def _kmeans_probability(xp, rss_n, centroids, l, frag):
+def _kmeans_probability(xp, rss_n, centroids, oversampling, frag):
     """ Select the best candidates to be a centroid."""
     rss, n = rss_n
     n_rows = len(xp)
@@ -404,7 +405,7 @@ def _kmeans_probability(xp, rss_n, centroids, l, frag):
 
         distances = euclidean_distances(xp, centroids, squared=False)\
             .min(axis=1)
-        px = (l * distances) / rss - np.random.random_sample(n_rows)
+        px = (oversampling * distances) / rss - np.random.random_sample(n_rows)
 
         idx = np.argwhere(px >= 0).flatten()
         xp = xp[idx]

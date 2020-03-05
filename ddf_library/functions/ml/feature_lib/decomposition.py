@@ -4,6 +4,7 @@
 __author__ = "Lucas Miguel S Ponce"
 __email__ = "lucasmsp@gmail.com"
 
+from ddf_library.bases.metadata import OPTGroup
 from ddf_library.bases.context_base import ContextBase
 from pycompss.api.parameter import FILE_IN
 from pycompss.api.task import task
@@ -122,7 +123,7 @@ class PCA(ModelDDF):
             return _pca_transform(df, params)
 
         uuid_key = ContextBase\
-            .ddf_add_task(self.name, opt=self.OPT_SERIAL,
+            .ddf_add_task(self.name, opt=OPTGroup.OPT_SERIAL,
                           function=[transform_pca, settings],
                           parent=[data.last_uuid])
 

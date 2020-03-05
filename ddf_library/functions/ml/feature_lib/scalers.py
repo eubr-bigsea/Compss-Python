@@ -5,6 +5,7 @@ __author__ = "Lucas Miguel S Ponce"
 __email__ = "lucasmsp@gmail.com"
 
 from ddf_library.bases.context_base import ContextBase
+from ddf_library.bases.metadata import OPTGroup
 from ddf_library.ddf import DDF
 from ddf_library.bases.ddf_model import ModelDDF
 from ddf_library.utils import generate_info,  read_stage_file
@@ -116,7 +117,7 @@ class MaxAbsScaler(ModelDDF):
             return _maxabs_scaler(df, params)
 
         uuid_key = ContextBase\
-            .ddf_add_task(self.name, opt=self.OPT_SERIAL,
+            .ddf_add_task(self.name, opt=OPTGroup.OPT_SERIAL,
                           function=[task_maxabs_scaler, settings],
                           parent=[data.last_uuid])
 
@@ -268,7 +269,7 @@ class MinMaxScaler(ModelDDF):
             return _minmax_scaler(df, params)
 
         uuid_key = ContextBase \
-            .ddf_add_task(self.name, opt=self.OPT_SERIAL,
+            .ddf_add_task(self.name, opt=OPTGroup.OPT_SERIAL,
                           function=[task_minmax_scaler, settings],
                           parent=[data.last_uuid])
 
@@ -465,7 +466,7 @@ class StandardScaler(ModelDDF):
             return _standard_scaler(df, params)
 
         uuid_key = ContextBase\
-            .ddf_add_task(self.name, opt=self.OPT_SERIAL,
+            .ddf_add_task(self.name, opt=OPTGroup.OPT_SERIAL,
                           function=[task_standard_scaler, settings],
                           parent=[data.last_uuid])
 

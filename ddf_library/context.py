@@ -9,13 +9,12 @@ __email__ = "lucasmsp@gmail.com"
 DDF is a Library for PyCOMPSs.
 """
 
-
+from ddf_library.bases.metadata import Status, OPTGroup
 from ddf_library.bases.context_base import ContextBase
 from ddf_library.ddf import DDF
-from ddf_library.utils import check_serialization, delete_result, _gen_uuid
+from ddf_library.utils import _gen_uuid
 import ddf_library.bases.data_reader as dr
 
-import networkx as nx
 from prettytable import PrettyTable
 
 
@@ -46,16 +45,8 @@ class COMPSsContext(object):
         """
         import shutil
         import os
-        for id_task in list(ContextBase.catalog_tasks.keys()):
-            data = ContextBase.catalog_tasks[id_task].get('result', [])
 
-            if check_serialization(data):
-                delete_result(data)
-
-        ContextBase.catalog_schemas = dict()
-        ContextBase.catalog_tasks = dict()
-        ContextBase.dag = nx.DiGraph()
-        ContextBase.catalog_tasks = list()
+        ContextBase.catalog_tasks.clear()
 
         if ContextBase.monitor:
             ContextBase.monitor.stop()
@@ -83,22 +74,7 @@ class COMPSsContext(object):
         Show all tasks in the current code. Only to debug.
         :return:
         """
-        print("\nList of all tasks:")
-        t = PrettyTable(['uuid', 'Task name', 'STATUS', 'Example result'])
-
-        for uuid in ContextBase.catalog_tasks:
-            r = ContextBase.catalog_tasks[uuid].get('result', [])
-            if isinstance(r, list):
-                if len(r) > 0:
-                    r = r[0]
-                else:
-                    r = ''
-            t.add_row([uuid[:8],
-                       ContextBase.catalog_tasks[uuid]['name'],
-                       ContextBase.catalog_tasks[uuid]['status'],
-                       r])
-        print(t)
-        print('\n')
+        ContextBase.catalog_tasks.show_tasks()
         return self
 
     def set_log(self, enabled=True):
@@ -155,8 +131,8 @@ class COMPSsContext(object):
         # ContextBase.catalog_schemas[new_state_uuid] = info
         first_uuid = ContextBase.create_init()
         new_state_uuid = ContextBase \
-            .ddf_add_task('parallelize',
-                          opt=ContextBase.OPT_OTHER,
+            .ddf_add_task('Parallelize',
+                          opt=OPTGroup.OPT_OTHER,
                           function=[task_parallelize, {}],
                           parent=[first_uuid],
                           n_input=0)
@@ -192,8 +168,8 @@ class COMPSsContext(object):
 
         new_state_uuid = ContextBase \
             .ddf_add_task('import_data',
-                          status=ContextBase.STATUS_COMPLETED,
-                          opt=ContextBase.OPT_OTHER,
+                          status=Status.STATUS_COMPLETED,
+                          opt=OPTGroup.OPT_OTHER,
                           function=[task_import_to_ddf, {}],
                           parent=[first_uuid],
                           result=result,

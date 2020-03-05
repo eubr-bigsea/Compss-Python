@@ -10,6 +10,7 @@ from pycompss.functions.reduce import merge_reduce
 from pycompss.api.api import compss_wait_on
 from pycompss.api.parameter import FILE_IN
 
+from ddf_library.bases.metadata import OPTGroup
 from ddf_library.ddf import DDF
 from ddf_library.bases.ddf_base import DDFSketch
 from ddf_library.bases.ddf_model import ModelDDF
@@ -67,7 +68,7 @@ class NGram(DDFSketch):
 
         settings = self.__dict__.copy()
         uuid_key = ContextBase\
-            .ddf_add_task(self.name, opt=self.OPT_SERIAL,
+            .ddf_add_task(self.name, opt=OPTGroup.OPT_SERIAL,
                           function=[task_ngram, settings],
                           parent=[data.last_uuid])
 
@@ -153,7 +154,7 @@ class RegexTokenizer(DDFSketch):
 
         settings = self.__dict__.copy()
         uuid_key = ContextBase \
-            .ddf_add_task(self.name, opt=self.OPT_SERIAL,
+            .ddf_add_task(self.name, opt=OPTGroup.OPT_SERIAL,
                           function=[task_regex_tokenizer, settings],
                           parent=[data.last_uuid])
 
@@ -391,7 +392,7 @@ class Tokenizer(DDFSketch):
             return _tokenizer_(df, params)
 
         uuid_key = ContextBase \
-            .ddf_add_task(self.name, opt=self.OPT_SERIAL,
+            .ddf_add_task(self.name, opt=OPTGroup.OPT_SERIAL,
                           function=[task_tokenizer, settings],
                           parent=[data.last_uuid])
 

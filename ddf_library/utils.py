@@ -4,7 +4,7 @@
 __author__ = "Lucas Miguel S Ponce"
 __email__ = "lucasmsp@gmail.com"
 
-from pycompss.api.parameter import FILE_IN, COLLECTION_IN
+from pycompss.api.parameter import COLLECTION_IN
 from pycompss.api.task import task
 from pycompss.api.api import compss_delete_file
 
@@ -173,11 +173,11 @@ def create_auxiliary_column(columns):
     return column
 
 
-def convert_int64_columns(df):
-    for col in df.column:
-        if 'int' in df[col].dtype:
-            df[col] = df[col].astype('Int64')
-    return df
+# def convert_int64_columns(df):
+#     for col in df.column:
+#         if 'int' in df[col].dtype:
+#             df[col] = df[col].astype('Int64')
+#     return df
 
 
 def delete_result(file_list):
