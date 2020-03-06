@@ -118,7 +118,8 @@ class MaxAbsScaler(ModelDDF):
 
         uuid_key = ContextBase\
             .ddf_add_task(self.name, opt=OPTGroup.OPT_SERIAL,
-                          function=[task_maxabs_scaler, settings],
+                          function=task_maxabs_scaler,
+                          parameters=settings,
                           parent=[data.last_uuid])
 
         return DDF(last_uuid=uuid_key)
@@ -270,7 +271,8 @@ class MinMaxScaler(ModelDDF):
 
         uuid_key = ContextBase \
             .ddf_add_task(self.name, opt=OPTGroup.OPT_SERIAL,
-                          function=[task_minmax_scaler, settings],
+                          function=task_minmax_scaler,
+                          parameters=settings,
                           parent=[data.last_uuid])
 
         return DDF(task_list=data.task_list, last_uuid=uuid_key)
@@ -467,7 +469,8 @@ class StandardScaler(ModelDDF):
 
         uuid_key = ContextBase\
             .ddf_add_task(self.name, opt=OPTGroup.OPT_SERIAL,
-                          function=[task_standard_scaler, settings],
+                          function=task_standard_scaler,
+                          parameters=settings,
                           parent=[data.last_uuid])
 
         return DDF(task_list=data.task_list, last_uuid=uuid_key)

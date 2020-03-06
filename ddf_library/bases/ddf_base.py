@@ -8,8 +8,6 @@ __email__ = "lucasmsp@gmail.com"
 
 from ddf_library.bases.metadata import Status
 from ddf_library.bases.context_base import ContextBase
-from ddf_library.utils import merge_schema
-from pycompss.api.api import compss_wait_on
 
 
 class DDFSketch(object):
@@ -35,13 +33,7 @@ class DDFSketch(object):
     def _get_info(self):
 
         self._check_stored()
-        info = ContextBase.catalog_tasks.get_schema(self.last_uuid)
-        if isinstance(info, list):
-            if not isinstance(info[0], list):
-                info = merge_schema(info)
-        info = compss_wait_on(info)
-
-        ContextBase.catalog_tasks.set_schema(self.last_uuid, info)
+        info = ContextBase.catalog_tasks.get_merged_schema(self.last_uuid)
         return info
 
     def _check_stored(self):

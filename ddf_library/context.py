@@ -124,8 +124,10 @@ class COMPSsContext(object):
             import multiprocessing
             num_of_parts = multiprocessing.cpu_count()
 
+        settings = {'nfrag': num_of_parts}
+
         def task_parallelize(_, params):
-            return parallelize(df, num_of_parts)
+            return parallelize(df, params)
 
         # result, info = parallelize(df, num_of_parts)
         # ContextBase.catalog_schemas[new_state_uuid] = info
@@ -133,7 +135,8 @@ class COMPSsContext(object):
         new_state_uuid = ContextBase \
             .ddf_add_task('Parallelize',
                           opt=OPTGroup.OPT_OTHER,
-                          function=[task_parallelize, {}],
+                          function=task_parallelize,
+                          parameters=settings,
                           parent=[first_uuid],
                           n_input=0)
 
@@ -170,7 +173,8 @@ class COMPSsContext(object):
             .ddf_add_task('import_data',
                           status=Status.STATUS_COMPLETED,
                           opt=OPTGroup.OPT_OTHER,
-                          function=[task_import_to_ddf, {}],
+                          function=task_import_to_ddf,
+                          parameters={},  # TODO
                           parent=[first_uuid],
                           result=result,
                           n_input=0,

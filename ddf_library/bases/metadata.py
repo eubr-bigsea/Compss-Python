@@ -7,8 +7,9 @@ __email__ = "lucasmsp@gmail.com"
 
 from prettytable import PrettyTable
 
+from pycompss.api.api import compss_wait_on
 from ddf_library.utils import _gen_uuid
-from ddf_library.utils import check_serialization, delete_result
+from ddf_library.utils import delete_result, merge_info
 import networkx as nx
 
 
@@ -36,13 +37,14 @@ class CatalogTask(object):
     # A dictionary with static information about some operations:
     #  - output: number of output;
     #  - input: number of input;
-    #  - optimization: Currently, 'serial', 'other' or 'last'.
+    #  - optimization: Currently, 'serial', 'other' or 'last';
+    #  - function: function to be executed;
     #  - info_condition: If task needs a parent schema;  # TODO
 
     catalog_tasks = dict()
     # task_map: a dictionary to stores all following information about a task:
     #      - name: task name
-    #      - function: a list with the function and its parameters;
+    #      - parameters: a dictionary with function's input parameters;
     #      - status: WAIT, COMPLETED, PERSISTED
     #      - result: if status is COMPLETED, a dictionary with the results.
     #         The keys of this dictionary is index that represents the output
@@ -111,6 +113,14 @@ class CatalogTask(object):
     def get_schema(self, uuid):
         return self.catalog_tasks[uuid].get('schema', None)
 
+    def get_merged_schema(self, uuid):
+        sc = self.get_schema(uuid)
+        if isinstance(sc, list):
+            sc = merge_info(sc)
+            sc = compss_wait_on(sc)
+            self.set_schema(uuid, sc.copy())
+        return sc
+
     def set_schema(self, uuid, schema):
         self.catalog_tasks[uuid]['schema'] = schema
 
@@ -129,28 +139,30 @@ class CatalogTask(object):
                                                     OPTGroup.OPT_OTHER)
 
     def get_task_function(self, uuid_task):
-        return self.catalog_tasks[uuid_task]['function']
+        name_task = self.get_task_name(uuid_task)
+        return self.task_definitions[name_task]['function']
 
     def set_task_function(self, uuid_task, function):
-        self.catalog_tasks[uuid_task]['function'] = function
-
-    def get_task_function2(self, uuid_task):  # TODO: rename it
-        return self.catalog_tasks[uuid_task]['function'][0]
-
-    def set_task_function2(self, uuid_task, function):
-        self.catalog_tasks[uuid_task]['function'][0] = function
+        name_task = self.get_task_name(uuid_task)
+        self.task_definitions[name_task]['function'] = function
 
     def get_task_parameters(self, uuid_task):
-        return self.catalog_tasks[uuid_task]['function'][1]
+        return self.catalog_tasks[uuid_task]['parameters']
 
     def set_task_parameters(self, uuid_task, params):
-        self.catalog_tasks[uuid_task]['function'][1] = params
+        self.catalog_tasks[uuid_task]['parameters'] = params
 
     def get_task_return(self, uuid_task):
         return self.catalog_tasks[uuid_task].get('result', [])
 
-    def set_task_result(self, uuid_task, data):
+    def set_task_return(self, uuid_task, data):
         self.catalog_tasks[uuid_task]['result'] = data
+
+    def rm_task_return(self, uuid_task):
+        data = self.get_task_return(uuid_task)
+        if check_serialization(data):
+            delete_result(data)
+        self.catalog_tasks[uuid_task]['result'] = None
 
     def get_task_status(self, uuid_task):
         return self.catalog_tasks[uuid_task].get('status', Status.STATUS_WAIT)
@@ -182,3 +194,16 @@ class CatalogTask(object):
     def get_info_condition(self, uuid_task):
         name_task = self.get_task_name(uuid_task)
         return self.task_definitions[name_task].get('info', False)
+
+
+def check_serialization(data):
+    """
+    Check if output is a str file object (Future) or is a BufferIO.
+    :param data:
+    :return:
+    """
+
+    if isinstance(data, list):
+        if len(data) > 0:
+            return isinstance(data[0], str)
+        return False

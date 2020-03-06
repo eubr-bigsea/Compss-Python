@@ -69,7 +69,8 @@ class NGram(DDFSketch):
         settings = self.__dict__.copy()
         uuid_key = ContextBase\
             .ddf_add_task(self.name, opt=OPTGroup.OPT_SERIAL,
-                          function=[task_ngram, settings],
+                          function=task_ngram,
+                          parameters=settings,
                           parent=[data.last_uuid])
 
         return DDF(last_uuid=uuid_key)
@@ -155,7 +156,8 @@ class RegexTokenizer(DDFSketch):
         settings = self.__dict__.copy()
         uuid_key = ContextBase \
             .ddf_add_task(self.name, opt=OPTGroup.OPT_SERIAL,
-                          function=[task_regex_tokenizer, settings],
+                          function=task_regex_tokenizer,
+                          parameters=settings,
                           parent=[data.last_uuid])
 
         return DDF(task_list=data.task_list, last_uuid=uuid_key)
@@ -281,8 +283,9 @@ class RemoveStopWords(ModelDDF):
             return _remove_stopwords(df, params)
 
         uuid_key = ContextBase \
-            .ddf_add_task(self.name, opt=self.OPT_SERIAL,
-                          function=[task_stopwords, settings],
+            .ddf_add_task(self.name, opt=OPTGroup.OPT_SERIAL,
+                          function=task_stopwords,
+                          parameters=settings,
                           parent=[data.last_uuid])
 
         return DDF(task_list=data.task_list, last_uuid=uuid_key)
@@ -393,7 +396,8 @@ class Tokenizer(DDFSketch):
 
         uuid_key = ContextBase \
             .ddf_add_task(self.name, opt=OPTGroup.OPT_SERIAL,
-                          function=[task_tokenizer, settings],
+                          function=task_tokenizer,
+                          parameters=settings,
                           parent=[data.last_uuid])
 
         return DDF(task_list=data.task_list, last_uuid=uuid_key)

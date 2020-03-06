@@ -532,7 +532,8 @@ class IndexToString(ModelDDF):
 
         uuid_key = ContextBase \
             .ddf_add_task(self.name, opt=OPTGroup.OPT_SERIAL,
-                          function=[task_index_to_string, settings],
+                          function=task_index_to_string,
+                          parameters=settings,
                           parent=[data.last_uuid])
 
         return DDF(task_list=data.task_list, last_uuid=uuid_key)

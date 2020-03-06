@@ -113,6 +113,7 @@ class AssociationRules(ModelDDF):  # TODO
                           opt=OPTGroup.OPT_OTHER,
                           result=result,
                           function=self.fit_transform,
+                          parameters=None,
                           parent=[tmp.last_uuid],
                           info_data=info)
 

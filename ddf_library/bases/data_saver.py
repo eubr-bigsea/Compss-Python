@@ -129,7 +129,8 @@ def _apply_datasaver(format_file, kwargs, uuid):
                           opt=OPTGroup.OPT_SERIAL,
                           n_output=0,
                           parent=[uuid],
-                          function=[task_save, settings])
+                          function=task_save,
+                          parameters=settings)
 
         tmp = DDF(last_uuid=new_state_uuid)
         ContextBase().run_workflow(tmp.last_uuid)

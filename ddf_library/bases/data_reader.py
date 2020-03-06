@@ -141,6 +141,7 @@ class DataReader(object):
         settings['port'] = int(port)
         settings['storage'] = storage
         settings['schema'] = _check_schema(schema)
+        settings['nfrag'] = num_of_parts
 
         from ddf_library.functions.geo import read_shapefile_stage_1, \
             read_shapefile_stage_2, read_shapefile_all
@@ -148,7 +149,7 @@ class DataReader(object):
         from ddf_library.ddf import DDF
 
         def task_read_shapefile_stage_1(_, params):
-            return read_shapefile_stage_1(params, num_of_parts)
+            return read_shapefile_stage_1(params)
 
         first_uuid = ContextBase.create_init()
 
@@ -177,7 +178,7 @@ class DataReader(object):
 
         else:
 
-            result, info = read_shapefile_all(settings, num_of_parts)
+            result, info = read_shapefile_all(settings)
 
             new_state_uuid = ContextBase \
                 .ddf_add_task('read.read_shapefile_stage',
@@ -242,7 +243,7 @@ def _apply_datareader(format_file, kwargs):
         if data_reader.distributed:
             # setting the last task's input (init)
             blocks = data_reader.get_blocks()
-
+            # TODO
             def task_read_many_fs(block, params):
                 return data_reader.transform_fs_distributed(block, params)
 
@@ -253,9 +254,10 @@ def _apply_datareader(format_file, kwargs):
                               n_input=0,
                               parent=[first_uuid],
                               result=blocks,
-                              function=[task_read_many_fs, {}])
+                              function=task_read_many_fs,
+                              parameters={})
 
-            ContextBase.catalog_tasks.set_task_result(first_uuid, blocks)
+            ContextBase.catalog_tasks.set_task_return(first_uuid, blocks)
         else:
             result, info = data_reader.transform_fs_single()
 
@@ -267,11 +269,12 @@ def _apply_datareader(format_file, kwargs):
                               parent=[first_uuid],
                               result=result,
                               function=None,
+                              parameters=None,
                               info_data=info)
 
     else:
         blocks = data_reader.get_blocks()
-        ContextBase.catalog_tasks.set_task_result(first_uuid, blocks)
+        ContextBase.catalog_tasks.set_task_return(first_uuid, blocks)
 
         def task_read_hdfs(block, params):
             return data_reader.transform_hdfs(block, params)
@@ -282,6 +285,7 @@ def _apply_datareader(format_file, kwargs):
                           opt=OPTGroup.OPT_SERIAL,
                           n_input=0,
                           parent=[first_uuid],
-                          function=[task_read_hdfs, {}])
+                          function=task_read_hdfs,
+                          parameters={})
 
     return DDF(last_uuid=new_state_uuid)

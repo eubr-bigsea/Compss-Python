@@ -115,7 +115,8 @@ class GDRegressor(ModelDDF):
 
         uuid_key = ContextBase\
             .ddf_add_task(self.name, opt=OPTGroup.OPT_SERIAL,
-                          function=[task_gd_regressor, settings],
+                          function=task_gd_regressor,
+                          parameters=settings,
                           parent=[data.last_uuid])
 
         return DDF(last_uuid=uuid_key)

@@ -137,7 +137,8 @@ class GaussianNB(ModelDDF):
 
         uuid_key = ContextBase\
             .ddf_add_task(self.name, opt=OPTGroup.OPT_SERIAL,
-                          function=[task_transform_nb, settings],
+                          function=task_transform_nb,
+                          parameters=settings,
                           parent=[data.last_uuid])
 
         return DDF(last_uuid=uuid_key)

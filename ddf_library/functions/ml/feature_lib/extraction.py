@@ -126,7 +126,8 @@ class CountVectorizer(ModelDDF):
 
         uuid_key = ContextBase\
             .ddf_add_task(self.name, opt=OPTGroup.OPT_SERIAL,
-                          function=[task_transform_bow, settings],
+                          function=task_transform_bow,
+                          parameters=settings,
                           parent=[data.last_uuid])
 
         return DDF(last_uuid=uuid_key)
@@ -355,8 +356,9 @@ class TfidfVectorizer(ModelDDF):
             return construct_tf_idf(df, params)
 
         uuid_key = ContextBase \
-            .ddf_add_task(self.name, opt=self.OPT_SERIAL,
-                          function=[task_transform_tf_if, settings],
+            .ddf_add_task(self.name, opt=OPTGroup.OPT_SERIAL,
+                          function=task_transform_tf_if,
+                          parameters=settings,
                           parent=[data.last_uuid])
 
         return DDF(task_list=data.task_list, last_uuid=uuid_key)

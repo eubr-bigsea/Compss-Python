@@ -98,6 +98,7 @@ class FPGrowth(ModelDDF):
                           status=Status.STATUS_COMPLETED,
                           opt=OPTGroup.OPT_OTHER,
                           function=self.fit_transform,
+                          parameters=None,
                           result=result,
                           parent=[new_data.last_uuid],
                           info_data=info)

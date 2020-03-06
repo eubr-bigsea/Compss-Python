@@ -114,7 +114,8 @@ class PageRank(ModelDDF):
                           info_data=info,
                           parent=[tmp.last_uuid],
                           result=result,
-                          function=[self.transform, data])
+                          function=self.transform,
+                          parameters=data)
 
         return DDF(last_uuid=new_state_uuid)
 
