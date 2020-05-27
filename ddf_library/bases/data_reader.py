@@ -151,8 +151,6 @@ class DataReader(object):
         def task_read_shapefile_stage_1(_, params):
             return read_shapefile_stage_1(params)
 
-        first_uuid = ContextBase.create_init()
-
         if host == 'hdfs':
 
             def task_read_shapefile_stage_2(df, params):
@@ -163,7 +161,6 @@ class DataReader(object):
                               status=Status.STATUS_WAIT,
                               opt=OPTGroup.OPT_LAST,
                               n_input=0,
-                              parent=[first_uuid],
                               function=[task_read_shapefile_stage_1, settings])
 
             new_state_uuid = ContextBase \
@@ -171,7 +168,6 @@ class DataReader(object):
                               status=Status.STATUS_WAIT,
                               opt=OPTGroup.OPT_SERIAL,
                               n_input=0,
-                              parent=[last_state_uuid],
                               function=[task_read_shapefile_stage_2, None])
 
             return DDF(last_uuid=new_state_uuid)
@@ -187,8 +183,7 @@ class DataReader(object):
                               result=result,
                               info_data=info,
                               n_input=0,
-                              function=None,
-                              parent=[first_uuid])
+                              function=None)
 
             return DDF(last_uuid=new_state_uuid)
 
@@ -235,8 +230,6 @@ def _apply_datareader(format_file, kwargs):
         data_reader = DataReader().json(**kwargs)
     else:
         raise Exception('File formart not supported.')
-
-    first_uuid = ContextBase.create_init()
 
     if storage is 'file':
 

@@ -16,7 +16,7 @@ def except_all(data1, data2, settings):
     :param data1: A list of pandas's DataFrame;
     :param data2: The second list of pandas's DataFrame;
     :param settings: A empty dictionary with:
-     - 'info':
+     - 'schema':
     :return: A list of pandas's DataFrame.
     """
     data1, data2, _ = except_all_stage_1(data1, data2, settings)
@@ -30,21 +30,21 @@ def except_all(data1, data2, settings):
         result[f], info[f] = except_all_stage_2(data1[f], data2[f],
                                                 settings.copy())
 
-    output = {'key_data': ['data'], 'key_info': ['info'],
-              'data': result, 'info': info}
+    output = {'key_data': ['data'], 'key_info': ['schema'],
+              'data': result, 'schema': info}
     return output
 
 
 def except_all_stage_1(data1, data2, settings):
-    info1, info2 = settings['info']
+    info1, info2 = settings['schema']
     nfrag = len(data1)
 
     from .hash_partitioner import hash_partition
-    params_hash1 = {'columns': [], 'info': [info1], 'nfrag': nfrag}
+    params_hash1 = {'columns': [], 'schema': [info1], 'nfrag': nfrag}
     out1 = hash_partition(data1, params_hash1)
     data1 = out1['data']
 
-    params_hash2 = {'columns': [], 'info': [info2], 'nfrag': nfrag}
+    params_hash2 = {'columns': [], 'schema': [info2], 'nfrag': nfrag}
     out2 = hash_partition(data2, params_hash2)
     data2 = out2['data']
 

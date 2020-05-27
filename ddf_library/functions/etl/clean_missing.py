@@ -74,8 +74,8 @@ def drop_nan_columns(data, settings):
         settings['id_frag'] = f
         result[f], info[f] = drop_nan_columns_stage_2(data[f], settings.copy())
 
-    output = {'key_data': ['data'], 'key_info': ['info'],
-              'data': result, 'info': info}
+    output = {'key_data': ['data'], 'key_info': ['schema'],
+              'data': result, 'schema': info}
     return output
 
 
@@ -109,8 +109,8 @@ def fill_nan(data, settings):
         settings['id_frag'] = f
         result[f], info[f] = fill_nan_stage_2(data[f], settings.copy())
 
-    output = {'key_data': ['data'], 'key_info': ['info'],
-              'data': result, 'info': info}
+    output = {'key_data': ['data'], 'key_info': ['schema'],
+              'data': result, 'schema': info}
     return output
 
 

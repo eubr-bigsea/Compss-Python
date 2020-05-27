@@ -23,30 +23,30 @@ import pandas as pd
 #
 #     nfrag = len(data1)
 #     result = [[] for _ in range(nfrag)]
-#     info = result[:]
+#     schema = result[:]
 #
 #     for f in range(nfrag):
 #         settings['id_frag'] = f
-#         result[f], info[f] = task_subtract_stage_2(data1[f], data2[f],
+#         result[f], schema[f] = task_subtract_stage_2(data1[f], data2[f],
 #                                                    settings.copy())
 #
-#     output = {'key_data': ['data'], 'key_info': ['info'],
-#               'data': result, 'info': info}
+#     output = {'key_data': ['data'], 'key_info': ['schema'],
+#               'data': result, 'schema': schema}
 #     return output
 
 
 def subtract_stage_1(data1, data2, settings):
 
-    info1, info2 = settings['info']
+    info1, info2 = settings['schema']
     nfrag = len(data1)
 
     from .distinct import distinct
-    params = {'columns': [], 'info': [info1]}
+    params = {'columns': [], 'schema': [info1]}
     out1 = distinct(data1, params)
     data1 = out1['data']
 
     from .hash_partitioner import hash_partition
-    params_hash2 = {'columns': [], 'info': [info2], 'nfrag': nfrag}
+    params_hash2 = {'columns': [], 'schema': [info2], 'nfrag': nfrag}
     out2 = hash_partition(data2, params_hash2)
     data2 = out2['data']
 

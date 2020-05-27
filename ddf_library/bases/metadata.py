@@ -33,14 +33,6 @@ class CatalogTask(object):
 
     dag = nx.DiGraph()
 
-    task_definitions = dict()
-    # A dictionary with static information about some operations:
-    #  - output: number of output;
-    #  - input: number of input;
-    #  - optimization: Currently, 'serial', 'other' or 'last';
-    #  - function: function to be executed;
-    #  - info_condition: If task needs a parent schema;  # TODO
-
     catalog_tasks = dict()
     # task_map: a dictionary to stores all following information about a task:
     #      - name: task name
@@ -54,10 +46,6 @@ class CatalogTask(object):
     # to speedup the searching for completed tasks:
     completed_tasks = list()
 
-    def add_definition(self, name, args):
-        if name not in self.task_definitions:
-            self.task_definitions[name] = args
-
     def clear(self):  # TODO
 
         for id_task in list(self.catalog_tasks):
@@ -66,7 +54,6 @@ class CatalogTask(object):
             if check_serialization(data):
                 delete_result(data)
 
-        self.task_definitions = dict()
         self.catalog_tasks = dict()
         self.completed_tasks = list()
         self.dag = nx.DiGraph()
@@ -110,11 +97,11 @@ class CatalogTask(object):
     def list_all(self):
         return list(self.catalog_tasks)
 
-    def get_schema(self, uuid):
-        return self.catalog_tasks[uuid].get('schema', None)
+    def get_all_schema(self, uuid):
+        return self.catalog_tasks[uuid].get('schema', {})
 
     def get_merged_schema(self, uuid):
-        sc = self.get_schema(uuid)
+        sc = self.get_all_schema(uuid)
         if isinstance(sc, list):
             sc = merge_info(sc)
             sc = compss_wait_on(sc)
@@ -134,23 +121,13 @@ class CatalogTask(object):
         return self.catalog_tasks[uuid_task].get('name', '')
 
     def get_task_opt_type(self, uuid_task):
-        name_task = self.get_task_name(uuid_task)
-        return self.task_definitions[name_task].get('optimization',
-                                                    OPTGroup.OPT_OTHER)
+        return self.catalog_tasks[uuid_task]['operation'].phi_category
 
-    def get_task_function(self, uuid_task):
-        name_task = self.get_task_name(uuid_task)
-        return self.task_definitions[name_task]['function']
+    def get_task_operation(self, uuid_task):
+        return self.catalog_tasks[uuid_task]['operation']
 
-    def set_task_function(self, uuid_task, function):
-        name_task = self.get_task_name(uuid_task)
-        self.task_definitions[name_task]['function'] = function
-
-    def get_task_parameters(self, uuid_task):
-        return self.catalog_tasks[uuid_task]['parameters']
-
-    def set_task_parameters(self, uuid_task, params):
-        self.catalog_tasks[uuid_task]['parameters'] = params
+    def set_task_parameters(self, uuid_task, operation):
+        self.catalog_tasks[uuid_task]['operation'] = operation
 
     def get_task_return(self, uuid_task):
         return self.catalog_tasks[uuid_task].get('result', [])
@@ -175,9 +152,80 @@ class CatalogTask(object):
     def get_task_parents(self, uuid_task):
         return [i for i, o in self.dag.in_edges(uuid_task)]
 
+    def get_task_children(self, uuid_task):
+        return [o for i, o in self.dag.out_edges(uuid_task)]
+
+    def topological_sort(self):
+        return list(nx.algorithms.topological_sort(self.dag))
+
+    def add_task_parent(self, uuid_task, uuid_p):
+        self.dag.add_edge(uuid_p, uuid_task)
+
+    def remove_intermediate_node(self, node1, node2, node3):
+        self.dag.add_edge(node1, node3)
+        self.dag.remove_node(node2)
+
+    def remove_node(self, node1):
+        self.dag.remove_node(node1)
+
+    def change_node_position(self, node1, node2):
+        """
+        Move node1 to above node2
+
+        :param node1:
+        :param node2:
+        :return:
+        """
+
+        for p in self.get_task_parents(node1):
+            for c in self.get_task_children(node1):
+                self.dag.add_edge(p, c)
+
+        self.dag.remove_node(node1)  # remove all edges
+        self.dag.add_node(node1)
+        for old_p in self.get_task_parents(node2):
+            self.dag.add_edge(old_p, node1)
+            self.dag.remove_edge(old_p, node2)
+
+        self.dag.add_edge(node1, node2)
+
+    def move_node_to_up(self, node1, node2):
+        """
+        Move node2 to the node1's place
+        :param node1:
+        :param node2:
+        :return:
+        """
+
+        for p in self.get_task_parents(node2):
+            self.dag.remove_edge(p, node2)
+
+        parents = self.get_task_parents(node1)
+        for p in parents:
+            self.dag.remove_edge(p, node1)
+            self.dag.add_edge(p, node2)
+
+        self.dag.add_edge(node2, node1)
+
+    def move_node_to_down(self, node1, node2):
+        """
+        Move node2 to the node1's place
+        :param node1:
+        :param node2:
+        :return:
+        """
+
+        for p in self.get_task_parents(node2):
+            for c in self.get_task_children(node2):
+                self.dag.add_edge(p, c)
+
+        self.dag.remove_node(node2)
+        self.dag.add_node(node2)
+
+        self.dag.add_edge(node1, node2)
+
     def get_n_input(self, uuid_task):
-        name_task = self.get_task_name(uuid_task)
-        return self.task_definitions[name_task]['input']
+        return len(self.get_task_parents(uuid_task))
 
     def get_task_sibling(self, uuid_task):
         return self.catalog_tasks[uuid_task].get('sibling', [uuid_task])
@@ -193,7 +241,7 @@ class CatalogTask(object):
 
     def get_info_condition(self, uuid_task):
         name_task = self.get_task_name(uuid_task)
-        return self.task_definitions[name_task].get('info', False)
+        return self.task_definitions[name_task].get('schema', False)
 
 
 def check_serialization(data):

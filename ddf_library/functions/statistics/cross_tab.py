@@ -38,8 +38,8 @@ def cross_tab(data, settings):
     data_output = create_stage_files(nfrag)
     info = _create_tab(crosstab_df, nfrag, data_output)
 
-    output = {'key_data': ['data'], 'key_info': ['info'],
-              'data': data_output, 'info': info}
+    output = {'key_data': ['data'], 'key_info': ['schema'],
+              'data': data_output, 'schema': info}
     return output
 
 

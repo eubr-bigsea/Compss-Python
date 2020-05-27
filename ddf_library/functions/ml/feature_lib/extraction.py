@@ -296,7 +296,7 @@ class TfidfVectorizer(ModelDDF):
 
         df, nfrag, tmp = self._ddf_initial_setup(data)
 
-        # TODO: info instead to generate new tasks
+        # TODO: schema instead to generate new tasks
         counts = [count_records(df[f]) for f in range(nfrag)]
         count = merge_reduce(merge_count, counts)
 

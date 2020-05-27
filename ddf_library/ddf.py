@@ -89,7 +89,7 @@ class DDF(DDFSketch):
         new_state_uuid = ContextBase \
             .ddf_add_task(ddf_crst_transform.__name__,
                           opt=OPTGroup.OPT_SERIAL,
-                          function=ddf_crst_transform,
+                          operation=ddf_crst_transform,
                           parameters=settings,
                           parent=[self.last_uuid],
                           info=True)
@@ -133,7 +133,7 @@ class DDF(DDFSketch):
         new_state_uuid = ContextBase\
             .ddf_add_task('balancer',
                           opt=OPTGroup.OPT_OTHER,
-                          function=task_balancer,
+                          operation=task_balancer,
                           parameters=settings,
                           parent=[self.last_uuid],
                           info=True)
@@ -185,7 +185,7 @@ class DDF(DDFSketch):
         new_state_uuid = ContextBase \
             .ddf_add_task('cast',
                           opt=OPTGroup.OPT_SERIAL,
-                          function=task_cast,
+                          operation=task_cast,
                           parameters=settings,
                           parent=[self.last_uuid])
 
@@ -221,7 +221,7 @@ class DDF(DDFSketch):
         new_state_uuid = ContextBase\
             .ddf_add_task('add_column',
                           opt=OPTGroup.OPT_OTHER,
-                          function=task_add_column,
+                          operation=task_add_column,
                           parameters=settings,
                           parent=[self.last_uuid, data2.last_uuid],
                           info=True)
@@ -256,7 +256,7 @@ class DDF(DDFSketch):
         last_uuid = ContextBase\
             .ddf_add_task('task_aggregation_stage_1',
                           opt=OPTGroup.OPT_LAST,
-                          function=task_aggregation_stage_1,
+                          operation=task_aggregation_stage_1,
                           parameters=settings,
                           parent=[self.last_uuid],
                           info=True)
@@ -264,7 +264,7 @@ class DDF(DDFSketch):
         new_state_uuid = ContextBase\
             .ddf_add_task('task_aggregation_stage_2',
                           opt=OPTGroup.OPT_SERIAL,
-                          function=task_aggregation_stage_2,
+                          operation=task_aggregation_stage_2,
                           parameters=settings,
                           parent=[last_uuid])
 
@@ -306,7 +306,7 @@ class DDF(DDFSketch):
             new_state_uuid = ContextBase \
                 .ddf_add_task('fill_na',
                               opt=OPTGroup.OPT_SERIAL,
-                              function=task_clean_missing,
+                              operation=task_clean_missing,
                               parameters=settings,
                               parent=[self.last_uuid])
 
@@ -325,7 +325,7 @@ class DDF(DDFSketch):
             last_uuid = ContextBase \
                 .ddf_add_task('task_fill_nan_stage_1',
                               opt=OPTGroup.OPT_LAST,
-                              function=task_fill_nan_stage_1,
+                              operation=task_fill_nan_stage_1,
                               parameters=settings,
                               parent=[self.last_uuid],
                               info=True)
@@ -333,7 +333,7 @@ class DDF(DDFSketch):
             new_state_uuid = ContextBase \
                 .ddf_add_task('task_fill_nan_stage_2',
                               opt=OPTGroup.OPT_SERIAL,
-                              function=task_fill_nan_stage_2,
+                              operation=task_fill_nan_stage_2,
                               parameters=None,
                               parent=[last_uuid])
 
@@ -419,7 +419,7 @@ class DDF(DDFSketch):
         new_state_uuid = ContextBase\
             .ddf_add_task('cross_join',
                           opt=OPTGroup.OPT_OTHER,
-                          function=task_cross_join,
+                          operation=task_cross_join,
                           parameters={},
                           parent=[self.last_uuid, data2.last_uuid])
 
@@ -455,7 +455,7 @@ class DDF(DDFSketch):
         new_state_uuid = ContextBase\
             .ddf_add_task('cross_tab',
                           opt=OPTGroup.OPT_OTHER,
-                          function=task_cross_tab,
+                          operation=task_cross_tab,
                           parameters=settings,
                           parent=[self.last_uuid])
 
@@ -555,7 +555,7 @@ class DDF(DDFSketch):
         last_uuid = ContextBase\
             .ddf_add_task('task_subtract_stage_1',
                           opt=OPTGroup.OPT_LAST,
-                          function=task_subtract_stage_1,
+                          operation=task_subtract_stage_1,
                           parameters=settings,
                           parent=[self.last_uuid, data2.last_uuid],
                           info=True)
@@ -563,7 +563,7 @@ class DDF(DDFSketch):
         new_state_uuid = ContextBase\
             .ddf_add_task('task_subtract_stage_2',
                           opt=OPTGroup.OPT_SERIAL,
-                          function=task_subtract_stage_2,
+                          operation=task_subtract_stage_2,
                           parameters=None,
                           parent=[last_uuid])
 
@@ -599,7 +599,7 @@ class DDF(DDFSketch):
         last_uuid = ContextBase \
             .ddf_add_task('task_except_all_stage_1',
                           opt=OPTGroup.OPT_LAST,
-                          function=task_except_all_stage_1,
+                          operation=task_except_all_stage_1,
                           parameters=settings,
                           parent=[self.last_uuid, data2.last_uuid],
                           info=True)
@@ -607,7 +607,7 @@ class DDF(DDFSketch):
         new_state_uuid = ContextBase\
             .ddf_add_task('task_except_all_stage_2',
                           opt=OPTGroup.OPT_SERIAL,
-                          function=task_except_all_stage_2,
+                          operation=task_except_all_stage_2,
                           parameters=settings,
                           parent=[last_uuid])
 
@@ -638,7 +638,7 @@ class DDF(DDFSketch):
         last_uuid = ContextBase\
             .ddf_add_task('distinct_stage_1',
                           opt=OPTGroup.OPT_LAST,
-                          function=task_distinct_stage_1,
+                          operation=task_distinct_stage_1,
                           parameters=settings,
                           parent=[self.last_uuid],
                           info=True)
@@ -649,7 +649,7 @@ class DDF(DDFSketch):
         new_state_uuid = ContextBase\
             .ddf_add_task('distinct_stage_2',
                           opt=OPTGroup.OPT_SERIAL,
-                          function=task_distinct_stage_2,
+                          operation=task_distinct_stage_2,
                           parameters=None,
                           parent=[last_uuid])
 
@@ -672,18 +672,13 @@ class DDF(DDFSketch):
 
         settings = {'columns': columns}
 
-        from .functions.etl.drop import drop
-
-        def ddf_drop(df, params):
-            return drop(df, params)
-
+        from ddf_library.bases.optimizer.operations import DropColumns
+        
         new_state_uuid = ContextBase\
-            .ddf_add_task('DropRows',
-                          opt=OPTGroup.OPT_SERIAL,
-                          function=ddf_drop,
+            .ddf_add_task(opt=OPTGroup.OPT_SERIAL,
+                          operation=DropColumns(settings),
                           parameters=settings,
-                          parent=[self.last_uuid],
-                          expr={'in': columns})
+                          parent=[self.last_uuid])
 
         return DDF(last_uuid=new_state_uuid)
 
@@ -723,15 +718,11 @@ class DDF(DDFSketch):
                     'cleaning_mode': mode}
 
         if mode is 'REMOVE_ROW':
-            from .functions.etl.clean_missing import drop_nan_rows
-
-            def task_dropna(df, params):
-                return drop_nan_rows(df, params)
+            from ddf_library.bases.optimizer.operations import DropNaRows
 
             new_state_uuid = ContextBase \
-                .ddf_add_task('dropna',
-                              opt=OPTGroup.OPT_SERIAL,
-                              function=task_dropna,
+                .ddf_add_task(opt=OPTGroup.OPT_SERIAL,
+                              operation=DropNaRows(settings),
                               parameters=settings,
                               parent=[self.last_uuid])
 
@@ -750,7 +741,7 @@ class DDF(DDFSketch):
             last_uuid = ContextBase \
                 .ddf_add_task('task_drop_nan_columns_stage_1',
                               opt=OPTGroup.OPT_LAST,
-                              function=task_drop_nan_columns_stage_1,
+                              operation=task_drop_nan_columns_stage_1,
                               parameters=settings,
                               parent=[self.last_uuid],
                               info=True)
@@ -758,7 +749,7 @@ class DDF(DDFSketch):
             new_state_uuid = ContextBase \
                 .ddf_add_task('task_drop_nan_columns_stage_2',
                               opt=OPTGroup.OPT_SERIAL,
-                              function=task_drop_nan_columns_stage_2,
+                              operation=task_drop_nan_columns_stage_2,
                               parameters=None,
                               parent=[last_uuid])
 
@@ -789,7 +780,7 @@ class DDF(DDFSketch):
         new_state_uuid = ContextBase \
             .ddf_add_task('explode',
                           opt=OPTGroup.OPT_SERIAL,
-                          function=task_explode,
+                          operation=task_explode,
                           parameters=settings,
                           parent=[self.last_uuid])
 
@@ -813,18 +804,12 @@ class DDF(DDFSketch):
 
         >>> ddf1.filter("(col_1 == 'male') and (col_3 > 42)")
         """
+        from ddf_library.bases.optimizer.operations import Filter
 
-        from .functions.etl.filter import filter_rows
         settings = {'query': expr}
 
-        def task_filter(df, params):
-            return filter_rows(df, params)
-
         new_state_uuid = ContextBase\
-            .ddf_add_task('filter',
-                          opt=OPTGroup.OPT_SERIAL,
-                          function=task_filter,
-                          parameters=settings,
+            .ddf_add_task(operation=Filter(settings),
                           parent=[self.last_uuid])
 
         return DDF(last_uuid=new_state_uuid)
@@ -867,7 +852,7 @@ class DDF(DDFSketch):
         last_uuid = ContextBase \
             .ddf_add_task('task_geo_within_stage_1',
                           opt=OPTGroup.OPT_LAST,
-                          function=task_geo_within_stage_1,
+                          operation=task_geo_within_stage_1,
                           parameters=settings,
                           parent=[self.last_uuid, shp_object.last_uuid],
                           info=True)
@@ -875,7 +860,7 @@ class DDF(DDFSketch):
         new_state_uuid = ContextBase \
             .ddf_add_task('task_geo_within_stage_2',
                           opt=OPTGroup.OPT_SERIAL,
-                          function=task_geo_within_stage_2,
+                          operation=task_geo_within_stage_2,
                           parameters=None,
                           parent=[last_uuid])
 
@@ -913,7 +898,7 @@ class DDF(DDFSketch):
         new_state_uuid = ContextBase\
             .ddf_add_task('hash_partition',
                           opt=OPTGroup.OPT_OTHER,
-                          function=task_hash_partition,
+                          operation=task_hash_partition,
                           parameters=settings,
                           parent=[self.last_uuid],
                           info=True)
@@ -950,7 +935,7 @@ class DDF(DDFSketch):
         last_uuid = ContextBase \
             .ddf_add_task('task_intersect_stage_1',
                           opt=OPTGroup.OPT_LAST,
-                          function=task_intersect_stage_1,
+                          operation=task_intersect_stage_1,
                           parameters=settings,
                           parent=[self.last_uuid, data2.last_uuid],
                           info=True)
@@ -958,7 +943,7 @@ class DDF(DDFSketch):
         new_state_uuid = ContextBase \
             .ddf_add_task('task_intersect_stage_2',
                           opt=OPTGroup.OPT_SERIAL,
-                          function=task_intersect_stage_2,
+                          operation=task_intersect_stage_2,
                           parameters=None,
                           parent=[last_uuid])
 
@@ -994,7 +979,7 @@ class DDF(DDFSketch):
         last_uuid = ContextBase \
             .ddf_add_task('task_intersect_stage_1',
                           opt=OPTGroup.OPT_LAST,
-                          function=task_intersect_stage_1,
+                          operation=task_intersect_stage_1,
                           parameters=settings,
                           parent=[self.last_uuid, data2.last_uuid],
                           info=True)
@@ -1002,7 +987,7 @@ class DDF(DDFSketch):
         new_state_uuid = ContextBase \
             .ddf_add_task('task_intersect_stage_2',
                           opt=OPTGroup.OPT_SERIAL,
-                          function=task_intersect_stage_2,
+                          operation=task_intersect_stage_2,
                           parameters=None,
                           parent=[last_uuid])
 
@@ -1059,7 +1044,7 @@ class DDF(DDFSketch):
         last_uuid = ContextBase \
             .ddf_add_task('task_join_stage_1',
                           opt=OPTGroup.OPT_LAST,
-                          function=task_join_stage_1,
+                          operation=task_join_stage_1,
                           parameters=settings,
                           parent=[self.last_uuid, data2.last_uuid],
                           info=True)
@@ -1067,7 +1052,7 @@ class DDF(DDFSketch):
         new_state_uuid = ContextBase \
             .ddf_add_task('task_join_stage_2',
                           opt=OPTGroup.OPT_SERIAL,
-                          function=task_join_stage_2,
+                          operation=task_join_stage_2,
                           parameters=None,
                           parent=[last_uuid])
 
@@ -1119,7 +1104,7 @@ class DDF(DDFSketch):
 
         df, nfrag, tmp, info = self._ddf_initial_setup(self, info=True)
         settings = {'col': col, 'distribution': distribution, 'mode': mode,
-                    'info': [info]}
+                    'schema': [info]}
         if args is not None:
             settings['args'] = args
 
@@ -1146,19 +1131,11 @@ class DDF(DDFSketch):
         >>> ddf1.map(col('col_0').cast(DataType.INT), 'col_0_new')
         """
         settings = {'function': f, 'alias': alias}
-
-        from .functions.etl.map import map as task
-
-        def ddf_map(df, params):
-            return task(df, params)
+        from ddf_library.bases.optimizer.operations import Map
 
         new_state_uuid = ContextBase \
-            .ddf_add_task('Map',
-                          opt=OPTGroup.OPT_SERIAL,
-                          function=ddf_map,
-                          parameters=settings,
-                          parent=[self.last_uuid],
-                          expr={'in': [None], 'out': [alias]}) #TODO
+            .ddf_add_task(operation=Map(settings),
+                          parent=[self.last_uuid])
 
         return DDF(last_uuid=new_state_uuid)
 
@@ -1177,7 +1154,7 @@ class DDF(DDFSketch):
         status = ContextBase.catalog_tasks.get_task_status(self.last_uuid)
 
         if status in [Status.STATUS_WAIT, Status.STATUS_DELETED]:
-            ContextBase().run_workflow(self.last_uuid)
+            self.last_uuid = ContextBase().run_workflow(self.last_uuid)
 
         ContextBase.update_status([self.last_uuid], Status.STATUS_PERSISTED)
         return self
@@ -1222,7 +1199,7 @@ class DDF(DDFSketch):
         new_state_uuid = ContextBase \
             .ddf_add_task('range_partition',
                           opt=OPTGroup.OPT_OTHER,
-                          function=task_range_partition,
+                          operation=task_range_partition,
                           parameters=settings,
                           parent=[self.last_uuid],
                           info=True)
@@ -1255,7 +1232,7 @@ class DDF(DDFSketch):
         new_state_uuid = ContextBase \
             .ddf_add_task('repartition',
                           opt=OPTGroup.OPT_OTHER,
-                          function=task_repartition,
+                          operation=task_repartition,
                           parameters=settings,
                           parent=[self.last_uuid],
                           info=True)
@@ -1281,21 +1258,19 @@ class DDF(DDFSketch):
         >>> ddf1.replace({0: 'No', 1: 'Yes'}, subset=['col_1'])
         """
 
-        from .functions.etl.replace_values import replace_value, preprocessing
+        from ddf_library.bases.optimizer.operations import Replace
 
         settings = {'replaces': replaces, 'regex': regex}
         if subset is not None:
             settings['subset'] = subset
 
-        settings = preprocessing(settings)
+        obj = Replace(settings)
 
-        def task_replace(df, params):
-            return replace_value(df, params)
+        settings = obj.settings
 
         new_state_uuid = ContextBase\
-            .ddf_add_task('replace',
-                          opt=OPTGroup.OPT_SERIAL,
-                          function=task_replace,
+            .ddf_add_task(opt=OPTGroup.OPT_SERIAL,
+                          operation=Replace(settings),
                           parameters=settings,
                           parent=[self.last_uuid])
 
@@ -1342,7 +1317,7 @@ class DDF(DDFSketch):
         last_uuid = ContextBase \
             .ddf_add_task('task_sample_stage_1',
                           opt=OPTGroup.OPT_LAST,
-                          function=task_sample_stage_1,
+                          operation=task_sample_stage_1,
                           parameters=settings,
                           parent=[self.last_uuid],
                           info=True)
@@ -1350,7 +1325,7 @@ class DDF(DDFSketch):
         new_state_uuid = ContextBase\
             .ddf_add_task('task_sample_stage_2',
                           opt=OPTGroup.OPT_SERIAL,
-                          function=task_sample_stage_2,
+                          operation=task_sample_stage_2,
                           parameters=None,
                           parent=[last_uuid])
 
@@ -1396,20 +1371,15 @@ class DDF(DDFSketch):
         >>> ddf1.select(['col_1', 'col_2'])
         """
 
-        from .functions.etl.select import select
-
         settings = {'columns': columns}
 
-        def task_select(df, params):
-            return select(df, params)
+        from ddf_library.bases.optimizer.operations import Select
 
         new_state_uuid = ContextBase\
-            .ddf_add_task('Select',
-                          opt=OPTGroup.OPT_SERIAL,
-                          function=task_select,
+            .ddf_add_task(opt=OPTGroup.OPT_SERIAL,  # TODO: REMOVE in FUTURE
+                          operation=Select(settings),
                           parameters=settings,
-                          parent=[self.last_uuid],
-                          expr={'out': columns})
+                          parent=[self.last_uuid])
 
         return DDF(last_uuid=new_state_uuid)
 
@@ -1467,7 +1437,7 @@ class DDF(DDFSketch):
         new_state_uuid = ContextBase\
             .ddf_add_task('select_exprs',
                           opt=OPTGroup.OPT_SERIAL,
-                          function=task_select_exprs,
+                          operation=task_select_exprs,
                           parameters=settings,
                           parent=[self.last_uuid])
 
@@ -1493,7 +1463,7 @@ class DDF(DDFSketch):
         from .functions.etl.take import take
         conf = {'value': n,
                 'balancer': False,
-                'info': [{'size': n_rows_frags}]
+                'schema': [{'size': n_rows_frags}]
                 }
         res = take(self.partitions, conf)['data']
 
@@ -1532,7 +1502,7 @@ class DDF(DDFSketch):
         last_uuid = ContextBase \
             .ddf_add_task('sort_stage_1',
                           opt=OPTGroup.OPT_LAST,
-                          function=task_sort_stage_1,
+                          operation=task_sort_stage_1,
                           parameters=settings,
                           parent=[self.last_uuid],
                           info=True)
@@ -1543,7 +1513,7 @@ class DDF(DDFSketch):
         new_state_uuid = ContextBase \
             .ddf_add_task('sort_stage_2',
                           opt=OPTGroup.OPT_SERIAL,
-                          function=task_sort_stage_2,
+                          operation=task_sort_stage_2,
                           parameters=None,
                           parent=[last_uuid])
 
@@ -1575,7 +1545,7 @@ class DDF(DDFSketch):
         split_out1_uuid = ContextBase \
             .ddf_add_task('split-out1',
                           opt=OPTGroup.OPT_OTHER,
-                          function=task_split,
+                          operation=task_split,
                           parameters=settings,
                           parent=[self.last_uuid],
                           info=True,
@@ -1584,7 +1554,7 @@ class DDF(DDFSketch):
         split_out2_uuid = ContextBase \
             .ddf_add_task('split-out2',
                           opt=OPTGroup.OPT_OTHER,
-                          function=task_split,
+                          operation=task_split,
                           parameters=settings,
                           parent=[self.last_uuid],
                           info=True,
@@ -1620,7 +1590,7 @@ class DDF(DDFSketch):
         last_uuid = ContextBase\
             .ddf_add_task('task_take_stage_1',
                           opt=OPTGroup.OPT_LAST,
-                          function=task_take_stage_1,
+                          operation=task_take_stage_1,
                           parameters=settings,
                           parent=[self.last_uuid],
                           info=True)
@@ -1631,7 +1601,7 @@ class DDF(DDFSketch):
         new_state_uuid = ContextBase \
             .ddf_add_task('task_take_stage_2',
                           opt=OPTGroup.OPT_SERIAL,
-                          function=task_take_stage_2,
+                          operation=task_take_stage_2,
                           parameters=None,
                           parent=[last_uuid])
 
@@ -1700,7 +1670,7 @@ class DDF(DDFSketch):
         new_state_uuid = ContextBase \
             .ddf_add_task('union',
                           opt=OPTGroup.OPT_OTHER,
-                          function=task_union,
+                          operation=task_union,
                           parameters=settings,
                           parent=[self.last_uuid, data2.last_uuid],
                           info=True)
@@ -1733,7 +1703,7 @@ class DDF(DDFSketch):
         new_state_uuid = ContextBase\
             .ddf_add_task('union',
                           opt=OPTGroup.OPT_OTHER,
-                          function=task_union,
+                          operation=task_union,
                           parameters=settings,
                           parent=[self.last_uuid,  data2.last_uuid],
                           info=True)
@@ -1770,7 +1740,7 @@ class DDF(DDFSketch):
         new_state_uuid = ContextBase\
             .ddf_add_task('rename',
                           opt=OPTGroup.OPT_SERIAL,
-                          function=task_rename,
+                          operation=task_rename,
                           parameters=settings,
                           parent=[self.last_uuid])
 

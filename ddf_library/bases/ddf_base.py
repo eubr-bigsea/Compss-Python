@@ -50,7 +50,7 @@ class DDFSketch(object):
                 stored = True
                 break
             else:
-                ContextBase().run_workflow(self.last_uuid)
+                self.last_uuid = ContextBase().run_workflow(self.last_uuid)
 
         if not stored:
             raise Exception("[ERROR] - _check_stored - cache cant be done")

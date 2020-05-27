@@ -32,6 +32,7 @@ class ContextBase(object):
 
     DEBUG = False
     monitor = False
+    logical_optimization = False
 
     @staticmethod
     def show_workflow(tasks_map, selected_tasks):
@@ -43,9 +44,9 @@ class ContextBase(object):
 
         t = PrettyTable(['Order', 'Task name', 'uuid'])
         for i, uuid in enumerate(selected_tasks):
-            t.add_row([i+1, tasks_map[uuid]['name'], uuid[:8]])
+            t.add_row([i+1, tasks_map.get_task_name(uuid), uuid[:8]])
 
-        print("\nRelevant tasks:", t, '\n')
+        print("\nRelevant tasks:\n", t, '\n')
 
     @staticmethod
     def gen_status():
@@ -100,17 +101,16 @@ class ContextBase(object):
     def set_operation(self, child_task, id_parents):
 
         # get the operation to be executed
-        function = self.catalog_tasks.get_task_function(child_task)
-        parameters = self.catalog_tasks.get_task_parameters(child_task)
+        operation = self.catalog_tasks.get_task_operation(child_task)
 
         # some operations need a schema information
-        if self.catalog_tasks.get_info_condition(child_task):
-            parameters['info'] = []
+        if operation.require_info:
+            operation.settings['schema'] = []
             for p in id_parents:
                 sc = self.catalog_tasks.get_merged_schema(p)
-                parameters['info'].append(sc)
+                operation.settings['schema'].append(sc)
 
-        return function, parameters
+        return operation
 
     def check_pointer(self, last_node):
         """
@@ -120,7 +120,7 @@ class ContextBase(object):
         :return: a sorted list starting from previous results (if exists);
         """
 
-        lineage = list(nx.algorithms.topological_sort(self.catalog_tasks.dag))
+        lineage = self.catalog_tasks.topological_sort()
         idx = lineage.index(last_node)
         lineage = lineage[0:idx+1]
 
@@ -179,14 +179,16 @@ class ContextBase(object):
 
         lineage = self.check_pointer(last_task)
 
-        # optimizer = DDFOptimizer(lineage, self.dag,
-        #                          self.catalog_tasks,
-        #                          self.catalog_tasks.schema)
-        # optimizer.interpreter()
-        # optimizer.explain_lineage()
-
         # all DELETED task are now waiting a new result
         self.update_status(lineage, Status.STATUS_WAIT)
+
+        if self.logical_optimization:
+            optimizer = DDFOptimizer(lineage, self.catalog_tasks)
+            optimizer.optimize_logical_plain()
+            optimizer.explain_logical_plan()
+            lineage = optimizer.logical_plan.get_new_lineage()
+            print('-- starting phisical plain')
+            # optimizer.phisical_plain()
 
         if ContextBase.DEBUG:
             self.show_workflow(self.catalog_tasks, lineage)
@@ -232,6 +234,9 @@ class ContextBase(object):
                 table = ContextBase.gen_status()
                 title = ContextBase.app_folder.replace('/tmp/ddf_', '')
                 gen_data(ContextBase.catalog_tasks, table, title)
+
+        # with logical optimizations, the last uuid is possible to change
+        return lineage[-1]
 
     def is_removable(self, id_task):
         """
@@ -290,9 +295,9 @@ class ContextBase(object):
         so, it must be executed separated.
         """
 
-        function, parameters = self.set_operation(child_task, id_parents)
+        operation = self.set_operation(child_task, id_parents)
         # execute this operation that returns a dictionary
-        output_dict = self._execute_other_task(function, parameters, inputs)
+        output_dict = self._execute_other_task(operation, inputs)
         self.save_opt_others_tasks(output_dict, child_task)
 
     def run_opt_serial(self, lineage, inputs):
@@ -303,7 +308,7 @@ class ContextBase(object):
         In order to group two tasks in a stage: both need to be 'serial'; and
         can not have a branch in the flow between them.
         """
-        group_uuid, group_func, group_param = list(), list(), list()
+        group_uuid, group_operations = list(), list()
 
         for id_j, task_opt in enumerate(lineage):
             if ContextBase.DEBUG:
@@ -313,8 +318,8 @@ class ContextBase(object):
                 print(msg)
 
             group_uuid.append(task_opt)
-            group_func.append(self.catalog_tasks.get_task_function(task_opt))
-            group_param.append(self.catalog_tasks.get_task_parameters(task_opt))
+            group_operations.append(self.catalog_tasks
+                                    .get_task_operation(task_opt))
 
             if (id_j + 1) < len(lineage):
                 next_task = lineage[id_j + 1]
@@ -340,10 +345,10 @@ class ContextBase(object):
                   " - opt_functions: {}".format(ids, names)
             print(msg)
 
-        result, info = self._execute_serial_tasks(group_uuid, group_func,
-                                                  group_param, inputs)
+        result, info = self._execute_serial_tasks(group_uuid,
+                                                  group_operations, inputs)
         self.save_serial_states(result, info, group_uuid)
-        jump = len(group_func)-1
+        jump = len(group_operations)-1
         return jump
 
     def run_opt_last(self, child_task, lineage, inputs, id_parents):
@@ -352,13 +357,12 @@ class ContextBase(object):
         check if the next operations share this behavior. If it does, group
         them to execute together, otherwise, execute it as a single task.
         """
-        group_uuid, group_func, group_param = list(), list(), list()
+        group_uuid, group_operations = list(), list()
 
         n_input = self.catalog_tasks.get_n_input(child_task)
         group_uuid.append(child_task)
-        function, parameters = self.set_operation(child_task, id_parents)
-        group_func.append(function)
-        group_param.append(parameters)
+        operation = self.set_operation(child_task, id_parents)
+        group_operations.append(operation)
 
         lineage = lineage[1:]
         for id_j, task_opt in enumerate(lineage):
@@ -368,8 +372,8 @@ class ContextBase(object):
                         task_opt[:8]))
 
             group_uuid.append(task_opt)
-            group_func.append(self.catalog_tasks.get_task_function(task_opt))
-            group_param.append(self.catalog_tasks.get_task_parameters(task_opt))
+            group_operations.append(self.catalog_tasks
+                                    .get_task_operation(task_opt))
 
             if (id_j + 1) < len(lineage):
                 next_task = lineage[id_j + 1]
@@ -395,17 +399,16 @@ class ContextBase(object):
             print(msg)
 
         result, info = self._execute_opt_last_tasks(group_uuid.copy(),
-                                                    group_func,
-                                                    group_param,
+                                                    group_operations,
                                                     inputs, n_input)
         self.save_serial_states(result, info, group_uuid)
-        jump = len(group_func)-1
+        jump = len(group_operations)-1
         return jump
 
     def save_opt_others_tasks(self, output_dict, child_task):
         # Results in non 'optimization-other' tasks are in dictionary format
 
-        # get the keys where data and info are stored in the dictionary
+        # get the keys where data and schema are stored in the dictionary
         keys_r, keys_i = output_dict['key_data'], output_dict['key_info']
 
         # Get siblings uuids. Some operations (currently, only 'split'
@@ -444,21 +447,21 @@ class ContextBase(object):
             self.catalog_tasks.set_schema(last_uuid, info)
             self.catalog_tasks.set_task_status(last_uuid,
                                                Status.STATUS_COMPLETED)
-
         else:
             self.catalog_tasks.set_task_status(last_uuid,
                                                Status.STATUS_PERSISTED)
 
     @staticmethod
-    def _execute_other_task(function, settings, input_data):
+    def _execute_other_task(operation, input_data):
         """
         Execute all tasks that cannot be grouped.
 
-        :param function: A function to be executed
-        :param settings: its parameters
+        :param operation: A operation to be executed
         :param input_data: A list of DataFrame as input data
         :return:
         """
+        function = operation.function
+        parameters = operation.settings
 
         nfrag = len(input_data)
 
@@ -470,20 +473,17 @@ class ContextBase(object):
                   '   * input file {}'.format(input_data)
             print(msg)
 
-        output = function(input_data, settings)
+        output = function(input_data, parameters)
         return output
 
-    def _execute_serial_tasks(self, uuid_list, function_list, param_list,
-                              input_data):
+    def _execute_serial_tasks(self, uuid_list, operation_list, input_data):
 
         """
         Execute a group of 'serial' tasks. This method submit
         multiple COMPSs tasks `stage_*in_*out`, one for each data fragment.
 
         :param uuid_list: sequence of tasks uuid to be executed
-        :param function_list: sequence of functions to be executed
-         in each fragment
-        :param param_list: sequence of parameters to be executed
+        :param operation_list: sequence of operations to be executed
          in each fragment
         :param input_data: A list of DataFrame as input data
         :return:
@@ -493,6 +493,9 @@ class ContextBase(object):
             input_data = input_data[0]
         nfrag = len(input_data)
         info = [[] for _ in range(nfrag)]
+
+        function_list = [op.function for op in operation_list]
+        param_list = [op.settings for op in operation_list]
 
         first_task_name = self.catalog_tasks.get_task_name(uuid_list[0])
         last_task_name = self.catalog_tasks.get_task_name(uuid_list[-1])
@@ -620,23 +623,13 @@ class ContextBase(object):
         return out_files, info
 
     @staticmethod
-    def create_init():
-        first_uuid = ContextBase\
-            .ddf_add_task('init', opt=OPTGroup.OPT_OTHER,
-                          n_input=0, status=Status.STATUS_COMPLETED,
-                          parent=[], function=None, parameters=None)
-        return first_uuid
-
-    @staticmethod
-    def ddf_add_task(name, opt, function, parameters, parent, n_input=-1,
+    def ddf_add_task(operation, parameters={}, opt=None, parent=[], n_input=-1,
                      n_output=1, status='WAIT', result=None, info=False,
                      info_data=None, expr=None):
         """
         Insert a DDF task in COMPSs Context catalog.
 
-        :param name: DDF task name;
-        :param opt: Optimization police;
-        :param function: the function definition;
+        :param operation: DDF operation;
         :param parameters: a dictionary with all function's parameters input;
         :param parent: uuid parent task;
         :param n_input: number of parents;
@@ -649,28 +642,13 @@ class ContextBase(object):
         :return:
         """
 
-        # Add information about the operation if operation is not cataloged yet
-        args_task = {
-            'optimization': opt,
-            'output': n_output,
-            'input': n_input if n_input >= 0 else len(parent),
-            'info': info,
-            'function': function,
-        }
-        ContextBase.catalog_tasks.add_definition(name, args_task)
-
-        if expr is None:
-            expr = {}
-
-        if 'name' not in expr:
-            expr['name'] = name  # Todo: change it in future
+        name = operation.__class__.__name__
 
         args_task = {
             'name': name,
             'status': status,
-            'parameters': parameters,
+            'operation': operation,
             'result': result,
-            'expr': expr  # TODO: remove or establish it
         }
         new_state_uuid = ContextBase.catalog_tasks.gen_new_uuid()
 
@@ -679,13 +657,13 @@ class ContextBase(object):
         if info_data:
             ContextBase.catalog_tasks.set_schema(new_state_uuid, info_data)
 
-        if status == Status.STATUS_COMPLETED and name != 'init':
+        if status == Status.STATUS_COMPLETED:
             ContextBase.catalog_tasks.add_completed(new_state_uuid)
 
         # linking parents
         ContextBase.catalog_tasks.dag.add_node(new_state_uuid)
         for p in parent:
-            ContextBase.catalog_tasks.dag.add_edge(p, new_state_uuid)
+            ContextBase.catalog_tasks.add_task_parent(new_state_uuid, p)
 
         return new_state_uuid
 

@@ -12,11 +12,11 @@ import pandas as pd
 
 def intersect_stage_1(data1, data2, settings):
 
-    info1, info2 = settings['info']
+    info1, info2 = settings['schema']
     nfrag = len(data1)
 
-    params_hash1 = {'columns': [], 'info': [info1], 'nfrag': nfrag}
-    params_hash2 = {'columns': [], 'info': [info2], 'nfrag': nfrag}
+    params_hash1 = {'columns': [], 'schema': [info1], 'nfrag': nfrag}
+    params_hash2 = {'columns': [], 'schema': [info2], 'nfrag': nfrag}
 
     out1 = hash_partition(data1, params_hash1)
     out2 = hash_partition(data2, params_hash2)

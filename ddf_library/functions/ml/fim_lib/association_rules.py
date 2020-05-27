@@ -88,9 +88,9 @@ class AssociationRules(ModelDDF):  # TODO
         info1, info2 = compss_wait_on(info1), compss_wait_on(info2)
 
         # first, perform a hash partition to shuffle both data
-        hash_params1 = {'columns': [col_aux], 'nfrag': nfrag, 'info': [info1],
+        hash_params1 = {'columns': [col_aux], 'nfrag': nfrag, 'schema': [info1],
                         'stage_id': -1}  # TODO
-        hash_params2 = {'columns': [col_aux], 'nfrag': nfrag, 'info': [info2],
+        hash_params2 = {'columns': [col_aux], 'nfrag': nfrag, 'schema': [info2],
                         'stage_id': -1}
         output1 = hash_partition(aux1, hash_params1)
         output2 = hash_partition(aux2, hash_params2)

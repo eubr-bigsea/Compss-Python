@@ -36,7 +36,7 @@ def read_shapefile_all(settings, nfrag):
     return outputs, infos
 
 
-def read_shapefile_stage_1(settings, nfrag):
+def read_shapefile_stage_1(settings):
     """
     Reads a shapefile using the shp and dbf file.
 
@@ -51,7 +51,7 @@ def read_shapefile_stage_1(settings, nfrag):
             empty to use all fields;
         - lat_long: True  if the coordinates is (lat,log),
             False if is (long,lat). Default is True;
-    :param nfrag: The number of partitions to split this data set.
+        - nfrag: The number of partitions to split this data set.
 
     .. note:: pip install pyshp
     """
@@ -61,7 +61,7 @@ def read_shapefile_stage_1(settings, nfrag):
     polygon = settings.get('polygon', 'points')
     header = settings.get('attributes', [])
     lat_long = settings.get('lat_long', True)
-
+    nfrag = settings['nfrag']
     # importing to shapefile object
     shp_object = _read(settings)
 

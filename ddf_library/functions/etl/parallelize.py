@@ -46,8 +46,8 @@ def parallelize(data, settings):
     if len(result) != nfrag:
         raise Exception("Error in parallelize function.")
 
-    output = {'key_data': ['data'], 'key_info': ['info'],
-              'data': result, 'info': info}
+    output = {'key_data': ['data'], 'key_info': ['schema'],
+              'data': result, 'schema': info}
 
     return output
 
@@ -107,10 +107,10 @@ def _generate_distribution2(n_rows, nfrag):
 #     compss_delete_object(schema)
 #
 #     info_agg = compss_wait_on(info_agg)
-#     info = _check_schema(info_agg)
+#     schema = _check_schema(info_agg)
 #
-#     output = {'key_data': ['data'], 'key_info': ['info'],
-#               'data': df_list, 'info': info}
+#     output = {'key_data': ['data'], 'key_info': ['schema'],
+#               'data': df_list, 'schema': schema}
 #     return output
 
 
@@ -143,8 +143,8 @@ def import_to_ddf(df_list, parquet=False, schema=None):
     info_agg = compss_wait_on(info_agg)
     info = _check_schema(info_agg)
 
-    # output = {'key_data': ['data'], 'key_info': ['info'],
-    #           'data': df_list, 'info': info}
+    # output = {'key_data': ['data'], 'key_info': ['schema'],
+    #           'data': df_list, 'schema': schema}
     return df_list, info
 
 

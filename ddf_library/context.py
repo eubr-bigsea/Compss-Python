@@ -119,65 +119,42 @@ class COMPSsContext(object):
         >>> ddf1 = cc.parallelize(df)
         """
 
-        from .functions.etl.parallelize import parallelize
+        from ddf_library.bases.optimizer.operations import Parallelize
         if isinstance(num_of_parts, str):
             import multiprocessing
             num_of_parts = multiprocessing.cpu_count()
 
-        settings = {'nfrag': num_of_parts}
+        settings = {'nfrag': num_of_parts, 'input data': df}
 
-        def task_parallelize(_, params):
-            return parallelize(df, params)
-
-        # result, info = parallelize(df, num_of_parts)
-        # ContextBase.catalog_schemas[new_state_uuid] = info
-        first_uuid = ContextBase.create_init()
         new_state_uuid = ContextBase \
-            .ddf_add_task('Parallelize',
-                          opt=OPTGroup.OPT_OTHER,
-                          function=task_parallelize,
-                          parameters=settings,
-                          parent=[first_uuid],
-                          n_input=0)
+            .ddf_add_task(operation=Parallelize(settings),
+                          parameters=settings)
 
-        return DDF(task_list=[first_uuid], last_uuid=new_state_uuid)
+        return DDF(last_uuid=new_state_uuid)
 
     @staticmethod
-    def import_data(df_list, info=None, parquet=False):
+    def import_compss_data(df_list, schema=None, parquet=False):
         # noinspection PyUnresolvedReferences
         """
         Import a previous Pandas DataFrame list into DDF abstraction.
 
         :param df_list: DataFrame input
         :param parquet: if data is saved as list of parquet files
-        :param info: (Optional) A list of columns names, data types and size
+        :param schema: (Optional) A list of columns names, data types and size
          in each partition;
         :return: DDF
 
         :Example:
 
         >>> cc = COMPSsContext()
-        >>> ddf1 = cc.import_partitions(df_list)
+        >>> ddf1 = cc.import_compss_data(df_list)
         """
 
-        from .functions.etl.parallelize import import_to_ddf
-
-        def task_import_to_ddf(x, y):
-            return import_to_ddf(df_list, parquet=parquet, schema=info)
-
-        result, info = import_to_ddf(df_list, parquet=parquet, schema=info)
-
-        first_uuid = ContextBase.create_init()
+        settings = {'parquet': parquet, 'schema': schema, 'input_data': df_list}
+        from ddf_library.bases.optimizer.operations import ImportCOMPSsData
 
         new_state_uuid = ContextBase \
-            .ddf_add_task('import_data',
-                          status=Status.STATUS_COMPLETED,
-                          opt=OPTGroup.OPT_OTHER,
-                          function=task_import_to_ddf,
-                          parameters={},  # TODO
-                          parent=[first_uuid],
-                          result=result,
-                          n_input=0,
-                          info_data=info)
+            .ddf_add_task(operation=ImportCOMPSsData(settings),
+                          status=Status.STATUS_WAIT)
 
-        return DDF(task_list=[first_uuid], last_uuid=new_state_uuid)
+        return DDF(last_uuid=new_state_uuid)

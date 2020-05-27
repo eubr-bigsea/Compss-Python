@@ -31,8 +31,8 @@ def sort(data, settings):
         settings['id_frag'] = f
         result[f], info[f] = task_sort_stage_2(data[f], settings.copy())
 
-    output = {'key_data': ['data'], 'key_info': ['info'],
-              'data': result, 'info': info}
+    output = {'key_data': ['data'], 'key_info': ['schema'],
+              'data': result, 'schema': info}
     return output
 
 
@@ -50,7 +50,7 @@ def sort_stage_1(data, settings):
 
     nfrag = len(data)
     settings = preprocessing(settings)
-    info = settings['info'][0]
+    info = settings['schema'][0]
 
     return_info = settings.get('return_info', False)
     only_key_columns = settings.get('only_key_columns', False)
@@ -60,10 +60,10 @@ def sort_stage_1(data, settings):
         params = {'nfrag': nfrag,
                   'columns': settings['columns'],
                   'ascending': settings['ascending'],
-                  'info': [info],
+                  'schema': [info],
                   'only_key_columns': only_key_columns}
         output_range = range_partition(data, params)
-        data, info = output_range['data'], output_range['info']
+        data, info = output_range['data'], output_range['schema']
 
     if return_info:
         return data, info, settings

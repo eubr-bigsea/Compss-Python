@@ -133,4 +133,4 @@ def _apply_datasaver(format_file, kwargs, uuid):
                           parameters=settings)
 
         tmp = DDF(last_uuid=new_state_uuid)
-        ContextBase().run_workflow(tmp.last_uuid)
+        tmp.last_uuid = ContextBase().run_workflow(tmp.last_uuid)

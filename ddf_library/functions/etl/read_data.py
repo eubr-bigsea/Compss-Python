@@ -205,7 +205,7 @@ class DataReader(object):
                              self.kwargs, 0)
         output = parallelize(result, self.nfrag)
         result = output['data']
-        info = output['info']
+        info = output['schema']
         return result, info
 
     def transform_fs_distributed(self, block, params):

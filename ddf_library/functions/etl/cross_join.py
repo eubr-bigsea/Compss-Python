@@ -33,8 +33,8 @@ def cross_join(data1, data2):
         for df2 in data2:
             info[f] = _cross_join(result[f], df1, df2, f)
 
-    output = {'key_data': ['data'], 'key_info': ['info'],
-              'data': result, 'info': info}
+    output = {'key_data': ['data'], 'key_info': ['schema'],
+              'data': result, 'schema': info}
     return output
 
 
