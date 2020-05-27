@@ -10,7 +10,7 @@ def use_case1():
     In this problem statement, we will find the number of people who died
     or survived along with their gender and age.
     """
-    df = pd.read_csv('./titanic.csv', sep='\t')
+    df = pd.read_csv('./datasets/titanic.csv', sep='\t')
     cc = COMPSsContext()
     ddf1 = cc.parallelize(df, num_of_parts='*')\
         .select(['Sex', 'Age', 'Survived'])\
@@ -46,7 +46,7 @@ def use_case2():
     Based in: https://towardsdatascience.com/predicting-
      the-survival-of-titanic-passengers-30870ccc7e8
     """
-    df = pd.read_csv('./titanic.csv', sep='\t')
+    df = pd.read_csv('./datasets/titanic.csv', sep='\t')
 
     from ddf_library.columns import col, udf
     from ddf_library.types import DataType

@@ -2,11 +2,38 @@
 # -*- coding: utf-8 -*-
 
 from ddf_library.context import COMPSsContext
-from ddf_library.utils import generate_data
+from ddf_library.utils import generate_info
+
+from pycompss.api.task import task
+
 import pandas as pd
 import numpy as np
 import time
 from pandas.testing import assert_frame_equal
+
+
+@task(returns=2)
+def _generate_partition(size, f, dim, max_size):
+    if max_size is None:
+        max_size = size * 100
+
+    cols = ["col{}".format(c) for c in range(dim)]
+    df = pd.DataFrame({c: np.random.randint(0, max_size, size=size)
+                       for c in cols})
+    info = generate_info(df, f)
+    return df, info
+
+
+def generate_data(sizes, dim=1, max_size=None):
+
+    nfrag = len(sizes)
+    dfs = [[] for _ in range(nfrag)]
+    info = [[] for _ in range(nfrag)]
+
+    for f, s in enumerate(sizes):
+        dfs[f], info[f] = _generate_partition(s, f, dim, max_size)
+
+    return dfs, info
 
 
 def check_result(df, size, true, msg, end=False):
@@ -226,7 +253,7 @@ def balancer():
     for s in iterations:
         print('Before:', s)
         data, info = generate_data(s)
-        ddf_1 = cc.import_data(data, info=info, parquet=False).cache()
+        ddf_1 = cc.import_compss_data(data, schema=info, parquet=False).cache()
         df1 = ddf_1.to_df()['col0'].values
 
         ddf_2 = ddf_1.balancer(forced=True) #.cache()
@@ -399,8 +426,18 @@ def flow_serial_only():
 
     data = pd.DataFrame([[i, i + 5, 'hello', i + 7] for i in range(1, 15)],
                         columns=['a', 'b', 'c', 'd'])
+
+    from ddf_library.types import DataType
+    from ddf_library.columns import col, udf
+
+    def f3(x):
+        return 7 if x > 5 else x
+
+    cat = udf(f3, DataType.INT, col('a'))
+
     cc = COMPSsContext()
     ddf1 = cc.parallelize(data, '*') \
+        .map(cat, 'e')\
         .drop(['c'])\
         .select(['a', 'b', 'd'])\
         .select(['a', 'b']).to_df()
@@ -462,7 +499,7 @@ def import_data():
     s1 = pd.DataFrame([("a", 1), ("a", 1), ("a", 1), ("a", 2), ("b", 3),
                        ("c", 4)], columns=['col1', 'col2'])
     cc = COMPSsContext()
-    df1 = cc.import_data(np.array_split(s1, 4)).to_df()
+    df1 = cc.import_compss_data(np.array_split(s1, 4)).to_df()
     assert_frame_equal(df1, s1, check_index_type=False)
     print("etl_test - import data - OK")
     cc.stop()
@@ -834,8 +871,8 @@ def sort():
                              'col1': np.random.randint(1, 1000, n1)})
         ddf_1 = cc.parallelize(data, f)
 
-        # data, info = generate_data(n1, dim=2, max_size=1000)
-        # ddf_1 = cc.import_data(data, info)
+        # data, schema = generate_data(n1, dim=2, max_size=1000)
+        # ddf_1 = cc.import_compss_data(data, schema)
 
         size_b = ddf_1.count_rows(total=False)
         print("size before {}: {}".format(sum(size_b), size_b))
@@ -975,7 +1012,7 @@ if __name__ == '__main__':
             add_columns, aggregation, balancer, cast, 
             cross_join, etl, except_all, explode, filter, fill_na,
             flow_serial_only, flow_recompute_task, distinct, drop, drop_na,
-            import_data, intersect, intersect_all, join, read_data_single_fs,
+            import_compss_data, intersect, intersect_all, join, read_data_single_fs,
             read_data_multi_fs, read_data_single_hdfs, read_data_multi_hdfs,
             map, rename, repartition, hash_partition, range_partition,
             replace, sample, save_data_fs, save_data_hdfs, select,
@@ -1001,7 +1038,7 @@ if __name__ == '__main__':
     operations['drop'] = drop
     operations['drop_na'] = drop_na
     operations['hash_partition'] = hash_partition
-    operations['import_data'] = import_data
+    operations['import_compss_data'] = import_data
     operations['intersect'] = intersect
     operations['intersect_all'] = intersect_all
     operations['join'] = join
