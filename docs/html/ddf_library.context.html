@@ -76,8 +76,8 @@ the status process.</p>
 </dd></dl>
 
 <dl class="staticmethod">
-<dt id="ddf_library.context.COMPSsContext.import_data">
-<em class="property">static </em><code class="descname">import_data</code><span class="sig-paren">(</span><em>df_list</em>, <em>info=None</em>, <em>parquet=False</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.context.COMPSsContext.import_data" title="Permalink to this definition">¶</a></dt>
+<dt id="ddf_library.context.COMPSsContext.import_compss_data">
+<em class="property">static </em><code class="descname">import_compss_data</code><span class="sig-paren">(</span><em>df_list</em>, <em>schema=None</em>, <em>parquet=False</em><span class="sig-paren">)</span><a class="headerlink" href="#ddf_library.context.COMPSsContext.import_compss_data" title="Permalink to this definition">¶</a></dt>
 <dd><p>Import a previous Pandas DataFrame list into DDF abstraction.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
@@ -86,7 +86,7 @@ the status process.</p>
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
 <li><strong>df_list</strong> – DataFrame input</li>
 <li><strong>parquet</strong> – if data is saved as list of parquet files</li>
-<li><strong>info</strong> – (Optional) A list of columns names, data types and size
+<li><strong>schema</strong> – (Optional) A list of columns names, data types and size
 in each partition;</li>
 </ul>
 </td>
@@ -99,7 +99,7 @@ in each partition;</li>
 </tbody>
 </table>
 <div class="highlight-default"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">cc</span> <span class="o">=</span> <span class="n">COMPSsContext</span><span class="p">()</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="n">ddf1</span> <span class="o">=</span> <span class="n">cc</span><span class="o">.</span><span class="n">import_partitions</span><span class="p">(</span><span class="n">df_list</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">ddf1</span> <span class="o">=</span> <span class="n">cc</span><span class="o">.</span><span class="n">import_compss_data</span><span class="p">(</span><span class="n">df_list</span><span class="p">)</span>
 </pre></div>
 </div>
 </dd></dl>
