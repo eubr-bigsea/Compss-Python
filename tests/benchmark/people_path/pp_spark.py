@@ -18,9 +18,9 @@ size = sys.argv[1]
 HOST = 'master'
 PORT = 9000
 
-TICKETING_FILE = 'hdfs://{}:{}/pp/doc1_p{}.csv'.format(HOST, PORT, size)
-CENSUS_FILE = 'hdfs://{}:{}/pp/census.csv'.format(HOST, PORT, 'census.csv')
-GPS_FILE = 'hdfs://{}:{}/pp/doc2_p{}.csv'.format(HOST, PORT, size)
+TICKETING_FILE = 'hdfs://{}:{}/pp/doc1_p{}.json'.format(HOST, PORT, size)
+CENSUS_FILE = 'hdfs://{}:{}/pp/census.csv'.format(HOST, PORT)
+GPS_FILE = 'hdfs://{}:{}/pp/doc2_p{}.json'.format(HOST, PORT, size)
 print("Spark - {} and {}".format(TICKETING_FILE, GPS_FILE))
 
 t1 = time.time()
@@ -104,7 +104,7 @@ user_trip = user_trip.join(branch, (user_trip['DATE'] == branch['DATE']) &
     .distinct()
 
 
-def read():
+def read_shapefile():
     settings = dict()
     settings['shp_path'] = '/pp/41CURITI.shp'
     settings['dbf_path'] = '/pp/41CURITI.dbf'
@@ -194,23 +194,7 @@ def _find_minmax(sector, lon_idx, lat_idx):
     return [xmin, ymin, xmax, ymax]
 
 
-def geo_within_stage_1(shp_object, settings):
-    """
-    :param data: A list of pandas DataFrame;
-    :param shp_object: The DataFrame created by the function ReadShapeFile;
-    :param settings: A dictionary that contains:
-        - lat_col: Column which represents the Latitude field in the data;
-        - lon_col: Column which represents the Longitude field in the data;
-        - lat_long: True  if the coordinates is (lat, log),
-                    False if is (long, lat). Default is True;
-        - polygon: Field in shp_object where is store the
-            coordinates of each sector;
-        - attributes: Attributes to retrieve from shapefile, empty to all
-                (default, empty);
-        - alias: Alias for shapefile attributes
-            (default, 'sector_position');
-    :return: Returns a list of pandas DataFrame.
-    """
+def geo_within(shp_object, settings):
 
     if not all(['lat_col' in settings, 'lon_col' in settings]):
         raise Exception("Please inform, at least, the fields: "
@@ -249,16 +233,14 @@ def geo_within_stage_1(shp_object, settings):
     settings['intermediate_result'] = False
     return settings
 
-geo_data = pd.read_parquet(read())
+geo_data = pd.read_parquet(read_shapefile())
+
 settings = {'lat_col': 'LAT', 'lon_col': "LON",
             'polygon': 'polygon', 'alias': '_shp'}
-settings = geo_within_stage_1(geo_data, settings)
-
+settings = geo_within(geo_data, settings)
 attributes_to_add = ['CODSETOR', 'CODBAIRR', 'NOMEBAIR']
-
 sp_index = settings['spindex']
 shp_object = geo_data[attributes_to_add + ['polygon']]
-
 schema = attributes_to_add
 polygon_col_idx = shp_object.columns.get_loc('polygon')
 idxs = [shp_object.columns.get_loc(c) for c in attributes_to_add]
