@@ -53,6 +53,7 @@ class FPGrowth(ModelDDF):
         """
         super(FPGrowth, self).__init__()
         self.min_support = min_support
+        self.opt = OPTGroup.OPT_OTHER
 
     def fit_transform(self, data, input_col):
         """
@@ -93,15 +94,10 @@ class FPGrowth(ModelDDF):
         # split the result in nfrag to keep compatibility with others algorithms
         result, info = step6(df_group, nfrag)
 
-        uuid_key = ContextBase\
-            .ddf_add_task(self.name,
+        uuid_key = ContextBase \
+            .ddf_add_task(operation=self, parent=[data.last_uuid],
                           status=Status.STATUS_COMPLETED,
-                          opt=OPTGroup.OPT_OTHER,
-                          function=self.fit_transform,
-                          parameters=None,
-                          result=result,
-                          parent=[new_data.last_uuid],
-                          info_data=info)
+                          result=result, info_data=info)
 
         return DDF(last_uuid=uuid_key)
 

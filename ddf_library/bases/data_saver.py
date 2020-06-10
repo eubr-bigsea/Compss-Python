@@ -120,17 +120,12 @@ def _apply_datasaver(format_file, kwargs, uuid):
     if status_path == 'ok':
         settings = {'output': data_saver.generate_names}
 
-        def task_save(df, params):
-            return data_saver.save(df, params)
+        from ddf_library.bases.optimizer.operations import DataWriter
 
         new_state_uuid = ContextBase \
-            .ddf_add_task('save-{}'.format(storage),
-                          status=Status.STATUS_WAIT,
-                          opt=OPTGroup.OPT_SERIAL,
-                          n_output=0,
-                          parent=[uuid],
-                          function=task_save,
-                          parameters=settings)
+            .ddf_add_task(operation=DataWriter(data_saver, settings,
+                                               tag="save-"+storage),
+                          parent=[uuid])
 
         tmp = DDF(last_uuid=new_state_uuid)
         tmp.last_uuid = ContextBase().run_workflow(tmp.last_uuid)

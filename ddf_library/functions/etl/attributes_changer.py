@@ -107,7 +107,7 @@ def with_column_cast(data, settings):
 
     # first, change the data types.
     for att, new_col, dtype in zip(attributes, alias, new_data_type):
-        dtype = dtype.lower()
+
         if dtype == DataType.INT:
             data[new_col] = data[att].astype(int)
         elif dtype == DataType.STRING:

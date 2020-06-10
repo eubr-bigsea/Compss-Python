@@ -143,7 +143,7 @@ class DataSaver(object):
         return output
 
     def save(self, df, settings):
-        output = settings['output']
+        output = settings['output'][settings['id_frag']]
 
         if self.storage == self.STORAGE_HDFS:
             """Store the DataFrame in CSV, JSON, PICLKE and PARQUET

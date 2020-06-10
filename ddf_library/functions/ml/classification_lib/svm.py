@@ -47,13 +47,14 @@ class SVM(ModelDDF):
     """
 
     def __init__(self, coef_lambda=0.1, coef_lr=0.01, threshold=0.001,
-                 max_iter=100, penalty='l2'):
+                 max_iter=100, penalty='l2', force=False):
         """
         :param coef_lambda: Regularization parameter (default, 0.1);
         :param coef_lr: Learning rate parameter (default, 0.1);
         :param threshold: Tolerance for stopping criterion (default, 0.001);
         :param max_iter: Number max of iterations (default, 100);
-        :param penalty: Apply 'l2' or 'l1' penalization (default, 'l2')
+        :param penalty: Apply 'l2' or 'l1' penalization (default, 'l2');
+        :param force: Force iteration until max_iter;
         """
         super(SVM, self).__init__()
 
@@ -66,6 +67,7 @@ class SVM(ModelDDF):
         self.threshold = float(threshold)
         self.max_iter = int(max_iter)
         self.regularization = penalty
+        self.force = force
 
     def fit(self, data, feature_col, label_col):
         """
@@ -89,6 +91,7 @@ class SVM(ModelDDF):
         cost_grad_p = [[] for _ in range(nfrag)]
 
         for it in range(self.max_iter):
+
             if it == 0:
                 for f in range(nfrag):
                     cost_grad_p[f], df[f] = \
@@ -104,7 +107,7 @@ class SVM(ModelDDF):
 
             print("[INFO] SVM - it {} - cost:{:.4f}".format(it, cost))
             threshold = old_cost - cost
-            if threshold <= self.max_iter:
+            if threshold <= self.max_iter and not self.force:
                 w = old_w
                 break
             else:
@@ -145,19 +148,18 @@ class SVM(ModelDDF):
             self.feature_col = feature_col
         self.pred_col = pred_col
 
-        settings = self.__dict__.copy()
-        settings['model'] = settings['model']['model']
+        self.settings = self.__dict__.copy()
 
-        def task_transform_svm(df, params):
-            return _svm_predict(df, params)
-
-        uuid_key = ContextBase\
-            .ddf_add_task(self.name, opt=OPTGroup.OPT_SERIAL,
-                          function=task_transform_svm,
-                          parameters=settings,
-                          parent=[data.last_uuid])
+        uuid_key = ContextBase \
+            .ddf_add_task(operation=self, parent=[data.last_uuid])
 
         return DDF(last_uuid=uuid_key)
+
+    @staticmethod
+    def function(df, params):
+        params = params.copy()
+        params['model'] = params['model']['model']
+        return _svm_predict(df, params)
 
 
 def _update_weight(coef_lr, cost_grad, w, coef_lambda, regularization):

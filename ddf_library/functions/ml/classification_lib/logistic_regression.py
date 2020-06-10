@@ -85,6 +85,7 @@ class LogisticRegression(ModelDDF):
 
         self.model['model'] = compss_wait_on(parameters)
         self.model['algorithm'] = self.name
+        self.settings = self.__dict__.copy()
         return self
 
     def fit_transform(self, data, feature_col, label_col,
@@ -120,19 +121,18 @@ class LogisticRegression(ModelDDF):
             self.feature_col = feature_col
         self.pred_col = pred_col
 
-        settings = self.__dict__.copy()
-        settings['model'] = settings['model']['model']
-
-        def task_transform_logr(df, params):
-            return _logr_predict(df, params)
+        self.settings = self.__dict__.copy()
 
         uuid_key = ContextBase\
-            .ddf_add_task(self.name, opt=OPTGroup.OPT_SERIAL,
-                          function=task_transform_logr,
-                          parameters=settings,
-                          parent=[data.last_uuid])
+            .ddf_add_task(operation=self, parent=[data.last_uuid])
 
         return DDF(last_uuid=uuid_key)
+
+    @staticmethod
+    def function(df, params):
+        params = params.copy()
+        params['model'] = params['model']['model']
+        return _logr_predict(df, params)
 
 
 def _logr_sigmoid(scores):

@@ -103,19 +103,18 @@ class KNearestNeighbors(ModelDDF):
             self.feature_col = feature_col
         self.pred_col = pred_col
 
-        settings = self.__dict__.copy()
-        settings['model'] = settings['model']['model']
+        self.settings = self.__dict__.copy()
 
-        def task_transform_knn(df, params):
-            return _knn_classify_block(df, params)
-
-        uuid_key = ContextBase\
-            .ddf_add_task(self.name, opt=OPTGroup.OPT_SERIAL,
-                          function=task_transform_knn,
-                          parameters=settings,
-                          parent=[data.last_uuid])
+        uuid_key = ContextBase \
+            .ddf_add_task(operation=self, parent=[data.last_uuid])
 
         return DDF(last_uuid=uuid_key)
+
+    @staticmethod
+    def function(df, params):
+        params = params.copy()
+        params['model'] = params['model']['model']
+        return _knn_classify_block(df, params)
 
 
 @task(returns=1, data_input=FILE_IN)

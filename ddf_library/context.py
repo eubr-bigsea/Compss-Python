@@ -127,8 +127,7 @@ class COMPSsContext(object):
         settings = {'nfrag': num_of_parts, 'input data': df}
 
         new_state_uuid = ContextBase \
-            .ddf_add_task(operation=Parallelize(settings),
-                          parameters=settings)
+            .ddf_add_task(operation=Parallelize(settings))
 
         return DDF(last_uuid=new_state_uuid)
 

@@ -30,12 +30,10 @@ class GroupedDDF(DDF):
     def __init__(self, ddf_var):
         self.last_uuid = ddf_var.last_uuid
         self.ddf_var = ddf_var
-        self.last2 = ddf_var.task_list[-2]
         self.parameters = ContextBase.catalog_tasks\
             .get_task_parameters(self.last_uuid)
 
-        super(GroupedDDF, self).__init__(task_list=ddf_var.task_list.copy(),
-                                         last_uuid=self.last_uuid)
+        super(GroupedDDF, self).__init__(last_uuid=self.last_uuid)
 
     def agg(self, **exprs):
         # noinspection PyUnresolvedReferences
@@ -57,8 +55,6 @@ class GroupedDDF(DDF):
 
         self.parameters['operation'] = operations
         ContextBase.catalog_tasks.set_task_parameters(self.last_uuid,
-                                                      self.parameters)
-        ContextBase.catalog_tasks.set_task_parameters(self.last2,
                                                       self.parameters)
         return self.ddf_var
 
@@ -240,6 +236,4 @@ class GroupedDDF(DDF):
 
         self.parameters['operation'] = operations
         ContextBase.catalog_tasks.set_task_parameters(self.last_uuid,
-                                                      self.parameters)
-        ContextBase.catalog_tasks.set_task_parameters(self.last2,
                                                       self.parameters)

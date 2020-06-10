@@ -51,6 +51,7 @@ class AssociationRules(ModelDDF):  # TODO
         self.max_rules = max_rules
         self.col_item = None
         self.col_freq = None
+        self.opt = OPTGroup.OPT_OTHER
 
     def set_min_confidence(self, confidence):
         self.confidence = confidence
@@ -108,14 +109,10 @@ class AssociationRules(ModelDDF):  # TODO
         compss_delete_object(out1)
         compss_delete_object(out2)
 
-        uuid_key = ContextBase\
-            .ddf_add_task(self.name, status=Status.STATUS_COMPLETED,
-                          opt=OPTGroup.OPT_OTHER,
-                          result=result,
-                          function=self.fit_transform,
-                          parameters=None,
-                          parent=[tmp.last_uuid],
-                          info_data=info)
+        uuid_key = ContextBase \
+            .ddf_add_task(operation=self, parent=[tmp.last_uuid],
+                          status=Status.STATUS_COMPLETED,
+                          result=result, info_data=info)
 
         return DDF(last_uuid=uuid_key)
 

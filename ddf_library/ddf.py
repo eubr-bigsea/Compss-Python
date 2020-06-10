@@ -81,18 +81,11 @@ class DDF(DDFSketch):
                     'src_epsg': src_epsg, 'dst_epsg': dst_epsg,
                     'lat_alias': lat_alias, 'lon_alias': lon_alias}
 
-        from ddf_library.functions.geo import crst_transform
-
-        def ddf_crst_transform(df, params):
-            return crst_transform(df, params)
+        from ddf_library.bases.optimizer.operations import CRSTTransform
 
         new_state_uuid = ContextBase \
-            .ddf_add_task(ddf_crst_transform.__name__,
-                          opt=OPTGroup.OPT_SERIAL,
-                          operation=ddf_crst_transform,
-                          parameters=settings,
-                          parent=[self.last_uuid],
-                          info=True)
+            .ddf_add_task(operation=CRSTTransform(settings),
+                          parent=[self.last_uuid])
 
         return DDF(last_uuid=new_state_uuid)
 
@@ -124,19 +117,12 @@ class DDF(DDFSketch):
         >>> ddf1.balancer(force=True)
         """
 
-        from .functions.etl.balancer import WorkloadBalancer
+        from ddf_library.bases.optimizer.operations import WorkloadBalancer
         settings = {'forced': forced}
 
-        def task_balancer(df, params):
-            return WorkloadBalancer(params).transform(df)
-
         new_state_uuid = ContextBase\
-            .ddf_add_task('balancer',
-                          opt=OPTGroup.OPT_OTHER,
-                          operation=task_balancer,
-                          parameters=settings,
-                          parent=[self.last_uuid],
-                          info=True)
+            .ddf_add_task(operation=WorkloadBalancer(settings),
+                          parent=[self.last_uuid])
 
         return DDF(last_uuid=new_state_uuid)
 
@@ -174,19 +160,10 @@ class DDF(DDFSketch):
         :return: DDF
         """
 
-        from .functions.etl.attributes_changer import create_settings_cast, \
-            with_column_cast
-
-        settings = create_settings_cast(attributes=column, cast=cast)
-
-        def task_cast(df, params):
-            return with_column_cast(df, params)
-
+        from ddf_library.bases.optimizer.operations import WithColumn
+        settings = {'column': column, 'cast': cast}
         new_state_uuid = ContextBase \
-            .ddf_add_task('cast',
-                          opt=OPTGroup.OPT_SERIAL,
-                          operation=task_cast,
-                          parameters=settings,
+            .ddf_add_task(operation=WithColumn(settings),
                           parent=[self.last_uuid])
 
         return DDF(last_uuid=new_state_uuid)
@@ -213,18 +190,11 @@ class DDF(DDFSketch):
 
         settings = {'suffixes': suffixes}
 
-        from .functions.etl.add_columns import AddColumnsOperation
-
-        def task_add_column(df, params):
-            return AddColumnsOperation().transform(df[0], df[1], params)
+        from ddf_library.bases.optimizer.operations import AddColumn
 
         new_state_uuid = ContextBase\
-            .ddf_add_task('add_column',
-                          opt=OPTGroup.OPT_OTHER,
-                          operation=task_add_column,
-                          parameters=settings,
-                          parent=[self.last_uuid, data2.last_uuid],
-                          info=True)
+            .ddf_add_task(operation=AddColumn(settings),
+                          parent=[self.last_uuid, data2.last_uuid])
 
         return DDF(last_uuid=new_state_uuid)
 
@@ -244,29 +214,11 @@ class DDF(DDFSketch):
         """
         settings = {'groupby': group_by, 'operation': []}
         from ddf_library.bases.groupby import GroupedDDF
-        from .functions.etl.aggregation import aggregation_stage_1, \
-            aggregation_stage_2
-
-        def task_aggregation_stage_1(df, params):
-            return aggregation_stage_1(df, params)
-
-        def task_aggregation_stage_2(df, params):
-            return aggregation_stage_2(df, params)
-
-        last_uuid = ContextBase\
-            .ddf_add_task('task_aggregation_stage_1',
-                          opt=OPTGroup.OPT_LAST,
-                          operation=task_aggregation_stage_1,
-                          parameters=settings,
-                          parent=[self.last_uuid],
-                          info=True)
+        from ddf_library.bases.optimizer.operations import Aggregation
 
         new_state_uuid = ContextBase\
-            .ddf_add_task('task_aggregation_stage_2',
-                          opt=OPTGroup.OPT_SERIAL,
-                          operation=task_aggregation_stage_2,
-                          parameters=settings,
-                          parent=[last_uuid])
+            .ddf_add_task(operation=Aggregation(settings),
+                          parent=[self.last_uuid])
 
         tmp = DDF(last_uuid=new_state_uuid)
         return GroupedDDF(tmp)
@@ -294,48 +246,24 @@ class DDF(DDFSketch):
                     'cleaning_mode': mode}
 
         if mode is 'VALUE':
-            from .functions.etl.clean_missing import fill_by_value
+            from ddf_library.bases.optimizer.operations import FillNaByValue
 
             if not value:
                 raise Exception("It is necessary a value "
                                 "when using `VALUE` mode.")
 
-            def task_clean_missing(df, params):
-                return fill_by_value(df, params)
-
             new_state_uuid = ContextBase \
-                .ddf_add_task('fill_na',
-                              opt=OPTGroup.OPT_SERIAL,
-                              operation=task_clean_missing,
-                              parameters=settings,
+                .ddf_add_task(operation=FillNaByValue(settings),
                               parent=[self.last_uuid])
 
             return DDF(last_uuid=new_state_uuid)
 
         else:
-            from .functions.etl.clean_missing import fill_nan_stage_1, \
-                fill_nan_stage_2
-
-            def task_fill_nan_stage_1(df, params):
-                return fill_nan_stage_1(df, params)
-
-            def task_fill_nan_stage_2(df, params):
-                return fill_nan_stage_2(df, params)
-
-            last_uuid = ContextBase \
-                .ddf_add_task('task_fill_nan_stage_1',
-                              opt=OPTGroup.OPT_LAST,
-                              operation=task_fill_nan_stage_1,
-                              parameters=settings,
-                              parent=[self.last_uuid],
-                              info=True)
+            from ddf_library.bases.optimizer.operations import FillNan
 
             new_state_uuid = ContextBase \
-                .ddf_add_task('task_fill_nan_stage_2',
-                              opt=OPTGroup.OPT_SERIAL,
-                              operation=task_fill_nan_stage_2,
-                              parameters=None,
-                              parent=[last_uuid])
+                .ddf_add_task(operation=FillNan(settings),
+                              parent=[self.last_uuid])
 
             return DDF(last_uuid=new_state_uuid)
 
@@ -411,16 +339,10 @@ class DDF(DDFSketch):
 
         >>> ddf1.cross_join(ddf2)
         """
-        from .functions.etl.cross_join import cross_join
-
-        def task_cross_join(df, _):
-            return cross_join(df[0], df[1])
+        from ddf_library.bases.optimizer.operations import CrossJoin
 
         new_state_uuid = ContextBase\
-            .ddf_add_task('cross_join',
-                          opt=OPTGroup.OPT_OTHER,
-                          operation=task_cross_join,
-                          parameters={},
+            .ddf_add_task(operation=CrossJoin(dict()),
                           parent=[self.last_uuid, data2.last_uuid])
 
         return DDF(last_uuid=new_state_uuid)
@@ -443,20 +365,14 @@ class DDF(DDFSketch):
 
         >>> ddf1.cross_tab(col1='col_1', col2='col_2')
         """
-        from ddf_library.functions.statistics.cross_tab import cross_tab
+        from ddf_library.bases.optimizer.operations import CrossTab
         if any([not isinstance(col1, str), not isinstance(col2, str)]):
             raise Exception('Columns must be a string (column names).')
 
         settings = {'col1': col1, 'col2': col2}
 
-        def task_cross_tab(df, params):
-            return cross_tab(df, params)
-
         new_state_uuid = ContextBase\
-            .ddf_add_task('cross_tab',
-                          opt=OPTGroup.OPT_OTHER,
-                          operation=task_cross_tab,
-                          parameters=settings,
+            .ddf_add_task(operation=CrossTab(settings),
                           parent=[self.last_uuid])
 
         return DDF(last_uuid=new_state_uuid)
@@ -542,30 +458,13 @@ class DDF(DDFSketch):
 
         >>> ddf1.subtract(ddf2)
         """
-        from .functions.etl.subtract import subtract_stage_1, subtract_stage_2
+        from ddf_library.bases.optimizer.operations import Subtract
 
         settings = {}
 
-        def task_subtract_stage_1(df, params):
-            return subtract_stage_1(df[0], df[1], params)
-
-        def task_subtract_stage_2(df, params):
-            return subtract_stage_2(df[0], df[1], params)
-
-        last_uuid = ContextBase\
-            .ddf_add_task('task_subtract_stage_1',
-                          opt=OPTGroup.OPT_LAST,
-                          operation=task_subtract_stage_1,
-                          parameters=settings,
-                          parent=[self.last_uuid, data2.last_uuid],
-                          info=True)
-
         new_state_uuid = ContextBase\
-            .ddf_add_task('task_subtract_stage_2',
-                          opt=OPTGroup.OPT_SERIAL,
-                          operation=task_subtract_stage_2,
-                          parameters=None,
-                          parent=[last_uuid])
+            .ddf_add_task(operation=Subtract(settings),
+                          parent=[self.last_uuid, data2.last_uuid])
 
         return DDF(last_uuid=new_state_uuid)
 
@@ -585,31 +484,13 @@ class DDF(DDFSketch):
 
         >>> ddf1.except_all(ddf2)
         """
-        from .functions.etl.except_all import except_all_stage_1, \
-            except_all_stage_2
+        from ddf_library.bases.optimizer.operations import ExceptAll
 
         settings = {}
 
-        def task_except_all_stage_1(df, params):
-            return except_all_stage_1(df[0], df[1], params)
-
-        def task_except_all_stage_2(df, params):
-            return except_all_stage_2(df[0], df[1], params)
-
-        last_uuid = ContextBase \
-            .ddf_add_task('task_except_all_stage_1',
-                          opt=OPTGroup.OPT_LAST,
-                          operation=task_except_all_stage_1,
-                          parameters=settings,
-                          parent=[self.last_uuid, data2.last_uuid],
-                          info=True)
-
-        new_state_uuid = ContextBase\
-            .ddf_add_task('task_except_all_stage_2',
-                          opt=OPTGroup.OPT_SERIAL,
-                          operation=task_except_all_stage_2,
-                          parameters=settings,
-                          parent=[last_uuid])
+        new_state_uuid = ContextBase \
+            .ddf_add_task(operation=ExceptAll(settings),
+                          parent=[self.last_uuid, data2.last_uuid])
 
         return DDF(last_uuid=new_state_uuid)
 
@@ -628,30 +509,13 @@ class DDF(DDFSketch):
 
         >>> ddf1.distinct('col_1')
         """
-        from .functions.etl.distinct import distinct_stage_1, distinct_stage_2
 
         settings = {'columns': cols, 'opt_function': opt}
-
-        def task_distinct_stage_1(df, params):
-            return distinct_stage_1(df, params)
-
-        last_uuid = ContextBase\
-            .ddf_add_task('distinct_stage_1',
-                          opt=OPTGroup.OPT_LAST,
-                          operation=task_distinct_stage_1,
-                          parameters=settings,
-                          parent=[self.last_uuid],
-                          info=True)
-
-        def task_distinct_stage_2(df, params):
-            return distinct_stage_2(df, params)
+        from ddf_library.bases.optimizer.operations import Distinct
 
         new_state_uuid = ContextBase\
-            .ddf_add_task('distinct_stage_2',
-                          opt=OPTGroup.OPT_SERIAL,
-                          operation=task_distinct_stage_2,
-                          parameters=None,
-                          parent=[last_uuid])
+            .ddf_add_task(operation=Distinct(settings),
+                          parent=[self.last_uuid])
 
         return DDF(last_uuid=new_state_uuid)
 
@@ -675,9 +539,7 @@ class DDF(DDFSketch):
         from ddf_library.bases.optimizer.operations import DropColumns
         
         new_state_uuid = ContextBase\
-            .ddf_add_task(opt=OPTGroup.OPT_SERIAL,
-                          operation=DropColumns(settings),
-                          parameters=settings,
+            .ddf_add_task(operation=DropColumns(settings),
                           parent=[self.last_uuid])
 
         return DDF(last_uuid=new_state_uuid)
@@ -721,37 +583,17 @@ class DDF(DDFSketch):
             from ddf_library.bases.optimizer.operations import DropNaRows
 
             new_state_uuid = ContextBase \
-                .ddf_add_task(opt=OPTGroup.OPT_SERIAL,
-                              operation=DropNaRows(settings),
-                              parameters=settings,
+                .ddf_add_task(operation=DropNaRows(settings),
                               parent=[self.last_uuid])
 
             return DDF(last_uuid=new_state_uuid)
 
         else:
-            from .functions.etl.clean_missing import drop_nan_columns_stage_1, \
-                drop_nan_columns_stage_2
-
-            def task_drop_nan_columns_stage_1(df, params):
-                return drop_nan_columns_stage_1(df, params)
-
-            def task_drop_nan_columns_stage_2(df, params):
-                return drop_nan_columns_stage_2(df, params)
-
-            last_uuid = ContextBase \
-                .ddf_add_task('task_drop_nan_columns_stage_1',
-                              opt=OPTGroup.OPT_LAST,
-                              operation=task_drop_nan_columns_stage_1,
-                              parameters=settings,
-                              parent=[self.last_uuid],
-                              info=True)
+            from ddf_library.bases.optimizer.operations import DropNaColumns
 
             new_state_uuid = ContextBase \
-                .ddf_add_task('task_drop_nan_columns_stage_2',
-                              opt=OPTGroup.OPT_SERIAL,
-                              operation=task_drop_nan_columns_stage_2,
-                              parameters=None,
-                              parent=[last_uuid])
+                .ddf_add_task(operation=DropNaColumns(settings),
+                              parent=[self.last_uuid])
 
             return DDF(last_uuid=new_state_uuid)
 
@@ -772,16 +614,10 @@ class DDF(DDFSketch):
 
         settings = {'column': column}
 
-        from .functions.etl.explode import explode
-
-        def task_explode(df, params):
-            return explode(df, params)
+        from ddf_library.bases.optimizer.operations import Explode
 
         new_state_uuid = ContextBase \
-            .ddf_add_task('explode',
-                          opt=OPTGroup.OPT_SERIAL,
-                          operation=task_explode,
-                          parameters=settings,
+            .ddf_add_task(operation=Explode(settings),
                           parent=[self.last_uuid])
 
         return DDF(last_uuid=new_state_uuid)
@@ -837,32 +673,15 @@ class DDF(DDFSketch):
         >>> ddf2.geo_within(ddf1, 'LATITUDE', 'LONGITUDE', 'points')
         """
 
-        from .functions.geo import geo_within_stage_1, geo_within_stage_2
+        from ddf_library.bases.optimizer.operations import GeoWithin
 
         settings = {'lat_col': lat_col, 'lon_col': lon_col,
                     'polygon': polygon, 'alias': suffix,
                     'attributes': attributes}
 
-        def task_geo_within_stage_1(df, params):
-            return geo_within_stage_1(df[0], df[1], params)
-
-        def task_geo_within_stage_2(df, params):
-            return geo_within_stage_2(df, params)
-
-        last_uuid = ContextBase \
-            .ddf_add_task('task_geo_within_stage_1',
-                          opt=OPTGroup.OPT_LAST,
-                          operation=task_geo_within_stage_1,
-                          parameters=settings,
-                          parent=[self.last_uuid, shp_object.last_uuid],
-                          info=True)
-
         new_state_uuid = ContextBase \
-            .ddf_add_task('task_geo_within_stage_2',
-                          opt=OPTGroup.OPT_SERIAL,
-                          operation=task_geo_within_stage_2,
-                          parameters=None,
-                          parent=[last_uuid])
+            .ddf_add_task(operation=GeoWithin(settings),
+                          parent=[self.last_uuid, shp_object.last_uuid])
 
         return DDF(last_uuid=new_state_uuid)
 
@@ -882,7 +701,7 @@ class DDF(DDFSketch):
         >>> ddf2 = ddf1.hash_partition(columns=['col1', col2])
         """
 
-        from .functions.etl.hash_partitioner import hash_partition
+        from ddf_library.bases.optimizer.operations import HashPartition
 
         if not isinstance(columns, list):
             columns = [columns]
@@ -892,16 +711,9 @@ class DDF(DDFSketch):
         if nfrag is not None:
             settings['nfrag'] = nfrag
 
-        def task_hash_partition(df, params):
-            return hash_partition(df, params)
-
         new_state_uuid = ContextBase\
-            .ddf_add_task('hash_partition',
-                          opt=OPTGroup.OPT_OTHER,
-                          operation=task_hash_partition,
-                          parameters=settings,
-                          parent=[self.last_uuid],
-                          info=True)
+            .ddf_add_task(operation=HashPartition(settings),
+                          parent=[self.last_uuid])
 
         return DDF(last_uuid=new_state_uuid)
 
@@ -921,31 +733,13 @@ class DDF(DDFSketch):
         >>> ddf2.intersect(ddf1)
         """
 
-        from .functions.etl.intersect import intersect_stage_1, \
-            intersect_stage_2
+        from ddf_library.bases.optimizer.operations import Intersect
 
         settings = {'distinct': True}
 
-        def task_intersect_stage_1(df, params):
-            return intersect_stage_1(df[0], df[1], params)
-
-        def task_intersect_stage_2(df, params):
-            return intersect_stage_2(df[0], df[1], params)
-
-        last_uuid = ContextBase \
-            .ddf_add_task('task_intersect_stage_1',
-                          opt=OPTGroup.OPT_LAST,
-                          operation=task_intersect_stage_1,
-                          parameters=settings,
-                          parent=[self.last_uuid, data2.last_uuid],
-                          info=True)
-
         new_state_uuid = ContextBase \
-            .ddf_add_task('task_intersect_stage_2',
-                          opt=OPTGroup.OPT_SERIAL,
-                          operation=task_intersect_stage_2,
-                          parameters=None,
-                          parent=[last_uuid])
+            .ddf_add_task(operation=Intersect(settings),
+                          parent=[self.last_uuid, data2.last_uuid])
 
         return DDF(last_uuid=new_state_uuid)
 
@@ -965,31 +759,13 @@ class DDF(DDFSketch):
         >>> ddf2.intersect_all(ddf1)
         """
 
-        from .functions.etl.intersect import intersect_stage_1, \
-            intersect_stage_2
+        from ddf_library.bases.optimizer.operations import Intersect
 
         settings = {'distinct': False}
 
-        def task_intersect_stage_1(df, params):
-            return intersect_stage_1(df[0], df[1], params)
-
-        def task_intersect_stage_2(df, params):
-            return intersect_stage_2(df[0], df[1], params)
-
-        last_uuid = ContextBase \
-            .ddf_add_task('task_intersect_stage_1',
-                          opt=OPTGroup.OPT_LAST,
-                          operation=task_intersect_stage_1,
-                          parameters=settings,
-                          parent=[self.last_uuid, data2.last_uuid],
-                          info=True)
-
         new_state_uuid = ContextBase \
-            .ddf_add_task('task_intersect_stage_2',
-                          opt=OPTGroup.OPT_SERIAL,
-                          operation=task_intersect_stage_2,
-                          parameters=None,
-                          parent=[last_uuid])
+            .ddf_add_task(operation=Intersect(settings),
+                          parent=[self.last_uuid, data2.last_uuid])
 
         return DDF(last_uuid=new_state_uuid)
 
@@ -1026,7 +802,7 @@ class DDF(DDFSketch):
         if suffixes is None:
             suffixes = ['_l', '_r']
 
-        from .functions.etl.join import join_stage_1, join_stage_2
+        from ddf_library.bases.optimizer.operations import Join
 
         settings = {'key1': key1,
                     'key2': key2,
@@ -1035,26 +811,9 @@ class DDF(DDFSketch):
                     'case': case,
                     'suffixes': suffixes}
 
-        def task_join_stage_1(df, params):
-            return join_stage_1(df[0], df[1], params)
-
-        def task_join_stage_2(df, params):
-            return join_stage_2(df[0], df[1], params)
-
-        last_uuid = ContextBase \
-            .ddf_add_task('task_join_stage_1',
-                          opt=OPTGroup.OPT_LAST,
-                          operation=task_join_stage_1,
-                          parameters=settings,
-                          parent=[self.last_uuid, data2.last_uuid],
-                          info=True)
-
         new_state_uuid = ContextBase \
-            .ddf_add_task('task_join_stage_2',
-                          opt=OPTGroup.OPT_SERIAL,
-                          operation=task_join_stage_2,
-                          parameters=None,
-                          parent=[last_uuid])
+            .ddf_add_task(operation=Join(settings),
+                          parent=[self.last_uuid, data2.last_uuid])
 
         return DDF(last_uuid=new_state_uuid)
 
@@ -1177,7 +936,7 @@ class DDF(DDFSketch):
         >>>                             ascending=[True, False])
         """
 
-        from .functions.etl.range_partitioner import range_partition
+        from ddf_library.bases.optimizer.operations import RangePartition
 
         if not isinstance(columns, list):
             columns = [columns]
@@ -1193,16 +952,9 @@ class DDF(DDFSketch):
         if nfrag is not None:
             settings['nfrag'] = nfrag
 
-        def task_range_partition(df, params):
-            return range_partition(df, params)
-
         new_state_uuid = ContextBase \
-            .ddf_add_task('range_partition',
-                          opt=OPTGroup.OPT_OTHER,
-                          operation=task_range_partition,
-                          parameters=settings,
-                          parent=[self.last_uuid],
-                          info=True)
+            .ddf_add_task(operation=RangePartition(settings),
+                          parent=[self.last_uuid])
 
         return DDF(last_uuid=new_state_uuid)
 
@@ -1219,23 +971,16 @@ class DDF(DDFSketch):
         :return: DDF
         """
 
-        from .functions.etl.repartition import repartition
+        from ddf_library.bases.optimizer.operations import Repartition
 
         settings = {'nfrag': nfrag}
 
         if distribution is not None:
             settings['distribution'] = distribution
 
-        def task_repartition(df, params):
-            return repartition(df, params)
-
         new_state_uuid = ContextBase \
-            .ddf_add_task('repartition',
-                          opt=OPTGroup.OPT_OTHER,
-                          operation=task_repartition,
-                          parameters=settings,
-                          parent=[self.last_uuid],
-                          info=True)
+            .ddf_add_task(operation=Repartition(settings),
+                          parent=[self.last_uuid])
 
         return DDF(last_uuid=new_state_uuid)
 
@@ -1269,9 +1014,7 @@ class DDF(DDFSketch):
         settings = obj.settings
 
         new_state_uuid = ContextBase\
-            .ddf_add_task(opt=OPTGroup.OPT_SERIAL,
-                          operation=Replace(settings),
-                          parameters=settings,
+            .ddf_add_task(operation=Replace(settings),
                           parent=[self.last_uuid])
 
         return DDF(last_uuid=new_state_uuid)
@@ -1295,7 +1038,7 @@ class DDF(DDFSketch):
         >>> ddf1.sample()  # a random sample
         """
 
-        from .functions.etl.sample import sample_stage_1, sample_stage_2
+        from ddf_library.bases.optimizer.operations import Sample
         settings = dict()
         settings['seed'] = seed
 
@@ -1308,26 +1051,9 @@ class DDF(DDFSketch):
             """Sample a random amount of records"""
             settings['type'] = 'percent'
 
-        def task_sample_stage_1(df, params):
-            return sample_stage_1(df, params)
-
-        def task_sample_stage_2(df, params):
-            return sample_stage_2(df, params)
-
-        last_uuid = ContextBase \
-            .ddf_add_task('task_sample_stage_1',
-                          opt=OPTGroup.OPT_LAST,
-                          operation=task_sample_stage_1,
-                          parameters=settings,
-                          parent=[self.last_uuid],
-                          info=True)
-
-        new_state_uuid = ContextBase\
-            .ddf_add_task('task_sample_stage_2',
-                          opt=OPTGroup.OPT_SERIAL,
-                          operation=task_sample_stage_2,
-                          parameters=None,
-                          parent=[last_uuid])
+        new_state_uuid = ContextBase \
+            .ddf_add_task(operation=Sample(settings),
+                          parent=[self.last_uuid])
 
         return DDF(last_uuid=new_state_uuid)
 
@@ -1376,9 +1102,7 @@ class DDF(DDFSketch):
         from ddf_library.bases.optimizer.operations import Select
 
         new_state_uuid = ContextBase\
-            .ddf_add_task(opt=OPTGroup.OPT_SERIAL,  # TODO: REMOVE in FUTURE
-                          operation=Select(settings),
-                          parameters=settings,
+            .ddf_add_task(operation=Select(settings),
                           parent=[self.last_uuid])
 
         return DDF(last_uuid=new_state_uuid)
@@ -1427,18 +1151,12 @@ class DDF(DDFSketch):
         >>> ddf1.select_exprs('col1 = age * 2', "abs(age)")
         """
 
-        from .functions.etl.select import select_exprs
+        from ddf_library.bases.optimizer.operations import SelectExprs
 
         settings = {'exprs': exprs}
 
-        def task_select_exprs(df, params):
-            return select_exprs(df, params)
-
         new_state_uuid = ContextBase\
-            .ddf_add_task('select_exprs',
-                          opt=OPTGroup.OPT_SERIAL,
-                          operation=task_select_exprs,
-                          parameters=settings,
+            .ddf_add_task(operation=SelectExprs(settings),
                           parent=[self.last_uuid])
 
         return DDF(last_uuid=new_state_uuid)
@@ -1492,30 +1210,13 @@ class DDF(DDFSketch):
         >>> dd1.sort(['col_1', 'col_2'], ascending=[True, False])
         """
 
-        from .functions.etl.sort import sort_stage_1, sort_stage_2
+        from ddf_library.bases.optimizer.operations import Sort
 
         settings = {'columns': cols, 'ascending': ascending}
 
-        def task_sort_stage_1(df, params):
-            return sort_stage_1(df, params)
-
-        last_uuid = ContextBase \
-            .ddf_add_task('sort_stage_1',
-                          opt=OPTGroup.OPT_LAST,
-                          operation=task_sort_stage_1,
-                          parameters=settings,
-                          parent=[self.last_uuid],
-                          info=True)
-
-        def task_sort_stage_2(df, params):
-            return sort_stage_2(df, params)
-
         new_state_uuid = ContextBase \
-            .ddf_add_task('sort_stage_2',
-                          opt=OPTGroup.OPT_SERIAL,
-                          operation=task_sort_stage_2,
-                          parameters=None,
-                          parent=[last_uuid])
+            .ddf_add_task(operation=Sort(settings),
+                          parent=[self.last_uuid])
 
         return DDF(last_uuid=new_state_uuid)
 
@@ -1534,33 +1235,13 @@ class DDF(DDFSketch):
 
         >>> ddf2a, ddf2b = ddf1.split(0.5)
         """
-
-        from .functions.etl.split import random_split
-
+        from ddf_library.bases.optimizer.operations import RandomSplit
         settings = {'percentage': percentage, 'seed': seed}
 
-        def task_split(df, params):
-            return random_split(df, params)
-
-        split_out1_uuid = ContextBase \
-            .ddf_add_task('split-out1',
-                          opt=OPTGroup.OPT_OTHER,
-                          operation=task_split,
-                          parameters=settings,
+        split_out1_uuid, split_out2_uuid = ContextBase \
+            .ddf_add_task(operation=RandomSplit(settings),
                           parent=[self.last_uuid],
-                          info=True,
                           n_output=2)
-
-        split_out2_uuid = ContextBase \
-            .ddf_add_task('split-out2',
-                          opt=OPTGroup.OPT_OTHER,
-                          operation=task_split,
-                          parameters=settings,
-                          parent=[self.last_uuid],
-                          info=True,
-                          n_output=2)
-
-        ContextBase.link_siblings([split_out1_uuid, split_out2_uuid])
 
         out1 = DDF(last_uuid=split_out1_uuid)
         out2 = DDF(last_uuid=split_out2_uuid)
@@ -1581,31 +1262,14 @@ class DDF(DDFSketch):
         >>> ddf1.take(10)
         """
 
-        from .functions.etl.take import take_stage_1, take_stage_2
+        from ddf_library.bases.optimizer.operations import Take
         settings = {'value': num, 'balancer': True}
 
-        def task_take_stage_1(df, params):
-            return take_stage_1(df, params)
-
-        last_uuid = ContextBase\
-            .ddf_add_task('task_take_stage_1',
-                          opt=OPTGroup.OPT_LAST,
-                          operation=task_take_stage_1,
-                          parameters=settings,
-                          parent=[self.last_uuid],
-                          info=True)
-
-        def task_take_stage_2(df, params):
-            return take_stage_2(df, params)
-
-        new_state_uuid = ContextBase \
-            .ddf_add_task('task_take_stage_2',
-                          opt=OPTGroup.OPT_SERIAL,
-                          operation=task_take_stage_2,
-                          parameters=None,
-                          parent=[last_uuid])
-
+        new_state_uuid = ContextBase\
+            .ddf_add_task(operation=Take(settings),
+                          parent=[self.last_uuid])
         result = DDF(last_uuid=new_state_uuid)
+
         if settings['balancer']:
             result = result.balancer(True)
         return result
@@ -1660,20 +1324,13 @@ class DDF(DDFSketch):
         >>> ddf1.union(ddf2)
         """
 
-        from .functions.etl.union import union
+        from ddf_library.bases.optimizer.operations import Union
 
         settings = {'by_name': False}
 
-        def task_union(df, params):
-            return union(df[0], df[1], params)
-
         new_state_uuid = ContextBase \
-            .ddf_add_task('union',
-                          opt=OPTGroup.OPT_OTHER,
-                          operation=task_union,
-                          parameters=settings,
-                          parent=[self.last_uuid, data2.last_uuid],
-                          info=True)
+            .ddf_add_task(operation=Union(settings),
+                          parent=[self.last_uuid, data2.last_uuid])
 
         return DDF(last_uuid=new_state_uuid)
 
@@ -1693,20 +1350,13 @@ class DDF(DDFSketch):
         >>> ddf1.union_by_name(ddf2)
         """
 
-        from .functions.etl.union import union
+        from ddf_library.bases.optimizer.operations import Union
 
         settings = {'by_name': True}
 
-        def task_union(df, params):
-            return union(df[0], df[1], params)
-
         new_state_uuid = ContextBase\
-            .ddf_add_task('union',
-                          opt=OPTGroup.OPT_OTHER,
-                          operation=task_union,
-                          parameters=settings,
-                          parent=[self.last_uuid,  data2.last_uuid],
-                          info=True)
+            .ddf_add_task(operation=Union(settings),
+                          parent=[self.last_uuid,  data2.last_uuid])
 
         return DDF(last_uuid=new_state_uuid)
 
@@ -1724,24 +1374,12 @@ class DDF(DDFSketch):
         :return: DDF
         """
 
-        from .functions.etl.attributes_changer import with_column_renamed
-
-        if not isinstance(old_column, list):
-            old_column = [old_column]
-
-        if not isinstance(new_column, list):
-            new_column = [new_column]
+        from ddf_library.bases.optimizer.operations import WithColumnRenamed
 
         settings = {'old_column': old_column, 'new_column': new_column}
 
-        def task_rename(df, params):
-            return with_column_renamed(df, params)
-
         new_state_uuid = ContextBase\
-            .ddf_add_task('rename',
-                          opt=OPTGroup.OPT_SERIAL,
-                          operation=task_rename,
-                          parameters=settings,
+            .ddf_add_task(operation=WithColumnRenamed(settings),
                           parent=[self.last_uuid])
 
         return DDF(last_uuid=new_state_uuid)

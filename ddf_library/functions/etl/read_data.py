@@ -203,23 +203,25 @@ class DataReader(object):
         block = self.blocks[0]
         result, _ = _read_fs(block, self.format, self.header, self.dtype,
                              self.kwargs, 0)
-        output = parallelize(result, self.nfrag)
+        output = parallelize(result, {'nfrag': self.nfrag})
         result = output['data']
         info = output['schema']
-        return result, info
+        output = {'key_data': ['data'], 'key_info': ['schema'],
+                  'data': result, 'schema': info}
 
-    def transform_fs_distributed(self, block, params):
+        return output
 
-        frag = params['id_frag']
-        result, info = _read_fs(block, self.format, self.header, self.dtype,
-                                self.kwargs, frag)
-
-        return result, info
-
-    def transform_hdfs(self, block, params):
+    def transform_fs_distributed(self, blocks, params):
 
         frag = params['id_frag']
-        result, info = _read_hdfs(block, format_type=self.format,
+        result, info = _read_fs(blocks[frag], self.format, self.header,
+                                self.dtype, self.kwargs, frag)
+        return result, info
+
+    def transform_hdfs(self, blocks, params):
+
+        frag = params['id_frag']
+        result, info = _read_hdfs(blocks[frag], format_type=self.format,
                                   header=self.header, dtype=self.dtype,
                                   args=self.kwargs, frag=frag)
 

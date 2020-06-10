@@ -143,47 +143,27 @@ class DataReader(object):
         settings['schema'] = _check_schema(schema)
         settings['nfrag'] = num_of_parts
 
-        from ddf_library.functions.geo import read_shapefile_stage_1, \
-            read_shapefile_stage_2, read_shapefile_all
         from ddf_library.bases.context_base import ContextBase
+        from ddf_library.bases.optimizer.operations import ReadShapefile
         from ddf_library.ddf import DDF
 
-        def task_read_shapefile_stage_1(_, params):
-            return read_shapefile_stage_1(params)
+        if storage == 'hdfs':
 
-        if host == 'hdfs':
-
-            def task_read_shapefile_stage_2(df, params):
-                return read_shapefile_stage_2(df, params)
-
-            last_state_uuid = ContextBase\
-                .ddf_add_task('read.read_shapefile_stage_1',
-                              status=Status.STATUS_WAIT,
-                              opt=OPTGroup.OPT_LAST,
-                              n_input=0,
-                              function=[task_read_shapefile_stage_1, settings])
-
-            new_state_uuid = ContextBase \
-                .ddf_add_task('read.read_shapefile_stage_2',
-                              status=Status.STATUS_WAIT,
-                              opt=OPTGroup.OPT_SERIAL,
-                              n_input=0,
-                              function=[task_read_shapefile_stage_2, None])
-
+            new_state_uuid = ContextBase\
+                .ddf_add_task(operation=ReadShapefile(settings),
+                              parent=[])
             return DDF(last_uuid=new_state_uuid)
 
         else:
-
-            result, info = read_shapefile_all(settings)
+            from ddf_library.functions.geo import read_shapefile_all
+            result, info = read_shapefile_all(settings, num_of_parts)
 
             new_state_uuid = ContextBase \
-                .ddf_add_task('read.read_shapefile_stage',
+                .ddf_add_task(operation=ReadShapefile({},
+                                                      opt=OPTGroup.OPT_OTHER),
                               status=Status.STATUS_COMPLETED,
-                              opt=OPTGroup.OPT_OTHER,
                               result=result,
-                              info_data=info,
-                              n_input=0,
-                              function=None)
+                              info_data=info)
 
             return DDF(last_uuid=new_state_uuid)
 
@@ -229,56 +209,26 @@ def _apply_datareader(format_file, kwargs):
     elif format_file == 'json':
         data_reader = DataReader().json(**kwargs)
     else:
-        raise Exception('File formart not supported.')
+        raise Exception('File format not supported.')
+
+    from ddf_library.bases.optimizer.operations import DataReaderOperation
 
     if storage is 'file':
-
         if data_reader.distributed:
-            # setting the last task's input (init)
-            blocks = data_reader.get_blocks()
-            # TODO
-            def task_read_many_fs(block, params):
-                return data_reader.transform_fs_distributed(block, params)
+            op = DataReaderOperation(data_reader=data_reader, settings={},
+                                     opt=OPTGroup.OPT_SERIAL,
+                                     tag='read-many-file')
 
-            new_state_uuid = ContextBase \
-                .ddf_add_task('read-many-file',
-                              status=Status.STATUS_WAIT,
-                              opt=OPTGroup.OPT_SERIAL,
-                              n_input=0,
-                              parent=[first_uuid],
-                              result=blocks,
-                              function=task_read_many_fs,
-                              parameters={})
-
-            ContextBase.catalog_tasks.set_task_return(first_uuid, blocks)
         else:
-            result, info = data_reader.transform_fs_single()
-
-            new_state_uuid = ContextBase \
-                .ddf_add_task('read-one-file',
-                              status=Status.STATUS_COMPLETED,
-                              opt=OPTGroup.OPT_OTHER,
-                              n_input=0,
-                              parent=[first_uuid],
-                              result=result,
-                              function=None,
-                              parameters=None,
-                              info_data=info)
+            op = DataReaderOperation(data_reader=data_reader, settings={},
+                                     opt=OPTGroup.OPT_OTHER,
+                                     tag='read-one-file')
 
     else:
-        blocks = data_reader.get_blocks()
-        ContextBase.catalog_tasks.set_task_return(first_uuid, blocks)
+        op = DataReaderOperation(data_reader=data_reader, settings={},
+                                 opt=OPTGroup.OPT_SERIAL,
+                                 tag='read-hdfs')
 
-        def task_read_hdfs(block, params):
-            return data_reader.transform_hdfs(block, params)
-
-        new_state_uuid = ContextBase \
-            .ddf_add_task('read-hdfs',
-                          status=Status.STATUS_WAIT,
-                          opt=OPTGroup.OPT_SERIAL,
-                          n_input=0,
-                          parent=[first_uuid],
-                          function=task_read_hdfs,
-                          parameters={})
+    new_state_uuid = ContextBase.ddf_add_task(operation=op, parent=[])
 
     return DDF(last_uuid=new_state_uuid)

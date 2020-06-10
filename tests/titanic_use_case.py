@@ -120,7 +120,7 @@ def use_case2():
         .map(fare_categorizer_udf, 'Fare')
 
     ddf1 = StringIndexer()\
-        .fit_transform(ddf1, input_col='Embarked', output_col='Embarked')
+        .fit_transform(ddf1, input_col=['Embarked'], output_col=['Embarked'])
 
     """
     After that, we put together all columns (except Survived, which will be

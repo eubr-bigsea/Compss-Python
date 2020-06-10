@@ -12,7 +12,6 @@ DDF is a Library for PyCOMPSs.
 from ddf_library.bases.metadata import CatalogTask, Status, OPTGroup
 from ddf_library.bases.tasks import *
 from ddf_library.bases.monitor.monitor import gen_data
-from ddf_library.bases.optimizer.ddf_optimizer import DDFOptimizer
 from pycompss.api.api import compss_open
 
 from ddf_library.utils import delete_result, create_stage_files
@@ -102,7 +101,6 @@ class ContextBase(object):
 
         # get the operation to be executed
         operation = self.catalog_tasks.get_task_operation(child_task)
-
         # some operations need a schema information
         if operation.require_info:
             operation.settings['schema'] = []
@@ -183,12 +181,17 @@ class ContextBase(object):
         self.update_status(lineage, Status.STATUS_WAIT)
 
         if self.logical_optimization:
-            optimizer = DDFOptimizer(lineage, self.catalog_tasks)
-            optimizer.optimize_logical_plain()
-            optimizer.explain_logical_plan()
-            lineage = optimizer.logical_plan.get_new_lineage()
-            print('-- starting phisical plain')
+            """
+            Not available yet in this version
+            """
+            # from ddf_library.bases.optimizer.ddf_optimizer import DDFOptimizer
+            # optimizer = DDFOptimizer(lineage, self.catalog_tasks)
+            # optimizer.optimize_logical_plain()
+            # optimizer.explain_logical_plan()
+            # lineage = optimizer.logical_plan.get_new_lineage()
+            # print('-- starting phisical plain')
             # optimizer.phisical_plain()
+            pass
 
         if ContextBase.DEBUG:
             self.show_workflow(self.catalog_tasks, lineage)
@@ -294,11 +297,13 @@ class ContextBase(object):
         Run operations that currently can not be grouped with other operations,
         so, it must be executed separated.
         """
-
-        operation = self.set_operation(child_task, id_parents)
-        # execute this operation that returns a dictionary
-        output_dict = self._execute_other_task(operation, inputs)
-        self.save_opt_others_tasks(output_dict, child_task)
+        if self.catalog_tasks.get_task_status(child_task) == Status.STATUS_WAIT:
+            operation = self.set_operation(child_task, id_parents)
+            # execute this operation that returns a dictionary
+            function = operation.function
+            parameters = operation.settings
+            output_dict = self._execute_other_task(function, parameters, inputs)
+            self.save_opt_others_tasks(output_dict, child_task)
 
     def run_opt_serial(self, lineage, inputs):
         """
@@ -345,8 +350,8 @@ class ContextBase(object):
                   " - opt_functions: {}".format(ids, names)
             print(msg)
 
-        result, info = self._execute_serial_tasks(group_uuid,
-                                                  group_operations, inputs)
+        result, info = self._execute_serial_tasks(group_operations, inputs)
+
         self.save_serial_states(result, info, group_uuid)
         jump = len(group_operations)-1
         return jump
@@ -357,12 +362,18 @@ class ContextBase(object):
         check if the next operations share this behavior. If it does, group
         them to execute together, otherwise, execute it as a single task.
         """
-        group_uuid, group_operations = list(), list()
+        uuid_list, function_list, param_list, tags_list = \
+            list(), list(), list(), list()
 
         n_input = self.catalog_tasks.get_n_input(child_task)
-        group_uuid.append(child_task)
+        uuid_list.append(child_task)
         operation = self.set_operation(child_task, id_parents)
-        group_operations.append(operation)
+
+        function_list.append(operation.function_first)
+        function_list.append(operation.function_second)
+        param_list.append(operation.settings)
+        param_list.append(operation.settings)
+        tags_list.append(operation.tag)
 
         lineage = lineage[1:]
         for id_j, task_opt in enumerate(lineage):
@@ -370,10 +381,6 @@ class ContextBase(object):
                 print(' - Checking optimization type for {} ({})'.format(
                         self.catalog_tasks.get_task_name(task_opt),
                         task_opt[:8]))
-
-            group_uuid.append(task_opt)
-            group_operations.append(self.catalog_tasks
-                                    .get_task_operation(task_opt))
 
             if (id_j + 1) < len(lineage):
                 next_task = lineage[id_j + 1]
@@ -391,23 +398,28 @@ class ContextBase(object):
                         get_task_parents(next_task):
                     break
 
+                uuid_list.append(task_opt)
+                operation = self.catalog_tasks.get_task_operation(task_opt)
+                function_list.append(operation.function)
+                param_list.append(operation.settings)
+                tags_list.append(operation.tag)
+
         if ContextBase.DEBUG:
-            names = [self.catalog_tasks.get_task_name(i) for i in group_uuid]
-            ids = [i[0:8] for i in group_uuid]
+            names = [self.catalog_tasks.get_task_name(i) for i in uuid_list]
+            ids = [i[0:8] for i in uuid_list]
             msg = " - Stages (optimized): {}" \
                   " - opt_functions: {}".format(ids, names)
             print(msg)
 
-        result, info = self._execute_opt_last_tasks(group_uuid.copy(),
-                                                    group_operations,
-                                                    inputs, n_input)
-        self.save_serial_states(result, info, group_uuid)
-        jump = len(group_operations)-1
+        result, info = self._execute_opt_last_tasks(function_list, param_list,
+                                                    inputs, n_input, tags_list)
+
+        self.save_serial_states(result, info, uuid_list)
+        jump = len(uuid_list)-1
         return jump
 
     def save_opt_others_tasks(self, output_dict, child_task):
         # Results in non 'optimization-other' tasks are in dictionary format
-
         # get the keys where data and schema are stored in the dictionary
         keys_r, keys_i = output_dict['key_data'], output_dict['key_info']
 
@@ -452,16 +464,15 @@ class ContextBase(object):
                                                Status.STATUS_PERSISTED)
 
     @staticmethod
-    def _execute_other_task(operation, input_data):
+    def _execute_other_task(function, parameters, input_data):
         """
         Execute all tasks that cannot be grouped.
 
-        :param operation: A operation to be executed
+        :param function: A operation to be executed
+        :param parameters: The dictionary with all parameters to set.
         :param input_data: A list of DataFrame as input data
         :return:
         """
-        function = operation.function
-        parameters = operation.settings
 
         nfrag = len(input_data)
 
@@ -476,48 +487,49 @@ class ContextBase(object):
         output = function(input_data, parameters)
         return output
 
-    def _execute_serial_tasks(self, uuid_list, operation_list, input_data):
+    @staticmethod
+    def _execute_serial_tasks(operation_list, input_data):
 
         """
         Execute a group of 'serial' tasks. This method submit
         multiple COMPSs tasks `stage_*in_*out`, one for each data fragment.
 
-        :param uuid_list: sequence of tasks uuid to be executed
         :param operation_list: sequence of operations to be executed
          in each fragment
         :param input_data: A list of DataFrame as input data
         :return:
         """
 
+        function_list = [op.function for op in operation_list]
+        param_list = [op.settings for op in operation_list]
+        tags = [op.tag for op in operation_list]
+
         if len(input_data) == 1:
             input_data = input_data[0]
+        elif len(input_data) == 0:
+            input_data = operation_list[0].blocks
+
         nfrag = len(input_data)
         info = [[] for _ in range(nfrag)]
 
-        function_list = [op.function for op in operation_list]
-        param_list = [op.settings for op in operation_list]
-
-        first_task_name = self.catalog_tasks.get_task_name(uuid_list[0])
-        last_task_name = self.catalog_tasks.get_task_name(uuid_list[-1])
-
-        if 'read-many-file' == first_task_name:
-            if 'save-hdfs' == last_task_name:
+        if 'read-many-file' == tags[0]:
+            if 'save-hdfs' == tags[-1]:
                 function = stage_1in_0out
             else:
                 function = stage_1in_1out
 
-        elif 'read-hdfs' == first_task_name:
-            if 'save-hdfs' == last_task_name:
+        elif 'read-hdfs' == tags[0]:
+            if 'save-hdfs' == tags[-1]:
                 function = stage_0in_0out
             else:
                 function = stage_0in_1out
 
-        elif 'save-hdfs' == last_task_name:
+        elif 'save-hdfs' == tags[-1]:
             function = stage_1in_0out
         else:
             function = stage_1in_1out
 
-        if 'save' in last_task_name:
+        if 'save' in tags[-1]:
             out_files = param_list[-1]['output'](nfrag)
             param_list[-1]['output'] = out_files
         else:
@@ -530,9 +542,10 @@ class ContextBase(object):
             print(msg)
 
         for f, (in_file, out_file) in enumerate(zip(input_data, out_files)):
-            info[f] = function(in_file, function_list, param_list, f, out_file)
+            info[f] = function(in_file, function_list, param_list, f,
+                               out_file, tags)
 
-        if 'save-file' == last_task_name:
+        if 'save-file' == tags[-1]:
             # Currently, we need to `compss_open` each output file generated by
             # `save-file` operation in order to COMPSs retrieve this output
             # in master node before the end of the `runcompss`.
@@ -541,8 +554,8 @@ class ContextBase(object):
 
         return out_files, info
 
-    def _execute_opt_last_tasks(self, uuid_list, function_list, param_list,
-                                data, n_input):
+    def _execute_opt_last_tasks(self, function_list, param_list, data, n_input,
+                                tags_list):
         """
         Execute a group of tasks starting by a 'last' tasks. Some operations
         have more than one processing stage (e.g., sort), some of them, can be
@@ -551,7 +564,6 @@ class ContextBase(object):
         not be grouped with the current flow of tasks (ending the current
         stage), but them, starting from `serial` part, will start a new stage.
 
-        :param uuid_list: sequence of tasks uuid to be executed
         :param function_list: sequence of functions to be executed
          in each fragment
         :param param_list: sequence of parameters to be executed
@@ -583,9 +595,7 @@ class ContextBase(object):
         others_params[0] = settings
         info = [[] for _ in range(nfrag)]
 
-        last_task_name = self.catalog_tasks.get_task_name(uuid_list[-1])
-
-        if 'save' in last_task_name:
+        if 'save' in tags_list[-1]:
             out_files = others_params[-1]['output'](nfrag)
             others_params[-1]['output'] = out_files
         else:
@@ -593,17 +603,17 @@ class ContextBase(object):
 
         if n_input == 1:
 
-            if 'save-hdfs' == last_task_name:
+            if 'save-hdfs' == tags_list[-1]:
                 function = stage_1in_0out
             else:
                 function = stage_1in_1out
 
             for f, (in_file, out_file) in enumerate(zip(out_tmp, out_files)):
                 info[f] = function(in_file, others_functions, others_params,
-                                   f, out_file)
+                                   f, out_file, tags_list)
 
         else:
-            if 'save-hdfs' == last_task_name:
+            if 'save-hdfs' == tags_list[-1]:
                 function = stage_2in_0out
             else:
                 function = stage_2in_1out
@@ -611,7 +621,7 @@ class ContextBase(object):
             for f, (in_file1, in_file2, out_file) in \
                     enumerate(zip(out_tmp, out_tmp2, out_files)):
                 info[f] = function(in_file1, in_file2, others_functions,
-                                   others_params,f, out_file)
+                                   others_params, f, out_file, tags_list)
             # removing temporary tasks
             if intermediate_result:
                 delete_result(out_tmp2)
@@ -623,22 +633,18 @@ class ContextBase(object):
         return out_files, info
 
     @staticmethod
-    def ddf_add_task(operation, parameters={}, opt=None, parent=[], n_input=-1,
-                     n_output=1, status='WAIT', result=None, info=False,
-                     info_data=None, expr=None):
+    def ddf_add_task(operation, parent=[], status='WAIT', result=None,
+                     info_data=None, n_output=1):
         """
         Insert a DDF task in COMPSs Context catalog.
 
         :param operation: DDF operation;
-        :param parameters: a dictionary with all function's parameters input;
         :param parent: uuid parent task;
-        :param n_input: number of parents;
         :param n_output: number of results that this task generates;
         :param status: current status;
         :param result: a list of files output, if completed;
-        :param info: True if this task needs information about parents to run;
         :param info_data: Information (schema), if task is already completed;
-        :param expr: Information used by DDF Optimizer;
+
         :return:
         """
 
@@ -665,7 +671,17 @@ class ContextBase(object):
         for p in parent:
             ContextBase.catalog_tasks.add_task_parent(new_state_uuid, p)
 
-        return new_state_uuid
+        if n_output > 1:
+            uuids = [new_state_uuid]
+            for _ in range(n_output-1):
+                tmp_uuid = ContextBase \
+                    .ddf_add_task(operation=operation, parent=parent)
+                uuids.append(tmp_uuid)
+            ContextBase.link_siblings(uuids)
+
+            return uuids
+        else:
+            return new_state_uuid
 
     @staticmethod
     def link_siblings(siblings):

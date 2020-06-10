@@ -175,7 +175,7 @@ def etl():
     log("etl_test_7b - OK")
 
     import time
-    time.sleep(5)
+    time.sleep(10)
     cc.context_status()
     # cc.show_tasks()
     cc.stop()
@@ -652,12 +652,14 @@ def read_data_multi_fs():
     print("\n|-------- Read Data from files in a folder on FS --------|\n")
     from ddf_library.types import DataType
     cc = COMPSsContext()
+    cc.set_log(True)
     dtypes = {'sepal_length': DataType.DECIMAL, 'sepal_width': DataType.DECIMAL,
               'petal_length': DataType.DECIMAL, 'petal_width': DataType.DECIMAL,
               'class': DataType.STRING}
-    ddf_1 = cc.read.csv('file://./datasets/iris_dataset_folder/', header=True,
+    ddf_1 = cc.read.csv('file:///home/lucasmsp/workspace/bigsea/Compss-Python/tests/datasets/iris_dataset_folder/', header=True,
                         sep=',', schema=dtypes)\
-        .select(['class', 'sepal_width'])\
+        .select(['class', 'sepal_width'])
+    ddf_1.show()
         # .save.csv('file:///tmp/read_data_multi_fs')
 
     print(ddf_1.schema())
@@ -670,6 +672,7 @@ def read_data_single_hdfs():
     print("\n|-------- Read Data From a single file on HDFS --------|\n")
     from ddf_library.types import DataType
     cc = COMPSsContext()
+
     dtypes = {'sepal_length': DataType.DECIMAL, 'sepal_width': DataType.DECIMAL,
               'petal_length': DataType.DECIMAL, 'petal_width': DataType.DECIMAL,
               'class': DataType.STRING}
@@ -1012,8 +1015,9 @@ if __name__ == '__main__':
             add_columns, aggregation, balancer, cast, 
             cross_join, etl, except_all, explode, filter, fill_na,
             flow_serial_only, flow_recompute_task, distinct, drop, drop_na,
-            import_compss_data, intersect, intersect_all, join, read_data_single_fs,
-            read_data_multi_fs, read_data_single_hdfs, read_data_multi_hdfs,
+            import_compss_data, intersect, intersect_all, join, 
+            read_data_single_fs, read_data_multi_fs, read_data_single_hdfs, 
+            read_data_multi_hdfs,
             map, rename, repartition, hash_partition, range_partition,
             replace, sample, save_data_fs, save_data_hdfs, select,
             select_expression, show, sort, split, subtract, take, 

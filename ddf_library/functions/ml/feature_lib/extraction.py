@@ -118,19 +118,18 @@ class CountVectorizer(ModelDDF):
         self.output_col = output_col
         self.remove = remove
 
-        settings = self.__dict__.copy()
-        settings['model'] = settings['model']['vocabulary']
+        self.settings = self.__dict__.copy()
 
-        def task_transform_bow(df, params):
-            return _transform_bow(df, params)
-
-        uuid_key = ContextBase\
-            .ddf_add_task(self.name, opt=OPTGroup.OPT_SERIAL,
-                          function=task_transform_bow,
-                          parameters=settings,
-                          parent=[data.last_uuid])
+        uuid_key = ContextBase \
+            .ddf_add_task(operation=self, parent=[data.last_uuid])
 
         return DDF(last_uuid=uuid_key)
+
+    @staticmethod
+    def function(df, params):
+        params = params.copy()
+        params['model'] = params['model']['vocabulary']
+        return _transform_bow(df, params)
 
 
 @task(returns=dict, data_input=FILE_IN)
@@ -349,19 +348,18 @@ class TfidfVectorizer(ModelDDF):
         self.output_col = output_col
         self.remove = remove
 
-        settings = self.__dict__.copy()
-        settings['model'] = settings['model']['vocabulary']
-
-        def task_transform_tf_if(df, params):
-            return construct_tf_idf(df, params)
+        self.settings = self.__dict__.copy()
 
         uuid_key = ContextBase \
-            .ddf_add_task(self.name, opt=OPTGroup.OPT_SERIAL,
-                          function=task_transform_tf_if,
-                          parameters=settings,
-                          parent=[data.last_uuid])
+            .ddf_add_task(operation=self, parent=[data.last_uuid])
 
-        return DDF(task_list=data.task_list, last_uuid=uuid_key)
+        return DDF(last_uuid=uuid_key)
+
+    @staticmethod
+    def function(df, params):
+        params = params.copy()
+        params['model'] = params['model']['vocabulary']
+        return construct_tf_idf(df, params)
 
 
 @task(returns=1, data_input=FILE_IN)

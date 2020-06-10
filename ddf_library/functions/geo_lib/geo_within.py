@@ -125,6 +125,7 @@ def geo_within_stage_2(data_input, settings):
         shp_object = shp_object.drop([polygon_col], axis=1)
 
     shp_object.columns = ["{}{}".format(c, alias) for c in attributes]
+    # shp_object.reset_index(inplace=True)
 
     # merge with idx of each point
     data_input = data_input.merge(shp_object, how='left',

@@ -17,8 +17,8 @@ import time
 
 def read_shapefile_all(settings, nfrag):
     # This method will be executed only if shapefile is in common file system.
-
-    stage1_result, _, settings = read_shapefile_stage_1(settings, nfrag)
+    settings['nfrag'] = nfrag
+    stage1_result, _, settings = read_shapefile_stage_1(settings)
 
     outputs = create_stage_files(nfrag)
     infos = []

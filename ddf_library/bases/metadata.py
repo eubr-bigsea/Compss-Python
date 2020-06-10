@@ -126,8 +126,11 @@ class CatalogTask(object):
     def get_task_operation(self, uuid_task):
         return self.catalog_tasks[uuid_task]['operation']
 
-    def set_task_parameters(self, uuid_task, operation):
-        self.catalog_tasks[uuid_task]['operation'] = operation
+    def get_task_parameters(self, uuid_task):
+        return self.catalog_tasks[uuid_task]['operation'].settings
+
+    def set_task_parameters(self, uuid_task, settings):
+        self.catalog_tasks[uuid_task]['operation'].settings = settings
 
     def get_task_return(self, uuid_task):
         return self.catalog_tasks[uuid_task].get('result', [])
@@ -239,9 +242,9 @@ class CatalogTask(object):
     def get_input_data(self, id_parents):
         return [self.get_task_return(id_p) for id_p in id_parents]
 
-    def get_info_condition(self, uuid_task):
-        name_task = self.get_task_name(uuid_task)
-        return self.task_definitions[name_task].get('schema', False)
+    # def get_info_condition(self, uuid_task):
+    #     name_task = self.get_task_name(uuid_task)
+    #     return self.task_definitions[name_task].get('schema', False)
 
 
 def check_serialization(data):

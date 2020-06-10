@@ -149,19 +149,18 @@ class Kmeans(ModelDDF):
             self.feature_col = feature_col
         self.pred_col = pred_col
 
-        settings = self.__dict__.copy()
-        settings['model'] = settings['model']['model']
-
-        def task_transform_kmeans(df, params):
-            return _kmeans_predict(df, params)
+        self.settings = self.__dict__.copy()
 
         uuid_key = ContextBase\
-            .ddf_add_task(self.name, opt=OPTGroup.OPT_SERIAL,
-                          function=task_transform_kmeans,
-                          parameters=settings,
-                          parent=[data.last_uuid])
+            .ddf_add_task(operation=self, parent=[data.last_uuid])
 
         return DDF(last_uuid=uuid_key)
+
+    @staticmethod
+    def function(df, params):
+        params = params.copy()
+        params['model'] = params['model']['model']
+        return _kmeans_predict(df, params)
 
     def compute_cost(self):
         """
@@ -271,6 +270,7 @@ def _kmeans_predict(data, settings):
         from sklearn.cluster import KMeans
         kmeans = KMeans(n_clusters=k, random_state=0)
         kmeans.cluster_centers_ = centroids
+        kmeans._n_threads = 1
 
         values = kmeans.predict(data[columns].values)
 
