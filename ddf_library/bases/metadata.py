@@ -49,6 +49,7 @@ class CatalogTask(object):
     def clear(self):  # TODO
 
         for id_task in list(self.catalog_tasks):
+
             data = self.get_task_return(id_task)
 
             if check_serialization(data):

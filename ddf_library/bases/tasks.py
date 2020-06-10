@@ -65,7 +65,8 @@ def stage_0in_0out(data_input, list_functions, list_params, id_frag,
 
 
 @task(returns=1,  data_output=FILE_OUT)
-def stage_0in_1out(data, list_functions, list_params, id_frag, data_output, tags):
+def stage_0in_1out(data, list_functions, list_params, id_frag, data_output,
+                   tags):
     """
     Used to read files from HDFS.
 

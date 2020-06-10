@@ -118,7 +118,7 @@ def _apply_datasaver(format_file, kwargs, uuid):
 
     status_path = data_saver.check_path()
     if status_path == 'ok':
-        settings = {'output': data_saver.generate_names}
+        settings = {'output': data_saver.generate_names, 'storage': storage}
 
         from ddf_library.bases.optimizer.operations import DataWriter
 

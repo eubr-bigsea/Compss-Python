@@ -24,9 +24,9 @@ copyright = u'2020, Lucas M Ponce'
 author = u'Lucas M Ponce'
 
 # The short X.Y version
-version = u'0.5'
+version = u'0.6'
 # The full version, including alpha/beta/rc tags
-release = u'0.5.1'
+release = u'0.6.1'
 
 
 # -- General configuration ---------------------------------------------------
@@ -164,7 +164,7 @@ texinfo_documents = [
 
 # -- Options for Epub output -------------------------------------------------
 
-# Bibliographic Dublin Core info.
+# Bibliographic Dublin Core schema.
 epub_title = project
 
 # The unique identifier of the text. This can be a ISBN number

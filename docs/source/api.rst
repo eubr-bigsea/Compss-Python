@@ -76,7 +76,7 @@ COMPSs Context
 
 :func:`COMPSsContext.parallelize <ddf_library.context.COMPSsContext.parallelize>` - Import data to DDF by distributing a DataFrame into DDF.
 
-:func:`COMPSsContext.import_data <ddf_library.context.COMPSsContext.import_data>` - Import a previous Pandas DataFrame list into DDF abstraction.
+:func:`COMPSsContext.import_compss_data <ddf_library.context.COMPSsContext.import_compss_data>` - Import a previous Pandas DataFrame list into DDF abstraction.
 
 :func:`COMPSsContext.read.csv <ddf_library.bases.data_reader.DataReader.csv>` - Read a csv file. 
 

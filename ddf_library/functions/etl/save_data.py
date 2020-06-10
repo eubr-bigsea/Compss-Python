@@ -143,11 +143,12 @@ class DataSaver(object):
         return output
 
     def save(self, df, settings):
-        output = settings['output'][settings['id_frag']]
+        output = settings['output']
 
         if self.storage == self.STORAGE_HDFS:
             """Store the DataFrame in CSV, JSON, PICLKE and PARQUET
              format in HDFS."""
+
             from hdfspycompss.hdfs import HDFS
             dfs = HDFS(host=self.host, port=self.port)
 

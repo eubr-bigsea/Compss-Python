@@ -6,6 +6,7 @@ __email__ = "lucasmsp@gmail.com"
 
 import datetime
 import numpy as np
+import pandas as pd
 
 
 class DataType(object):
