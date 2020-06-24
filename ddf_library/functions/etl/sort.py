@@ -31,19 +31,28 @@ def sort(data, settings):
         settings['id_frag'] = f
         result[f], info[f] = task_sort_stage_2(data[f], settings.copy())
 
-    output = {'key_data': ['data'], 'key_info': ['info'],
-              'data': result, 'info': info}
+    output = {'key_data': ['data'], 'key_info': ['schema'],
+              'data': result, 'schema': info}
     return output
 
 
 def sort_stage_1(data, settings):
+    """
+    :param data: input data;
+    :param settings: A dictionary with:
+     * columns = columns name used as keys;
+     * ascending = list with the order to sort;
+     * return_info = Used by kolmogorov_smirnov;
+     * only_key_columns = Used by kolmogorov_smirnov to return a
+      DataFrame with only the keys;
+    :return:
+    """
 
     nfrag = len(data)
     settings = preprocessing(settings)
-    info = settings['info'][0]
-    # used by kolmogorov_smirnov
+    info = settings['schema'][0]
+
     return_info = settings.get('return_info', False)
-    # used by kolmogorov_smirnov to return a dataframe with only the keys
     only_key_columns = settings.get('only_key_columns', False)
 
     if nfrag > 1:
@@ -51,10 +60,10 @@ def sort_stage_1(data, settings):
         params = {'nfrag': nfrag,
                   'columns': settings['columns'],
                   'ascending': settings['ascending'],
-                  'info': [info],
+                  'schema': [info],
                   'only_key_columns': only_key_columns}
         output_range = range_partition(data, params)
-        data, info = output_range['data'], output_range['info']
+        data, info = output_range['data'], output_range['schema']
 
     if return_info:
         return data, info, settings

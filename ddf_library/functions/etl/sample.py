@@ -21,7 +21,7 @@ def sample(data, params):
       - seed : Optional, seed for the random operation.
       - int_value: Value N to be sampled (in 'value' or 'head' type)
       - per_value: Percentage to be sampled (in 'value' or 'head' type)
-      - info: information generated from others tasks (automatic);
+      - schema: information generated from others tasks (automatic);
     :return: A list of pandas's DataFrame.
 
     .. note: This operations contains two stages: the first one is to define
@@ -43,8 +43,8 @@ def sample(data, params):
         params['id_frag'] = f
         result[f], info[f] = sample_stage_2(data[f], params.copy())
 
-    output = {'key_data': ['data'], 'key_info': ['info'],
-              'data': result, 'info': info}
+    output = {'key_data': ['data'], 'key_info': ['schema'],
+              'data': result, 'schema': info}
     return output
 
 
@@ -54,7 +54,7 @@ def sample_stage_1(data, params):
 
     sample_type = params.get("type", 'percent')
     seed = params.get('seed', None)
-    info = params['info'][0]
+    info = params['schema'][0]
     value = abs(params['value'])
     op = 'int' if isinstance(value, int) else 'per'
 

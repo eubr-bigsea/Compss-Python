@@ -13,3 +13,4 @@ graphviz>=0.13.2
 prettytable>=0.7.2
 guppy3>=3.0.9
 dill>=0.3.1.1
+pyproj>=2.4.2.post1

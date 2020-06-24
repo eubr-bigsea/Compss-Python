@@ -5,6 +5,7 @@
 __author__ = "Lucas Miguel S Ponce"
 __email__ = "lucasmsp@gmail.com"
 
+from ddf_library.bases.metadata import OPTGroup
 from ddf_library.bases.context_base import ContextBase
 from ddf_library.ddf import DDF
 from ddf_library.utils import generate_info, read_stage_file
@@ -128,18 +129,18 @@ class GaussianNB(ModelDDF):
             self.feature_col = feature_col
         self.pred_col = pred_col
 
-        settings = self.__dict__.copy()
-        settings['model'] = settings['model']['model']
+        self.settings = self.__dict__.copy()
 
-        def task_transform_nb(df, params):
-            return _nb_predict(df, params)
+        uuid_key = ContextBase \
+            .ddf_add_task(operation=self, parent=[data.last_uuid])
 
-        uuid_key = ContextBase\
-            .ddf_add_task(self.name, opt=self.OPT_SERIAL,
-                          function=[task_transform_nb, settings],
-                          parent=[data.last_uuid])
+        return DDF(last_uuid=uuid_key)
 
-        return DDF(task_list=data.task_list, last_uuid=uuid_key)
+    @staticmethod
+    def function(df, params):
+        params = params.copy()
+        params['model'] = params['model']['model']
+        return _nb_predict(df, params)
 
 
 @task(returns=2, data_input=FILE_IN)

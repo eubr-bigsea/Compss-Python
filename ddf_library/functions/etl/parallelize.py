@@ -6,25 +6,26 @@ from pycompss.api.parameter import FILE_IN, FILE_OUT
 from pycompss.api.api import compss_wait_on, compss_delete_object
 from pycompss.api.task import task
 
-from ddf_library.utils import merge_schema,\
-    create_stage_files, save_stage_file, read_stage_file, generate_info
+from ddf_library.utils import create_stage_files, save_stage_file, \
+    read_stage_file, generate_info, merge_schema
 
 import numpy as np
 import sys
 
 
-def parallelize(data, nfrag):
+def parallelize(data, settings):
     """
     Method to split the data in nfrag parts. This method simplifies
     the use of chunks.
 
     :param data: The np.array or list to do the split.
-    :param nfrag: A number of partitions
+    :param settings: A dictionary with:
+     - nfrag: A number of partitions;
     :return: A list of pandas DataFrame.
 
     :Note: the result may be unbalanced when the number of rows is too small
     """
-
+    nfrag = settings['nfrag']
     n_rows = len(data)
 
     # sizes = _generate_distribution1(n_rows, nfrag)  # only when n >> nfrag
@@ -45,8 +46,8 @@ def parallelize(data, nfrag):
     if len(result) != nfrag:
         raise Exception("Error in parallelize function.")
 
-    output = {'key_data': ['data'], 'key_info': ['info'],
-              'data': result, 'info': info}
+    output = {'key_data': ['data'], 'key_info': ['schema'],
+              'data': result, 'schema': info}
 
     return output
 
@@ -106,10 +107,10 @@ def _generate_distribution2(n_rows, nfrag):
 #     compss_delete_object(schema)
 #
 #     info_agg = compss_wait_on(info_agg)
-#     info = _check_schema(info_agg)
+#     schema = _check_schema(info_agg)
 #
-#     output = {'key_data': ['data'], 'key_info': ['info'],
-#               'data': df_list, 'info': info}
+#     output = {'key_data': ['data'], 'key_info': ['schema'],
+#               'data': df_list, 'schema': schema}
 #     return output
 
 
@@ -142,8 +143,8 @@ def import_to_ddf(df_list, parquet=False, schema=None):
     info_agg = compss_wait_on(info_agg)
     info = _check_schema(info_agg)
 
-    output = {'key_data': ['data'], 'key_info': ['info'],
-              'data': df_list, 'info': info}
+    # output = {'key_data': ['data'], 'key_info': ['schema'],
+    #           'data': df_list, 'schema': schema}
     return df_list, info
 
 

@@ -21,7 +21,7 @@ def take(data, settings):
     :param data: A list of pandas's DataFrame;
     :param settings: dictionary that contains:
      - value: integer value to be sampled;
-     - info: information generated from others tasks (automatic);
+     - schema: information generated from others tasks (automatic);
     :return: A list of pandas's DataFrame.
 
     .. note: This operations contains two stages: the first one is to define
@@ -39,12 +39,12 @@ def take(data, settings):
         settings['id_frag'] = f
         info[f] = task_take_stage_2(data[f], result[f], settings.copy())
 
-    output = {'key_data': ['data'], 'key_info': ['info'],
-              'data': result, 'info': info}
+    output = {'key_data': ['data'], 'key_info': ['schema'],
+              'data': result, 'schema': info}
 
     if balancer:
         info = merge_info(info)
-        conf = {'forced': True, 'info': [info]}
+        conf = {'forced': True, 'schema': [info]}
         output = WorkloadBalancer(conf).transform(result)
         delete_result(result)
 
@@ -53,7 +53,7 @@ def take(data, settings):
 
 def take_stage_1(data, settings):
 
-    info, value = settings['info'][0], settings['value']
+    info, value = settings['schema'][0], settings['value']
     settings['idx'] = _take_define_sample(info, value)
     settings['intermediate_result'] = False
     return data, settings

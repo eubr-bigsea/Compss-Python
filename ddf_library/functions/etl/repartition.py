@@ -36,7 +36,7 @@ def repartition(data, settings):
     results in roughly equal sized partitions.
     """
 
-    info = settings['info'][0]
+    info = settings['schema'][0]
     target_dist = settings.get('shape', [])
     nfrag = settings.get('nfrag', len(data))
 
@@ -52,8 +52,8 @@ def repartition(data, settings):
 
     result, info = _balancer(data, target_dist, old_sizes, cols)
 
-    output = {'key_data': ['data'], 'key_info': ['info'],
-              'data': result, 'info': info}
+    output = {'key_data': ['data'], 'key_info': ['schema'],
+              'data': result, 'schema': info}
     return output
 
 

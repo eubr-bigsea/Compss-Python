@@ -13,13 +13,13 @@ import numpy as np
 
 def aggregation_stage_1(data, settings):
     nfrag = len(data)
-    info1 = settings['info'][0]
+    info1 = settings['schema'][0]
     info1['function'] = [_aggregate, settings]
 
     from .hash_partitioner import hash_partition
 
     hash_params = {'columns': settings['groupby'],
-                   'nfrag': nfrag, 'info': [info1]}
+                   'nfrag': nfrag, 'schema': [info1]}
     output = hash_partition(data, hash_params)['data']
     settings['intermediate_result'] = True
     return output, settings

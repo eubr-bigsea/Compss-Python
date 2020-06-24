@@ -30,7 +30,7 @@ def union(data1, data2, settings):
     by_name = settings.get('by_name', True)
     nfrag = settings.get('nfrag', nfrag1)
 
-    info1, info2 = settings['info']
+    info1, info2 = settings['schema']
 
     # first, define the new column names if exists
     cols1, cols2 = info1['cols'], info2['cols']
@@ -78,7 +78,7 @@ def union(data1, data2, settings):
     new_info = {'cols': new_columns,
                 'size': info1['size'] + info2['size']}
     from .repartition import repartition
-    repartition_settings = {'info': [new_info], 'nfrag': nfrag}
+    repartition_settings = {'schema': [new_info], 'nfrag': nfrag}
 
     output = repartition(data, repartition_settings)
 

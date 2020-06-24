@@ -13,6 +13,7 @@ Public classes:
       Distributed DataFrame (DDF), the abstraction of this library.
 """
 
+from ddf_library.bases.metadata import OPTGroup, Status
 from pycompss.api.api import compss_open, compss_delete_file
 from ddf_library.bases.ddf_base import DDFSketch
 import ddf_library.bases.data_saver as ds
@@ -33,20 +34,10 @@ class DDF(DDFSketch):
     def __init__(self, **kwargs):
         super(DDF, self).__init__()
 
-        # list of uuid of operations that describes the current flow
-        task_list = kwargs.get('task_list', None)
         # parent uuid operation
-        last_uuid = kwargs.get('last_uuid', 'init')
-
+        self.last_uuid = kwargs.get('last_uuid', 'init')
         self.partitions = list()
-        self.task_list = task_list.copy()
-        # used to handle groupby tasks
-        if last_uuid not in self.task_list:
-            self.task_list.append(last_uuid)
-        self.last_uuid = last_uuid
-
         self.save = ds.Save()
-        ds.task_list = self.task_list
         ds.last_uuid = self.last_uuid
 
     def __str__(self):
@@ -64,6 +55,39 @@ class DDF(DDFSketch):
         >>> ddf1.cache()
         """
         return self.persist()
+
+    def crst_transform(self, lat_col, lon_col, src_epsg, dst_epsg,
+                       lat_alias=None, lon_alias=None):
+        # noinspection PyUnresolvedReferences
+        """
+        Given a source EPSG code, and target EPSG code, convert the Spatial
+        Reference System / Coordinate Reference System.
+
+        :param lat_col: Latitude column name;
+        :param lon_col: Longitude column name;
+        :param src_epsg: Coordinate Reference System used in the source points;
+        :param dst_epsg: Target coordinate Reference System;
+        :param lat_alias: Latitude column alias (default, replace the input);
+        :param lon_alias: Longitude column alias (default, replace the input);
+
+        :return: DDF
+
+        :Example:
+
+        >>> ddf1.crst_transform('latitude', 'longitude',
+        >>>                     src_epsg=4326, dst_epsg=32633)
+        """
+        settings = {'lat_col': lat_col, 'lon_col': lon_col,
+                    'src_epsg': src_epsg, 'dst_epsg': dst_epsg,
+                    'lat_alias': lat_alias, 'lon_alias': lon_alias}
+
+        from ddf_library.bases.optimizer.operations import CRSTTransform
+
+        new_state_uuid = ContextBase \
+            .ddf_add_task(operation=CRSTTransform(settings),
+                          parent=[self.last_uuid])
+
+        return DDF(last_uuid=new_state_uuid)
 
     def num_of_partitions(self):
         # noinspection PyUnresolvedReferences
@@ -93,20 +117,14 @@ class DDF(DDFSketch):
         >>> ddf1.balancer(force=True)
         """
 
-        from .functions.etl.balancer import WorkloadBalancer
+        from ddf_library.bases.optimizer.operations import WorkloadBalancer
         settings = {'forced': forced}
 
-        def task_balancer(df, params):
-            return WorkloadBalancer(params).transform(df)
-
         new_state_uuid = ContextBase\
-            .ddf_add_task('balancer',
-                          opt=self.OPT_OTHER,
-                          function=[task_balancer, settings],
-                          parent=[self.last_uuid],
-                          info=True)
+            .ddf_add_task(operation=WorkloadBalancer(settings),
+                          parent=[self.last_uuid])
 
-        return DDF(task_list=self.task_list, last_uuid=new_state_uuid)
+        return DDF(last_uuid=new_state_uuid)
 
     def count_rows(self, total=True):
         # noinspection PyUnresolvedReferences
@@ -142,21 +160,13 @@ class DDF(DDFSketch):
         :return: DDF
         """
 
-        from .functions.etl.attributes_changer import create_settings_cast, \
-            with_column_cast
-
-        settings = create_settings_cast(attributes=column, cast=cast)
-
-        def task_cast(df, params):
-            return with_column_cast(df, params)
-
+        from ddf_library.bases.optimizer.operations import WithColumn
+        settings = {'column': column, 'cast': cast}
         new_state_uuid = ContextBase \
-            .ddf_add_task('cast',
-                          opt=self.OPT_SERIAL,
-                          function=[task_cast, settings],
+            .ddf_add_task(operation=WithColumn(settings),
                           parent=[self.last_uuid])
 
-        return DDF(task_list=self.task_list, last_uuid=new_state_uuid)
+        return DDF(last_uuid=new_state_uuid)
 
     def add_column(self, data2, suffixes=None):
         # noinspection PyUnresolvedReferences
@@ -180,19 +190,13 @@ class DDF(DDFSketch):
 
         settings = {'suffixes': suffixes}
 
-        from .functions.etl.add_columns import AddColumnsOperation
-
-        def task_add_column(df, params):
-            return AddColumnsOperation().transform(df[0], df[1], params)
+        from ddf_library.bases.optimizer.operations import AddColumn
 
         new_state_uuid = ContextBase\
-            .ddf_add_task('add_column',
-                          opt=self.OPT_OTHER,
-                          function=[task_add_column, settings],
-                          parent=[self.last_uuid, data2.last_uuid],
-                          info=True)
-        new_list = self._merge_tasks_list(self.task_list + data2.task_list)
-        return DDF(task_list=new_list, last_uuid=new_state_uuid)
+            .ddf_add_task(operation=AddColumn(settings),
+                          parent=[self.last_uuid, data2.last_uuid])
+
+        return DDF(last_uuid=new_state_uuid)
 
     def group_by(self, group_by):
         # noinspection PyUnresolvedReferences
@@ -210,32 +214,13 @@ class DDF(DDFSketch):
         """
         settings = {'groupby': group_by, 'operation': []}
         from ddf_library.bases.groupby import GroupedDDF
-        from .functions.etl.aggregation import aggregation_stage_1, \
-            aggregation_stage_2
-
-        def task_aggregation_stage_1(df, params):
-            return aggregation_stage_1(df, params)
-
-        def task_aggregation_stage_2(df, params):
-            return aggregation_stage_2(df, params)
-
-        last_uuid = ContextBase\
-            .ddf_add_task('task_aggregation_stage_1',
-                          opt=self.OPT_LAST,
-                          function=[task_aggregation_stage_1, settings],
-                          parent=[self.last_uuid],
-                          info=True)
-
-        task_list = self.task_list.copy()
-        task_list.append(last_uuid)
+        from ddf_library.bases.optimizer.operations import Aggregation
 
         new_state_uuid = ContextBase\
-            .ddf_add_task('task_aggregation_stage_2',
-                          opt=self.OPT_SERIAL,
-                          function=[task_aggregation_stage_2, settings],
-                          parent=[last_uuid])
+            .ddf_add_task(operation=Aggregation(settings),
+                          parent=[self.last_uuid])
 
-        tmp = DDF(task_list=task_list, last_uuid=new_state_uuid)
+        tmp = DDF(last_uuid=new_state_uuid)
         return GroupedDDF(tmp)
 
     def fillna(self, subset=None, mode='VALUE', value=None):
@@ -261,50 +246,26 @@ class DDF(DDFSketch):
                     'cleaning_mode': mode}
 
         if mode is 'VALUE':
-            from .functions.etl.clean_missing import fill_by_value
+            from ddf_library.bases.optimizer.operations import FillNaByValue
 
             if not value:
                 raise Exception("It is necessary a value "
                                 "when using `VALUE` mode.")
 
-            def task_clean_missing(df, params):
-                return fill_by_value(df, params)
-
             new_state_uuid = ContextBase \
-                .ddf_add_task('fill_na',
-                              opt=self.OPT_SERIAL,
-                              function=[task_clean_missing, settings],
+                .ddf_add_task(operation=FillNaByValue(settings),
                               parent=[self.last_uuid])
 
-            return DDF(task_list=self.task_list, last_uuid=new_state_uuid)
+            return DDF(last_uuid=new_state_uuid)
 
         else:
-            from .functions.etl.clean_missing import fill_nan_stage_1, \
-                fill_nan_stage_2
-
-            def task_fill_nan_stage_1(df, params):
-                return fill_nan_stage_1(df, params)
-
-            def task_fill_nan_stage_2(df, params):
-                return fill_nan_stage_2(df, params)
-
-            last_uuid = ContextBase \
-                .ddf_add_task('task_fill_nan_stage_1',
-                              opt=self.OPT_LAST,
-                              function=[task_fill_nan_stage_1, settings],
-                              parent=[self.last_uuid],
-                              info=True)
-
-            task_list = self.task_list.copy()
-            task_list.append(last_uuid)
+            from ddf_library.bases.optimizer.operations import FillNan
 
             new_state_uuid = ContextBase \
-                .ddf_add_task('task_fill_nan_stage_2',
-                              opt=self.OPT_SERIAL,
-                              function=[task_fill_nan_stage_2, None],
-                              parent=[last_uuid])
+                .ddf_add_task(operation=FillNan(settings),
+                              parent=[self.last_uuid])
 
-            return DDF(task_list=task_list, last_uuid=new_state_uuid)
+            return DDF(last_uuid=new_state_uuid)
 
     def columns(self):
         """
@@ -378,19 +339,13 @@ class DDF(DDFSketch):
 
         >>> ddf1.cross_join(ddf2)
         """
-        from .functions.etl.cross_join import cross_join
-
-        def task_cross_join(df, _):
-            return cross_join(df[0], df[1])
+        from ddf_library.bases.optimizer.operations import CrossJoin
 
         new_state_uuid = ContextBase\
-            .ddf_add_task('cross_join',
-                          opt=self.OPT_OTHER,
-                          function=[task_cross_join, {}],
+            .ddf_add_task(operation=CrossJoin(dict()),
                           parent=[self.last_uuid, data2.last_uuid])
 
-        new_list = self._merge_tasks_list(self.task_list + data2.task_list)
-        return DDF(task_list=new_list, last_uuid=new_state_uuid)
+        return DDF(last_uuid=new_state_uuid)
 
     def cross_tab(self, col1, col2):
         # noinspection PyUnresolvedReferences
@@ -410,22 +365,17 @@ class DDF(DDFSketch):
 
         >>> ddf1.cross_tab(col1='col_1', col2='col_2')
         """
-        from ddf_library.functions.statistics.cross_tab import cross_tab
+        from ddf_library.bases.optimizer.operations import CrossTab
         if any([not isinstance(col1, str), not isinstance(col2, str)]):
             raise Exception('Columns must be a string (column names).')
 
         settings = {'col1': col1, 'col2': col2}
 
-        def task_cross_tab(df, params):
-            return cross_tab(df, params)
-
         new_state_uuid = ContextBase\
-            .ddf_add_task('cross_tab',
-                          opt=self.OPT_OTHER,
-                          function=[task_cross_tab, settings],
+            .ddf_add_task(operation=CrossTab(settings),
                           parent=[self.last_uuid])
 
-        return DDF(task_list=self.task_list, last_uuid=new_state_uuid)
+        return DDF(last_uuid=new_state_uuid)
 
     def describe(self, columns=None):
         # noinspection PyUnresolvedReferences
@@ -508,34 +458,15 @@ class DDF(DDFSketch):
 
         >>> ddf1.subtract(ddf2)
         """
-        from .functions.etl.subtract import subtract_stage_1, subtract_stage_2
+        from ddf_library.bases.optimizer.operations import Subtract
 
         settings = {}
 
-        def task_subtract_stage_1(df, params):
-            return subtract_stage_1(df[0], df[1], params)
-
-        def task_subtract_stage_2(df, params):
-            return subtract_stage_2(df[0], df[1], params)
-
-        last_uuid = ContextBase\
-            .ddf_add_task('task_subtract_stage_1',
-                          opt=self.OPT_LAST,
-                          function=[task_subtract_stage_1, settings],
-                          parent=[self.last_uuid, data2.last_uuid],
-                          info=True)
-
-        task_list = self.task_list + data2.task_list
-        task_list = self._merge_tasks_list(task_list)
-        task_list.append(last_uuid)
-
         new_state_uuid = ContextBase\
-            .ddf_add_task('task_subtract_stage_2',
-                          opt=self.OPT_SERIAL,
-                          function=[task_subtract_stage_2, None],
-                          parent=[last_uuid])
+            .ddf_add_task(operation=Subtract(settings),
+                          parent=[self.last_uuid, data2.last_uuid])
 
-        return DDF(task_list=task_list, last_uuid=new_state_uuid)
+        return DDF(last_uuid=new_state_uuid)
 
     def except_all(self, data2):
         # noinspection PyUnresolvedReferences
@@ -553,35 +484,15 @@ class DDF(DDFSketch):
 
         >>> ddf1.except_all(ddf2)
         """
-        from .functions.etl.except_all import except_all_stage_1, \
-            except_all_stage_2
+        from ddf_library.bases.optimizer.operations import ExceptAll
 
         settings = {}
 
-        def task_except_all_stage_1(df, params):
-            return except_all_stage_1(df[0], df[1], params)
+        new_state_uuid = ContextBase \
+            .ddf_add_task(operation=ExceptAll(settings),
+                          parent=[self.last_uuid, data2.last_uuid])
 
-        def task_except_all_stage_2(df, params):
-            return except_all_stage_2(df[0], df[1], params)
-
-        last_uuid = ContextBase \
-            .ddf_add_task('task_except_all_stage_1',
-                          opt=self.OPT_LAST,
-                          function=[task_except_all_stage_1, settings],
-                          parent=[self.last_uuid, data2.last_uuid],
-                          info=True)
-
-        task_list = self.task_list + data2.task_list
-        task_list = self._merge_tasks_list(task_list)
-        task_list.append(last_uuid)
-
-        new_state_uuid = ContextBase\
-            .ddf_add_task('task_except_all_stage_2',
-                          opt=self.OPT_SERIAL,
-                          function=[task_except_all_stage_2, None],
-                          parent=[last_uuid])
-
-        return DDF(task_list=task_list, last_uuid=new_state_uuid)
+        return DDF(last_uuid=new_state_uuid)
 
     def distinct(self, cols, opt=True):
         # noinspection PyUnresolvedReferences
@@ -598,33 +509,15 @@ class DDF(DDFSketch):
 
         >>> ddf1.distinct('col_1')
         """
-        from .functions.etl.distinct import distinct_stage_1, distinct_stage_2
 
         settings = {'columns': cols, 'opt_function': opt}
-
-        def task_distinct_stage_1(df, params):
-            return distinct_stage_1(df, params)
-
-        last_uuid = ContextBase\
-            .ddf_add_task('distinct_stage_1',
-                          opt=self.OPT_LAST,
-                          function=[task_distinct_stage_1, settings],
-                          parent=[self.last_uuid],
-                          info=True)
-
-        task_list = self.task_list.copy()
-        task_list.append(last_uuid)
-
-        def task_distinct_stage_2(df, params):
-            return distinct_stage_2(df, params)
+        from ddf_library.bases.optimizer.operations import Distinct
 
         new_state_uuid = ContextBase\
-            .ddf_add_task('distinct_stage_2',
-                          opt=self.OPT_SERIAL,
-                          function=[task_distinct_stage_2, None],
-                          parent=[last_uuid])
+            .ddf_add_task(operation=Distinct(settings),
+                          parent=[self.last_uuid])
 
-        return DDF(task_list=task_list, last_uuid=new_state_uuid)
+        return DDF(last_uuid=new_state_uuid)
 
     def drop(self, columns):
         # noinspection PyUnresolvedReferences
@@ -643,18 +536,13 @@ class DDF(DDFSketch):
 
         settings = {'columns': columns}
 
-        from .functions.etl.drop import drop
-
-        def task_drop(df, params):
-            return drop(df, params)
-
+        from ddf_library.bases.optimizer.operations import DropColumns
+        
         new_state_uuid = ContextBase\
-            .ddf_add_task('drop',
-                          opt=self.OPT_SERIAL,
-                          function=[task_drop, settings],
+            .ddf_add_task(operation=DropColumns(settings),
                           parent=[self.last_uuid])
 
-        return DDF(task_list=self.task_list, last_uuid=new_state_uuid)
+        return DDF(last_uuid=new_state_uuid)
 
     def drop_duplicates(self, cols):
         # noinspection PyUnresolvedReferences
@@ -692,47 +580,22 @@ class DDF(DDFSketch):
                     'cleaning_mode': mode}
 
         if mode is 'REMOVE_ROW':
-            from .functions.etl.clean_missing import drop_nan_rows
-
-            def task_dropna(df, params):
-                return drop_nan_rows(df, params)
+            from ddf_library.bases.optimizer.operations import DropNaRows
 
             new_state_uuid = ContextBase \
-                .ddf_add_task('dropna',
-                              opt=self.OPT_SERIAL,
-                              function=[task_dropna, settings],
+                .ddf_add_task(operation=DropNaRows(settings),
                               parent=[self.last_uuid])
 
-            return DDF(task_list=self.task_list, last_uuid=new_state_uuid)
+            return DDF(last_uuid=new_state_uuid)
 
         else:
-            from .functions.etl.clean_missing import drop_nan_columns_stage_1, \
-                drop_nan_columns_stage_2
-
-            def task_drop_nan_columns_stage_1(df, params):
-                return drop_nan_columns_stage_1(df, params)
-
-            def task_drop_nan_columns_stage_2(df, params):
-                return drop_nan_columns_stage_2(df, params)
-
-            last_uuid = ContextBase \
-                .ddf_add_task('task_drop_nan_columns_stage_1',
-                              opt=self.OPT_LAST,
-                              function=[task_drop_nan_columns_stage_1,
-                                        settings],
-                              parent=[self.last_uuid],
-                              info=True)
-
-            task_list = self.task_list.copy()
-            task_list.append(last_uuid)
+            from ddf_library.bases.optimizer.operations import DropNaColumns
 
             new_state_uuid = ContextBase \
-                .ddf_add_task('task_drop_nan_columns_stage_2',
-                              opt=self.OPT_SERIAL,
-                              function=[task_drop_nan_columns_stage_2, None],
-                              parent=[last_uuid])
+                .ddf_add_task(operation=DropNaColumns(settings),
+                              parent=[self.last_uuid])
 
-            return DDF(task_list=task_list, last_uuid=new_state_uuid)
+            return DDF(last_uuid=new_state_uuid)
 
     def explode(self, column):
         # noinspection PyUnresolvedReferences
@@ -751,18 +614,13 @@ class DDF(DDFSketch):
 
         settings = {'column': column}
 
-        from .functions.etl.explode import explode
-
-        def task_explode(df, params):
-            return explode(df, params)
+        from ddf_library.bases.optimizer.operations import Explode
 
         new_state_uuid = ContextBase \
-            .ddf_add_task('explode',
-                          opt=self.OPT_SERIAL,
-                          function=[task_explode, settings],
+            .ddf_add_task(operation=Explode(settings),
                           parent=[self.last_uuid])
 
-        return DDF(task_list=self.task_list, last_uuid=new_state_uuid)
+        return DDF(last_uuid=new_state_uuid)
 
     def filter(self, expr):
         # noinspection PyUnresolvedReferences
@@ -782,20 +640,15 @@ class DDF(DDFSketch):
 
         >>> ddf1.filter("(col_1 == 'male') and (col_3 > 42)")
         """
+        from ddf_library.bases.optimizer.operations import Filter
 
-        from .functions.etl.filter import filter_rows
         settings = {'query': expr}
 
-        def task_filter(df, params):
-            return filter_rows(df, params)
-
         new_state_uuid = ContextBase\
-            .ddf_add_task('filter',
-                          opt=self.OPT_SERIAL,
-                          function=[task_filter, settings],
+            .ddf_add_task(operation=Filter(settings),
                           parent=[self.last_uuid])
 
-        return DDF(task_list=self.task_list, last_uuid=new_state_uuid)
+        return DDF(last_uuid=new_state_uuid)
 
     def geo_within(self, shp_object, lat_col, lon_col, polygon,
                    attributes=None, suffix='_shp'):
@@ -820,36 +673,17 @@ class DDF(DDFSketch):
         >>> ddf2.geo_within(ddf1, 'LATITUDE', 'LONGITUDE', 'points')
         """
 
-        from .functions.geo import geo_within_stage_1, geo_within_stage_2
+        from ddf_library.bases.optimizer.operations import GeoWithin
 
         settings = {'lat_col': lat_col, 'lon_col': lon_col,
                     'polygon': polygon, 'alias': suffix,
                     'attributes': attributes}
 
-        def task_geo_within_stage_1(df, params):
-            return geo_within_stage_1(df[0], df[1], params)
-
-        def task_geo_within_stage_2(df, params):
-            return geo_within_stage_2(df, params)
-
-        last_uuid = ContextBase \
-            .ddf_add_task('task_geo_within_stage_1',
-                          opt=self.OPT_LAST,
-                          function=[task_geo_within_stage_1, settings],
-                          parent=[self.last_uuid, shp_object.last_uuid],
-                          info=True)
-
-        task_list = self.task_list + shp_object.task_list
-        task_list = self._merge_tasks_list(task_list)
-        task_list.append(last_uuid)
-
         new_state_uuid = ContextBase \
-            .ddf_add_task('task_geo_within_stage_2',
-                          opt=self.OPT_SERIAL,
-                          function=[task_geo_within_stage_2, None],
-                          parent=[last_uuid])
+            .ddf_add_task(operation=GeoWithin(settings),
+                          parent=[self.last_uuid, shp_object.last_uuid])
 
-        return DDF(task_list=task_list, last_uuid=new_state_uuid)
+        return DDF(last_uuid=new_state_uuid)
 
     def hash_partition(self, columns, nfrag=None):
         # noinspection PyUnresolvedReferences
@@ -867,7 +701,7 @@ class DDF(DDFSketch):
         >>> ddf2 = ddf1.hash_partition(columns=['col1', col2])
         """
 
-        from .functions.etl.hash_partitioner import hash_partition
+        from ddf_library.bases.optimizer.operations import HashPartition
 
         if not isinstance(columns, list):
             columns = [columns]
@@ -877,17 +711,11 @@ class DDF(DDFSketch):
         if nfrag is not None:
             settings['nfrag'] = nfrag
 
-        def task_hash_partition(df, params):
-            return hash_partition(df, params)
-
         new_state_uuid = ContextBase\
-            .ddf_add_task('hash_partition',
-                          opt=self.OPT_OTHER,
-                          function=[task_hash_partition, settings],
-                          parent=[self.last_uuid],
-                          info=True)
+            .ddf_add_task(operation=HashPartition(settings),
+                          parent=[self.last_uuid])
 
-        return DDF(task_list=self.task_list, last_uuid=new_state_uuid)
+        return DDF(last_uuid=new_state_uuid)
 
     def intersect(self, data2):
         # noinspection PyUnresolvedReferences
@@ -905,35 +733,15 @@ class DDF(DDFSketch):
         >>> ddf2.intersect(ddf1)
         """
 
-        from .functions.etl.intersect import intersect_stage_1, \
-            intersect_stage_2
+        from ddf_library.bases.optimizer.operations import Intersect
 
         settings = {'distinct': True}
 
-        def task_intersect_stage_1(df, params):
-            return intersect_stage_1(df[0], df[1], params)
-
-        def task_intersect_stage_2(df, params):
-            return intersect_stage_2(df[0], df[1], params)
-
-        last_uuid = ContextBase \
-            .ddf_add_task('task_intersect_stage_1',
-                          opt=self.OPT_LAST,
-                          function=[task_intersect_stage_1, settings],
-                          parent=[self.last_uuid, data2.last_uuid],
-                          info=True)
-
-        task_list = self.task_list + data2.task_list
-        task_list = self._merge_tasks_list(task_list)
-        task_list.append(last_uuid)
-
         new_state_uuid = ContextBase \
-            .ddf_add_task('task_intersect_stage_2',
-                          opt=self.OPT_SERIAL,
-                          function=[task_intersect_stage_2, None],
-                          parent=[last_uuid])
+            .ddf_add_task(operation=Intersect(settings),
+                          parent=[self.last_uuid, data2.last_uuid])
 
-        return DDF(task_list=task_list, last_uuid=new_state_uuid)
+        return DDF(last_uuid=new_state_uuid)
 
     def intersect_all(self, data2):
         # noinspection PyUnresolvedReferences
@@ -951,35 +759,15 @@ class DDF(DDFSketch):
         >>> ddf2.intersect_all(ddf1)
         """
 
-        from .functions.etl.intersect import intersect_stage_1, \
-            intersect_stage_2
+        from ddf_library.bases.optimizer.operations import Intersect
 
         settings = {'distinct': False}
 
-        def task_intersect_stage_1(df, params):
-            return intersect_stage_1(df[0], df[1], params)
-
-        def task_intersect_stage_2(df, params):
-            return intersect_stage_2(df[0], df[1], params)
-
-        last_uuid = ContextBase \
-            .ddf_add_task('task_intersect_stage_1',
-                          opt=self.OPT_LAST,
-                          function=[task_intersect_stage_1, settings],
-                          parent=[self.last_uuid, data2.last_uuid],
-                          info=True)
-
-        task_list = self.task_list + data2.task_list
-        task_list = self._merge_tasks_list(task_list)
-        task_list.append(last_uuid)
-
         new_state_uuid = ContextBase \
-            .ddf_add_task('task_intersect_stage_2',
-                          opt=self.OPT_SERIAL,
-                          function=[task_intersect_stage_2, None],
-                          parent=[last_uuid])
+            .ddf_add_task(operation=Intersect(settings),
+                          parent=[self.last_uuid, data2.last_uuid])
 
-        return DDF(task_list=task_list, last_uuid=new_state_uuid)
+        return DDF(last_uuid=new_state_uuid)
 
     def join(self, data2, key1=None, key2=None, mode='inner',
              suffixes=None, keep_keys=False, case=True):
@@ -1014,7 +802,7 @@ class DDF(DDFSketch):
         if suffixes is None:
             suffixes = ['_l', '_r']
 
-        from .functions.etl.join import join_stage_1, join_stage_2
+        from ddf_library.bases.optimizer.operations import Join
 
         settings = {'key1': key1,
                     'key2': key2,
@@ -1023,30 +811,11 @@ class DDF(DDFSketch):
                     'case': case,
                     'suffixes': suffixes}
 
-        def task_join_stage_1(df, params):
-            return join_stage_1(df[0], df[1], params)
-
-        def task_join_stage_2(df, params):
-            return join_stage_2(df[0], df[1], params)
-
-        last_uuid = ContextBase \
-            .ddf_add_task('task_join_stage_1',
-                          opt=self.OPT_LAST,
-                          function=[task_join_stage_1, settings],
-                          parent=[self.last_uuid, data2.last_uuid],
-                          info=True)
-
-        task_list = self.task_list + data2.task_list
-        task_list = self._merge_tasks_list(task_list)
-        task_list.append(last_uuid)
-
         new_state_uuid = ContextBase \
-            .ddf_add_task('task_join_stage_2',
-                          opt=self.OPT_SERIAL,
-                          function=[task_join_stage_2, None],
-                          parent=[last_uuid])
+            .ddf_add_task(operation=Join(settings),
+                          parent=[self.last_uuid, data2.last_uuid])
 
-        return DDF(task_list=task_list, last_uuid=new_state_uuid)
+        return DDF(last_uuid=new_state_uuid)
 
     def kolmogorov_smirnov_one_sample(self, col, distribution='norm',
                                       mode='asymp', args=None):
@@ -1094,7 +863,7 @@ class DDF(DDFSketch):
 
         df, nfrag, tmp, info = self._ddf_initial_setup(self, info=True)
         settings = {'col': col, 'distribution': distribution, 'mode': mode,
-                    'info': [info]}
+                    'schema': [info]}
         if args is not None:
             settings['args'] = args
 
@@ -1117,23 +886,17 @@ class DDF(DDFSketch):
         :Example:
 
         >>> from ddf_library.columns import col
-        >>> from ddf_library.types import IntegerType
-        >>> ddf1.map(col('col_0').cast(IntegerType), 'col_0_new')
+        >>> from ddf_library.types import DataType
+        >>> ddf1.map(col('col_0').cast(DataType.INT), 'col_0_new')
         """
         settings = {'function': f, 'alias': alias}
-
-        from .functions.etl.map import map as task
-
-        def task_map(df, params):
-            return task(df, params)
+        from ddf_library.bases.optimizer.operations import Map
 
         new_state_uuid = ContextBase \
-            .ddf_add_task('map',
-                          opt=self.OPT_SERIAL,
-                          function=[task_map, settings],
+            .ddf_add_task(operation=Map(settings),
                           parent=[self.last_uuid])
 
-        return DDF(task_list=self.task_list, last_uuid=new_state_uuid)
+        return DDF(last_uuid=new_state_uuid)
 
     def persist(self):
         # noinspection PyUnresolvedReferences
@@ -1147,13 +910,12 @@ class DDF(DDFSketch):
         >>> ddf1.persist()
         """
 
-        status = ContextBase.catalog_tasks[self.last_uuid]\
-            .get('status', self.STATUS_WAIT)
+        status = ContextBase.catalog_tasks.get_task_status(self.last_uuid)
 
-        if status in [self.STATUS_WAIT, self.STATUS_DELETED]:
-            self._run_compss_context()
+        if status in [Status.STATUS_WAIT, Status.STATUS_DELETED]:
+            self.last_uuid = ContextBase().run_workflow(self.last_uuid)
 
-        ContextBase.update_status([self.last_uuid], self.STATUS_PERSISTED)
+        ContextBase.update_status([self.last_uuid], Status.STATUS_PERSISTED)
         return self
 
     def range_partition(self, columns, ascending=None, nfrag=None):
@@ -1174,7 +936,7 @@ class DDF(DDFSketch):
         >>>                             ascending=[True, False])
         """
 
-        from .functions.etl.range_partitioner import range_partition
+        from ddf_library.bases.optimizer.operations import RangePartition
 
         if not isinstance(columns, list):
             columns = [columns]
@@ -1190,17 +952,11 @@ class DDF(DDFSketch):
         if nfrag is not None:
             settings['nfrag'] = nfrag
 
-        def task_range_partition(df, params):
-            return range_partition(df, params)
-
         new_state_uuid = ContextBase \
-            .ddf_add_task('range_partition',
-                          opt=self.OPT_OTHER,
-                          function=[task_range_partition, settings],
-                          parent=[self.last_uuid],
-                          info=True)
+            .ddf_add_task(operation=RangePartition(settings),
+                          parent=[self.last_uuid])
 
-        return DDF(task_list=self.task_list, last_uuid=new_state_uuid)
+        return DDF(last_uuid=new_state_uuid)
 
     def repartition(self, nfrag=-1, distribution=None):
         # noinspection PyUnresolvedReferences
@@ -1215,24 +971,18 @@ class DDF(DDFSketch):
         :return: DDF
         """
 
-        from .functions.etl.repartition import repartition
+        from ddf_library.bases.optimizer.operations import Repartition
 
         settings = {'nfrag': nfrag}
 
         if distribution is not None:
             settings['distribution'] = distribution
 
-        def task_repartition(df, params):
-            return repartition(df, params)
-
         new_state_uuid = ContextBase \
-            .ddf_add_task('repartition',
-                          opt=self.OPT_OTHER,
-                          function=[task_repartition, settings],
-                          parent=[self.last_uuid],
-                          info=True)
+            .ddf_add_task(operation=Repartition(settings),
+                          parent=[self.last_uuid])
 
-        return DDF(task_list=self.task_list, last_uuid=new_state_uuid)
+        return DDF(last_uuid=new_state_uuid)
 
     def replace(self, replaces, subset=None, regex=False):
         # noinspection PyUnresolvedReferences
@@ -1253,24 +1003,21 @@ class DDF(DDFSketch):
         >>> ddf1.replace({0: 'No', 1: 'Yes'}, subset=['col_1'])
         """
 
-        from .functions.etl.replace_values import replace_value, preprocessing
+        from ddf_library.bases.optimizer.operations import Replace
 
         settings = {'replaces': replaces, 'regex': regex}
         if subset is not None:
             settings['subset'] = subset
 
-        settings = preprocessing(settings)
+        obj = Replace(settings)
 
-        def task_replace(df, params):
-            return replace_value(df, params)
+        settings = obj.settings
 
         new_state_uuid = ContextBase\
-            .ddf_add_task('replace',
-                          opt=self.OPT_SERIAL,
-                          function=[task_replace, settings],
+            .ddf_add_task(operation=Replace(settings),
                           parent=[self.last_uuid])
 
-        return DDF(task_list=self.task_list, last_uuid=new_state_uuid)
+        return DDF(last_uuid=new_state_uuid)
 
     def sample(self, value=None, seed=None):
         # noinspection PyUnresolvedReferences
@@ -1291,7 +1038,7 @@ class DDF(DDFSketch):
         >>> ddf1.sample()  # a random sample
         """
 
-        from .functions.etl.sample import sample_stage_1, sample_stage_2
+        from ddf_library.bases.optimizer.operations import Sample
         settings = dict()
         settings['seed'] = seed
 
@@ -1304,29 +1051,11 @@ class DDF(DDFSketch):
             """Sample a random amount of records"""
             settings['type'] = 'percent'
 
-        def task_sample_stage_1(df, params):
-            return sample_stage_1(df, params)
+        new_state_uuid = ContextBase \
+            .ddf_add_task(operation=Sample(settings),
+                          parent=[self.last_uuid])
 
-        def task_sample_stage_2(df, params):
-            return sample_stage_2(df, params)
-
-        last_uuid = ContextBase \
-            .ddf_add_task('task_sample_stage_1',
-                          opt=self.OPT_LAST,
-                          function=[task_sample_stage_1, settings],
-                          parent=[self.last_uuid],
-                          info=True)
-
-        task_list = self.task_list.copy()
-        task_list.append(last_uuid)
-
-        new_state_uuid = ContextBase\
-            .ddf_add_task('task_sample_stage_2',
-                          opt=self.OPT_SERIAL,
-                          function=[task_sample_stage_2, None],
-                          parent=[last_uuid])
-
-        return DDF(task_list=task_list, last_uuid=new_state_uuid)
+        return DDF(last_uuid=new_state_uuid)
 
     def schema(self):
         # noinspection PyUnresolvedReferences
@@ -1368,20 +1097,15 @@ class DDF(DDFSketch):
         >>> ddf1.select(['col_1', 'col_2'])
         """
 
-        from .functions.etl.select import select
-
         settings = {'columns': columns}
 
-        def task_select(df, params):
-            return select(df, params)
+        from ddf_library.bases.optimizer.operations import Select
 
         new_state_uuid = ContextBase\
-            .ddf_add_task('select',
-                          opt=self.OPT_SERIAL,
-                          function=[task_select, settings],
+            .ddf_add_task(operation=Select(settings),
                           parent=[self.last_uuid])
 
-        return DDF(task_list=self.task_list, last_uuid=new_state_uuid)
+        return DDF(last_uuid=new_state_uuid)
 
     def select_expression(self, *exprs):
         # noinspection PyUnresolvedReferences
@@ -1427,20 +1151,15 @@ class DDF(DDFSketch):
         >>> ddf1.select_exprs('col1 = age * 2', "abs(age)")
         """
 
-        from .functions.etl.select import select_exprs
+        from ddf_library.bases.optimizer.operations import SelectExprs
 
         settings = {'exprs': exprs}
 
-        def task_select_exprs(df, params):
-            return select_exprs(df, params)
-
         new_state_uuid = ContextBase\
-            .ddf_add_task('select_exprs',
-                          opt=self.OPT_SERIAL,
-                          function=[task_select_exprs, settings],
+            .ddf_add_task(operation=SelectExprs(settings),
                           parent=[self.last_uuid])
 
-        return DDF(task_list=self.task_list, last_uuid=new_state_uuid)
+        return DDF(last_uuid=new_state_uuid)
 
     def show(self, n=20):
         # noinspection PyUnresolvedReferences
@@ -1462,7 +1181,7 @@ class DDF(DDFSketch):
         from .functions.etl.take import take
         conf = {'value': n,
                 'balancer': False,
-                'info': [{'size': n_rows_frags}]
+                'schema': [{'size': n_rows_frags}]
                 }
         res = take(self.partitions, conf)['data']
 
@@ -1491,33 +1210,15 @@ class DDF(DDFSketch):
         >>> dd1.sort(['col_1', 'col_2'], ascending=[True, False])
         """
 
-        from .functions.etl.sort import sort_stage_1, sort_stage_2
+        from ddf_library.bases.optimizer.operations import Sort
 
         settings = {'columns': cols, 'ascending': ascending}
 
-        def task_sort_stage_1(df, params):
-            return sort_stage_1(df, params)
-
-        last_uuid = ContextBase \
-            .ddf_add_task('sort_stage_1',
-                          opt=self.OPT_LAST,
-                          function=[task_sort_stage_1, settings],
-                          parent=[self.last_uuid],
-                          info=True)
-
-        task_list = self.task_list.copy()
-        task_list.append(last_uuid)
-
-        def task_sort_stage_2(df, params):
-            return sort_stage_2(df, params)
-
         new_state_uuid = ContextBase \
-            .ddf_add_task('sort_stage_2',
-                          opt=self.OPT_SERIAL,
-                          function=[task_sort_stage_2, None],
-                          parent=[last_uuid])
+            .ddf_add_task(operation=Sort(settings),
+                          parent=[self.last_uuid])
 
-        return DDF(task_list=task_list, last_uuid=new_state_uuid)
+        return DDF(last_uuid=new_state_uuid)
 
     def split(self, percentage=0.5, seed=None):
         # noinspection PyUnresolvedReferences
@@ -1534,34 +1235,16 @@ class DDF(DDFSketch):
 
         >>> ddf2a, ddf2b = ddf1.split(0.5)
         """
-
-        from .functions.etl.split import random_split
-
+        from ddf_library.bases.optimizer.operations import RandomSplit
         settings = {'percentage': percentage, 'seed': seed}
 
-        def task_split(df, params):
-            return random_split(df, params)
-
-        split_out1_uuid = ContextBase \
-            .ddf_add_task('split-out1',
-                          opt=self.OPT_OTHER,
-                          function=[task_split, settings],
+        split_out1_uuid, split_out2_uuid = ContextBase \
+            .ddf_add_task(operation=RandomSplit(settings),
                           parent=[self.last_uuid],
-                          info=True,
                           n_output=2)
 
-        split_out2_uuid = ContextBase \
-            .ddf_add_task('split-out2',
-                          opt=self.OPT_OTHER,
-                          function=[task_split, settings],
-                          parent=[self.last_uuid],
-                          info=True,
-                          n_output=2)
-
-        ContextBase.link_siblings([split_out1_uuid, split_out2_uuid])
-
-        out1 = DDF(task_list=self.task_list, last_uuid=split_out1_uuid)
-        out2 = DDF(task_list=self.task_list, last_uuid=split_out2_uuid)
+        out1 = DDF(last_uuid=split_out1_uuid)
+        out2 = DDF(last_uuid=split_out2_uuid)
         return out1, out2
 
     def take(self, num):
@@ -1579,32 +1262,14 @@ class DDF(DDFSketch):
         >>> ddf1.take(10)
         """
 
-        from .functions.etl.take import take_stage_1, take_stage_2
+        from ddf_library.bases.optimizer.operations import Take
         settings = {'value': num, 'balancer': True}
 
-        def task_take_stage_1(df, params):
-            return take_stage_1(df, params)
+        new_state_uuid = ContextBase\
+            .ddf_add_task(operation=Take(settings),
+                          parent=[self.last_uuid])
+        result = DDF(last_uuid=new_state_uuid)
 
-        last_uuid = ContextBase\
-            .ddf_add_task('task_take_stage_1',
-                          opt=self.OPT_LAST,
-                          function=[task_take_stage_1, settings],
-                          parent=[self.last_uuid],
-                          info=True)
-
-        task_list = self.task_list.copy()
-        task_list.append(last_uuid)
-
-        def task_take_stage_2(df, params):
-            return take_stage_2(df, params)
-
-        new_state_uuid = ContextBase \
-            .ddf_add_task('task_take_stage_2',
-                          opt=self.OPT_SERIAL,
-                          function=[task_take_stage_2, None],
-                          parent=[last_uuid])
-
-        result = DDF(task_list=task_list, last_uuid=new_state_uuid)
         if settings['balancer']:
             result = result.balancer(True)
         return result
@@ -1639,7 +1304,7 @@ class DDF(DDFSketch):
         return df
 
     def unpersist(self):
-        ContextBase.update_status([self.last_uuid], self.STATUS_COMPLETED)
+        ContextBase.update_status([self.last_uuid], Status.STATUS_COMPLETED)
         return self
 
     def union(self, data2):
@@ -1659,22 +1324,15 @@ class DDF(DDFSketch):
         >>> ddf1.union(ddf2)
         """
 
-        from .functions.etl.union import union
+        from ddf_library.bases.optimizer.operations import Union
 
         settings = {'by_name': False}
 
-        def task_union(df, params):
-            return union(df[0], df[1], params)
-
         new_state_uuid = ContextBase \
-            .ddf_add_task('union',
-                          opt=self.OPT_OTHER,
-                          function=[task_union, settings],
-                          parent=[self.last_uuid, data2.last_uuid],
-                          info=True)
+            .ddf_add_task(operation=Union(settings),
+                          parent=[self.last_uuid, data2.last_uuid])
 
-        new_list = self._merge_tasks_list(self.task_list + data2.task_list)
-        return DDF(task_list=new_list, last_uuid=new_state_uuid)
+        return DDF(last_uuid=new_state_uuid)
 
     def union_by_name(self, data2):
         # noinspection PyUnresolvedReferences
@@ -1692,22 +1350,15 @@ class DDF(DDFSketch):
         >>> ddf1.union_by_name(ddf2)
         """
 
-        from .functions.etl.union import union
+        from ddf_library.bases.optimizer.operations import Union
 
         settings = {'by_name': True}
 
-        def task_union(df, params):
-            return union(df[0], df[1], params)
-
         new_state_uuid = ContextBase\
-            .ddf_add_task('union',
-                          opt=self.OPT_OTHER,
-                          function=[task_union, settings],
-                          parent=[self.last_uuid,  data2.last_uuid],
-                          info=True)
+            .ddf_add_task(operation=Union(settings),
+                          parent=[self.last_uuid,  data2.last_uuid])
 
-        new_list = self._merge_tasks_list(self.task_list + data2.task_list)
-        return DDF(task_list=new_list, last_uuid=new_state_uuid)
+        return DDF(last_uuid=new_state_uuid)
 
     def rename(self, old_column, new_column):
         # noinspection PyUnresolvedReferences
@@ -1723,23 +1374,12 @@ class DDF(DDFSketch):
         :return: DDF
         """
 
-        from .functions.etl.attributes_changer import with_column_renamed
-
-        if not isinstance(old_column, list):
-            old_column = [old_column]
-
-        if not isinstance(new_column, list):
-            new_column = [new_column]
+        from ddf_library.bases.optimizer.operations import WithColumnRenamed
 
         settings = {'old_column': old_column, 'new_column': new_column}
 
-        def task_rename(df, params):
-            return with_column_renamed(df, params)
-
         new_state_uuid = ContextBase\
-            .ddf_add_task('rename',
-                          opt=self.OPT_SERIAL,
-                          function=[task_rename, settings],
+            .ddf_add_task(operation=WithColumnRenamed(settings),
                           parent=[self.last_uuid])
 
-        return DDF(task_list=self.task_list, last_uuid=new_state_uuid)
+        return DDF(last_uuid=new_state_uuid)

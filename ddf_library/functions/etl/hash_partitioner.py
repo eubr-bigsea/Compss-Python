@@ -19,13 +19,13 @@ def hash_partition(data, settings):
 
     :param data: A list of pandas DataFrames;
     :param settings: A dictionary with:
-     - info:
+     - schema:
      - columns: Columns name to perform a hash partition;
      - nfrag: Number of partitions;
 
     :return: A list of pandas DataFrames;
     """
-    info = settings['info'][0]
+    info = settings['schema'][0]
     nfrag = len(data)
     cols = settings['columns'] if settings['columns'] else []
 
@@ -63,8 +63,8 @@ def hash_partition(data, settings):
         # TODO: intermediate_result ou pode ignorar?
         result = data
 
-    output = {'key_data': ['data'], 'key_info': ['info'],
-              'data': result, 'info': info}
+    output = {'key_data': ['data'], 'key_info': ['schema'],
+              'data': result, 'schema': info}
     return output
 
 

@@ -24,7 +24,7 @@ def range_partition(data, settings):
 
     :param data: A list of pandas DataFrame;
     :param settings: A dictionary with:
-     - info:
+     - schema:
      - columns: Columns name to perform a range partition;
      - ascending:
      - nfrag: Number of partitions;
@@ -32,7 +32,7 @@ def range_partition(data, settings):
     :return: A list of pandas DataFrame;
     """
 
-    info = settings['info'][0]
+    info = settings['schema'][0]
     sizes = info['size']
     nfrag = len(data)
     cols = settings['columns']
@@ -88,8 +88,8 @@ def range_partition(data, settings):
     else:
         result = data
 
-    output = {'key_data': ['data'], 'key_info': ['info'],
-              'data': result, 'info': info}
+    output = {'key_data': ['data'], 'key_info': ['schema'],
+              'data': result, 'schema': info}
     return output
 
 

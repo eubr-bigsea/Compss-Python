@@ -148,6 +148,7 @@ class DataSaver(object):
         if self.storage == self.STORAGE_HDFS:
             """Store the DataFrame in CSV, JSON, PICLKE and PARQUET
              format in HDFS."""
+
             from hdfspycompss.hdfs import HDFS
             dfs = HDFS(host=self.host, port=self.port)
 

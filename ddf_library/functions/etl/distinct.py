@@ -34,8 +34,8 @@ def distinct(data, settings):
         settings['id_frag'] = f
         info[f] = task_distinct_stage_2(out_hash[f], settings.copy(), result[f])
 
-    output = {'key_data': ['data'], 'key_info': ['info'],
-              'data': result, 'info': info}
+    output = {'key_data': ['data'], 'key_info': ['schema'],
+              'data': result, 'schema': info}
     return output
 
 
@@ -43,13 +43,13 @@ def distinct_stage_1(data, settings):
 
     nfrag = len(data)
     cols = settings['columns']
-    info1 = settings['info'][0]
+    info1 = settings['schema'][0]
 
     # first, perform a hash partition to shuffle both data
     from .hash_partitioner import hash_partition
     if settings.get('opt_function', False):
         info1['function'] = [distinct_stage_2, {'columns': cols, 'id_frag': -1}]
-    hash_params = {'columns': cols, 'nfrag': nfrag, 'info': [info1]}
+    hash_params = {'columns': cols, 'nfrag': nfrag, 'schema': [info1]}
     output1 = hash_partition(data, hash_params)
     out_hash = output1['data']
 

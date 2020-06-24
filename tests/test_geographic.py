@@ -8,14 +8,15 @@ import numpy as np
 
 
 def read_shapefile(cc):
+    shp_path = 'hdfs://localhost:9000/pp/41CURITI.shp'
+    dbf_path = 'hdfs://localhost:9000/pp/41CURITI.dbf'
 
     ddf1 = cc\
-        .read.shapefile(shp_path='hdfs://localhost:9000/pp/41CURITI.shp',
-                        dbf_path='hdfs://localhost:9000/pp/41CURITI.dbf')\
+        .read.shapefile(shp_path=shp_path, dbf_path=dbf_path)\
         .select(['points', 'NOMEMESO', 'ID'])
 
-    ddf1.show()
-    print(ddf1.schema())
+    # ddf1.show()
+    # print(ddf1.schema())
     return ddf1
 
 

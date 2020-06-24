@@ -29,7 +29,7 @@ class WorkloadBalancer(object):
 
         forced = settings['forced']
 
-        self.info = settings['info'][0]
+        self.info = settings['schema'][0]
         sizes = self.info['size']
         self.is_balanced = self.preprocessing(sizes, forced, len(sizes))
 
@@ -78,8 +78,8 @@ class WorkloadBalancer(object):
             target_sizes = _generate_distribution2(n_rows, nfrag)
             result, info = _balancer(data, target_sizes, old_sizes, cols)
 
-        output = {'key_data': ['data'], 'key_info': ['info'],
-                  'data': result, 'info': info}
+        output = {'key_data': ['data'], 'key_info': ['schema'],
+                  'data': result, 'schema': info}
 
         return output
 

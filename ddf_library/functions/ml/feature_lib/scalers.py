@@ -5,6 +5,7 @@ __author__ = "Lucas Miguel S Ponce"
 __email__ = "lucasmsp@gmail.com"
 
 from ddf_library.bases.context_base import ContextBase
+from ddf_library.bases.metadata import OPTGroup
 from ddf_library.ddf import DDF
 from ddf_library.bases.ddf_model import ModelDDF
 from ddf_library.utils import generate_info,  read_stage_file
@@ -109,18 +110,18 @@ class MaxAbsScaler(ModelDDF):
 
         self.output_col = output_col
 
-        settings = self.__dict__.copy()
-        settings['model'] = settings['model']['model']
+        self.settings = self.__dict__.copy()
 
-        def task_maxabs_scaler(df, params):
-            return _maxabs_scaler(df, params)
+        uuid_key = ContextBase \
+            .ddf_add_task(operation=self, parent=[data.last_uuid])
 
-        uuid_key = ContextBase\
-            .ddf_add_task(self.name, opt=self.OPT_SERIAL,
-                          function=[task_maxabs_scaler, settings],
-                          parent=[data.last_uuid])
+        return DDF(last_uuid=uuid_key)
 
-        return DDF(task_list=data.task_list, last_uuid=uuid_key)
+    @staticmethod
+    def function(df, params):
+        params = params.copy()
+        params['model'] = params['model']['model']
+        return _maxabs_scaler(df, params)
 
 
 def _maxabs_scaler(data, settings):
@@ -261,18 +262,18 @@ class MinMaxScaler(ModelDDF):
 
         self.output_col = output_col
 
-        settings = self.__dict__.copy()
-        settings['model'] = settings['model']['model']
-
-        def task_minmax_scaler(df, params):
-            return _minmax_scaler(df, params)
+        self.settings = self.__dict__.copy()
 
         uuid_key = ContextBase \
-            .ddf_add_task(self.name, opt=self.OPT_SERIAL,
-                          function=[task_minmax_scaler, settings],
-                          parent=[data.last_uuid])
+            .ddf_add_task(operation=self, parent=[data.last_uuid])
 
-        return DDF(task_list=data.task_list, last_uuid=uuid_key)
+        return DDF(last_uuid=uuid_key)
+
+    @staticmethod
+    def function(df, params):
+        params = params.copy()
+        params['model'] = params['model']['model']
+        return _minmax_scaler(df, params)
 
 
 @task(returns=1, data_input=FILE_IN)
@@ -457,19 +458,19 @@ class StandardScaler(ModelDDF):
                           for col in self.input_col]
 
         self.output_col = output_col
-
-        settings = self.__dict__.copy()
-        settings['model'] = settings['model']['model']
-
-        def task_standard_scaler(df, params):
-            return _standard_scaler(df, params)
+        self.settings = self.__dict__.copy()
 
         uuid_key = ContextBase\
-            .ddf_add_task(self.name, opt=self.OPT_SERIAL,
-                          function=[task_standard_scaler, settings],
+            .ddf_add_task(operation=self,
                           parent=[data.last_uuid])
 
-        return DDF(task_list=data.task_list, last_uuid=uuid_key)
+        return DDF(last_uuid=uuid_key)
+
+    @staticmethod
+    def function(df, params):
+        params = params.copy()
+        params['model'] = params['model']['model']
+        return _standard_scaler(df, params)
 
 
 @task(returns=1, data_input=FILE_IN)
@@ -547,6 +548,8 @@ def _standard_scaler(data, settings):
             scaler.scale_ = None
 
         scaler.n_samples_seen_ = size
+        scaler.n_features_in_ = len(features)
+
         res = scaler.transform(values)
         del values
 

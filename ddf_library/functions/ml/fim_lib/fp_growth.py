@@ -6,6 +6,7 @@ __author__ = "Lucas Miguel S Ponce"
 __email__ = "lucasmsp@gmail.com"
 
 from ddf_library.bases.context_base import ContextBase
+from ddf_library.bases.metadata import OPTGroup, Status
 
 from ddf_library.ddf import DDF
 from ddf_library.utils import generate_info, read_stage_file, \
@@ -52,6 +53,7 @@ class FPGrowth(ModelDDF):
         """
         super(FPGrowth, self).__init__()
         self.min_support = min_support
+        self.opt = OPTGroup.OPT_OTHER
 
     def fit_transform(self, data, input_col):
         """
@@ -92,16 +94,12 @@ class FPGrowth(ModelDDF):
         # split the result in nfrag to keep compatibility with others algorithms
         result, info = step6(df_group, nfrag)
 
-        uuid_key = ContextBase\
-            .ddf_add_task(self.name,
-                          status=self.STATUS_COMPLETED,
-                          opt=self.OPT_OTHER,
-                          function=self.fit_transform,
-                          result=result,
-                          parent=[new_data.last_uuid],
-                          info_data=info)
+        uuid_key = ContextBase \
+            .ddf_add_task(operation=self, parent=[data.last_uuid],
+                          status=Status.STATUS_COMPLETED,
+                          result=result, info_data=info)
 
-        return DDF(task_list=new_data.task_list, last_uuid=uuid_key)
+        return DDF(last_uuid=uuid_key)
 
 
 @task(returns=1, data_input=FILE_IN)

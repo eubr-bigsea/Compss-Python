@@ -10,6 +10,7 @@ from pycompss.functions.reduce import merge_reduce
 from pycompss.api.api import compss_wait_on
 from pycompss.api.parameter import FILE_IN
 
+from ddf_library.bases.metadata import OPTGroup
 from ddf_library.ddf import DDF
 from ddf_library.bases.ddf_model import ModelDDF
 from ddf_library.utils import generate_info, read_stage_file
@@ -62,16 +63,16 @@ class Binarizer(ModelDDF):
             output_col = ['{}{}'.format(col, output_col) for col in input_col]
         self.output_col = output_col
 
-        def task_binarizer(df, params):
-            return _binarizer(df, params)
+        self.settings = self.__dict__.copy()
 
-        settings = self.__dict__.copy()
-        uuid_key = ContextBase\
-            .ddf_add_task(self.name, opt=self.OPT_SERIAL,
-                          function=[task_binarizer, settings],
-                          parent=[data.last_uuid])
+        uuid_key = ContextBase \
+            .ddf_add_task(operation=self, parent=[data.last_uuid])
 
-        return DDF(task_list=data.task_list, last_uuid=uuid_key)
+        return DDF(last_uuid=uuid_key)
+
+    @staticmethod
+    def function(df, params):
+        return _binarizer(df, params)
 
 
 def _binarizer(df, settings):
@@ -186,18 +187,18 @@ class OneHotEncoder(ModelDDF):
         self.output_col = output_col
         self.remove = remove
 
-        settings = self.__dict__.copy()
-        settings['model'] = settings['model']['model']
-
-        def task_transform_one_hot(df, params):
-            return _transform_one_hot(df, params)
+        self.settings = self.__dict__.copy()
 
         uuid_key = ContextBase \
-            .ddf_add_task(self.name, opt=self.OPT_SERIAL,
-                          function=[task_transform_one_hot, settings],
-                          parent=[data.last_uuid])
+            .ddf_add_task(operation=self, parent=[data.last_uuid])
 
-        return DDF(task_list=data.task_list, last_uuid=uuid_key)
+        return DDF(last_uuid=uuid_key)
+
+    @staticmethod
+    def function(df, params):
+        params = params.copy()
+        params['model'] = params['model']['model']
+        return _transform_one_hot(df, params)
 
 
 @task(returns=1, data_input=FILE_IN)
@@ -247,6 +248,7 @@ def _transform_one_hot(df, settings):
         enc = OneHotEncoder(handle_unknown='ignore', sparse=False, dtype=np.int)
         enc._legacy_mode = False
         enc.categories_ = categories
+        enc.drop_idx_ = None
 
         values = enc.transform(values).tolist()
 
@@ -309,18 +311,18 @@ class PolynomialExpansion(ModelDDF):
         self.output_col = output_col
         self.remove = remove
 
-        settings = self.__dict__.copy()
-        settings = _check_dimension(settings)
+        self.settings = self.__dict__.copy()
+        self.settings = _check_dimension(self.settings)
 
-        def task_poly_expansion(df, params):
-            return _poly_expansion(df, params)
+        uuid_key = ContextBase \
+            .ddf_add_task(operation=self, parent=[data.last_uuid])
 
-        uuid_key = ContextBase\
-            .ddf_add_task(self.name, opt=self.OPT_SERIAL,
-                          function=[task_poly_expansion, settings],
-                          parent=[data.last_uuid])
+        return DDF(last_uuid=uuid_key)
 
-        return DDF(task_list=data.task_list, last_uuid=uuid_key)
+    @staticmethod
+    def function(df, params):
+        params = params.copy()
+        return _poly_expansion(df, params)
 
 
 def _check_dimension(params):
@@ -401,6 +403,7 @@ class StringIndexer(ModelDDF):
 
         self.model['model'] = compss_wait_on(mapper)
         self.model['algorithm'] = self.name
+
         return self
 
     def fit_transform(self, data, input_col, output_col=None):
@@ -413,7 +416,7 @@ class StringIndexer(ModelDDF):
         """
 
         self.fit(data, input_col)
-        ddf = self.transform(data, output_col=output_col)
+        ddf = self.transform(data, input_col, output_col=output_col)
 
         return ddf
 
@@ -436,18 +439,18 @@ class StringIndexer(ModelDDF):
         self.output_col = [output_col] \
             if isinstance(output_col, str) else output_col
 
-        settings = self.__dict__.copy()
-        settings['model'] = settings['model']['model']
-
-        def task_string_to_indexer(df, params):
-            return _string_to_indexer(df, params)
+        self.settings = self.__dict__.copy()
 
         uuid_key = ContextBase\
-            .ddf_add_task(self.name, opt=self.OPT_SERIAL,
-                          function=[task_string_to_indexer, settings],
+            .ddf_add_task(operation=self,
                           parent=[data.last_uuid])
 
-        return DDF(task_list=data.task_list, last_uuid=uuid_key)
+        return DDF(last_uuid=uuid_key)
+
+    @staticmethod
+    def function(df, params):
+        params['model'] = params['model']['model']
+        return _string_to_indexer(df, params)
 
 
 @task(returns=1, data_input=FILE_IN)
@@ -523,18 +526,18 @@ class IndexToString(ModelDDF):
             self.output_col = ["{}_converted".format(col)
                                for col in self.input_col]
 
-        settings = self.__dict__.copy()
-        settings['model'] = settings['model']['model']
-
-        def task_index_to_string(df, params):
-            return _index_to_string(df, params)
+        self.settings = self.__dict__.copy()
 
         uuid_key = ContextBase \
-            .ddf_add_task(self.name, opt=self.OPT_SERIAL,
-                          function=[task_index_to_string, settings],
-                          parent=[data.last_uuid])
+            .ddf_add_task(operation=self, parent=[data.last_uuid])
 
-        return DDF(task_list=data.task_list, last_uuid=uuid_key)
+        return DDF(last_uuid=uuid_key)
+
+    @staticmethod
+    def function(df, params):
+        params = params.copy()
+        params['model'] = params['model']['model']
+        return _index_to_string(df, params)
 
 
 def _index_to_string(data, settings):

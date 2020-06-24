@@ -5,6 +5,7 @@ __author__ = "Lucas Miguel S Ponce"
 __email__ = "lucasmsp@gmail.com"
 
 from ddf_library.bases.context_base import ContextBase
+from ddf_library.bases.metadata import OPTGroup
 from ddf_library.ddf import DDF
 from ddf_library.bases.ddf_model import ModelDDF
 from ddf_library.utils import generate_info, read_stage_file
@@ -117,18 +118,18 @@ class CountVectorizer(ModelDDF):
         self.output_col = output_col
         self.remove = remove
 
-        settings = self.__dict__.copy()
-        settings['model'] = settings['model']['vocabulary']
+        self.settings = self.__dict__.copy()
 
-        def task_transform_bow(df, params):
-            return _transform_bow(df, params)
+        uuid_key = ContextBase \
+            .ddf_add_task(operation=self, parent=[data.last_uuid])
 
-        uuid_key = ContextBase\
-            .ddf_add_task(self.name, opt=self.OPT_SERIAL,
-                          function=[task_transform_bow, settings],
-                          parent=[data.last_uuid])
+        return DDF(last_uuid=uuid_key)
 
-        return DDF(task_list=data.task_list, last_uuid=uuid_key)
+    @staticmethod
+    def function(df, params):
+        params = params.copy()
+        params['model'] = params['model']['vocabulary']
+        return _transform_bow(df, params)
 
 
 @task(returns=dict, data_input=FILE_IN)
@@ -294,7 +295,7 @@ class TfidfVectorizer(ModelDDF):
 
         df, nfrag, tmp = self._ddf_initial_setup(data)
 
-        # TODO: info instead to generate new tasks
+        # TODO: schema instead to generate new tasks
         counts = [count_records(df[f]) for f in range(nfrag)]
         count = merge_reduce(merge_count, counts)
 
@@ -347,18 +348,18 @@ class TfidfVectorizer(ModelDDF):
         self.output_col = output_col
         self.remove = remove
 
-        settings = self.__dict__.copy()
-        settings['model'] = settings['model']['vocabulary']
-
-        def task_transform_tf_if(df, params):
-            return construct_tf_idf(df, params)
+        self.settings = self.__dict__.copy()
 
         uuid_key = ContextBase \
-            .ddf_add_task(self.name, opt=self.OPT_SERIAL,
-                          function=[task_transform_tf_if, settings],
-                          parent=[data.last_uuid])
+            .ddf_add_task(operation=self, parent=[data.last_uuid])
 
-        return DDF(task_list=data.task_list, last_uuid=uuid_key)
+        return DDF(last_uuid=uuid_key)
+
+    @staticmethod
+    def function(df, params):
+        params = params.copy()
+        params['model'] = params['model']['vocabulary']
+        return construct_tf_idf(df, params)
 
 
 @task(returns=1, data_input=FILE_IN)

@@ -5,6 +5,7 @@
 __author__ = "Lucas Miguel S Ponce"
 __email__ = "lucasmsp@gmail.com"
 
+from ddf_library.bases.metadata import OPTGroup
 from ddf_library.bases.context_base import ContextBase
 from ddf_library.ddf import DDF
 from ddf_library.utils import generate_info, read_stage_file
@@ -148,18 +149,18 @@ class Kmeans(ModelDDF):
             self.feature_col = feature_col
         self.pred_col = pred_col
 
-        settings = self.__dict__.copy()
-        settings['model'] = settings['model']['model']
-
-        def task_transform_kmeans(df, params):
-            return _kmeans_predict(df, params)
+        self.settings = self.__dict__.copy()
 
         uuid_key = ContextBase\
-            .ddf_add_task(self.name, opt=self.OPT_SERIAL,
-                          function=[task_transform_kmeans, settings],
-                          parent=[data.last_uuid])
+            .ddf_add_task(operation=self, parent=[data.last_uuid])
 
-        return DDF(task_list=data.task_list, last_uuid=uuid_key)
+        return DDF(last_uuid=uuid_key)
+
+    @staticmethod
+    def function(df, params):
+        params = params.copy()
+        params['model'] = params['model']['model']
+        return _kmeans_predict(df, params)
 
     def compute_cost(self):
         """
@@ -269,6 +270,7 @@ def _kmeans_predict(data, settings):
         from sklearn.cluster import KMeans
         kmeans = KMeans(n_clusters=k, random_state=0)
         kmeans.cluster_centers_ = centroids
+        kmeans._n_threads = 1
 
         values = kmeans.predict(data[columns].values)
 
@@ -395,7 +397,7 @@ def _kmeans_init_clusters(xp):
 
 
 @task(returns=1)
-def _kmeans_probability(xp, rss_n, centroids, l, frag):
+def _kmeans_probability(xp, rss_n, centroids, oversampling, frag):
     """ Select the best candidates to be a centroid."""
     rss, n = rss_n
     n_rows = len(xp)
@@ -404,7 +406,7 @@ def _kmeans_probability(xp, rss_n, centroids, l, frag):
 
         distances = euclidean_distances(xp, centroids, squared=False)\
             .min(axis=1)
-        px = (l * distances) / rss - np.random.random_sample(n_rows)
+        px = (oversampling * distances) / rss - np.random.random_sample(n_rows)
 
         idx = np.argwhere(px >= 0).flatten()
         xp = xp[idx]

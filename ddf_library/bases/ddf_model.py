@@ -6,6 +6,7 @@ __email__ = "lucasmsp@gmail.com"
 
 import _pickle as pickle
 from ddf_library.bases.ddf_base import DDFSketch
+from ddf_library.bases.metadata import OPTGroup
 from ddf_library.utils import parser_filepath
 
 
@@ -19,9 +20,14 @@ class ModelDDF(DDFSketch):
 
         self.model = dict()
         self.name = self.__class__.__name__
+        self.tag = self.name
         self.output_col = None
         self.input_col = None
         self.remove = False
+        self.phi_category = OPTGroup.OPT_SERIAL
+        self.n_output = 1
+        self.n_input = 1
+        self.settings = {}
 
     def check_fitted_model(self):
         if self.model.get('algorithm') != self.name:

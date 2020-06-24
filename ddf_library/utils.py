@@ -4,8 +4,9 @@
 __author__ = "Lucas Miguel S Ponce"
 __email__ = "lucasmsp@gmail.com"
 
-from pycompss.api.parameter import FILE_IN, COLLECTION_IN
 from pycompss.api.task import task
+from pycompss.api.parameter import COLLECTION_IN
+
 from pycompss.api.api import compss_delete_file
 
 import numpy as np
@@ -15,30 +16,6 @@ import sys
 
 
 stage_id = 0
-
-
-@task(returns=2)
-def _generate_partition(size, f, dim, max_size):
-    if max_size is None:
-        max_size = size * 100
-
-    cols = ["col{}".format(c) for c in range(dim)]
-    df = pd.DataFrame({c: np.random.randint(0, max_size, size=size)
-                       for c in cols})
-    info = generate_info(df, f)
-    return df, info
-
-
-def generate_data(sizes, dim=1, max_size=None):
-
-    nfrag = len(sizes)
-    dfs = [[] for _ in range(nfrag)]
-    info = [[] for _ in range(nfrag)]
-
-    for f, s in enumerate(sizes):
-        dfs[f], info[f] = _generate_partition(s, f, dim, max_size)
-
-    return dfs, info
 
 
 def generate_info(df, f, info=None):
@@ -57,19 +34,6 @@ def merge_info(schemas):
     if isinstance(schemas, list):
         schemas = merge_schema(schemas)
     return schemas
-
-
-def concatenate_pandas(dfs):
-    # issue: https://pandas.pydata.org/pandas-docs/version/1.0.0/user_guide
-    # /integer_na.html
-
-    if any([True for r in dfs if len(r) > 0]):
-        dfs = [r for r in dfs if len(r) > 0]  # to avoid change dtypes
-
-    df = pd.concat(dfs, sort=False, ignore_index=True)
-    del dfs
-    df.reset_index(drop=True, inplace=True)
-    return df
 
 
 @task(returns=1, schemas=COLLECTION_IN)
@@ -102,6 +66,19 @@ def merge_schema(schemas):
     return schema
 
 
+def concatenate_pandas(dfs):
+    # issue: https://pandas.pydata.org/pandas-docs/version/1.0.0/user_guide
+    # /integer_na.html
+
+    if any([True for r in dfs if len(r) > 0]):
+        dfs = [r for r in dfs if len(r) > 0]  # to avoid change dtypes
+
+    df = pd.concat(dfs, sort=False, ignore_index=True)
+    del dfs
+    df.reset_index(drop=True, inplace=True)
+    return df
+
+
 def parser_filepath(filepath):
     import re
     host, port = 'default', 0
@@ -118,19 +95,6 @@ def parser_filepath(filepath):
     else:
         raise Exception('`hdfs://` and `file://` storage are supported.')
     return host, port, filename, storage
-
-
-def check_serialization(data):
-    """
-    Check if output is a str file object (Future) or is a BufferIO.
-    :param data:
-    :return:
-    """
-
-    if isinstance(data, list):
-        if len(data) > 0:
-            return isinstance(data[0], str)
-        return False
 
 
 def divide_idx_in_frags(ids, n_list):
@@ -173,11 +137,11 @@ def create_auxiliary_column(columns):
     return column
 
 
-def convert_int64_columns(df):
-    for col in df.column:
-        if 'int' in df[col].dtype:
-            df[col] = df[col].astype('Int64')
-    return df
+# def convert_int64_columns(df):
+#     for col in df.column:
+#         if 'int' in df[col].dtype:
+#             df[col] = df[col].astype('Int64')
+#     return df
 
 
 def delete_result(file_list):

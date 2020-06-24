@@ -4,6 +4,7 @@
 __author__ = "Lucas Miguel S Ponce"
 __email__ = "lucasmsp@gmail.com"
 
+from ddf_library.bases.metadata import OPTGroup
 from ddf_library.bases.context_base import ContextBase
 from pycompss.api.parameter import FILE_IN
 from pycompss.api.task import task
@@ -115,18 +116,18 @@ class PCA(ModelDDF):
         self.output_col = output_col
         self.remove = remove
 
-        settings = self.__dict__.copy()
-        settings['model'] = settings['model']['model']
+        self.settings = self.__dict__.copy()
 
-        def transform_pca(df, params):
-            return _pca_transform(df, params)
+        uuid_key = ContextBase \
+            .ddf_add_task(operation=self, parent=[data.last_uuid])
 
-        uuid_key = ContextBase\
-            .ddf_add_task(self.name, opt=self.OPT_SERIAL,
-                          function=[transform_pca, settings],
-                          parent=[data.last_uuid])
+        return DDF(last_uuid=uuid_key)
 
-        return DDF(task_list=data.task_list, last_uuid=uuid_key)
+    @staticmethod
+    def function(df, params):
+        params = params.copy()
+        params['model'] = params['model']['model']
+        return _pca_transform(df, params)
 
 
 @task(returns=1, data_input=FILE_IN)

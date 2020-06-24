@@ -34,7 +34,7 @@ def maxabs_scaler(cc):
                              columns=cols)
 
     # Creating DDF from DataFrame
-    ddf_maxabs = COMPSsContext().parallelize(df_maxabs, 4)
+    ddf_maxabs = cc.parallelize(df_maxabs, 4)
 
     from ddf_library.functions.ml.feature import MaxAbsScaler
     ddf_maxabs = MaxAbsScaler() \
@@ -55,7 +55,7 @@ def minmax_scaler(cc):
     df_minmax = pd.DataFrame([[-1, 2], [-0.5, 6], [0, 10], [1, 18]],
                              columns=cols)
 
-    ddf_minmax = COMPSsContext().parallelize(df_minmax, 4)
+    ddf_minmax = cc.parallelize(df_minmax, 4)
 
     from ddf_library.functions.ml.feature import MinMaxScaler
     ddf_minmax = MinMaxScaler()\
@@ -74,7 +74,7 @@ def std_scaler(cc):
     cols = ['x', 'y']
     df_std = pd.DataFrame([[0, 0], [0, 0], [1, 1], [1, 1]],
                           columns=cols)
-    ddf_std = COMPSsContext().parallelize(df_std, 4)
+    ddf_std = cc.parallelize(df_std, 4)
 
     from ddf_library.functions.ml.feature import StandardScaler
     scaler = StandardScaler(with_mean=True,
@@ -92,11 +92,11 @@ def pca_workflow(cc):
 
     print("\n_____Testing PCA_____\n")
 
-    df = pd.read_csv('./iris-dataset.csv', sep=',')
+    df = pd.read_csv('./datasets/iris-dataset.csv', sep=',')
     df.dropna(how="all", inplace=True)
     columns = df.columns.tolist()
     columns.remove('class')
-    ddf = COMPSsContext().parallelize(df, 4)
+    ddf = cc.parallelize(df, 4)
 
     from ddf_library.functions.ml.feature import StandardScaler
     ddf_std = StandardScaler().fit_transform(ddf, input_col=columns)
@@ -132,7 +132,7 @@ def poly_expansion(cc):
 
     columns = ["x", "y"]
     df = pd.DataFrame([[0, 1], [2, 3], [4, 5]], columns=columns)
-    ddf = COMPSsContext().parallelize(df, 4)
+    ddf = cc.parallelize(df, 4)
 
     from ddf_library.functions.ml.feature import PolynomialExpansion
 
@@ -154,8 +154,8 @@ def onehot_encoder(cc):
     from ddf_library.functions.ml.feature import OneHotEncoder
     df = pd.DataFrame([['Male', 1], ['Female', 3],
                        ['Female', 2]], columns=columns)
-    ddf = COMPSsContext().parallelize(df, 4)
 
+    ddf = cc.parallelize(df, 4)
     res = OneHotEncoder()\
         .fit_transform(ddf, output_col='_1hot', input_col=columns, remove=True)\
         .to_df().values.tolist()
@@ -163,6 +163,7 @@ def onehot_encoder(cc):
     sol = [[0.0, 1.0, 1.0, 0.0, 0.0],
            [1.0, 0.0, 0.0, 0.0, 1.0],
            [1.0, 0.0, 0.0, 1.0, 0.0]]
+
     if not np.allclose(res, sol):
         raise Exception(" Output different from expected.")
     print("Ok")

@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 from ddf_library.context import COMPSsContext
-from ddf_library.types import DecimalType, StringType, IntegerType
+from ddf_library.types import DataType
 import numpy as np
 
 
@@ -10,15 +10,15 @@ def base(cc):
     # loading a csv file from HDFS
     ddf = cc\
         .read.csv("hdfs://localhost:9000/iris-dataset.csv", sep=',',
-                  schema={'sepal_length': DecimalType,
-                          'sepal_width': DecimalType,
-                          'petal_length': DecimalType,
-                          'petal_width': DecimalType,
-                          'class': StringType}) \
+                  schema={'sepal_length': DataType.DECIMAL,
+                          'sepal_width': DataType.DECIMAL,
+                          'petal_length': DataType.DECIMAL,
+                          'petal_width': DataType.DECIMAL,
+                          'class': DataType.STRING}) \
         .replace({'Iris-setosa': 1.0,
                   'Iris-versicolor': -1.0,
                   'Iris-virginica': 1.0}, subset=['class'])\
-        .cast('class', IntegerType)
+        .cast('class', DataType.INT)
 
     cols = ["sepal_length", "sepal_width", "petal_length", "petal_width"]
 

@@ -10,7 +10,7 @@ def use_case1():
     In this problem statement, we will find the number of people who died
     or survived along with their gender and age.
     """
-    df = pd.read_csv('./titanic.csv', sep='\t')
+    df = pd.read_csv('./datasets/titanic.csv', sep='\t')
     cc = COMPSsContext()
     ddf1 = cc.parallelize(df, num_of_parts='*')\
         .select(['Sex', 'Age', 'Survived'])\
@@ -46,10 +46,10 @@ def use_case2():
     Based in: https://towardsdatascience.com/predicting-
      the-survival-of-titanic-passengers-30870ccc7e8
     """
-    df = pd.read_csv('./titanic.csv', sep='\t')
+    df = pd.read_csv('./datasets/titanic.csv', sep='\t')
 
     from ddf_library.columns import col, udf
-    from ddf_library.types import IntegerType
+    from ddf_library.types import DataType
 
     def title_checker(name):
         titles = {"Mr.": 1, "Miss": 2, "Mrs.": 3, "Master": 4, "Rare": 5}
@@ -58,7 +58,7 @@ def use_case2():
                 return titles[title]
         return -1
 
-    title_checker_udf = udf(title_checker, IntegerType, col('Name'))
+    title_checker_udf = udf(title_checker, DataType.INT, col('Name'))
 
     def age_categorizer(age):
         category = 7
@@ -79,7 +79,7 @@ def use_case2():
 
         return category
 
-    age_categorizer_udf = udf(age_categorizer, IntegerType, col('Age'))
+    age_categorizer_udf = udf(age_categorizer, DataType.INT, col('Age'))
 
     def fare_categorizer(fare):
         category = 5
@@ -95,7 +95,7 @@ def use_case2():
             category = 4
         return category
 
-    fare_categorizer_udf = udf(fare_categorizer, IntegerType, col('Fare'))
+    fare_categorizer_udf = udf(fare_categorizer, DataType.INT, col('Fare'))
 
     """
     First of all, we need to remove some columns (Passenger id, Cabin number 
@@ -120,7 +120,7 @@ def use_case2():
         .map(fare_categorizer_udf, 'Fare')
 
     ddf1 = StringIndexer()\
-        .fit_transform(ddf1, input_col='Embarked', output_col='Embarked')
+        .fit_transform(ddf1, input_col=['Embarked'], output_col=['Embarked'])
 
     """
     After that, we put together all columns (except Survived, which will be

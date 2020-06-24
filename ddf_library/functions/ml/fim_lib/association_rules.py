@@ -6,6 +6,7 @@ __author__ = "Lucas Miguel S Ponce"
 __email__ = "lucasmsp@gmail.com"
 
 from ddf_library.bases.context_base import ContextBase
+from ddf_library.bases.metadata import OPTGroup, Status
 
 from ddf_library.ddf import DDF
 from ddf_library.utils import generate_info, merge_info, read_stage_file, \
@@ -21,7 +22,7 @@ from itertools import chain, combinations
 import pandas as pd
 
 
-class AssociationRules(ModelDDF): # TODO
+class AssociationRules(ModelDDF):  # TODO
     # noinspection PyUnresolvedReferences
     """
     Association rule learning is a rule-based machine learning method for
@@ -50,6 +51,7 @@ class AssociationRules(ModelDDF): # TODO
         self.max_rules = max_rules
         self.col_item = None
         self.col_freq = None
+        self.opt = OPTGroup.OPT_OTHER
 
     def set_min_confidence(self, confidence):
         self.confidence = confidence
@@ -87,9 +89,9 @@ class AssociationRules(ModelDDF): # TODO
         info1, info2 = compss_wait_on(info1), compss_wait_on(info2)
 
         # first, perform a hash partition to shuffle both data
-        hash_params1 = {'columns': [col_aux], 'nfrag': nfrag, 'info': [info1],
+        hash_params1 = {'columns': [col_aux], 'nfrag': nfrag, 'schema': [info1],
                         'stage_id': -1}  # TODO
-        hash_params2 = {'columns': [col_aux], 'nfrag': nfrag, 'info': [info2],
+        hash_params2 = {'columns': [col_aux], 'nfrag': nfrag, 'schema': [info2],
                         'stage_id': -1}
         output1 = hash_partition(aux1, hash_params1)
         output2 = hash_partition(aux2, hash_params2)
@@ -107,15 +109,12 @@ class AssociationRules(ModelDDF): # TODO
         compss_delete_object(out1)
         compss_delete_object(out2)
 
-        uuid_key = ContextBase\
-            .ddf_add_task(self.name, status=self.STATUS_COMPLETED,
-                          opt=self.OPT_OTHER,
-                          result=result,
-                          function=self.fit_transform,
-                          parent=[tmp.last_uuid],
-                          info_data=info)
+        uuid_key = ContextBase \
+            .ddf_add_task(operation=self, parent=[tmp.last_uuid],
+                          status=Status.STATUS_COMPLETED,
+                          result=result, info_data=info)
 
-        return DDF(task_list=tmp.task_list, last_uuid=uuid_key)
+        return DDF(last_uuid=uuid_key)
 
 
 @task(returns=4, data_input=FILE_IN)

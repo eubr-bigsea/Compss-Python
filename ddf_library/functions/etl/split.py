@@ -17,7 +17,7 @@ def random_split(input_files, settings):
     :param settings: A dictionary that contains:
       - 'percentage': Percentage to split the data (default, 0.5);
       - 'seed': Optional, seed in case of deterministic random operation;
-      - 'info': information generated from others tasks (automatic);
+      - 'schema': information generated from others tasks (automatic);
     :return: Returns two lists with nfrag pandas's DataFrame with distinct
      subsets of the input.
 
@@ -48,7 +48,7 @@ def random_split(input_files, settings):
 
 def _preprocessing(settings, nfrag):
     percentage = settings.get('percentage', 0.5)
-    info = settings['info'][0]
+    info = settings['schema'][0]
     n_list = info['size']
 
     if percentage < 0 or percentage > 1:
